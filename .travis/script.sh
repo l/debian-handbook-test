@@ -16,7 +16,7 @@ configure () {
 	readonly CHROOT_VARIANT='minbase';
 	readonly CHROOT_ID="${CHROOT_SUITE}_${CHROOT_ARCH}_${CHROOT_INFO}";
 	readonly CHROOT_DIR="${CHROOT_POOL_DIR}/${CHROOT_ID}";
-	readonly CHROOT_MIRROR='http://ftp.debian.org/debian';
+	readonly CHROOT_MIRROR='http://httpredir.debian.org/debian';
 	readonly CURRENT_USER="$(id \
 		--user \
 		--name \
@@ -98,6 +98,35 @@ setup_system_base () {
 	then
 		return 1;
 	fi
+	service \
+		--status-all \
+	;
+	{
+	cat << 'EOT'
+#!/bin/dash
+{
+	set -eux;
+	if expr \
+		"${1}" : "postgresql.*" \
+	;
+	then
+		service \
+			postgresql \
+			stop \
+		;
+	fi
+	exit 0;
+} \
+	1>&2 \
+;
+EOT
+	} | tee \
+		'/usr/sbin/policy-rc.d' \
+	;
+	chmod \
+		'a+x' \
+		'/usr/sbin/policy-rc.d' \
+	;
 	{
 	cat << 'EOT'
 APT::Install-Recommends "0";
@@ -106,14 +135,50 @@ EOT
 	} | tee \
 		'/etc/apt/apt.conf.d/01norecommend' \
 	;
-	echo apt-config \
+	{
+	cat << 'EOT'
+DPkg::options { "--force-confdef"; "--force-confnew"; }
+EOT
+	} | tee \
+		'/etc/apt/apt.conf.d/02force-conf' \
+	;
+	apt-config \
 		dump \
+	| grep \
+		--regexp='APT::Install-' \
+		--regexp='DPkg::options' \
+	;
+	apt-cache \
+		policy \
+	;
+	apt-key \
+		list \
+	;
+	apt-get \
+		update \
+	;
+	apt-get \
+		--assume-yes \
+		upgrade \
+	;
+	apt-get \
+		--assume-yes \
+		dist-upgrade \
 	;
 	apt-get \
 		--assume-yes \
 		install \
+		debian-keyring \
+		debian-archive-keyring \
 		debootstrap \
 		schroot \
+	;
+	apt-get \
+		--assume-yes \
+		autoremove \
+	;
+	service \
+		--status-all \
 	;
 	return 0;
 }
@@ -142,25 +207,54 @@ EOT
 	} | tee \
 		"/etc/schroot/chroot.d/${CHROOT_ID}.conf" \
 	;
-	debootstrap \
-		--foreign \
-		--verbose \
-		--arch="${CHROOT_ARCH}" \
-		--variant="${CHROOT_VARIANT}" \
-		"${CHROOT_SUITE}" \
-		"${CHROOT_DIR}" \
-		"${CHROOT_MIRROR}" \
-	;
 	schroot \
 		--chroot="${CHROOT_ID}" \
-		-- \
-		/debootstrap/debootstrap \
-		--second-stage \
+		--info \
 	;
+	if true;
+	then
+		debootstrap \
+			--verbose \
+			--arch="${CHROOT_ARCH}" \
+			--variant="${CHROOT_VARIANT}" \
+			"${CHROOT_SUITE}" \
+			"${CHROOT_DIR}" \
+			"${CHROOT_MIRROR}" \
+		;
+	else
+		debootstrap \
+			--verbose \
+			--foreign \
+			--arch="${CHROOT_ARCH}" \
+			--variant="${CHROOT_VARIANT}" \
+			"${CHROOT_SUITE}" \
+			"${CHROOT_DIR}" \
+			"${CHROOT_MIRROR}" \
+		;
+		schroot \
+			--chroot="${CHROOT_ID}" \
+			-- \
+			/debootstrap/debootstrap \
+			--verbose \
+			--second-stage \
+		;
+		{
+		cat << EOT
+deb ${CHROOT_MIRROR} ${CHROOT_SUITE} main
+EOT
+		} | tee \
+			"${CHROOT_DIR}/etc/apt/sources.list.d/01${CHROOT_SUITE}.list" \
+		;
+	fi
 	{
 	cat << 'EOT'
-#!/bin/sh
-exit 101
+#!/bin/dash
+{
+	set -eux;
+	exit 101;
+} \
+	1>&2 \
+;
 EOT
 	} | tee \
 		"${CHROOT_DIR}/usr/sbin/policy-rc.d" \
@@ -168,13 +262,6 @@ EOT
 	chmod \
 		'a+x' \
 		"${CHROOT_DIR}/usr/sbin/policy-rc.d" \
-	;
-	{
-	cat << EOT
-deb ${CHROOT_MIRROR} ${CHROOT_SUITE} main
-EOT
-	} | tee \
-		"${CHROOT_DIR}/etc/apt/sources.list.d/01${CHROOT_SUITE}.list" \
 	;
 	{
 	cat << 'EOT'
@@ -189,7 +276,7 @@ EOT
 DPkg::options { "--force-confdef"; "--force-confnew"; }
 EOT
 	} | tee \
-		"${CHROOT_DIR}/etc/apt/apt.conf.d/02confnew" \
+		"${CHROOT_DIR}/etc/apt/apt.conf.d/02force-conf" \
 	;
 	return 0;
 }
@@ -212,8 +299,11 @@ setup_system_build_conf () {
 	;
 	echo id \
 	;
-	cat \
-		'/etc/apt/sources.list' \
+	apt-config \
+		dump \
+	| grep \
+		--regexp='APT::Install-' \
+		--regexp='DPkg::options' \
 	;
 	apt-cache \
 		policy \
