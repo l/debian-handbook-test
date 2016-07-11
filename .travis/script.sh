@@ -486,6 +486,7 @@ setup_build_dir () {
 		--message='Sync PO files to Weblate' \
 	;
 	git \
+		--no-pager \
 		log \
 		--reverse \
 		--color \

@@ -104,23 +104,36 @@ sub update_file {
     my $local  = shift;
     my $remote = shift;
     return 1 if ( !-e $local );
-    printf "%-40s %s\n", $local, $remote;
     my $req = HTTP::Request->new();
     $req->method('GET');
     $req->uri($remote);
-    my $res = $ua->request($req);
+    my $wait_sec    = 10;
+    my $counter_max = 10;
+    my $counter     = 0;
+    my $status      = 'NG';
 
-    if ( !$res->is_success ) {
-        print Dumper $remote;
-        print Dumper $ua;
-        print Dumper $req;
-        print Dumper $res;
+    while (1) {
+        my $res = $ua->request($req);
+        if ( $res->is_success ) {
+            my $fh = IO::File->new();
+            if ( $fh->open( $local, 'w' ) ) {
+                print $fh $res->content;
+                $fh->close;
+            }
+            $status = 'OK';
+            last;
+        }
+        else {
+            print Dumper $res;
+        }
+        if ( $counter++ > $counter_max ) {
+            last;
+        }
+        sleep $wait_sec;
     }
-    my $fh = IO::File->new();
-    if ( $fh->open( $local, 'w' ) ) {
-        print $fh $res->content;
-        $fh->close;
-    }
+
+    printf "%-2s %-40s %s\n", $status, $local, $remote;
+
     return 0;
 }
 
