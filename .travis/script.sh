@@ -16,7 +16,7 @@ configure () {
 	readonly CHROOT_VARIANT='minbase';
 	readonly CHROOT_ID="${CHROOT_SUITE}_${CHROOT_ARCH}_${CHROOT_INFO}";
 	readonly CHROOT_DIR="${CHROOT_POOL_DIR}/${CHROOT_ID}";
-	readonly CHROOT_MIRROR='http://httpredir.debian.org/debian';
+	readonly CHROOT_MIRROR='http://deb.debian.org/debian';
 	readonly CURRENT_USER="$(id \
 		--user \
 		--name \
