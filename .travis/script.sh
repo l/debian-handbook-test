@@ -313,6 +313,7 @@ setup_system_build_conf () {
 		install \
 		git \
 		publican \
+		publican-debian \
 	;
 	return 0;
 }
@@ -437,11 +438,171 @@ build_html_all () {
 	return "${_EXIT_STATUS}";
 }
 
+setup_remote_local () {
+	local _GIT_REMOTE_NAME="${1}";
+	local _GIT_REMOTE_URL="${2}";
+	local _GIT_REMOTE_BRANCH="${3}";
+	local _GIT_LOCAL_BRANCH="${4}";
+	git \
+		remote \
+		add \
+		"${_GIT_REMOTE_NAME}" \
+		"${_GIT_REMOTE_URL}" \
+	;
+	git \
+		fetch \
+		"${_GIT_REMOTE_NAME}" \
+		"${_GIT_REMOTE_BRANCH}" \
+	;
+	git \
+		checkout \
+		-b "${_GIT_LOCAL_BRANCH}" \
+		"${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
+	;
+	git \
+		branch \
+		--set-upstream-to="${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
+	;
+	return 0;
+}
+
+setup_build_branch_merge () {
+	local _GIT_LOCAL_BASE_BRANCH="${1}";
+	local _GIT_LOCAL_TOPIC_BRANCH="${2}";
+	git \
+		checkout \
+		"${_GIT_LOCAL_BASE_BRANCH}" \
+	;
+	if ! git \
+		merge \
+		--verbose \
+		--ff-only \
+		"${_GIT_LOCAL_BASE_BRANCH}" \
+		"${_GIT_LOCAL_TOPIC_BRANCH}" \
+	;
+	then
+		echo merge NG!;
+		git \
+			checkout \
+			"${_GIT_LOCAL_BASE_BRANCH}" \
+		;
+		return 1;
+	fi
+	echo merge OK!;
+	return 0;
+}
+
+setup_build_branch_rebase () {
+	local _GIT_LOCAL_BASE_BRANCH="${1}";
+	local _GIT_LOCAL_TOPIC_BRANCH="${2}";
+	local _GIT_LOCAL_TEMP_BRANCH='tmp/rebase';
+	git \
+		branch \
+		"${_GIT_LOCAL_TEMP_BRANCH}" \
+		"${_GIT_LOCAL_TOPIC_BRANCH}" \
+	;
+	if ! git \
+		rebase \
+		"${_GIT_LOCAL_BASE_BRANCH}" \
+		"${_GIT_LOCAL_TEMP_BRANCH}" \
+	;
+	then
+		echo rebase NG!;
+		git \
+			rebase \
+			--abort \
+		;
+		git \
+			checkout \
+			"${_GIT_LOCAL_BASE_BRANCH}" \
+		;
+		return 1;
+	fi
+	echo rebase OK!;
+	git \
+		branch \
+		--set-upstream-to="$(git \
+			rev-parse \
+			--abbrev-ref \
+			"${_GIT_LOCAL_BASE_BRANCH}@{upstream}" \
+		;)" \
+	;
+	git \
+		branch \
+		--move \
+		--force \
+		"${_GIT_LOCAL_TEMP_BRANCH}" \
+		"${_GIT_LOCAL_BASE_BRANCH}" \
+	;
+	return 0;
+}
+
+setup_build_branch () {
+	local _GIT_REMOTE_NAME="${1}";
+	local _GIT_REMOTE_BRANCH="${2}";
+	local _GIT_LOCAL_BUILD_BRANCH="${3}";
+	shift 3;
+	git \
+		checkout \
+		-b "${_GIT_LOCAL_BUILD_BRANCH}" \
+		"${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
+	;
+	local _GIT_LOCAL_BRANCH;
+	for _GIT_LOCAL_BRANCH in "${@}";
+	do
+		if setup_build_branch_merge \
+			"${_GIT_LOCAL_BUILD_BRANCH}" \
+			"${_GIT_LOCAL_BRANCH}" \
+		;
+		then
+			continue;
+		fi
+		if setup_build_branch_rebase \
+			"${_GIT_LOCAL_BUILD_BRANCH}" \
+			"${_GIT_LOCAL_BRANCH}" \
+		;
+		then
+			continue;
+		fi
+		echo merge and rebase is failed: "${_GIT_LOCAL_BRANCH}";
+		return 1;
+	done
+	return 0;
+}
+
+git_commit () {
+	git \
+		commit \
+		--all \
+		--allow-empty \
+		"${@}" \
+	;
+	return 0;
+}
+
+git_log () {
+	git \
+		--no-pager \
+		log \
+		--reverse \
+		--color \
+		--stat \
+		--pretty=fuller \
+		"${@}" \
+	;
+	return 0;
+}
+
 setup_build_dir () {
-	local _GIT_WEBLATE_NAME='weblate';
-	local _GIT_WEBLATE_URL='git://git.weblate.org/debian-handbook.git';
-	local _GIT_WEBLATE_BRANCH='jessie/master';
-	local _GIT_BUILD_BRANCH="${_GIT_WEBLATE_BRANCH}/translation/${_GIT_WEBLATE_NAME}";
+	local _GIT_REMOTE_ORIGIN_NAME='origin';
+	local _GIT_REMOTE_ORIGIN_URL='git://anonscm.debian.org/debian-handbook/debian-handbook.git';
+	local _GIT_REMOTE_ORIGIN_BRANCH='jessie/master';
+	local _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
+	local _GIT_REMOTE_WEBLATE_NAME='weblate';
+	local _GIT_REMOTE_WEBLATE_URL='git://git.weblate.org/debian-handbook.git';
+	local _GIT_REMOTE_WEBLATE_BRANCH='jessie/master';
+	local _GIT_LOCAL_WEBLATE_BRANCH="${_GIT_REMOTE_WEBLATE_BRANCH}/translation/${_GIT_REMOTE_WEBLATE_NAME}";
+	local _GIT_LOCAL_BUILD_BRANCH="jessie/master/build";
 	local _GIT_WORK_TREE="$(mktemp_directory \
 		'build.XXXXXX' \
 	;)";
@@ -452,47 +613,73 @@ setup_build_dir () {
 	git \
 		init \
 	;
-	git \
-		remote \
-		add \
-		"${_GIT_WEBLATE_NAME}" \
-		"${_GIT_WEBLATE_URL}" \
-	;
-	git \
-		fetch \
-		"${_GIT_WEBLATE_NAME}" \
-		"${_GIT_WEBLATE_BRANCH}" \
-	;
-	git \
-		checkout \
-		"${_GIT_WEBLATE_NAME}/${_GIT_WEBLATE_BRANCH}" \
-	;
-	git \
-		checkout \
-		-b \
-		"${_GIT_BUILD_BRANCH}" \
-	;
-	git \
-		branch \
-		--set-upstream-to="${_GIT_WEBLATE_NAME}/${_GIT_WEBLATE_BRANCH}" \
+	setup_remote_local \
+		"${_GIT_REMOTE_WEBLATE_NAME}" \
+		"${_GIT_REMOTE_WEBLATE_URL}" \
+		"${_GIT_REMOTE_WEBLATE_BRANCH}" \
+		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
 	;
 	"${WEBLATE_SYNC}" \
 		'./' \
 	;
-	git \
-		commit \
-		--all \
-		--allow-empty \
+	git_commit \
 		--message='Sync PO files to Weblate' \
 	;
-	git \
-		--no-pager \
-		log \
-		--reverse \
-		--color \
-		--stat \
-		--pretty=fuller \
-		-2 \
+	git_log	\
+		"@{upstream}..HEAD" \
+	;
+	setup_remote_local \
+		"${_GIT_REMOTE_ORIGIN_NAME}" \
+		"${_GIT_REMOTE_ORIGIN_URL}" \
+		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
+		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
+	;
+	publican \
+		update_pot \
+	;
+	git_commit \
+		--message="Update POT files
+
+$ publican \\
+	update_pot \\
+;
+" \
+	;
+	git_log	\
+		"@{upstream}..HEAD" \
+	;
+	setup_build_branch \
+		"${_GIT_REMOTE_ORIGIN_NAME}" \
+		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
+		"${_GIT_LOCAL_BUILD_BRANCH}" \
+		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
+		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
+	;
+	publican \
+		update_po \
+		--msgmerge \
+		--previous \
+		--langs='all' \
+		--firstname="${CURRENT_USER}" \
+		--surname="${CURRENT_USER}" \
+		--email="${CURRENT_USER}@${CURRENT_HOST}" \
+	;
+	git_commit \
+		--message="Update PO files
+
+$ publican \\
+	update_po \\
+	--msgmerge \\
+	--previous \\
+	--langs='all' \\
+	--firstname='${CURRENT_USER}' \\
+	--surname='${CURRENT_USER}' \\
+	--email='${CURRENT_USER}@${CURRENT_HOST}' \\
+;
+" \
+	;
+	git_log	\
+		"@{upstream}..HEAD" \
 	;
 	return 0;
 }
