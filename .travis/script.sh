@@ -537,6 +537,65 @@ setup_build_branch_rebase () {
 	return 0;
 }
 
+setup_build_branch_cherry_pick () {
+	local _GIT_LOCAL_BASE_BRANCH="${1}";
+	local _GIT_LOCAL_TOPIC_BRANCH="${2}";
+	local _GIT_COMMIT_HASH;
+	for _GIT_COMMIT_HASH in $(git \
+		log \
+		--no-merges \
+		--reverse \
+		--pretty='format:%H' \
+		"${_GIT_LOCAL_BASE_BRANCH}".."${_GIT_LOCAL_TOPIC_BRANCH}" \
+		;)
+	do
+		git_log \
+			'-1' \
+			"${_GIT_COMMIT_HASH}" \
+		;
+		if git \
+			cherry-pick \
+			--keep-redundant-commits \
+			--allow-empty \
+			"${_GIT_COMMIT_HASH}" \
+		;
+		then
+			echo cherry-pick OK!;
+			git_log \
+				'-1' \
+			;
+			continue;
+		fi
+		echo cherry-pick NG!;
+		git \
+			cherry-pick \
+			--abort \
+		;
+
+		if git cherry-pick \
+			--strategy=recursive \
+			--strategy-option=ours \
+			--keep-redundant-commits \
+			--allow-empty \
+			"${_GIT_COMMIT_HASH}" \
+		;
+		then
+			echo cherry-pick strategy OK!;
+			git_log \
+				'-1' \
+			;
+			continue;
+		fi
+		echo cherry-pick strategy NG!;
+		git \
+			cherry-pick \
+			--abort \
+		;
+		return 1;
+	done
+	return 0;
+}
+
 setup_build_branch () {
 	local _GIT_REMOTE_NAME="${1}";
 	local _GIT_REMOTE_BRANCH="${2}";
@@ -564,7 +623,14 @@ setup_build_branch () {
 		then
 			continue;
 		fi
-		echo merge and rebase is failed: "${_GIT_LOCAL_BRANCH}";
+		if setup_build_branch_cherry_pick \
+			"${_GIT_LOCAL_BUILD_BRANCH}" \
+			"${_GIT_LOCAL_BRANCH}" \
+		;
+		then
+			continue;
+		fi
+		echo merge, rebase, and cherry-pick is failed: "${_GIT_LOCAL_BRANCH}";
 		return 1;
 	done
 	return 0;
