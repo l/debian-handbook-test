@@ -1,14 +1,28 @@
 #!/bin/sh
-set -eux;
+set -x;
+set -eu;
 
-configure () {
+configure_apt () {
 	export DEBIAN_FRONTEND=noninteractive;
 	export DEBCONF_NONINTERACTIVE_SEEN=true;
+	return 0;
+}
+
+configure_locale () {
 	export LC_ALL=C;
 	export LANGUAGE=C;
 	export LANG=C;
-	export TZ=GMT;
+	return 0;
+}
 
+configure_timezone () {
+	export TZ=GMT;
+	return 0;
+}
+
+configure_chroot () {
+	readonly CHROOT_USER="${1:-root}";
+	readonly CHROOT_GROUP="${2:-root}";
 	readonly CHROOT_POOL_DIR="${HOME}/chroot";
 	readonly CHROOT_SUITE='unstable';
 	readonly CHROOT_ARCH='amd64';
@@ -17,6 +31,10 @@ configure () {
 	readonly CHROOT_ID="${CHROOT_SUITE}_${CHROOT_ARCH}_${CHROOT_INFO}";
 	readonly CHROOT_DIR="${CHROOT_POOL_DIR}/${CHROOT_ID}";
 	readonly CHROOT_MIRROR='http://deb.debian.org/debian';
+	return 0;
+}
+
+configure_identity () {
 	readonly CURRENT_USER="$(id \
 		--user \
 		--name \
@@ -27,22 +45,6 @@ configure () {
 		 "${CURRENT_USER}" \
 	;)";
 	readonly CURRENT_HOST="$(hostname \
-	;)";
-
-	export GIT_AUTHOR_NAME="${CURRENT_USER}";
-	export GIT_AUTHOR_EMAIL="${CURRENT_USER}@${CURRENT_HOST}";
-	export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}";
-	export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}";
-
-	readonly BIN="$(readlink \
-		--canonicalize \
-		"${0}" \
-	;)";
-	readonly WEBLATE_SYNC="$(readlink \
-		--canonicalize \
-		"$(dirname \
-			"${BIN}" \
-		;)/weblate-sync.pl" \
 	;)";
 	return 0;
 }
@@ -93,7 +95,37 @@ mktemp_directory () {
 	return 0;
 }
 
-setup_system_base () {
+travis_fold_start () {
+	echo \
+		-n \
+		"travis_fold:start:${1}\r" \
+	;
+	return 0;
+}
+
+travis_fold_end () {
+	echo \
+		-n \
+		"travis_fold:end:${1}\r" \
+	;
+	return 0;
+}
+
+systems_host_setup_pre () {
+	configure_apt;
+	configure_locale;
+	configure_timezone;
+	configure_identity;
+	return 0;
+}
+
+systems_host_setup () {
+	travis_fold_start \
+		'systems_host_setup' \
+	;
+	systems_host_setup_pre \
+		"${@}" \
+	;
 	if test "root" != "${CURRENT_USER}" ;
 	then
 		return 1;
@@ -142,6 +174,18 @@ EOT
 	} | tee \
 		'/etc/apt/apt.conf.d/02force-conf' \
 	;
+	apt_get_install_pre;
+	apt_get_install \
+		debian-keyring \
+		debian-archive-keyring \
+		debootstrap \
+		schroot \
+	;
+	apt_get_install_post;
+	travis_fold_end \
+		'systems_host_setup' \
+	;
+	return 0;
 	apt-config \
 		dump \
 	| grep \
@@ -180,12 +224,30 @@ EOT
 	service \
 		--status-all \
 	;
+	travis_fold_end \
+		'systems_host_setup' \
+	;
 	return 0;
 }
 
-setup_system_build_init () {
-	readonly _CHROOT_USER="${1}";
-	readonly _CHROOT_GROUP="${2}";
+systems_host_mkimage_pre () {
+	configure_apt;
+	configure_locale;
+	configure_timezone;
+	configure_identity;
+	configure_chroot \
+		"${@}" \
+	;
+	return 0;
+}
+
+systems_host_mkimage () {
+	travis_fold_start \
+		'systems_host_mkimage' \
+	;
+	systems_host_mkimage_pre \
+		"${@}" \
+	;
 	if test "root" != "${CURRENT_USER}" ;
 	then
 		return 1;
@@ -200,8 +262,8 @@ setup_system_build_init () {
 description=Debian ${CHROOT_SUITE} ${CHROOT_ARCH} for ${CHROOT_INFO} (${CHROOT_VARIANT})
 type=directory
 directory=${CHROOT_DIR}
-users=${_CHROOT_USER}
-groups=${_CHROOT_GROUP}
+users=${CHROOT_USER}
+groups=${CHROOT_GROUP}
 root-groups=root
 EOT
 	} | tee \
@@ -278,26 +340,15 @@ EOT
 	} | tee \
 		"${CHROOT_DIR}/etc/apt/apt.conf.d/02force-conf" \
 	;
+	travis_fold_end \
+		'systems_host_mkimage' \
+	;
 	return 0;
 }
 
-setup_system_build_conf () {
-	if test "root" != "${CURRENT_USER}" ;
-	then
-		return 1;
-	fi
-	apt-get update;
-	#apt-get -y upgrade;
-	#apt-get autoremove;
-	#apt-get clean;
-
-	echo apt-config \
-		dump \
-	;
+apt_get_install_pre () {
 	echo cat \
 		'/etc/debian_version' \
-	;
-	echo id \
 	;
 	apt-config \
 		dump \
@@ -308,12 +359,79 @@ setup_system_build_conf () {
 	apt-cache \
 		policy \
 	;
+	if ! apt-key \
+		list \
+	;
+	then
+		echo "INFO: ${?}: apt-key: error";
+	fi
+	apt-get \
+		update \
+	;
+	apt-get \
+		--assume-yes \
+		upgrade \
+	;
+	apt-get \
+		--assume-yes \
+		dist-upgrade \
+	;
+	return 0;
+}
+
+apt_get_install_post () {
+	apt-get \
+		--assume-yes \
+		upgrade \
+	;
+	apt-get \
+		--assume-yes \
+		autoremove \
+	;
+	apt-get \
+		clean \
+	;
+	return 0;
+}
+
+apt_get_install () {
+	apt_get_install_pre;
 	apt-get \
 		--assume-yes \
 		install \
+		"${@}" \
+	;
+	apt_get_install_post;
+	return 0;
+}
+
+systems_build_setup_pre () {
+	configure_apt;
+	configure_locale;
+	configure_timezone;
+	configure_identity;
+	return 0;
+}
+
+systems_build_setup () {
+	travis_fold_start \
+		'systems_build_setup' \
+	;
+	systems_build_setup_pre \
+		"${@}" \
+	;
+	if test "root" != "${CURRENT_USER}" ;
+	then
+		return 1;
+	fi
+	apt_get_install \
 		git \
 		publican \
 		publican-debian \
+		openssh-client \
+	;
+	travis_fold_end \
+		'systems_build_setup' \
 	;
 	return 0;
 }
@@ -373,12 +491,13 @@ build_html_lang_stderr_tidy () {
 
 build_html_lang () {
 	local _LANG="${1}";
-	local _LOG_STDOUT="$(mktemp_file \
-		'log.stdout.XXXXXX' \
-	;)";
-	local _LOG_STDERR="$(mktemp_file \
-		'log.stderr.XXXXXX' \
-	;)";
+	local _LOG_DIR="log/${_LANG}/build-html";
+	mkdir \
+		--parent \
+		"${_LOG_DIR}" \
+	;
+	local _LOG_STDOUT="${_LOG_DIR}/stdout.log";
+	local _LOG_STDERR="${_LOG_DIR}/stderr.log";
 	local _EXIT_STATUS=0;
 	if ! sh \
 		-eu \
@@ -400,10 +519,6 @@ build_html_lang () {
 		;
 		_EXIT_STATUS=1;
 	fi
-	rm \
-		"${_LOG_STDOUT}" \
-		"${_LOG_STDERR}" \
-	;
 	return "${_EXIT_STATUS}";
 }
 
@@ -440,29 +555,63 @@ build_html_all () {
 
 setup_remote_local () {
 	local _GIT_REMOTE_NAME="${1}";
-	local _GIT_REMOTE_URL="${2}";
-	local _GIT_REMOTE_BRANCH="${3}";
-	local _GIT_LOCAL_BRANCH="${4}";
+	local _GIT_REMOTE_FETCH="${2}";
+	local _GIT_REMOTE_PUSH="${3}";
+	shift 3;
 	git \
 		remote \
 		add \
 		"${_GIT_REMOTE_NAME}" \
-		"${_GIT_REMOTE_URL}" \
+		"${_GIT_REMOTE_FETCH}" \
 	;
-	git \
+	if test \
+		"${_GIT_REMOTE_FETCH}" != "${_GIT_REMOTE_PUSH}" \
+	;
+	then
+		git \
+			remote \
+			'set-url' \
+			--push \
+			"${_GIT_REMOTE_NAME}" \
+			"${_GIT_REMOTE_PUSH}" \
+		;
+	fi
+	while test \
+		$# -ne 0 \
+	;
+	do
+		local _GIT_REMOTE_BRANCH="${1}";
+		local _GIT_LOCAL_BRANCH="${2}";
+		shift 2;
+	if git \
 		fetch \
 		"${_GIT_REMOTE_NAME}" \
 		"${_GIT_REMOTE_BRANCH}" \
 	;
-	git \
-		checkout \
-		-b "${_GIT_LOCAL_BRANCH}" \
-		"${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
-	;
-	git \
-		branch \
-		--set-upstream-to="${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
-	;
+	then
+		git \
+			checkout \
+			-b "${_GIT_LOCAL_BRANCH}" \
+			"${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
+		;
+		git \
+			branch \
+			--set-upstream-to="${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
+		;
+	else
+		git \
+			checkout \
+			--orphan \
+			"${_GIT_LOCAL_BRANCH}" \
+		;
+		git \
+			rm \
+			-r \
+			--force \
+			. \
+		;
+	fi
+	done
 	return 0;
 }
 
@@ -537,6 +686,49 @@ setup_build_branch_rebase () {
 	return 0;
 }
 
+git_cherry_pick () {
+	local _GIT_COMMIT_HASH="${1}";
+	shift 1;
+	if git \
+		cherry-pick \
+		--no-commit \
+		--keep-redundant-commits \
+		--allow-empty \
+		"${@}" \
+		"${_GIT_COMMIT_HASH}" \
+	;
+	then
+		GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 ${_GIT_COMMIT_HASH}) \
+		GIT_AUTHOR_NAME=$(git log --pretty='%an' -1 ${_GIT_COMMIT_HASH}) \
+		GIT_AUTHOR_EMAIL=$(git log --pretty='%ae' -1 ${_GIT_COMMIT_HASH}) \
+		GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 ${_GIT_COMMIT_HASH}) \
+		GIT_COMMITTER_NAME=$(git log --pretty='%cn' -1 ${_GIT_COMMIT_HASH}) \
+		GIT_COMMITTER_EMAIL=$(git log --pretty='%ce' -1 ${_GIT_COMMIT_HASH}) \
+		git \
+			commit \
+			--no-verify \
+			--allow-empty \
+			--allow-empty-message \
+			--reuse-message="${_GIT_COMMIT_HASH}" \
+		;
+		echo cherry-pick OK!;
+		return 0;
+	fi
+	echo cherry-pick NG!;
+	git \
+		reset \
+		--hard \
+		HEAD \
+	;
+	return 1;
+
+	git \
+		cherry-pick \
+		--abort \
+	;
+	return 1;
+}
+
 setup_build_branch_cherry_pick () {
 	local _GIT_LOCAL_BASE_BRANCH="${1}";
 	local _GIT_LOCAL_TOPIC_BRANCH="${2}";
@@ -553,44 +745,27 @@ setup_build_branch_cherry_pick () {
 			'-1' \
 			"${_GIT_COMMIT_HASH}" \
 		;
-		if git \
-			cherry-pick \
-			--keep-redundant-commits \
-			--allow-empty \
+		if git_cherry_pick \
 			"${_GIT_COMMIT_HASH}" \
 		;
 		then
-			echo cherry-pick OK!;
 			git_log \
 				'-1' \
 			;
 			continue;
 		fi
-		echo cherry-pick NG!;
-		git \
-			cherry-pick \
-			--abort \
-		;
 
-		if git cherry-pick \
+		if git_cherry_pick \
+			"${_GIT_COMMIT_HASH}" \
 			--strategy=recursive \
 			--strategy-option=ours \
-			--keep-redundant-commits \
-			--allow-empty \
-			"${_GIT_COMMIT_HASH}" \
 		;
 		then
-			echo cherry-pick strategy OK!;
 			git_log \
 				'-1' \
 			;
 			continue;
 		fi
-		echo cherry-pick strategy NG!;
-		git \
-			cherry-pick \
-			--abort \
-		;
 		return 1;
 	done
 	return 0;
@@ -599,38 +774,38 @@ setup_build_branch_cherry_pick () {
 setup_build_branch () {
 	local _GIT_REMOTE_NAME="${1}";
 	local _GIT_REMOTE_BRANCH="${2}";
-	local _GIT_LOCAL_BUILD_BRANCH="${3}";
+	local _GIT_LOCAL_BASE_BRANCH="${3}";
 	shift 3;
 	git \
 		checkout \
-		-b "${_GIT_LOCAL_BUILD_BRANCH}" \
+		-b "${_GIT_LOCAL_BASE_BRANCH}" \
 		"${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
 	;
-	local _GIT_LOCAL_BRANCH;
-	for _GIT_LOCAL_BRANCH in "${@}";
+	local _GIT_LOCAL_TOPIC_BRANCH;
+	for _GIT_LOCAL_TOPIC_BRANCH in "${@}";
 	do
 		if setup_build_branch_merge \
-			"${_GIT_LOCAL_BUILD_BRANCH}" \
-			"${_GIT_LOCAL_BRANCH}" \
+			"${_GIT_LOCAL_BASE_BRANCH}" \
+			"${_GIT_LOCAL_TOPIC_BRANCH}" \
 		;
 		then
 			continue;
 		fi
-		if setup_build_branch_rebase \
-			"${_GIT_LOCAL_BUILD_BRANCH}" \
-			"${_GIT_LOCAL_BRANCH}" \
-		;
-		then
-			continue;
-		fi
+		#if setup_build_branch_rebase \
+		#	"${_GIT_LOCAL_BASE_BRANCH}" \
+		#	"${_GIT_LOCAL_TOPIC_BRANCH}" \
+		#;
+		#then
+		#	continue;
+		#fi
 		if setup_build_branch_cherry_pick \
-			"${_GIT_LOCAL_BUILD_BRANCH}" \
-			"${_GIT_LOCAL_BRANCH}" \
+			"${_GIT_LOCAL_BASE_BRANCH}" \
+			"${_GIT_LOCAL_TOPIC_BRANCH}" \
 		;
 		then
 			continue;
 		fi
-		echo merge, rebase, and cherry-pick is failed: "${_GIT_LOCAL_BRANCH}";
+		echo merge, rebase, and cherry-pick is failed: "${_GIT_LOCAL_TOPIC_BRANCH}";
 		return 1;
 	done
 	return 0;
@@ -659,20 +834,22 @@ git_log () {
 	return 0;
 }
 
-setup_build_dir () {
-	local _GIT_REMOTE_ORIGIN_NAME='origin';
-	local _GIT_REMOTE_ORIGIN_URL='git://anonscm.debian.org/debian-handbook/debian-handbook.git';
-	local _GIT_REMOTE_ORIGIN_BRANCH='jessie/master';
-	local _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
-	local _GIT_REMOTE_WEBLATE_NAME='weblate';
-	local _GIT_REMOTE_WEBLATE_URL='git://git.weblate.org/debian-handbook.git';
-	local _GIT_REMOTE_WEBLATE_BRANCH='jessie/master';
-	local _GIT_LOCAL_WEBLATE_BRANCH="${_GIT_REMOTE_WEBLATE_BRANCH}/translation/${_GIT_REMOTE_WEBLATE_NAME}";
-	local _GIT_LOCAL_BUILD_BRANCH="jessie/master/build";
-	local _GIT_WORK_TREE="$(mktemp_directory \
-		'build.XXXXXX' \
-	;)";
+show_remote_branch () {
+	git \
+		remote \
+		--verbose \
+		--verbose \
+	;
+	git \
+		branch \
+		--all \
+		--verbose \
+		--verbose \
+	;
+	return 0;
+}
 
+setup_build_dir () {
 	cd \
 		"${_GIT_WORK_TREE}" \
 	;
@@ -681,7 +858,8 @@ setup_build_dir () {
 	;
 	setup_remote_local \
 		"${_GIT_REMOTE_WEBLATE_NAME}" \
-		"${_GIT_REMOTE_WEBLATE_URL}" \
+		"${_GIT_REMOTE_WEBLATE_FETCH}" \
+		"${_GIT_REMOTE_WEBLATE_PUSH}" \
 		"${_GIT_REMOTE_WEBLATE_BRANCH}" \
 		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
 	;
@@ -696,9 +874,34 @@ setup_build_dir () {
 	;
 	setup_remote_local \
 		"${_GIT_REMOTE_ORIGIN_NAME}" \
-		"${_GIT_REMOTE_ORIGIN_URL}" \
+		"${_GIT_REMOTE_ORIGIN_FETCH}" \
+		"${_GIT_REMOTE_ORIGIN_PUSH}" \
 		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
 		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
+	;
+	git_log	\
+		"@{upstream}..HEAD" \
+	;
+	setup_remote_local \
+		"${_GIT_REMOTE_TWEEK_NAME}" \
+		"${_GIT_REMOTE_TWEEK_FETCH}" \
+		"${_GIT_REMOTE_TWEEK_PUSH}" \
+		"${_GIT_REMOTE_TWEEK_BRANCH_0}" \
+		"${_GIT_LOCAL_TWEEK_BRANCH_0}" \
+		"${_GIT_REMOTE_TWEEK_BRANCH_1}" \
+		"${_GIT_LOCAL_TWEEK_BRANCH_1}" \
+	;
+	git_log	\
+		"@{upstream}..HEAD" \
+	;
+	setup_build_branch \
+		"${_GIT_REMOTE_ORIGIN_NAME}" \
+		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
+		"${_GIT_LOCAL_BUILD_BRANCH}" \
+		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
+		"${_GIT_LOCAL_TWEEK_BRANCH_0}" \
+		"${_GIT_LOCAL_TWEEK_BRANCH_1}" \
+		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
 	;
 	publican \
 		update_pot \
@@ -711,24 +914,14 @@ $ publican \\
 ;
 " \
 	;
-	git_log	\
-		"@{upstream}..HEAD" \
-	;
-	setup_build_branch \
-		"${_GIT_REMOTE_ORIGIN_NAME}" \
-		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
-		"${_GIT_LOCAL_BUILD_BRANCH}" \
-		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
-		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
-	;
 	publican \
 		update_po \
 		--msgmerge \
 		--previous \
 		--langs='all' \
-		--firstname="${CURRENT_USER}" \
-		--surname="${CURRENT_USER}" \
-		--email="${CURRENT_USER}@${CURRENT_HOST}" \
+		--firstname="${_PUBLICAN_FIRSTNAME}" \
+		--surname="${_PUBLICAN_SURNAME}" \
+		--email="${_PUBLICAN_EMAIL}" \
 	;
 	git_commit \
 		--message="Update PO files
@@ -738,49 +931,190 @@ $ publican \\
 	--msgmerge \\
 	--previous \\
 	--langs='all' \\
-	--firstname='${CURRENT_USER}' \\
-	--surname='${CURRENT_USER}' \\
-	--email='${CURRENT_USER}@${CURRENT_HOST}' \\
+	--firstname='${_PUBLICAN_FIRSTNAME}' \\
+	--surname='${_PUBLICAN_SURNAME}' \\
+	--email='${_PUBLICAN_EMAIL}' \\
 ;
 " \
 	;
 	git_log	\
 		"@{upstream}..HEAD" \
 	;
+	git \
+		clean \
+		--force \
+		-d \
+		-x \
+	;
 	return 0;
 }
 
-build () {
-	local _EXIT_STATUS=0;
+build_pre () {
+	readonly WEBLATE_SYNC="${1}";
+	readonly TRAVIS_LOG_WEB="${2}";
+	readonly TRAVIS_LOG_RAW="${3}";
+
+	readonly _PUBLICAN_SURNAME="AYANOKOUZI";
+	readonly _PUBLICAN_FIRSTNAME="Ryuunosuke";
+	readonly _PUBLICAN_EMAIL="i38w7i3@yahoo.co.jp";
+
+	export GIT_AUTHOR_NAME="${_PUBLICAN_SURNAME}, ${_PUBLICAN_FIRSTNAME}";
+	export GIT_AUTHOR_EMAIL="${_PUBLICAN_EMAIL}";
+	export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}";
+	export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}";
+
+	readonly _GIT_DATE=$(TZ=GMT \
+		date \
+		"+%Y-%m-%dT%H:%M:%S%:z" \
+	;);
+	readonly _GIT_DIVERT_DIR="$(mktemp_directory \
+		'divert.XXXXXX' \
+	;)";
+	readonly _GIT_WORK_TREE="$(mktemp_directory \
+		'build.XXXXXX' \
+	;)";
+
+	readonly _GIT_REMOTE_ORIGIN_NAME='origin';
+	readonly _GIT_REMOTE_ORIGIN_FETCH='git://anonscm.debian.org/debian-handbook/debian-handbook.git';
+	readonly _GIT_REMOTE_ORIGIN_PUSH="${_GIT_REMOTE_ORIGIN_FETCH}";
+	readonly _GIT_REMOTE_ORIGIN_BRANCH='jessie/master';
+	readonly _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
+
+	readonly _GIT_REMOTE_WEBLATE_NAME='weblate';
+	readonly _GIT_REMOTE_WEBLATE_FETCH='git://git.weblate.org/debian-handbook.git';
+	readonly _GIT_REMOTE_WEBLATE_PUSH="${_GIT_REMOTE_WEBLATE_FETCH}";
+	readonly _GIT_REMOTE_WEBLATE_BRANCH='jessie/master';
+	readonly _GIT_LOCAL_WEBLATE_BRANCH="${_GIT_REMOTE_WEBLATE_BRANCH}/translation/${_GIT_REMOTE_WEBLATE_NAME}";
+	readonly _GIT_LOCAL_BUILD_BRANCH="jessie/master/build";
+
+	readonly _GIT_REMOTE_TWEEK_NAME='tweek';
+	readonly _GIT_REMOTE_TWEEK_FETCH='https://github.com/l/debian-handbook.git';
+	readonly _GIT_REMOTE_TWEEK_PUSH="${_GIT_REMOTE_TWEEK_FETCH}";
+	readonly _GIT_REMOTE_TWEEK_BRANCH_0='jessie/master/proposal/put_backcover_and_website_as_appendix';
+	readonly _GIT_LOCAL_TWEEK_BRANCH_0="${_GIT_REMOTE_TWEEK_BRANCH_0}";
+	readonly _GIT_REMOTE_TWEEK_BRANCH_1='jessie/master/proposal/stop_runtime_dependent_id_generation';
+	readonly _GIT_LOCAL_TWEEK_BRANCH_1="${_GIT_REMOTE_TWEEK_BRANCH_1}";
+
+	readonly _GIT_REMOTE_GITHUB_KEY="${HOME}/.ssh/deploy_key";
+	readonly _GIT_REMOTE_GITHUB_NAME='github';
+	readonly _GIT_REMOTE_GITHUB_FETCH='https://github.com/l/debian-handbook-test.git';
+	readonly _GIT_REMOTE_GITHUB_PUSH='git@github.com:l/debian-handbook-test.git';
+	readonly _GIT_REMOTE_GITHUB_BRANCH='gh-pages';
+	readonly _GIT_LOCAL_GITHUB_BRANCH="jessie/master/${_GIT_REMOTE_GITHUB_BRANCH}";
+
+	return 0;
+}
+
+systems_build_build () {
+	travis_fold_start \
+		'systems_build_build' \
+	;
+	build_pre \
+		"${@}" \
+	;
+ 	local _EXIT_STATUS=0;
 	setup_build_dir;
-	git \
-		remote \
-		--verbose \
-		--verbose \
-	;
-	git \
-		branch \
-		--all \
-		--verbose \
-		--verbose \
-	;
+	show_remote_branch;
 	if ! build_html_all;
 	then
 		_EXIT_STATUS=1;
 	fi
+	git \
+		clean \
+		--dry-run \
+		--force \
+		-d \
+		-x \
+	;
+	mv \
+		publish \
+		tmp \
+		log \
+		"${_GIT_DIVERT_DIR}" \
+	;
+
+	setup_remote_local \
+		"${_GIT_REMOTE_GITHUB_NAME}" \
+		"${_GIT_REMOTE_GITHUB_FETCH}" \
+		"${_GIT_REMOTE_GITHUB_PUSH}" \
+		"${_GIT_REMOTE_GITHUB_BRANCH}" \
+		"${_GIT_LOCAL_GITHUB_BRANCH}" \
+	;
+	show_remote_branch;
+	if rm \
+		--force \
+		--recursive \
+		publish \
+		tmp \
+		log \
+	;
+	then
+		:;
+	fi
+	mv \
+		"${_GIT_DIVERT_DIR}/publish" \
+		"${_GIT_DIVERT_DIR}/tmp" \
+		"${_GIT_DIVERT_DIR}/log" \
+		. \
+	;
+	git \
+		add \
+		publish \
+		tmp \
+		log \
+	;
+	git_commit \
+		--message="Save buid result at ${_GIT_DATE}
+
+* Travis-Web: ${TRAVIS_LOG_WEB}
+* Travis-Raw: ${TRAVIS_LOG_RAW}
+" \
+	;
+	show_remote_branch;
+	GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -i ${_GIT_REMOTE_GITHUB_KEY}" \
+	git \
+		push \
+		--force \
+		"${_GIT_REMOTE_GITHUB_NAME}" \
+		"${_GIT_LOCAL_GITHUB_BRANCH}:${_GIT_REMOTE_GITHUB_BRANCH}" \
+	;
+	travis_fold_end \
+		'systems_build_build' \
+	;
 	return "${_EXIT_STATUS}";
 }
 
+travis_pre () {
+	configure_identity;
+	configure_chroot;
+
+	readonly SELF="$(readlink \
+		--canonicalize \
+		"${0}" \
+	;)";
+	readonly WEBLATE_SYNC="$(readlink \
+		--canonicalize \
+		"$(dirname \
+			"${SELF}" \
+		;)/weblate-sync.pl" \
+	;)";
+	readonly TRAVIS_LOG_WEB="https://travis-ci.org/${TRAVIS_REPO_SLUG}/builds/${TRAVIS_BUILD_ID}";
+	readonly TRAVIS_LOG_RAW="https://api.travis-ci.org/jobs/${TRAVIS_JOB_ID}/log.txt";
+
+	return 0;
+}
+
 travis () {
+	travis_pre;
 	sudo \
 		-- \
-		"${BIN}" \
-		'setup/system/base' \
+		"${SELF}" \
+		'systems:host/setup' \
 	;
 	sudo \
 		-- \
-		"${BIN}" \
-		'setup/system/build/init' \
+		"${SELF}" \
+		'systems:host/mkimage' \
 		"${CURRENT_USER}" \
 		"${CURRENT_GROUP}" \
 	;
@@ -789,43 +1123,63 @@ travis () {
 		schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
-		"${BIN}" \
-		'setup/system/build/conf' \
+		"${SELF}" \
+		'systems:build/setup' \
 	;
-	schroot \
+ 	local _EXIT_STATUS=0;
+	if ! schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
-		"${BIN}" \
-		'build' \
+		"${SELF}" \
+		'systems:build/build' \
+		"${WEBLATE_SYNC}" \
+		"${TRAVIS_LOG_WEB}" \
+		"${TRAVIS_LOG_RAW}" \
 	;
+	then
+		_EXIT_STATUS=1;
+	fi
+	return "${_EXIT_STATUS}";
+}
+
+main () {
+	readonly MODE="${1}";
+	shift 1;
+	case "${MODE}" in
+		'systems:host/setup')
+			systems_host_setup  \
+				"${@}" \
+			;
+		;;
+		'systems:host/mkimage')
+			systems_host_mkimage \
+				"${@}" \
+			;
+		;;
+		'systems:build/setup')
+			systems_build_setup \
+				"${@}" \
+			;
+		;;
+		'systems:build/build')
+			systems_build_build \
+				"${@}" \
+			;
+		;;
+		'travis')
+			travis \
+				"${@}" \
+			;
+		;;
+		*)
+			return 1;
+		;;
+	esac;
 	return 0;
 }
 
-
-configure;
-readonly MODE="${1}";
-case "${MODE}" in
-	'setup/system/base')
-		setup_system_base;
-	;;
-	'setup/system/build/init')
-		setup_system_build_init \
-			"${2}" \
-			"${3}" \
-		;
-	;;
-	'setup/system/build/conf')
-		setup_system_build_conf;
-	;;
-	'build')
-		build;
-	;;
-	'travis')
-		travis;
-	;;
-	*)
-		exit 1;
-	;;
-esac;
+main \
+	"${@}" \
+;
 
 exit 0;
