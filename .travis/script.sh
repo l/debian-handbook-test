@@ -49,6 +49,53 @@ configure_identity () {
 	return 0;
 }
 
+configure_publican () {
+	readonly _PUBLICAN_SURNAME="AYANOKOUZI";
+	readonly _PUBLICAN_FIRSTNAME="Ryuunosuke";
+	readonly _PUBLICAN_EMAIL="i38w7i3@yahoo.co.jp";
+	return 0;
+}
+
+configure_git () {
+	export GIT_AUTHOR_NAME="AYANOKOUZI, Ryuunosuke";
+	export GIT_AUTHOR_EMAIL="i38w7i3@yahoo.co.jp";
+	export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}";
+	export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}";
+	return 0;
+}
+
+configure_git_repository () {
+	readonly _GIT_REMOTE_ORIGIN_NAME='origin';
+	readonly _GIT_REMOTE_ORIGIN_FETCH='git://anonscm.debian.org/debian-handbook/debian-handbook.git';
+	readonly _GIT_REMOTE_ORIGIN_PUSH="${_GIT_REMOTE_ORIGIN_FETCH}";
+	readonly _GIT_REMOTE_ORIGIN_BRANCH='jessie/master';
+	readonly _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
+
+	readonly _GIT_REMOTE_WEBLATE_NAME='weblate';
+	readonly _GIT_REMOTE_WEBLATE_FETCH='git://git.weblate.org/debian-handbook.git';
+	readonly _GIT_REMOTE_WEBLATE_PUSH="${_GIT_REMOTE_WEBLATE_FETCH}";
+	readonly _GIT_REMOTE_WEBLATE_BRANCH='jessie/master';
+	readonly _GIT_LOCAL_WEBLATE_BRANCH="${_GIT_REMOTE_WEBLATE_BRANCH}/translation/${_GIT_REMOTE_WEBLATE_NAME}";
+	readonly _GIT_LOCAL_BUILD_BRANCH="jessie/master/build";
+
+	readonly _GIT_REMOTE_TWEEK_NAME='tweek';
+	readonly _GIT_REMOTE_TWEEK_FETCH='https://github.com/l/debian-handbook.git';
+	readonly _GIT_REMOTE_TWEEK_PUSH="${_GIT_REMOTE_TWEEK_FETCH}";
+	readonly _GIT_REMOTE_TWEEK_BRANCH_0='jessie/master/proposal/put_backcover_and_website_as_appendix';
+	readonly _GIT_LOCAL_TWEEK_BRANCH_0="${_GIT_REMOTE_TWEEK_BRANCH_0}";
+	readonly _GIT_REMOTE_TWEEK_BRANCH_1='jessie/master/proposal/stop_runtime_dependent_id_generation';
+	readonly _GIT_LOCAL_TWEEK_BRANCH_1="${_GIT_REMOTE_TWEEK_BRANCH_1}";
+
+	readonly _GIT_REMOTE_GITHUB_KEY="${HOME}/.ssh/deploy_key";
+	readonly _GIT_REMOTE_GITHUB_NAME='github';
+	readonly _GIT_REMOTE_GITHUB_FETCH='https://github.com/l/debian-handbook-test.git';
+	readonly _GIT_REMOTE_GITHUB_PUSH='git@github.com:l/debian-handbook-test.git';
+	readonly _GIT_REMOTE_GITHUB_BRANCH='gh-pages';
+	readonly _GIT_LOCAL_GITHUB_BRANCH="jessie/master/${_GIT_REMOTE_GITHUB_BRANCH}";
+
+	return 0;
+}
+
 mktemp_wrapper () {
 	local _MODE="${1}";
 	local _MKTEMP_TEMPLATE="${HOME}/tmp/${2}";
@@ -95,20 +142,123 @@ mktemp_directory () {
 	return 0;
 }
 
-travis_fold_start () {
+travis_id () {
+	openssl \
+		rand \
+		-hex 4 \
+	;
+	return 0;
+}
+
+travis_time () {
+	date \
+		'+%s%N' \
+	;
+	return 0;
+}
+
+travis_time_start () {
+	local _TRAVIS_TIMER_ID="${1}";
 	echo \
 		-n \
-		"travis_fold:start:${1}\r" \
+		"travis_time:start:${_TRAVIS_TIMER_ID}\r" \
+	;
+	return 0;
+}
+
+travis_time_end () {
+	local _TRAVIS_TIMER_ID="${1}";
+	local _TRAVIS_TIMER_START="${2}";
+	local _TRAVIS_TIMER_FINISH="${3}";
+	local _TRAVIS_TIMER_DURATION="$(echo \
+		"${_TRAVIS_TIMER_FINISH}" - "${_TRAVIS_TIMER_START}" \
+	| bc \
+	;)";
+	echo \
+		-n \
+		"travis_time:end:${_TRAVIS_TIMER_ID}:start=${_TRAVIS_TIMER_START},finish=${_TRAVIS_TIMER_FINISH},duration=${_TRAVIS_TIMER_DURATION}\r" \
+	;
+	return 0;
+}
+
+travis_fold_start () {
+	local _TRAVIS_FOLD_ID="${1}";
+	echo \
+		-n \
+		"travis_fold:start:${_TRAVIS_FOLD_ID}\r" \
 	;
 	return 0;
 }
 
 travis_fold_end () {
+	local _TRAVIS_FOLD_ID="${1}";
 	echo \
 		-n \
-		"travis_fold:end:${1}\r" \
+		"travis_fold:end:${_TRAVIS_FOLD_ID}\r" \
 	;
 	return 0;
+}
+
+travis_block_start () {
+	local _TRAVIS_BLOCK_NAME="${1}";
+	local _TRAVIS_BLOCK_ID="${2}";
+	{
+		travis_fold_start \
+			"${_TRAVIS_BLOCK_NAME}" \
+		;
+		travis_time_start \
+			"${_TRAVIS_BLOCK_ID}" \
+		;
+	} \
+		2>/dev/null \
+	;
+	return 0;
+}
+
+travis_block_end () {
+	local _TRAVIS_BLOCK_NAME="${1}";
+	local _TRAVIS_BLOCK_ID="${2}";
+	local _TRAVIS_BLOCK_START="${3}";
+	local _TRAVIS_BLOCK_END="$(travis_time;)";
+	{
+		travis_time_end \
+			"${_TRAVIS_BLOCK_ID}" \
+			"${_TRAVIS_BLOCK_START}" \
+			"${_TRAVIS_BLOCK_END}" \
+		;
+		travis_fold_end \
+			"${_TRAVIS_BLOCK_NAME}" \
+		;
+	} \
+		2>/dev/null \
+	;
+	return 0;
+}
+
+travis_block_wrap () {
+	local _TRAVIS_BLOCK_NAME="${1}";
+	shift 1;
+	local _TRAVIS_BLOCK_ID="$(travis_id;)";
+	local _TRAVIS_BLOCK_START="$(travis_time;)";
+	travis_block_start \
+		"${_TRAVIS_BLOCK_NAME}" \
+		"${_TRAVIS_BLOCK_ID}" \
+		"${_TRAVIS_BLOCK_START}" \
+	;
+	local _EXIT_STATUS=0;
+	if ! "${@}" \
+	;
+	then
+		_EXIT_STATUS=1;
+	fi
+	local _TRAVIS_BLOCK_FINISH="$(travis_time;)";
+	travis_block_end \
+		"${_TRAVIS_BLOCK_NAME}" \
+		"${_TRAVIS_BLOCK_ID}" \
+		"${_TRAVIS_BLOCK_START}" \
+		"${_TRAVIS_BLOCK_FINISH}" \
+	;
+	return "${_EXIT_STATUS}";
 }
 
 systems_host_setup_pre () {
@@ -120,9 +270,6 @@ systems_host_setup_pre () {
 }
 
 systems_host_setup () {
-	travis_fold_start \
-		'systems_host_setup' \
-	;
 	systems_host_setup_pre \
 		"${@}" \
 	;
@@ -182,51 +329,6 @@ EOT
 		schroot \
 	;
 	apt_get_install_post;
-	travis_fold_end \
-		'systems_host_setup' \
-	;
-	return 0;
-	apt-config \
-		dump \
-	| grep \
-		--regexp='APT::Install-' \
-		--regexp='DPkg::options' \
-	;
-	apt-cache \
-		policy \
-	;
-	apt-key \
-		list \
-	;
-	apt-get \
-		update \
-	;
-	apt-get \
-		--assume-yes \
-		upgrade \
-	;
-	apt-get \
-		--assume-yes \
-		dist-upgrade \
-	;
-	apt-get \
-		--assume-yes \
-		install \
-		debian-keyring \
-		debian-archive-keyring \
-		debootstrap \
-		schroot \
-	;
-	apt-get \
-		--assume-yes \
-		autoremove \
-	;
-	service \
-		--status-all \
-	;
-	travis_fold_end \
-		'systems_host_setup' \
-	;
 	return 0;
 }
 
@@ -242,9 +344,6 @@ systems_host_mkimage_pre () {
 }
 
 systems_host_mkimage () {
-	travis_fold_start \
-		'systems_host_mkimage' \
-	;
 	systems_host_mkimage_pre \
 		"${@}" \
 	;
@@ -340,9 +439,6 @@ EOT
 	} | tee \
 		"${CHROOT_DIR}/etc/apt/apt.conf.d/02force-conf" \
 	;
-	travis_fold_end \
-		'systems_host_mkimage' \
-	;
 	return 0;
 }
 
@@ -414,9 +510,6 @@ systems_build_setup_pre () {
 }
 
 systems_build_setup () {
-	travis_fold_start \
-		'systems_build_setup' \
-	;
 	systems_build_setup_pre \
 		"${@}" \
 	;
@@ -429,9 +522,6 @@ systems_build_setup () {
 		publican \
 		publican-debian \
 		openssh-client \
-	;
-	travis_fold_end \
-		'systems_build_setup' \
 	;
 	return 0;
 }
@@ -850,9 +940,6 @@ show_remote_branch () {
 }
 
 setup_build_dir () {
-	cd \
-		"${_GIT_WORK_TREE}" \
-	;
 	git \
 		init \
 	;
@@ -866,6 +953,8 @@ setup_build_dir () {
 	"${WEBLATE_SYNC}" \
 		'./' \
 	;
+	GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 HEAD) \
+	GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 HEAD) \
 	git_commit \
 		--message='Sync PO files to Weblate' \
 	;
@@ -906,6 +995,8 @@ setup_build_dir () {
 	publican \
 		update_pot \
 	;
+	GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 HEAD) \
+	GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 HEAD) \
 	git_commit \
 		--message="Update POT files
 
@@ -923,6 +1014,8 @@ $ publican \\
 		--surname="${_PUBLICAN_SURNAME}" \
 		--email="${_PUBLICAN_EMAIL}" \
 	;
+	GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 HEAD) \
+	GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 HEAD) \
 	git_commit \
 		--message="Update PO files
 
@@ -949,72 +1042,53 @@ $ publican \\
 	return 0;
 }
 
-build_pre () {
-	readonly WEBLATE_SYNC="${1}";
-	readonly TRAVIS_LOG_WEB="${2}";
-	readonly TRAVIS_LOG_RAW="${3}";
+systems_build_repository_setup_pre () {
+	readonly _GIT_WORK_TREE="${1}";
+	readonly WEBLATE_SYNC="${2}";
 
-	readonly _PUBLICAN_SURNAME="AYANOKOUZI";
-	readonly _PUBLICAN_FIRSTNAME="Ryuunosuke";
-	readonly _PUBLICAN_EMAIL="i38w7i3@yahoo.co.jp";
-
-	export GIT_AUTHOR_NAME="${_PUBLICAN_SURNAME}, ${_PUBLICAN_FIRSTNAME}";
-	export GIT_AUTHOR_EMAIL="${_PUBLICAN_EMAIL}";
-	export GIT_COMMITTER_NAME="${GIT_AUTHOR_NAME}";
-	export GIT_COMMITTER_EMAIL="${GIT_AUTHOR_EMAIL}";
-
-	readonly _GIT_DATE=$(TZ=GMT \
-		date \
-		"+%Y-%m-%dT%H:%M:%S%:z" \
-	;);
-	readonly _GIT_DIVERT_DIR="$(mktemp_directory \
-		'divert.XXXXXX' \
-	;)";
-	readonly _GIT_WORK_TREE="$(mktemp_directory \
-		'build.XXXXXX' \
-	;)";
-
-	readonly _GIT_REMOTE_ORIGIN_NAME='origin';
-	readonly _GIT_REMOTE_ORIGIN_FETCH='git://anonscm.debian.org/debian-handbook/debian-handbook.git';
-	readonly _GIT_REMOTE_ORIGIN_PUSH="${_GIT_REMOTE_ORIGIN_FETCH}";
-	readonly _GIT_REMOTE_ORIGIN_BRANCH='jessie/master';
-	readonly _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
-
-	readonly _GIT_REMOTE_WEBLATE_NAME='weblate';
-	readonly _GIT_REMOTE_WEBLATE_FETCH='git://git.weblate.org/debian-handbook.git';
-	readonly _GIT_REMOTE_WEBLATE_PUSH="${_GIT_REMOTE_WEBLATE_FETCH}";
-	readonly _GIT_REMOTE_WEBLATE_BRANCH='jessie/master';
-	readonly _GIT_LOCAL_WEBLATE_BRANCH="${_GIT_REMOTE_WEBLATE_BRANCH}/translation/${_GIT_REMOTE_WEBLATE_NAME}";
-	readonly _GIT_LOCAL_BUILD_BRANCH="jessie/master/build";
-
-	readonly _GIT_REMOTE_TWEEK_NAME='tweek';
-	readonly _GIT_REMOTE_TWEEK_FETCH='https://github.com/l/debian-handbook.git';
-	readonly _GIT_REMOTE_TWEEK_PUSH="${_GIT_REMOTE_TWEEK_FETCH}";
-	readonly _GIT_REMOTE_TWEEK_BRANCH_0='jessie/master/proposal/put_backcover_and_website_as_appendix';
-	readonly _GIT_LOCAL_TWEEK_BRANCH_0="${_GIT_REMOTE_TWEEK_BRANCH_0}";
-	readonly _GIT_REMOTE_TWEEK_BRANCH_1='jessie/master/proposal/stop_runtime_dependent_id_generation';
-	readonly _GIT_LOCAL_TWEEK_BRANCH_1="${_GIT_REMOTE_TWEEK_BRANCH_1}";
-
-	readonly _GIT_REMOTE_GITHUB_KEY="${HOME}/.ssh/deploy_key";
-	readonly _GIT_REMOTE_GITHUB_NAME='github';
-	readonly _GIT_REMOTE_GITHUB_FETCH='https://github.com/l/debian-handbook-test.git';
-	readonly _GIT_REMOTE_GITHUB_PUSH='git@github.com:l/debian-handbook-test.git';
-	readonly _GIT_REMOTE_GITHUB_BRANCH='gh-pages';
-	readonly _GIT_LOCAL_GITHUB_BRANCH="jessie/master/${_GIT_REMOTE_GITHUB_BRANCH}";
+	configure_publican;
+	configure_git;
+	configure_git_repository;
 
 	return 0;
 }
 
-systems_build_build () {
-	travis_fold_start \
-		'systems_build_build' \
-	;
-	build_pre \
+systems_build_repository_setup () {
+	systems_build_repository_setup_pre \
 		"${@}" \
 	;
- 	local _EXIT_STATUS=0;
+	cd \
+		"${_GIT_WORK_TREE}" \
+	;
 	setup_build_dir;
 	show_remote_branch;
+	cd \
+		- \
+	;
+	return 0;
+}
+
+systems_build_repository_build_pre () {
+	readonly _GIT_WORK_TREE="${1}";
+
+	configure_git;
+	configure_git_repository
+
+	return 0;
+}
+
+systems_build_repository_build () {
+	systems_build_repository_build_pre \
+		"${@}" \
+	;
+	cd \
+		"${_GIT_WORK_TREE}" \
+	;
+	git \
+		checkout \
+		"${_GIT_LOCAL_BUILD_BRANCH}" \
+	;
+	local _EXIT_STATUS=0;
 	if ! build_html_all;
 	then
 		_EXIT_STATUS=1;
@@ -1026,13 +1100,43 @@ systems_build_build () {
 		-d \
 		-x \
 	;
+	cd \
+		- \
+	;
+	return "${_EXIT_STATUS}";
+}
+
+systems_build_repository_push_pre () {
+	readonly _GIT_WORK_TREE="${1}";
+	readonly _TRAVIS_LOG_WEB="${2}"
+	readonly _TRAVIS_LOG_RAW="${3}"
+	readonly _GIT_DIVERT_DIR="$(mktemp_directory \
+		'divert.XXXXXX' \
+	;)";
+	readonly _GIT_DATE=$(TZ=GMT \
+		date \
+		"+%Y-%m-%dT%H:%M:%S%:z" \
+	;);
+
+	configure_git;
+	configure_git_repository
+
+	return 0;
+}
+
+systems_build_repository_push () {
+	systems_build_repository_push_pre \
+		"${@}" \
+	;
+	cd \
+		"${_GIT_WORK_TREE}" \
+	;
 	mv \
 		publish \
 		tmp \
 		log \
 		"${_GIT_DIVERT_DIR}" \
 	;
-
 	setup_remote_local \
 		"${_GIT_REMOTE_GITHUB_NAME}" \
 		"${_GIT_REMOTE_GITHUB_FETCH}" \
@@ -1066,8 +1170,8 @@ systems_build_build () {
 	git_commit \
 		--message="Save buid result at ${_GIT_DATE}
 
-* Travis-Web: ${TRAVIS_LOG_WEB}
-* Travis-Raw: ${TRAVIS_LOG_RAW}
+* Travis-Web: ${_TRAVIS_LOG_WEB}
+* Travis-Raw: ${_TRAVIS_LOG_RAW}
 " \
 	;
 	show_remote_branch;
@@ -1078,10 +1182,10 @@ systems_build_build () {
 		"${_GIT_REMOTE_GITHUB_NAME}" \
 		"${_GIT_LOCAL_GITHUB_BRANCH}:${_GIT_REMOTE_GITHUB_BRANCH}" \
 	;
-	travis_fold_end \
-		'systems_build_build' \
+	cd \
+		- \
 	;
-	return "${_EXIT_STATUS}";
+	return 0;
 }
 
 travis_pre () {
@@ -1098,27 +1202,37 @@ travis_pre () {
 			"${SELF}" \
 		;)/weblate-sync.pl" \
 	;)";
-	readonly TRAVIS_LOG_WEB="https://travis-ci.org/${TRAVIS_REPO_SLUG}/builds/${TRAVIS_BUILD_ID}";
-	readonly TRAVIS_LOG_RAW="https://api.travis-ci.org/jobs/${TRAVIS_JOB_ID}/log.txt";
+	readonly _TRAVIS_LOG_WEB="https://travis-ci.org/${TRAVIS_REPO_SLUG}/builds/${TRAVIS_BUILD_ID}";
+	readonly _TRAVIS_LOG_RAW="https://api.travis-ci.org/jobs/${TRAVIS_JOB_ID}/log.txt";
+
+	readonly _GIT_WORK_TREE="$(mktemp_directory \
+		'build.XXXXXX' \
+	;)";
 
 	return 0;
 }
 
 travis () {
 	travis_pre;
-	sudo \
+	travis_block_wrap \
+		'systems_host_setup' \
+		sudo \
 		-- \
 		"${SELF}" \
 		'systems:host/setup' \
 	;
-	sudo \
+	travis_block_wrap \
+		'systems_host_mkimage' \
+		sudo \
 		-- \
 		"${SELF}" \
 		'systems:host/mkimage' \
 		"${CURRENT_USER}" \
 		"${CURRENT_GROUP}" \
 	;
-	sudo \
+	travis_block_wrap \
+		'systems_build_setup' \
+		sudo \
 		-- \
 		schroot \
 		--chroot="${CHROOT_ID}" \
@@ -1126,19 +1240,40 @@ travis () {
 		"${SELF}" \
 		'systems:build/setup' \
 	;
- 	local _EXIT_STATUS=0;
-	if ! schroot \
+	travis_block_wrap \
+		'systems_build_repository_setup' \
+		schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
 		"${SELF}" \
-		'systems:build/build' \
+		'systems:build/repository/setup' \
+		"${_GIT_WORK_TREE}" \
 		"${WEBLATE_SYNC}" \
-		"${TRAVIS_LOG_WEB}" \
-		"${TRAVIS_LOG_RAW}" \
+	;
+	local _EXIT_STATUS=0;
+	if ! travis_block_wrap \
+		'systems_build_repository_build' \
+		schroot \
+		--chroot="${CHROOT_ID}" \
+		-- \
+		"${SELF}" \
+		'systems:build/repository/build' \
+		"${_GIT_WORK_TREE}" \
 	;
 	then
 		_EXIT_STATUS=1;
 	fi
+	travis_block_wrap \
+		'systems_build_repository_push' \
+		schroot \
+		--chroot="${CHROOT_ID}" \
+		-- \
+		"${SELF}" \
+		'systems:build/repository/push' \
+		"${_GIT_WORK_TREE}" \
+		"${_TRAVIS_LOG_WEB}" \
+		"${_TRAVIS_LOG_RAW}" \
+	;
 	return "${_EXIT_STATUS}";
 }
 
@@ -1161,8 +1296,18 @@ main () {
 				"${@}" \
 			;
 		;;
-		'systems:build/build')
-			systems_build_build \
+		'systems:build/repository/setup')
+			systems_build_repository_setup \
+				"${@}" \
+			;
+		;;
+		'systems:build/repository/build')
+			systems_build_repository_build \
+				"${@}" \
+			;
+		;;
+		'systems:build/repository/push')
+			systems_build_repository_push \
 				"${@}" \
 			;
 		;;
