@@ -83,8 +83,6 @@ configure_git_repository () {
 	readonly _GIT_REMOTE_TWEEK_PUSH="${_GIT_REMOTE_TWEEK_FETCH}";
 	readonly _GIT_REMOTE_TWEEK_BRANCH_0='jessie/master/proposal/put_backcover_and_website_as_appendix';
 	readonly _GIT_LOCAL_TWEEK_BRANCH_0="${_GIT_REMOTE_TWEEK_BRANCH_0}";
-	readonly _GIT_REMOTE_TWEEK_BRANCH_1='jessie/master/proposal/stop_runtime_dependent_id_generation';
-	readonly _GIT_LOCAL_TWEEK_BRANCH_1="${_GIT_REMOTE_TWEEK_BRANCH_1}";
 
 	readonly _GIT_REMOTE_GITHUB_KEY="${HOME}/.ssh/deploy_key";
 	readonly _GIT_REMOTE_GITHUB_NAME='github';
@@ -977,8 +975,6 @@ setup_build_dir () {
 		"${_GIT_REMOTE_TWEEK_PUSH}" \
 		"${_GIT_REMOTE_TWEEK_BRANCH_0}" \
 		"${_GIT_LOCAL_TWEEK_BRANCH_0}" \
-		"${_GIT_REMOTE_TWEEK_BRANCH_1}" \
-		"${_GIT_LOCAL_TWEEK_BRANCH_1}" \
 	;
 	git_log	\
 		"@{upstream}..HEAD" \
@@ -989,7 +985,6 @@ setup_build_dir () {
 		"${_GIT_LOCAL_BUILD_BRANCH}" \
 		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
 		"${_GIT_LOCAL_TWEEK_BRANCH_0}" \
-		"${_GIT_LOCAL_TWEEK_BRANCH_1}" \
 		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
 	;
 	publican \
