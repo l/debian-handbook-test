@@ -520,6 +520,8 @@ systems_build_setup () {
 		publican \
 		publican-debian \
 		openssh-client \
+		file \
+		libxml2-utils \
 	;
 	return 0;
 }
@@ -829,17 +831,17 @@ setup_build_branch_cherry_pick () {
 		"${_GIT_LOCAL_BASE_BRANCH}".."${_GIT_LOCAL_TOPIC_BRANCH}" \
 		;)
 	do
-		git_log \
-			'-1' \
-			"${_GIT_COMMIT_HASH}" \
-		;
+		#git_log \
+		#	'-1' \
+		#	"${_GIT_COMMIT_HASH}" \
+		#;
 		if git_cherry_pick \
 			"${_GIT_COMMIT_HASH}" \
 		;
 		then
-			git_log \
-				'-1' \
-			;
+			#git_log \
+			#	'-1' \
+			#;
 			continue;
 		fi
 
@@ -849,9 +851,9 @@ setup_build_branch_cherry_pick () {
 			--strategy-option=ours \
 		;
 		then
-			git_log \
-				'-1' \
-			;
+			#git_log \
+			#	'-1' \
+			#;
 			continue;
 		fi
 		return 1;
@@ -940,6 +942,12 @@ show_remote_branch () {
 setup_build_dir () {
 	git \
 		init \
+	;
+	ln \
+		--force \
+		--symbolic \
+		"${_GIT_HOOKS_PRE_COMMIT}" \
+		'.git/hooks/pre-commit' \
 	;
 	setup_remote_local \
 		"${_GIT_REMOTE_WEBLATE_NAME}" \
@@ -1039,7 +1047,8 @@ $ publican \\
 
 systems_build_repository_setup_pre () {
 	readonly _GIT_WORK_TREE="${1}";
-	readonly WEBLATE_SYNC="${2}";
+	readonly _GIT_HOOKS_PRE_COMMIT="${2}";
+	readonly WEBLATE_SYNC="${3}";
 
 	configure_publican;
 	configure_git;
@@ -1197,6 +1206,12 @@ travis_pre () {
 			"${SELF}" \
 		;)/weblate-sync.pl" \
 	;)";
+	readonly _GIT_HOOKS_PRE_COMMIT="$(readlink \
+		--canonicalize \
+		"$(dirname \
+			"${SELF}" \
+		;)/../.git-hooks/pre-commit.sh" \
+	;)";
 	readonly _TRAVIS_LOG_WEB="https://travis-ci.org/${TRAVIS_REPO_SLUG}/builds/${TRAVIS_BUILD_ID}";
 	readonly _TRAVIS_LOG_RAW="https://api.travis-ci.org/jobs/${TRAVIS_JOB_ID}/log.txt";
 
@@ -1243,6 +1258,7 @@ travis () {
 		"${SELF}" \
 		'systems:build/repository/setup' \
 		"${_GIT_WORK_TREE}" \
+		"${_GIT_HOOKS_PRE_COMMIT}" \
 		"${WEBLATE_SYNC}" \
 	;
 	local _EXIT_STATUS=0;
