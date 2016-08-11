@@ -2,34 +2,29 @@
 set -x;
 set -eu;
 
-alias _file_get_type='
-file \
+alias _file_get_type='file \
 	--brief \
 	--mime-type \
-'
+';
 
-alias _file_validate_xml='
-xmllint \
+alias _file_validate_xml='xmllint \
 	--noout \
-'
+';
 
-alias _file_reformat_xml='
-xmllint \
+alias _file_reformat_xml='xmllint \
 	--pretty 2 \
 	--output \
-'
+';
 
-alias git_cached_files_get='
-git \
+alias git_cached_files_get='git \
 	diff \
 	--name-only \
 	--cached \
-'
+';
 
-alias git_add='
-git \
+alias git_add='git \
 	add \
-'
+';
 
 git_cached_files_update () {
 	local _FILE_PATH='';

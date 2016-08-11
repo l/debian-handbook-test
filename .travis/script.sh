@@ -140,20 +140,14 @@ mktemp_directory () {
 	return 0;
 }
 
-travis_id () {
-	openssl \
+alias travis_id='openssl \
 		rand \
 		-hex 4 \
-	;
-	return 0;
-}
+';
 
-travis_time () {
-	date \
-		'+%s%N' \
-	;
-	return 0;
-}
+alias travis_time='date \
+	"+%s%N" \
+';
 
 travis_time_start () {
 	local _TRAVIS_TIMER_ID="${1}";
@@ -319,14 +313,12 @@ EOT
 	} | tee \
 		'/etc/apt/apt.conf.d/02force-conf' \
 	;
-	apt_get_install_pre;
 	apt_get_install \
 		debian-keyring \
 		debian-archive-keyring \
 		debootstrap \
 		schroot \
 	;
-	apt_get_install_post;
 	return 0;
 }
 
@@ -684,10 +676,6 @@ setup_remote_local () {
 			-b "${_GIT_LOCAL_BRANCH}" \
 			"${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
 		;
-		git \
-			branch \
-			--set-upstream-to="${_GIT_REMOTE_NAME}/${_GIT_REMOTE_BRANCH}" \
-		;
 	else
 		git \
 			checkout \
@@ -720,14 +708,14 @@ setup_build_branch_merge () {
 		"${_GIT_LOCAL_TOPIC_BRANCH}" \
 	;
 	then
-		echo merge NG!;
+		#echo merge NG!;
 		git \
 			checkout \
 			"${_GIT_LOCAL_BASE_BRANCH}" \
 		;
 		return 1;
 	fi
-	echo merge OK!;
+	#echo merge OK!;
 	return 0;
 }
 
@@ -776,6 +764,57 @@ setup_build_branch_rebase () {
 	return 0;
 }
 
+alias git_commit='git \
+	commit \
+	--all \
+	--allow-empty \
+';
+
+alias git_log='git \
+	--no-pager \
+	log \
+	--reverse \
+	--color \
+	--stat \
+	--pretty=fuller \
+';
+
+alias git_author_date='git \
+	log \
+	--pretty="%ad" \
+	-1 \
+';
+
+alias git_author_name='git \
+	log \
+	--pretty="%an" \
+	-1 \
+';
+
+alias git_author_email='git \
+	log \
+	--pretty="%ae" \
+	-1 \
+';
+
+alias git_comitter_date='git \
+	log \
+	--pretty="%cd" \
+	-1 \
+';
+
+alias git_comitter_name='git \
+	log \
+	--pretty="%cn" \
+	-1 \
+';
+
+alias git_comitter_email='git \
+	log \
+	--pretty="%ce" \
+	-1 \
+';
+
 git_cherry_pick () {
 	local _GIT_COMMIT_HASH="${1}";
 	shift 1;
@@ -786,29 +825,27 @@ git_cherry_pick () {
 		--allow-empty \
 		"${@}" \
 		"${_GIT_COMMIT_HASH}" \
+	&& GIT_AUTHOR_DATE="$(git_author_date "${_GIT_COMMIT_HASH}";)" \
+	GIT_AUTHOR_NAME="$(git_author_name "${_GIT_COMMIT_HASH}";)" \
+	GIT_AUTHOR_EMAIL="$(git_author_email "${_GIT_COMMIT_HASH}";)" \
+	GIT_COMMITTER_DATE="$(git_comitter_date "${_GIT_COMMIT_HASH}";)" \
+	GIT_COMMITTER_NAME="$(git_comitter_name "${_GIT_COMMIT_HASH}";)" \
+	GIT_COMMITTER_EMAIL="$(git_comitter_email "${_GIT_COMMIT_HASH}";)" \
+	git \
+		commit \
+		--no-verify \
+		--allow-empty \
+		--allow-empty-message \
+		--reuse-message="${_GIT_COMMIT_HASH}" \
 	;
 	then
-		GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 ${_GIT_COMMIT_HASH}) \
-		GIT_AUTHOR_NAME=$(git log --pretty='%an' -1 ${_GIT_COMMIT_HASH}) \
-		GIT_AUTHOR_EMAIL=$(git log --pretty='%ae' -1 ${_GIT_COMMIT_HASH}) \
-		GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 ${_GIT_COMMIT_HASH}) \
-		GIT_COMMITTER_NAME=$(git log --pretty='%cn' -1 ${_GIT_COMMIT_HASH}) \
-		GIT_COMMITTER_EMAIL=$(git log --pretty='%ce' -1 ${_GIT_COMMIT_HASH}) \
-		git \
-			commit \
-			--no-verify \
-			--allow-empty \
-			--allow-empty-message \
-			--reuse-message="${_GIT_COMMIT_HASH}" \
-		;
-		echo cherry-pick OK!;
 		return 0;
 	fi
-	echo cherry-pick NG!;
+	#echo cherry-pick NG!;
 	git \
 		reset \
 		--hard \
-		HEAD \
+		'HEAD' \
 	;
 	return 1;
 
@@ -835,28 +872,16 @@ setup_build_branch_cherry_pick () {
 		#	'-1' \
 		#	"${_GIT_COMMIT_HASH}" \
 		#;
-		if git_cherry_pick \
+		if ! git_cherry_pick \
 			"${_GIT_COMMIT_HASH}" \
-		;
-		then
-			#git_log \
-			#	'-1' \
-			#;
-			continue;
-		fi
-
-		if git_cherry_pick \
+		&& ! git_cherry_pick \
 			"${_GIT_COMMIT_HASH}" \
 			--strategy=recursive \
 			--strategy-option=ours \
 		;
 		then
-			#git_log \
-			#	'-1' \
-			#;
-			continue;
+			return 1;
 		fi
-		return 1;
 	done
 	return 0;
 }
@@ -874,12 +899,16 @@ setup_build_branch () {
 	local _GIT_LOCAL_TOPIC_BRANCH;
 	for _GIT_LOCAL_TOPIC_BRANCH in "${@}";
 	do
-		if setup_build_branch_merge \
+		if ! setup_build_branch_merge \
+			"${_GIT_LOCAL_BASE_BRANCH}" \
+			"${_GIT_LOCAL_TOPIC_BRANCH}" \
+		&& ! setup_build_branch_cherry_pick \
 			"${_GIT_LOCAL_BASE_BRANCH}" \
 			"${_GIT_LOCAL_TOPIC_BRANCH}" \
 		;
 		then
-			continue;
+			echo merge, rebase, and cherry-pick is failed: "${_GIT_LOCAL_TOPIC_BRANCH}";
+			return 1;
 		fi
 		#if setup_build_branch_rebase \
 		#	"${_GIT_LOCAL_BASE_BRANCH}" \
@@ -888,39 +917,7 @@ setup_build_branch () {
 		#then
 		#	continue;
 		#fi
-		if setup_build_branch_cherry_pick \
-			"${_GIT_LOCAL_BASE_BRANCH}" \
-			"${_GIT_LOCAL_TOPIC_BRANCH}" \
-		;
-		then
-			continue;
-		fi
-		echo merge, rebase, and cherry-pick is failed: "${_GIT_LOCAL_TOPIC_BRANCH}";
-		return 1;
 	done
-	return 0;
-}
-
-git_commit () {
-	git \
-		commit \
-		--all \
-		--allow-empty \
-		"${@}" \
-	;
-	return 0;
-}
-
-git_log () {
-	git \
-		--no-pager \
-		log \
-		--reverse \
-		--color \
-		--stat \
-		--pretty=fuller \
-		"${@}" \
-	;
 	return 0;
 }
 
@@ -959,8 +956,8 @@ setup_build_dir () {
 	"${WEBLATE_SYNC}" \
 		'./' \
 	;
-	GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 HEAD) \
-	GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 HEAD) \
+	GIT_AUTHOR_DATE="$(git_author_date 'HEAD';)" \
+	GIT_COMMITTER_DATE="$(git_comitter_date 'HEAD';)" \
 	git_commit \
 		--message='Sync PO files to Weblate' \
 	;
@@ -998,8 +995,8 @@ setup_build_dir () {
 	publican \
 		update_pot \
 	;
-	GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 HEAD) \
-	GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 HEAD) \
+	GIT_AUTHOR_DATE="$(git_author_date 'HEAD';)" \
+	GIT_COMMITTER_DATE="$(git_comitter_date 'HEAD';)" \
 	git_commit \
 		--message="Update POT files
 
@@ -1017,8 +1014,8 @@ $ publican \\
 		--surname="${_PUBLICAN_SURNAME}" \
 		--email="${_PUBLICAN_EMAIL}" \
 	;
-	GIT_AUTHOR_DATE=$(git log --pretty='%ad' -1 HEAD) \
-	GIT_COMMITTER_DATE=$(git log --pretty='%cd' -1 HEAD) \
+	GIT_AUTHOR_DATE="$(git_author_date 'HEAD';)" \
+	GIT_COMMITTER_DATE="$(git_comitter_date 'HEAD';)" \
 	git_commit \
 		--message="Update PO files
 
