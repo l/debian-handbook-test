@@ -56,6 +56,50 @@ configure_publican () {
 	return 0;
 }
 
+alias git_commit='git \
+	commit \
+	--all \
+	--allow-empty \
+';
+alias git_log='git \
+	--no-pager \
+	log \
+	--reverse \
+	--color \
+	--stat \
+	--pretty=fuller \
+';
+alias git_author_date='git \
+	log \
+	--pretty="%ad" \
+	-1 \
+';
+alias git_author_name='git \
+	log \
+	--pretty="%an" \
+	-1 \
+';
+alias git_author_email='git \
+	log \
+	--pretty="%ae" \
+	-1 \
+';
+alias git_comitter_date='git \
+	log \
+	--pretty="%cd" \
+	-1 \
+';
+alias git_comitter_name='git \
+	log \
+	--pretty="%cn" \
+	-1 \
+';
+alias git_comitter_email='git \
+	log \
+	--pretty="%ce" \
+	-1 \
+';
+
 configure_git () {
 	export GIT_AUTHOR_NAME="AYANOKOUZI, Ryuunosuke";
 	export GIT_AUTHOR_EMAIL="i38w7i3@yahoo.co.jp";
@@ -140,117 +184,15 @@ mktemp_directory () {
 	return 0;
 }
 
-alias travis_id='openssl \
-		rand \
-		-hex 4 \
-';
-
-alias travis_time='date \
-	"+%s%N" \
-';
-
-travis_time_start () {
-	local _TRAVIS_TIMER_ID="${1}";
-	echo \
-		-n \
-		"travis_time:start:${_TRAVIS_TIMER_ID}\r" \
+systems_host_test () {
+	df \
+		--human-readable \
+		--all \
+		--print-type \
+	| sort \
+		--key='7,7d' \
 	;
 	return 0;
-}
-
-travis_time_end () {
-	local _TRAVIS_TIMER_ID="${1}";
-	local _TRAVIS_TIMER_START="${2}";
-	local _TRAVIS_TIMER_FINISH="${3}";
-	local _TRAVIS_TIMER_DURATION="$(echo \
-		"${_TRAVIS_TIMER_FINISH}" - "${_TRAVIS_TIMER_START}" \
-	| bc \
-	;)";
-	echo \
-		-n \
-		"travis_time:end:${_TRAVIS_TIMER_ID}:start=${_TRAVIS_TIMER_START},finish=${_TRAVIS_TIMER_FINISH},duration=${_TRAVIS_TIMER_DURATION}\r" \
-	;
-	return 0;
-}
-
-travis_fold_start () {
-	local _TRAVIS_FOLD_ID="${1}";
-	echo \
-		-n \
-		"travis_fold:start:${_TRAVIS_FOLD_ID}\r" \
-	;
-	return 0;
-}
-
-travis_fold_end () {
-	local _TRAVIS_FOLD_ID="${1}";
-	echo \
-		-n \
-		"travis_fold:end:${_TRAVIS_FOLD_ID}\r" \
-	;
-	return 0;
-}
-
-travis_block_start () {
-	local _TRAVIS_BLOCK_NAME="${1}";
-	local _TRAVIS_BLOCK_ID="${2}";
-	{
-		travis_fold_start \
-			"${_TRAVIS_BLOCK_NAME}" \
-		;
-		travis_time_start \
-			"${_TRAVIS_BLOCK_ID}" \
-		;
-	} \
-		2>/dev/null \
-	;
-	return 0;
-}
-
-travis_block_end () {
-	local _TRAVIS_BLOCK_NAME="${1}";
-	local _TRAVIS_BLOCK_ID="${2}";
-	local _TRAVIS_BLOCK_START="${3}";
-	local _TRAVIS_BLOCK_END="$(travis_time;)";
-	{
-		travis_time_end \
-			"${_TRAVIS_BLOCK_ID}" \
-			"${_TRAVIS_BLOCK_START}" \
-			"${_TRAVIS_BLOCK_END}" \
-		;
-		travis_fold_end \
-			"${_TRAVIS_BLOCK_NAME}" \
-		;
-	} \
-		2>/dev/null \
-	;
-	return 0;
-}
-
-travis_block_wrap () {
-	local _TRAVIS_BLOCK_NAME="${1}";
-	shift 1;
-	local _TRAVIS_BLOCK_ID="$(travis_id;)";
-	local _TRAVIS_BLOCK_START="$(travis_time;)";
-	travis_block_start \
-		"${_TRAVIS_BLOCK_NAME}" \
-		"${_TRAVIS_BLOCK_ID}" \
-		"${_TRAVIS_BLOCK_START}" \
-	;
-	local _EXIT_STATUS=0;
-	if ! "${@}" \
-	;
-	then
-		_EXIT_STATUS=1;
-	fi
-	local _TRAVIS_BLOCK_FINISH="$(travis_time;)";
-	travis_block_end \
-		"${_TRAVIS_BLOCK_NAME}" \
-		"${_TRAVIS_BLOCK_ID}" \
-		"${_TRAVIS_BLOCK_START}" \
-		"${_TRAVIS_BLOCK_FINISH}" \
-	;
-	return "${_EXIT_STATUS}";
 }
 
 systems_host_setup_pre () {
@@ -764,57 +706,6 @@ setup_build_branch_rebase () {
 	return 0;
 }
 
-alias git_commit='git \
-	commit \
-	--all \
-	--allow-empty \
-';
-
-alias git_log='git \
-	--no-pager \
-	log \
-	--reverse \
-	--color \
-	--stat \
-	--pretty=fuller \
-';
-
-alias git_author_date='git \
-	log \
-	--pretty="%ad" \
-	-1 \
-';
-
-alias git_author_name='git \
-	log \
-	--pretty="%an" \
-	-1 \
-';
-
-alias git_author_email='git \
-	log \
-	--pretty="%ae" \
-	-1 \
-';
-
-alias git_comitter_date='git \
-	log \
-	--pretty="%cd" \
-	-1 \
-';
-
-alias git_comitter_name='git \
-	log \
-	--pretty="%cn" \
-	-1 \
-';
-
-alias git_comitter_email='git \
-	log \
-	--pretty="%ce" \
-	-1 \
-';
-
 git_cherry_pick () {
 	local _GIT_COMMIT_HASH="${1}";
 	shift 1;
@@ -940,12 +831,12 @@ setup_build_dir () {
 	git \
 		init \
 	;
-	ln \
-		--force \
-		--symbolic \
-		"${_GIT_HOOKS_PRE_COMMIT}" \
-		'.git/hooks/pre-commit' \
-	;
+	#ln \
+	#	--force \
+	#	--symbolic \
+	#	"${_GIT_HOOKS_PRE_COMMIT}" \
+	#	'.git/hooks/pre-commit' \
+	#;
 	setup_remote_local \
 		"${_GIT_REMOTE_WEBLATE_NAME}" \
 		"${_GIT_REMOTE_WEBLATE_FETCH}" \
@@ -1107,36 +998,103 @@ systems_build_repository_build () {
 	return "${_EXIT_STATUS}";
 }
 
-systems_build_repository_push_pre () {
+alias _file_get_type='file \
+	--brief \
+	--mime-type \
+';
+alias _file_validate_xml='xmllint \
+	--noout \
+';
+alias _file_reformat_xml='xmllint \
+	--pretty 2 \
+	--output \
+';
+
+systems_build_repository_build_targets_prepare_pre () {
 	readonly _GIT_WORK_TREE="${1}";
-	readonly _TRAVIS_LOG_WEB="${2}"
-	readonly _TRAVIS_LOG_RAW="${3}"
-	readonly _GIT_DIVERT_DIR="$(mktemp_directory \
-		'divert.XXXXXX' \
+	readonly _GIT_DIVERT_DIR="${2}";
+	readonly _TMP_DIR="$(mktemp_directory \
+		'tmp.XXXXXX' \
 	;)";
-	readonly _GIT_DATE=$(TZ=GMT \
-		date \
-		"+%Y-%m-%dT%H:%M:%S%:z" \
-	;);
-
-	configure_git;
-	configure_git_repository
-
+	readonly _TMP_FILES_FIFO="${_TMP_DIR}/files.fifo";
+	mkfifo \
+		"${_TMP_FILES_FIFO}" \
+	;
 	return 0;
 }
 
-systems_build_repository_push () {
-	systems_build_repository_push_pre \
+systems_build_repository_build_targets_prepare () {
+	systems_build_repository_build_targets_prepare_pre \
 		"${@}" \
 	;
 	cd \
 		"${_GIT_WORK_TREE}" \
+	;
+	find \
+		publish \
+		tmp \
+		log \
+		-name '*.html' \
+	| sort \
+		1>"${_TMP_FILES_FIFO}" \
+	&
+	local _FILE_PATH='';
+	while read _FILE_PATH;
+	do
+		case "${_FILE_PATH}" in
+			*.html)
+				case "$(_file_get_type \
+					"${_FILE_PATH}" \
+				;)" in
+					'application/xml'|'text/xml')
+						_file_validate_xml \
+							"${_FILE_PATH}" \
+						;
+						_file_reformat_xml \
+							"${_FILE_PATH}" \
+							"${_FILE_PATH}" \
+						;
+					;;
+				esac
+			;;
+		esac
+	done \
+		< "${_TMP_FILES_FIFO}" \
 	;
 	mv \
 		publish \
 		tmp \
 		log \
 		"${_GIT_DIVERT_DIR}" \
+	;
+	cd \
+		- \
+	;
+	return 0;
+}
+
+systems_build_repository_build_results_push_pre () {
+	readonly _GIT_WORK_TREE="${1}";
+	readonly _GIT_DIVERT_DIR="${2}";
+	readonly _TRAVIS_LOG_WEB="${3}";
+	readonly _TRAVIS_LOG_RAW="${4}";
+	readonly _GIT_DATE=$(TZ=GMT \
+		date \
+		"+%Y-%m-%dT%H:%M:%S%:z" \
+	;);
+
+	configure_git;
+	configure_git_repository;
+
+	return 0;
+}
+
+systems_build_repository_build_results_push () {
+	systems_build_repository_build_results_push_pre \
+		"${@}" \
+	;
+	cd \
+		"${_GIT_WORK_TREE}" \
 	;
 	setup_remote_local \
 		"${_GIT_REMOTE_GITHUB_NAME}" \
@@ -1146,20 +1104,22 @@ systems_build_repository_push () {
 		"${_GIT_LOCAL_GITHUB_BRANCH}" \
 	;
 	show_remote_branch;
-	if rm \
+	if ! rm \
 		--force \
 		--recursive \
 		publish \
 		tmp \
 		log \
+		logger \
 	;
 	then
-		:;
+		: "ERROR: ${?}: rm" ;
 	fi
 	mv \
 		"${_GIT_DIVERT_DIR}/publish" \
 		"${_GIT_DIVERT_DIR}/tmp" \
 		"${_GIT_DIVERT_DIR}/log" \
+		"${_GIT_DIVERT_DIR}/logger" \
 		. \
 	;
 	git \
@@ -1167,6 +1127,7 @@ systems_build_repository_push () {
 		publish \
 		tmp \
 		log \
+		logger \
 	;
 	git_commit \
 		--message="Save buid result at ${_GIT_DATE}
@@ -1215,41 +1176,73 @@ travis_pre () {
 	readonly _GIT_WORK_TREE="$(mktemp_directory \
 		'build.XXXXXX' \
 	;)";
+	readonly _GIT_DIVERT_DIR="$(mktemp_directory \
+		'divert.XXXXXX' \
+	;)";
+	readonly _LOGGER_DIR="${_GIT_DIVERT_DIR}/logger";
+	mkdir \
+		--parent \
+		"${_LOGGER_DIR}" \
+	;
 
 	return 0;
 }
 
+# https://docs.travis-ci.com/user/customizing-the-build/
+travis_build_limitation () {
+	local _I=0;
+	for _I in $(seq \
+		0 \
+		1 \
+		50 \
+	;);
+	do
+		: \
+			"travis_build_limitation: ${_I}" \
+		;
+		sleep \
+			60 \
+		;
+	done
+	return 0;
+}
+
 travis () {
+	travis_build_limitation \
+	&
 	travis_pre;
-	travis_block_wrap \
-		'systems_host_setup' \
-		sudo \
+	"${SELF}" \
+		'systems:host/test' \
+		1>"${_LOGGER_DIR}/systems_host_test.log" \
+		2>&1 \
+	;
+	sudo \
 		-- \
 		"${SELF}" \
 		'systems:host/setup' \
+		1>"${_LOGGER_DIR}/systems_host_setup.log" \
+		2>&1 \
 	;
-	travis_block_wrap \
-		'systems_host_mkimage' \
-		sudo \
+	sudo \
 		-- \
 		"${SELF}" \
 		'systems:host/mkimage' \
 		"${CURRENT_USER}" \
 		"${CURRENT_GROUP}" \
+		1>"${_LOGGER_DIR}/systems_host_mkimage.log" \
+		2>&1 \
 	;
-	travis_block_wrap \
-		'systems_build_setup' \
-		sudo \
+	sudo \
 		-- \
 		schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
 		"${SELF}" \
 		'systems:build/setup' \
+		1>"${_LOGGER_DIR}/systems_build_setup.log" \
+		2>&1 \
 	;
-	travis_block_wrap \
-		'systems_build_repository_setup' \
-		schroot \
+	schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
 		"${SELF}" \
@@ -1257,31 +1250,44 @@ travis () {
 		"${_GIT_WORK_TREE}" \
 		"${_GIT_HOOKS_PRE_COMMIT}" \
 		"${WEBLATE_SYNC}" \
+		1>"${_LOGGER_DIR}/systems_build_repository_setup.log" \
+		2>&1 \
 	;
 	local _EXIT_STATUS=0;
-	if ! travis_block_wrap \
-		'systems_build_repository_build' \
-		schroot \
+	if ! schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
 		"${SELF}" \
 		'systems:build/repository/build' \
 		"${_GIT_WORK_TREE}" \
+		1>"${_LOGGER_DIR}/systems_build_repository_build.log" \
+		2>&1 \
 	;
 	then
 		_EXIT_STATUS=1;
 	fi
-	travis_block_wrap \
-		'systems_build_repository_push' \
-		schroot \
+	schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
 		"${SELF}" \
-		'systems:build/repository/push' \
+		'systems:build/repository/build/targets/prepare' \
 		"${_GIT_WORK_TREE}" \
+		"${_GIT_DIVERT_DIR}" \
+		1>"${_LOGGER_DIR}/systems_build_repository_build_targets_prepare.log" \
+		2>&1 \
+	;
+	schroot \
+		--chroot="${CHROOT_ID}" \
+		-- \
+		"${SELF}" \
+		'systems:build/repository/build/results/push' \
+		"${_GIT_WORK_TREE}" \
+		"${_GIT_DIVERT_DIR}" \
 		"${_TRAVIS_LOG_WEB}" \
 		"${_TRAVIS_LOG_RAW}" \
 	;
+		#1>"${_LOGGER_DIR}/systems_build_repository_build_results_push.log" \
+		#2>&1 \
 	return "${_EXIT_STATUS}";
 }
 
@@ -1289,6 +1295,11 @@ main () {
 	readonly MODE="${1}";
 	shift 1;
 	case "${MODE}" in
+		'systems:host/test')
+			systems_host_test  \
+				"${@}" \
+			;
+		;;
 		'systems:host/setup')
 			systems_host_setup  \
 				"${@}" \
@@ -1314,8 +1325,13 @@ main () {
 				"${@}" \
 			;
 		;;
-		'systems:build/repository/push')
-			systems_build_repository_push \
+		'systems:build/repository/build/targets/prepare')
+			systems_build_repository_build_targets_prepare \
+				"${@}" \
+			;
+		;;
+		'systems:build/repository/build/results/push')
+			systems_build_repository_build_results_push \
 				"${@}" \
 			;
 		;;
