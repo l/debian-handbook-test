@@ -1,0 +1,2326 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="unix-services">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-unix-services.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>系統啟動</keyword>
+      <keyword>Initscripts</keyword>
+      <keyword>SSH</keyword>
+      <keyword>Telnet</keyword>
+      <keyword>Rights</keyword>
+      <keyword>權限</keyword>
+      <keyword>監督</keyword>
+      <keyword>Inetd</keyword>
+      <keyword>Cron</keyword>
+      <keyword>備份</keyword>
+      <keyword>熱插拔</keyword>
+      <keyword>PCMCIA</keyword>
+      <keyword>APM</keyword>
+      <keyword>ACPI</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>Unix 服務</title>
+  <highlights>
+    <para>本章包括若干 Unix 系統的基本服務。管理者應熟悉它們。</para>
+  </highlights>
+  <section id="sect.system-boot">
+    <title>系統啟動</title>
+    <indexterm><primary>啟動</primary><secondary>系統</secondary></indexterm>
+
+    <para>開機時，訊息快速地捲過螢幕，告知自動執行初始化與組態的工作。想改變此階段的工作時，就需要瞭解它們。本節的作用在此。</para>
+
+    
+    <para>首先，BIOS 取得控制電腦的權力，偵測磁碟、載入 <emphasis>Master Boot Record</emphasis>，再執行啟動程式。由啟動程式接手，找出核心所在的磁碟，載入並執行它。初始化核心，再搜尋並掛上有根檔案系統的分區，執行第一個程式 — <command>init</command>。事實上，此 “根分區” 與 <command>init</command> 命令位於 RAM (其名稱 “initramfs” 舊名為 “initrd” 取自 “initialization RAM disk”) 的虛擬檔案系統。通常此檔案系統經由硬式磁碟機或網路，被啟動程式載入記憶體。祗包括核心所需的最少量資料，載入 “真實的” 根檔案系統：可能是硬式磁碟機或系統無法啟動的其他設備的驅動程式模組、或組態 RAID 陣列的初始化腳本與模組、開啟加密分區，啟動 LVM 卷等。掛上根分區後，initramfs 把控制權交給真實的 init，機器回到標準啟動程序。</para>
+
+    <figure id="figure.boot-process-systemd">
+      <title>以 systemd 執行 Linux 電腦的啟動程序</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/startup-systemd.png" scalefit="1" width="80%" />
+        </imageobject>
+      </mediaobject>
+    </figure>
+
+    <section id="sect.systemd"><title>systemd init 系統</title>
+
+    <para>“真實 init” 由 <emphasis role="pkg">systemd</emphasis> 提供，本節說明此 init 系統。</para>
+
+    <sidebar>
+      <title><emphasis>文化</emphasis><command>systemd</command> 之前的事</title>
+
+      <para><command>systemd</command> 是近代的 “init 系統”，即使已經可以在 <emphasis role="distribution">Wheezy</emphasis> 內取得，但直到 Debian 的 <emphasis role="distribution">Jessie</emphasis> 才被列入預設。在此之前的版本，預設使用 “System V init” (在 <emphasis role="pkg">sysv-rc</emphasis> 套件內)，相當傳統的系統。稍後將說明 System V init。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>其他</emphasis> 其他啟動系統</title>
+
+      <para>本書描述的啟動系統，係為 Debian <emphasis role="distribution">Jessie</emphasis> (由 <emphasis role="pkg">systemd</emphasis> 套件使用) 預設的啟動系統，以及稍早的預設 <emphasis role="pkg">sysvinit</emphasis>，該等預設係源自且繼承於 <emphasis>System V</emphasis> Unix 系統；這些是其他的。</para>
+
+      <para><emphasis role="pkg">file-rc</emphasis> 是有著極簡單程序的啟動系統。它遵循運行級別原則，但以組態檔取代資料夾與符號連結，指出必須啟動 <command>init</command> 的程序以及順序。</para>
+
+      <para><command>upstart</command> 系統還在 Debian 測試中。還很基礎：init 腳本不再於循序執行，但可以回應被依賴的其他腳本的要求。此系統由 Ubuntu 開始，再應用於 Debian <emphasis role="distribution">Jessie</emphasis> 中，但仍不是預設的；事實上，做為取代 <emphasis role="pkg">sysvinit</emphasis> 之用，且 <command>upstart</command> 的工作之一是啟動傳統系統的腳本，特別是來自 <emphasis role="pkg">sysv-rc</emphasis> 套件的腳本。</para>
+
+      <para>還有其他的系統與作業模式，諸如 <command>runit</command> 或 <command>minit</command>，但都很特別且不普遍。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>特例</emphasis> 從網路啟動</title>
+
+      <para>在某些組態環境裡，可以把 BIOS 組態成不執行 MBR，祗從網路尋找替代品，藉以在無硬碟的情況下啟動電腦，或在每次啟動時完全再安裝它。此選項並不適用於所有的硬體且需要適當的 BIOS 與網路卡。</para>
+
+      <para>從網路啟動時，可以使用 <command>debian-installer</command> 或 FAI (見 <xref linkend="sect.installation-methods" />)。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>回到基礎</emphasis> 程序，一個程式實例</title>
+      <indexterm><primary>程序</primary></indexterm>
+
+      <para>程序就是在記憶體執行的程式。包括執行軟體所需的所有資訊 (程式碼本身，以及在記憶體內的資料，打開的檔案清單，建立的網路連結等)。一個程式可能初始化為多個程序，沒有必要使用不同的使用者代碼。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>安全</emphasis> 以 shell 做為 <command>init</command> 取得超級使用者權限</title>
+
+      <para>依慣例，第一個啟動的程序是 <command>init</command> 程式 (預設為符號連結至 <filename>/lib/systemd/systemd</filename>)。然而，也可以把核心 <literal>init</literal> 選項傳遞給其他程式。</para>
+      <indexterm><primary><command>init</command></primary></indexterm>
+
+      <para>任何近用電腦的人都可以按下 <keycap>Reset</keycap> 鍵，重新開機。然後，在啟動程式的提示字元下，傳遞 <literal>init=/bin/sh</literal> 選項給核心，在不必使用管理者密碼的前提下，取得超級使用者權限。</para>
+
+      <para>為了避免發生這種事，可以用密碼保護啟動程式。也可從保護近用 BIOS (總有密碼保護機制) 著手，這樣就能夠防止惡意入侵者以自己的 Linux 系統，從遠端近用至電腦的硬體。</para>
+
+      <para>最後要小心，多數的 BIOS 有通用的密碼。最初的用意是讓那些粗心忘了密碼的人有個退路，這個密碼已經在網路上公開 (在搜尋引擎找找看 “generic BIOS passwords”)。密碼可以阻檔無權的人近用，但仍無法完全阻檔。祗要親身接觸電腦，黑客就能夠進入電腦內；卸載硬碟並掛載於能控制的地方，甚至偷走整部機器、或消除 BIOS 記憶體重設密碼…</para>
+    </sidebar>
+
+
+<para>Systemd 執行若干程序，主管系統的設定：鍵盤、驅動程式、檔案系統、網路、服務等。從系統的觀點整體檢視，及各組件的要求。把每個組件當成一個 “單元檔案” (有時更多)；通用的語法是 “*.ini files“ 語法，加上 <literal><replaceable>key</replaceable> = <replaceable>value</replaceable></literal> 成對的參數，置於 <literal>[<replaceable>section</replaceable>]</literal> 標頭之用。單元檔案儲存在 <filename>/lib/systemd/system/</filename> 與 <filename>/etc/systemd/system/</filename>；以多種型式顯示，但在此可視為 “服務” 與 “目標”。</para>
+
+<para>其中一個 systemd “服務檔案” 描述 systemd 管理的程序。包括舊型 init-scripts 的資訊，但是以宣告 (更為簡潔) 模式呈現。Systemd 處理若干重複性工作 (開啟與關閉程序、檢查其狀態、登入、放下特權等)，以及需滿足指定程序的服務檔案。例如，以下是 SSH 用到的服務：</para>
+
+<programlisting>[Unit]
+Description=OpenBSD Secure Shell server
+After=network.target auditd.service
+ConditionPathExists=!/etc/ssh/sshd_not_to_be_run
+
+[Service]
+EnvironmentFile=-/etc/default/ssh
+ExecStart=/usr/sbin/sshd -D $SSHD_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=sshd.service</programlisting>
+
+<para>如頁面所示，祗是個極小的程式，就是宣告。Systemd 處理報表的顯示過程、追蹤程序、以及必要時重新開機。</para>
+
+<para>systemd 的 “目標檔案” 描述系統的現狀，包括可操作的服務。不妨視為相當於舊型的執行階段作業。其中一個目標是 <literal>local-fs.target</literal>；進入之後，系統的其他部份假設所有的在地檔案系統均己掛載並可近用。其他的目標包括 <literal>network-online.target</literal> 與 <literal>sound.target</literal>。目標的相依性可以列在目標檔案內 (於 <literal>Requires=</literal> 列) 或使用符號連結至在 <literal>/lib/systemd/system/<replaceable>targetname</replaceable>.target.wants/</literal> 資料夾內的服務檔案。例如，<filename>/etc/systemd/system/printer.target.wants/</filename> 包括一個連結至 <filename>/lib/systemd/system/cups.service</filename>；systemd 將確保 CUPS 已執行至 <literal>printer.target</literal>。</para>
+
+<para>單元檔案是宣告性的而不是腳本或程式，不能直接執行，祗能被 systemd 解譯；因些有些工具允許管理者與 systemd 互動且控制系統的狀態與其元件。</para>
+
+<para>第一種這類工具是 <command>systemctl</command>。未使用參數執行時，它列出 systemd  已知的所有單元檔 (除了已經停用的)，及其現況。<command>systemctl status</command> 則以更佳的角度檢視服務，以及相關的程序。若提供服務的名稱 (如 <command>systemctl status ntp.service</command>)，則送回更多詳細的資料，以及與該服務有關的最後幾個日誌檔 (還有更多的)。</para>
+
+<para>執行 <command>systemctl start <replaceable>servicename</replaceable>.service</command> 就能以人工方式啟動服務。同樣的，執行 <command>systemctl stop <replaceable>servicename</replaceable>.service</command> 就能停止已完成的服務；其他的次命令包括 <command>reload</command> 與 <command>restart</command>。</para>
+
+<para>以 <command>systemctl enable <replaceable>servicename</replaceable>.service</command> (或 <command>disable</command>) 控制啟動服務 (即開機後自動啟動)。<command>is-enabled</command> 可以檢查服務的狀態。</para>
+
+<para>systemd 重要的功能之一是包括登入的組件 <command>journald</command>。做為補充 <command>syslogd</command> 之類傳統登入系統的組件，但加入額外的功能包括在服務與其產生訊息間的正式連結，以及補捉由初始過程產生的錯誤訊息。在 <command>journalctl</command> 命令的協助下，稍後可顯示該等訊息。不需任何參數，它溢出系統啟動後發生的所有日誌訊息；不過很少用到它。多數時間，把它做為服務的辨識器：</para>
+
+<screen><computeroutput># </computeroutput><userinput>journalctl -u ssh.service
+</userinput><computeroutput>-- Logs begin at Tue 2015-03-31 10:08:49 CEST, end at Tue 2015-03-31 17:06:02 CEST. --
+Mar 31 10:08:55 mirtuel sshd[430]: Server listening on 0.0.0.0 port 22.
+Mar 31 10:08:55 mirtuel sshd[430]: Server listening on :: port 22.
+Mar 31 10:09:00 mirtuel sshd[430]: Received SIGHUP; restarting.
+Mar 31 10:09:00 mirtuel sshd[430]: Server listening on 0.0.0.0 port 22.
+Mar 31 10:09:00 mirtuel sshd[430]: Server listening on :: port 22.
+Mar 31 10:09:32 mirtuel sshd[1151]: Accepted password for roland from 192.168.1.129 port 53394 ssh2
+Mar 31 10:09:32 mirtuel sshd[1151]: pam_unix(sshd:session): session opened for user roland by (uid=0)
+</computeroutput></screen>
+
+<para>另個有用的命令列旗標是 <command>-f</command>，用於指示 <command>journalctl</command> 繼續顯示溢出的新增訊息 (大部份是在 <command>tail -f <replaceable>file</replaceable></command> 之內)。</para>
+
+<para>若服務狀況不如預共，第一個步驟是以 <command>systemctl status</command> 檢查該服務是否真的已啟動；若沒有，則第一個命令給的訊息就不足以診斷問題之所在，檢查 journald 產生的日誌檔。例如，假設 SSH 伺服器未啟動時：</para>
+
+<screen><computeroutput># </computeroutput><userinput>systemctl status ssh.service
+</userinput><computeroutput>● ssh.service - OpenBSD Secure Shell server
+   Loaded: loaded (/lib/systemd/system/ssh.service; enabled)
+   Active: failed (Result: start-limit) since Tue 2015-03-31 17:30:36 CEST; 1s ago
+  Process: 1023 ExecReload=/bin/kill -HUP $MAINPID (code=exited, status=0/SUCCESS)
+  Process: 1188 ExecStart=/usr/sbin/sshd -D $SSHD_OPTS (code=exited, status=255)
+ Main PID: 1188 (code=exited, status=255)
+
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service start request repeated too quickly, refusing to start.
+Mar 31 17:30:36 mirtuel systemd[1]: Failed to start OpenBSD Secure Shell server.
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+# </computeroutput><userinput>journalctl -u ssh.service
+</userinput><computeroutput>-- Logs begin at Tue 2015-03-31 17:29:27 CEST, end at Tue 2015-03-31 17:30:36 CEST. --
+Mar 31 17:29:27 mirtuel sshd[424]: Server listening on 0.0.0.0 port 22.
+Mar 31 17:29:27 mirtuel sshd[424]: Server listening on :: port 22.
+Mar 31 17:29:29 mirtuel sshd[424]: Received SIGHUP; restarting.
+Mar 31 17:29:29 mirtuel sshd[424]: Server listening on 0.0.0.0 port 22.
+Mar 31 17:29:29 mirtuel sshd[424]: Server listening on :: port 22.
+Mar 31 17:30:10 mirtuel sshd[1147]: Accepted password for roland from 192.168.1.129 port 38742 ssh2
+Mar 31 17:30:10 mirtuel sshd[1147]: pam_unix(sshd:session): session opened for user roland by (uid=0)
+Mar 31 17:30:35 mirtuel sshd[1180]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:35 mirtuel sshd[1182]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:35 mirtuel sshd[1184]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel sshd[1186]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel sshd[1188]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service start request repeated too quickly, refusing to start.
+Mar 31 17:30:36 mirtuel systemd[1]: Failed to start OpenBSD Secure Shell server.
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+# </computeroutput><userinput>vi /etc/ssh/sshd_config
+</userinput><computeroutput># </computeroutput><userinput>systemctl start ssh.service
+</userinput><computeroutput># </computeroutput><userinput>systemctl status ssh.service
+</userinput><computeroutput>● ssh.service - OpenBSD Secure Shell server
+   Loaded: loaded (/lib/systemd/system/ssh.service; enabled)
+   Active: active (running) since Tue 2015-03-31 17:31:09 CEST; 2s ago
+  Process: 1023 ExecReload=/bin/kill -HUP $MAINPID (code=exited, status=0/SUCCESS)
+ Main PID: 1222 (sshd)
+   CGroup: /system.slice/ssh.service
+           └─1222 /usr/sbin/sshd -D
+# </computeroutput></screen>
+
+<para>檢查服務的狀態 (失敗) 後，再檢查日誌檔；它們會指出組態的錯誤。編輯組態檔並修正錯誤後，重啟服務，確認執行中。</para>
+
+<sidebar><title><emphasis>下一步</emphasis> 其他類型的單元檔</title>
+
+<para>本區祗描述 systemd 最基本的功能。其他的功能祗能在此列出若干：</para>
+
+<itemizedlist>
+
+<listitem><para>啟用插口：“插口” 單元檔案可用於描述 systemd 管理的網路或 Unix 插口；也就是由 systemd 建立的插口，可以在需要的時候再啟動實際的服務。通常重製 <command>inetd</command> 的功能。見 <citerefentry><refentrytitle>systemd.socket</refentrytitle><manvolnum>5</manvolnum></citerefentry>。</para></listitem>
+
+<listitem><para>定時器：“定時器” 單元檔案描述定時或在指定時間發生的事件；與定時器連結的服務，其對映的工作將在定時器的要求下才執行。 允許重製 <command>cron</command> 的部份功能。見 <citerefentry><refentrytitle>systemd.timer</refentrytitle><manvolnum>5</manvolnum></citerefentry>。</para></listitem>
+
+<listitem><para>網路：“網路“ 單元檔案描述網路介面，允許組態該等介面以及表述在特定介面的服務。</para></listitem>
+
+</itemizedlist>
+</sidebar>
+
+</section>
+
+<section id="sect.sysvinit"><title>System V 初始系統</title>
+    <para>System V 初始系統 (簡稱初始) 執行若干程序，根據 <filename>/etc/inittab</filename> 檔案的指令做事。第一個執行的程式 (對映於 <emphasis>sysinit</emphasis> 步驟) 是 <command>/etc/init.d/rcS</command>，一個執行在 <filename>/etc/rcS.d/</filename> 資料夾內所有程式的腳本。<indexterm><primary><filename>/etc/init.d/rcS</filename></primary></indexterm> <indexterm><primary><filename>rcS</filename></primary></indexterm> <indexterm><primary><filename>/etc/init.d/rcS.d/</filename></primary></indexterm> <indexterm><primary><filename>rcS.d</filename></primary></indexterm></para>
+
+    <para>在這些裡面，可找到負責的程式：</para>
+    <itemizedlist>
+      <listitem>
+	<para>組態終端機的鍵盤；</para>
+      </listitem>
+      <listitem>
+	<para>載入驅動程式：大部份的核心模組在偵測到硬體後由核心本身載入；其他的驅動程式在對應模組列在 <filename>/etc/modules</filename> 時，才自動載入；</para>
+      </listitem>
+      <listitem>
+	<para>檢查檔案系織的完整性；</para>
+      </listitem>
+      <listitem>
+	<para>掛載在地分區；</para>
+      </listitem>
+      <listitem>
+	<para>組態網路；</para>
+      </listitem>
+      <listitem>
+	<para>掛載網路檔案系統 (NFS)。</para>
+      </listitem>
+    </itemizedlist>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> 核心模組與選項</title>
+      <indexterm><primary>模組</primary><secondary>核心模組</secondary></indexterm>
+
+      <para>核心模組也有選項可供置入檔案在 <filename>/etc/modprobe.d/</filename> 內做為組態之用。這些選項設定於：<literal>options <replaceable>module-name</replaceable> <replaceable>option-name</replaceable>=<replaceable>option-value</replaceable></literal>。必要時，部份選項可以指定給單一用途。</para>
+
+      <para>這些組態檔係供 <command>modprobe</command> 使用 — 這個程式載入核心模組及其相依者 (才能直正的呼叫其他模組)。這個程式由 <emphasis role="pkg">kmod</emphasis> 套件提供。</para>
+      <indexterm><primary><command>modprobe</command></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">kmod</emphasis></primary></indexterm>
+    </sidebar>
+
+    <para>到了這個地步，<command>init</command> 接手並啟動執行階段預設的程式 (通常是執行階段 2)。它執行 <command>/etc/init.d/rc 2</command>，一個啟動列在 <filename>/etc/rc2.d/</filename> 之內的所有服務並命名為 “S” 字母開頭。接著的兩位數，曾經做為服務啟動的順序，不過現在的預設啟動系統使用 <command>insserv</command>，根據腳本的相依性自動決定其先後順序。每個啟動腳本宣告的情況必須符合啟動或停止服務 (例如，必須在另個服務之前或之後啟動)；<command>init</command> 再依此情況啟動它們。不再考慮靜態的腳本編號 (但仍需按相依性使用 “S” 及兩個數字與實際的腳本名稱)。通常，基本的服務 (諸如以 <command>rsyslog</command> 登入，或以 <command>portmap</command> 指定埠口) 先列出來，然後才是標準服務與圖形介面 (<command>gdm3</command>)。</para>
+
+    <para>這種以相依性為基礎的啟動系統可以自動重新編號，避免人工作業的繁瑣，且限縮可能的人為錯誤，因為其排序係依照參數而訂。另個優點是可以同時啟動多個互相獨立的服務，藉以加速啟動程序。</para>
+
+    <indexterm><primary>執行階層</primary></indexterm>
+    <indexterm><primary>階層，執行階層</primary></indexterm>
+
+    <para><command>init</command> 區隔多個執行階層，所以可以用 <command>telinit <replaceable>new-level</replaceable></command> 命令切換。立即，<command>init</command> 在新的執行階層再次執行 <command>/etc/init.d/rc</command>。這個腳本可執行缺失的服務並停止不再用到的服務。為了做到這個程度，它參照 <filename>/etc/rc<replaceable>X</replaceable>.d</filename> 的內容 (<replaceable>X</replaceable> 代表新的執行階層)。以 “S” (表示開始 “Start”) 開始的腳本是將啟動的服務；以 “K” (表示砍掉 “Kill”) 開始的腳本是將停止的服務。腳本不會啟動已經在前個執行階層執行的服務。</para>
+
+    <para>預設，Debian 的 System V init 使用四個不同的執行階層：</para>
+    <itemizedlist>
+      <listitem>
+	<para>0 層，祗是暫時的，電腦進入關機程序。所以，祗包括若干 “K” 腳本。</para>
+      </listitem>
+      <listitem>
+	<para>1 層，也稱為單一使用者模式，對應於系統的降級模式；祗包括基本服務，並試圖維護與一般使用者非必要的運作。</para>
+      </listitem>
+      <listitem>
+	<para>2 層是標準運作，包括網路服務、圖形介面、使用者登入等。</para>
+      </listitem>
+      <listitem>
+	<para>6 層類似 0 層，除了在重開機之前先執行關機。</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>其他的階層，尤其是 3 至 5 階。它們預設的組態等同於階層 2，但是管理者可以修改它們 (在對應的 <filename>/etc/rc<replaceable>X</replaceable>.d</filename> 資料夾新增或刪除腳本) 以適應特定的需求。</para>
+
+    <figure id="figure.boot-process-sysvinit">
+      <title>以 System V init 執行 Linux 的啟動程序</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/startup-sysvinit.png" scalefit="1" width="80%" />
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <indexterm><primary>啟始腳本</primary></indexterm>
+
+    <para>在 <filename>/etc/rc<replaceable>X</replaceable>.d</filename> 資料夾內的腳本祗是符號連結 — 安裝套件時由 <command>update-rc.d</command> 程式產生 — 指向儲存在 <filename>/etc/init.d/</filename> l裡的實際腳本。管理者可以使用調整後的參數重新執行 <command>update-rc.d</command> 以微調運行層級的服務。The <citerefentry><refentrytitle>update-rc.d</refentrytitle><manvolnum>1</manvolnum></citerefentry> 手冊詳細地描述其語法。請注意移除所有的符號連結 (使用 <literal>remove</literal> 參數) 不是停用該服務的好方法。應該是，在特定的執行層級組態其為不啟動 (在前個執行層級已有的服務應保留對應的呼叫停止它)。因為 <command>update-rc.d</command> 介面有點麻煩，建議使用較為友善的 <command>rcconf</command> (從 <emphasis role="pkg">rcconf</emphasis> 套件取用) 介面。</para>
+    <indexterm><primary><command>update-rc.d</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>DEBIAN 政策</emphasis> 重啟服務</title>
+      <indexterm><primary><command>invoke-rc.d</command></primary></indexterm>
+      <indexterm><primary>服務</primary><secondary>重啟</secondary></indexterm>
+      <indexterm><primary>重啟服務</primary></indexterm>
+
+      <para>Debian 套件的維護者腳本將不時重新啟動特定服務以確保其有效性或取得特定的選項。控制服務的命令 — <command>service <replaceable>service</replaceable> <replaceable>operation</replaceable></command> — 未考量執行階層，假設 (錯誤地) 該服務仍在使用中，且可能啟動錯誤的作業 (啟動應該停止的服務，或停止已經停止的服務等)。因此，Debian 有個 <command>invoke-rc.d</command> 程式：必須由維護者的腳本啟動，執行服務的初啟腳本且祗執行必要的命令。注意，不同於常見的用法，在程式名之前使用 <filename>.d</filename> 前置，且不能在資料夾內。</para>
+    </sidebar>
+
+    <para>最後，<command>init</command> 啟動虛擬終端機 (<command>getty</command>) 的控制程式。顯示提示符號，等待使用者名稱，然後執行 <command>login <replaceable>user</replaceable></command> 啟始一個程序。</para>
+    <indexterm><primary><command>getty</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>字彙</emphasis> 控制臺與終端機</title>
+
+      <para>第一組電腦通常由多個非常大的部份組成：儲存裝置與中央處理單元，以及由作業員控制的獨立週邊裝置。這些部份置於獨立的櫃中，“控制臺”。這個術語使用多年，但代表的義意已經改變。離 “終端機”，即鍵盤與螢幕，愈來愈遠。</para>
+
+      <para>在電腦的發展過程中，作業系統建拉多個虛擬控制臺，同時處理多個獨立的程序，即使祗有一個鍵盤與螢幕也可以。大部份的 GNU/Linux 系統提供 6 個虛擬控制臺 (文字模式)，按下組合鍵 <keycombo action="simul"> <keycap>Control</keycap> <keycap>Alt</keycap> <keycap>F1</keycap> </keycombo> 至 <keycombo action="simul"> <keycap>Control</keycap> <keycap>Alt</keycap> <keycap>F6</keycap> </keycombo> 就能在此 6 個控制臺間切換。</para>
+
+      <para>廣義來說，“控制臺” 與 “終端機” 也可表示圖形 X11 作業 (如 <command>xterm</command>、<command>gnome-terminal</command> 或 <command>konsole</command>) 的模擬終端機。</para>
+    </sidebar>
+</section>
+  </section>
+  <section id="sect.remote-login">
+    <title>遠端登入</title>
+
+    <para>管理者需要遠端連結電腦。伺服器，放在固定的空間內，擁有自己的鍵盤與螢幕 — 但可以經由網路連結進來。</para>
+
+    <sidebar>
+      <title><emphasis>回到基礎</emphasis> 客戶、伺服器</title>
+      <indexterm><primary>客戶</primary><secondary>主從架構</secondary></indexterm>
+      <indexterm><primary>伺服器</primary><secondary>主從架構</secondary></indexterm>
+
+      <para>多個程序彼此溝通的系統通常描述成 “客戶/伺服器” 隱喻。伺服器是接受來自客戶的請求並執行它。客戶控制作業，伺服器沒有辦法發起任何作業。</para>
+    </sidebar>
+
+    <indexterm><primary>登入</primary><secondary>遠程登入</secondary></indexterm>
+    <indexterm><primary>遠程登入</primary></indexterm>
+
+    <section id="sect.ssh">
+      <title>安全遠程登入：SSH</title>
+      <indexterm><primary>SSH</primary></indexterm>
+      <indexterm><primary>Secure Shell</primary></indexterm>
+
+      <para><emphasis>SSH</emphasis> (Secure SHell) 通信協定係以安全與可靠考量。以 SSH 連線是安全的：夥伴需認證且資料交換經過加密。</para>
+
+      <sidebar>
+        <title><emphasis>文化</emphasis> Telnet 與 RSH 已過時</title>
+	<indexterm><primary><command>telnet</command></primary></indexterm>
+	<indexterm><primary><command>rsh</command></primary></indexterm>
+
+	<para>SSH 問世前，<emphasis>Telnet</emphasis> 與 <emphasis>RSH</emphasis> 是遠端登入的主要工具。目前已過時，即使 Debian 仍提供此等命令，但已沒有人使用它們。</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>術語</emphasis> 認證、加密</title>
+
+	<para>授權客戶使用伺服器，安全是最重要的。必須先辨認客戶；即認證。通常以密碼辨認。以加密方式傳送資料，兩個系統在公共通道傳送秘密的資訊，加密之後就能保障不必第三者知悉其內容。</para>
+
+	<para>認認與加密經常相提併論，兩者多半合併使用，它們採用類似皂數學概念。</para>
+      </sidebar>
+
+      <para>SSH 有兩個檔案傳輸服務。<command>scp</command> 是命令列工具，用起來像是 <command>cp</command>，除了對方機器的路徑加上機器的前置名稱，以及冒號。</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>scp file machine:/tmp/</userinput></screen>
+
+      <para><command>sftp</command> 是互動式命令，類似 <command>ftp</command>。在單一程序中，<command>sftp</command> 可以同時傳輸多個檔案，且可以操作遠端的檔案 (刪除、重新命令、改變授權等)。</para>
+      <indexterm><primary><command>scp</command></primary></indexterm>
+      <indexterm><primary><command>sftp</command></primary></indexterm>
+
+      <para>Debian 使用 OpenSSH，由 <command>OpenBSD</command> 計畫 (以 BSD 核心為基礎的自由作業系統，以安全性著稱) 維護的自由版本 SSH 且是芬蘭and fork of the original SSH software developed by the SSH Communications Security Corp 公司發展的 SSH 原版的分歧版本。該公司以自由軟體精神發展 SSH，但後來改變為專屬授權。OpenBSD 計畫另起爐灶發展 OpenSSH 維持 SSH 的自由軟體版本。</para>
+      <indexterm><primary>OpenSSH</primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>基本</emphasis> <foreignphrase>分歧</foreignphrase></title>
+        <indexterm><primary>分歧</primary></indexterm>
+
+	<para>“分歧”，在軟體領域裡，表示從既有計畫中複製出新的計畫，並與舊計畫競爭。所以，兩個軟體各自發展。分歧多半源自於對發展團隊觀念的不同。</para>
+
+	<para>對計畫的分歧是自由軟體本質的直接反應；分歧是健康的事件，可以延續原計畫的自由精神 (例如授權方式的改變)。由於技術層面或個人的不同意而有分歧，是人力資源的浪費；其他的結果則是正面的。將分歧的計畫合併則未曾聽說。</para>
+      </sidebar>
+
+      <para>OpenSSH 分裂為兩個套件：客戶端是 <emphasis role="pkg">openssh-client</emphasis> 套件，伺服器端是 <emphasis role="pkg">openssh-server</emphasis> 套件。<emphasis role="pkg">ssh</emphasis> 超套件依賴這兩個部份且需安裝它們 (<command>apt install ssh</command>)。</para>
+
+      <section id="sect.ssh-key-based-auth">
+        <title>金鑰認證</title>
+
+	<para>以 SSH 登入時，遠端伺服器要求密碼認證使用者。在此條件下不能自動連結，也不能經常登入 SSH。所以 SSH 提供金鑰認證系統。</para>
+
+	<para>使用者以 <command>ssh-keygen -t rsa</command> 命令產生與客戶端機器搭配的金鑰；公鑰儲存在 <filename>~/.ssh/id_rsa.pub</filename>，對應的私鑰則儲存在 <filename>~/.ssh/id_rsa</filename>。使用者以 <command>ssh-copy-id <replaceable>server</replaceable></command> 命令將其公鑰加入伺服器的 <filename>~/.ssh/authorized_keys</filename> 檔案內。若在產生時，以 “passphrase” 保護私鑰，後續登入伺服器則不需要密碼。否則必須每次鍵入 passphrase 解碼才能使用私鑰。幸運的是，<command>ssh-agent</command> 允許把私鑰儲存在記憶體內，所以不必重複鍵入密碼。在此情況下，以 <command>ssh-add</command> (於每個程序做一次) 命令將該程序與 <command>ssh-agent</command> 命令連結。Debian 預設在圖形介面啟用它，但可以改變 <filename>/etc/X11/Xsession.options</filename> 檔案內的選項而停用。在控制臺程序裡，可以 <command>eval $(ssh-agent)</command> 手動啟動它。</para>
+
+        <sidebar>
+          <title><emphasis>安全</emphasis> 以私鑰保護</title>
+
+	  <para>擁有私鑰的人就可以登入並組態電腦。所以私鑰必須以 “passphrase” 保護。取得私鑰檔案的人 (如，<filename>~/.ssh/id_rsa</filename>) 仍需知道此句子才能使用私鑰。不過，多一層保護並不保證固若金湯牢不可破，若認為該檔案已被破解，最好停用該安裝該私鑰 (從 <filename>authorized_keys</filename> 檔案中移除) 並重新產生新的金鑰。</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>文化</emphasis> OpenSSL 缺陷在 Debian <emphasis role="distribution">Etch</emphasis></title>
+
+	  <para>OpenSSL 程式庫，首先由 Debian <emphasis role="distribution">Etch</emphasis> 提供，在其隨機數值產生器 (random number generator, RNG) 裡有重大缺陷。所以，Debian 維護者修改它，使用 <command>valgrind</command> 之類的記憶體測試工具時，不再產生警示訊息。不幸的是，此種改變讓 RNG 套用一個熵值對應 32,000 個可能的處理編號 (PID)，不足以稱為亂數。<ulink type="block" url="http://www.debian.org/security/2008/dsa-1571" /></para>
+
+	  <para>尤其是，OpenSSL 產生金鑰時，總是從已知的數萬個金鑰中 (32,000 乘以金鑰長度) 選取一個。進而影響 SSH 金鑰、SSL 金鑰與 X.509 認證用到應用程式，如 OpenVPN。駭客祗需測試有限的金鑰就能取得授權。為了減少此問題的影響層面， SSH 後台進程略為修改以拒絕使用列在 <emphasis role="pkg">openssh-blacklist</emphasis> 與 <emphasis role="pkg">openssh-blacklist-extra</emphasis> 套件內的有問題的金鑰。而且 <command>ssh-vulnkey</command> 命令允許辨認糸統內可能的認證漏洞。</para>
+
+	  <para>進一步分析這個事件，發現影響多個 (小) 問題，包括 OpenSSL 計畫內與 Debian 套件維護者。像 OpenSSL 這種被廣泛使用程式庫，被 <command>valgrind</command> 測試時，應該 — 未經修改 — 不能產生警示。尤有甚者，其程式碼 (尤其是像 RNG 這麼敏感的部份) 應該有更好的說明以避免這種錯誤。從 Debian 的角度來看，維護者要向 OpenSSL 開發者認證其修改的部份，但單純的解說修改而未提供對應的補丁供檢視，以致 Debian 發生前述的錯誤。最後，維護者的選擇是次要的選項：原始碼的修改沒有清楚的文件；所有的修改都儲存在典藏所的次版本內，但是把所有的修改總結在一個補丁內納入原始套件中。</para>
+
+	  <para>在這種情況下，很難找出正確的方法以避免再發生此類事件。從此得到的教訓，讓每個發散的 Debian 必須儘可能的大量公開，經過調整過、文件充足後，才能上傳軟體。經過此事後，發展出新的原始套件格式 (“3.0 (quilt)”) 與 Debian 原始網頁服務。<ulink type="block" url="http://sources.debian.net" /></para>
+        </sidebar>
+      </section>
+      <section id="sect.ssh-x11">
+        <title>使用遠端 X11 應用程式</title>
+
+	<para>SSH 通信協定可以使用圖形資料 (“X11” 程序，取材自 Unix 常用的圖形系統之名)；伺服器開啟專用通道給該等資料。特別的是，遠端執行圖形的問題可以顯示在本地螢幕的 X.org 伺服器，整個程序 (輸入與顯示) 是安全的。因為此功能允許遠端應用程式與在地系統互動，預設是不行的。指明 <literal>X11Forwarding yes</literal> 於伺服器的組態檔 (<filename>/etc/ssh/sshd_config</filename>) 內。最後，使用者必須加入 <literal>-X</literal> 選項於 <command>ssh</command> 命令列。</para>
+      </section>
+      <section id="sect.ssh-port-forwarding">
+        <title>新增埠映射的加密通道</title>
+        <indexterm><primary>埠映射</primary></indexterm>
+
+	<para>它的 <literal>-R</literal> 和 <literal>-L</literal> 選項允許 <command>ssh</command> 在兩個機器間新增 “加密通道”，把在地 TCP 埠 (見專欄 <xref linkend="sidebar.tcp-udp" />) 映射至遠端機器或反之。</para>
+
+        <sidebar>
+          <title><emphasis>術語</emphasis> 通道</title>
+          <indexterm><primary>通道 (SSH)</primary><seealso>VPN</seealso></indexterm>
+          <indexterm><primary>SSH 通道</primary><seealso>VPN</seealso></indexterm>
+
+	  <para>大部份地區網路 (LAN) 連結的網際網路，以封包模式運作而不是連結模式，封包經由多個中途路由器才到達其終點站。仍可以模擬連結運作讓流量包裝在正常的 IP 封包內。這些封包經由正常途徑，但是在終點站無誤地重組還原流量。我們稱此為 “通道”，就像道路的通道，車流經由入口至出口，沒有任何路口，不像平面道路涉及路口及變換方向。</para>
+
+	  <para>在通道內加密：外界無從辨識其中的流量，祗有到了通道出口經由解密才恢復原來的樣子。</para>
+        </sidebar>
+
+	<para><command>ssh -L 8000:server:25 intermediary</command> 以 <replaceable>中介</replaceable> 主機建立 SSH 程序並聽在地埠 8000 (見 <xref linkend="figure.ssh-L" />)。建立在這個埠的任何連結，<command>ssh</command> 將從 <replaceable>中介</replaceable> 電腦建立連結至 <replaceable>伺服器</replaceable> 的埠號 25，而且把兩個連結綁在一起。</para>
+
+	<para><command>ssh -R 8000:server:25 intermediary</command> 也建立一個 SSH 程序至 <replaceable>中介</replaceable> 電腦，但在該機器以 <command>ssh</command> 聆聽埠號 8000 (見 <xref linkend="figure.ssh-R" />)。建立在該埠的連結將啟動 <command>ssh</command> 開啟本地機器埠號 25 的 <replaceable>伺服器</replaceable>，而且把兩個連結綁在一起。</para>
+
+	<para>這兩個案例裡，都連結至 <replaceable>伺服器</replaceable> 主機的埠號 25，以 SSH 通道連結在地機器與 <replaceable>中介</replaceable> 機器。在第一個案例裡，在 “公共” 網路裡，入口是在地埠 8000，資料移向 <replaceable>中介</replaceable> 機器後再流向 <replaceable>伺服器</replaceable>。在第二個案例裡，入口與出口的通道相反；入口是 <replaceable>中介</replaceable> 機器的埠號 8000，出口是在地主機，且資料直接流向 <replaceable>伺服器</replaceable>。實務上，伺服器是在地機器或中介機器。SSH 保證兩者的安全連結。</para>
+
+        <figure id="figure.ssh-L">
+          <title>以 SSH 轉送在地埠</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="images/ssh-L.png" width="35%" />
+            </imageobject>
+          </mediaobject>
+        </figure>
+
+        <figure id="figure.ssh-R">
+          <title>以 SSH 轉送遠端埠</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="images/ssh-R.png" width="35%" />
+            </imageobject>
+          </mediaobject>
+        </figure>
+      </section>
+    </section>
+    <section id="sect.remote-desktops">
+      <title>使用遠端圖形桌面</title>
+
+      <para>虛擬網路計算 (Virtual Network Computing, VNC) 可以近用遠端圖形桌面。</para>
+      <indexterm><primary>VNC</primary></indexterm>
+      <indexterm><primary>虛擬網路算</primary></indexterm>
+      <indexterm><primary>圖形桌面</primary><secondary>遠端</secondary></indexterm>
+      <indexterm><primary>遠端圖形桌面</primary></indexterm>
+      <indexterm><primary>桌面，遠端圖形桌面</primary></indexterm>
+
+      <para>此工具常使用在技術支援；管理者可以看到使用者面對的錯誤，不必到現場就能告知正確的運作。</para>
+      <indexterm><primary><emphasis role="pkg">vino</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">krfb</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">x11vnc</emphasis></primary></indexterm>
+
+      <para>首先，使用者必須授權共享其程序。在 <emphasis role="distribution">Jessie</emphasis> 組態面版 (不同於稍早的 Debian 版本，使用者必須安裝並執行 <command>vino</command>) 的GNOME 圖形桌面環境已有此選項。KDE 桌面環境仍需使用 <command>krfb</command> 才能經由 VNC 共享既有的程序。其他皂圖形桌面環境，<command>x11vnc</command> 命令 (在同名的 Debian 套件內) 也能達到同樣的結果；以明確的圖示標明。</para>
+
+      <indexterm><primary><emphasis role="pkg">vinagre</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">tsclient</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">krdc</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">xvnc4viewer</emphasis></primary></indexterm>
+
+      <para>從 VNC 取得圖形程序時，管理者必須連結至 VNC 客戶端。GNOME 有 <command>vinagre</command> 和 <command>remmina</command> 命令連結，而 KDE 使用 <command>krdc</command> (在 <menuchoice> <guimenu>K</guimenu> <guisubmenu>Internet</guisubmenu> <guimenuitem>Remote Desktop Client</guimenuitem></menuchoice> 選單內)。還有使用命令列的其他 VNC 客戶端，諸如 <command>xvnc4viewer</command> 在 Debian 的同名套件內。連結後，管理者可以看到遠端的桌面、操控遠端桌面、並讓遠端使用者知道運作的方式。</para>
+
+      <sidebar>
+        <title><emphasis>安全</emphasis> SSH 的 VNC</title>
+        <indexterm><primary>SSH 通道</primary><secondary>VNC</secondary></indexterm>
+
+	<para>想要經由 VNC 連結，但不想在網路傳輸純文字資料，可以把資料打包在 SSH 通道內 (見 <xref linkend="sect.ssh-port-forwarding" />)。祗需知道 VNC 預設在第一個螢幕使用埠號 5900 (稱為 “localhost:0”)，埠號 5901 用在第二個埠號 (稱為 “localhost:1”)，等等。</para>
+
+	<para><command>ssh -L localhost:5901:localhost:5900 -N -T <replaceable>machine</replaceable></command> 命令新增在地埠號 5901 於在地介面和埠號 5900 的 <replaceable>machine</replaceable> 主機。第一個 “localhost” 限制 SSH 聆聽僅限在地機器的介面。第二個 “localhost” 指出接收網路流量 “localhost:5901” 的遠端機器介面。因此 <command>vncviewer localhost:1</command> 將連結 VNC 客戶至遠端螢幕，即使指向在地機器的名稱。</para>
+
+	<para>關閉 VNC 程序後，記得再關閉對應的 SSH 程序通道。</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>基本</emphasis> 顯示管理Display manager</title>
+        <indexterm><primary><command>gdm3</command></primary></indexterm>
+        <indexterm><primary><command>kdm</command></primary></indexterm>
+        <indexterm><primary><command>xdm</command></primary></indexterm>
+        <indexterm><primary><command>lightdm</command></primary></indexterm>
+        <indexterm><primary>管理者</primary><secondary>顯示管理</secondary></indexterm>
+        <indexterm><primary>顯示管理</primary></indexterm>
+
+	<para><command>gdm3</command>、<command>kdm</command>、<command>lightdm</command>、和 <command>xdm</command> 都是顯示管理者。他們在啟動後不久就控制圖形介面担供登入畫面。使用者登入後，再執行啟動圖形工作程序所需的程式。</para>
+      </sidebar>
+
+      <para>VNC 也可供移動使用者、或公司執行者使用，這些人偶而需要從家中的電腦遠端登入辦公室的桌面電腦。這種組態稍為複雜些：首先安裝 <emphasis role="pkg">vnc4server</emphasis> 套件，改變顯示管理者的組態，以便接受 <literal>XDMCP Query</literal> 請求 (給 <command>gdm3</command>，新增 <literal>Enable=true</literal> 於 <filename>/etc/gdm3/daemon.conf</filename> 的 “xdmcp” 區塊)，然後以 <command>inetd</command> 啟動 VNC 伺服器，接著在使用者試圖登入時，自動開啟程序。例如，可以在 <filename>/etc/inetd.conf</filename> 內加入這一列：</para>
+
+      <programlisting>5950  stream  tcp  nowait  nobody.tty  /usr/bin/Xvnc Xvnc -inetd -query localhost -once -geometry 1024x768 -depth 16 securitytypes=none</programlisting>
+
+      <para>重新定向輸入連結至顯示管理者，解決認證的問題，因為祗有在地帳號的使用者才能通過 <command>gdm3</command> 登入畫面 (或同級的 <command>kdm</command>、<command>xdm</command>等)。當此作業允許同時登入多個使用者 (伺服器夠力是前提)，就能夠提供完整的桌面給遠端使用者 (或稍為不夠力的桌面系統，則需要組態為精簡客戶)。使用祗需以 <command>vncviewer <replaceable>server</replaceable>:50</command> 登入伺服器畫面，因為用到的埠號是 5950。</para>
+      <indexterm><primary><emphasis role="pkg">vnc4server</emphasis></primary></indexterm>
+    </section>
+  </section>
+  <section id="sect.rights-management">
+    <title>管理權限</title>
+
+    <para>Linux is definitely a multi-user system, so it is necessary to
+    provide a permission system to control the set of authorized operations
+    on files and directories, which includes all the system resources and
+    devices (on a Unix system, any device is represented by a file or
+    directory). This principle is common to all Unix systems, but a
+    reminder is always useful, especially as there are some interesting and
+    relatively unknown advanced uses.</para>
+    <indexterm><primary>rights</primary></indexterm>
+    <indexterm><primary>permissions</primary></indexterm>
+    <indexterm><primary>user</primary><secondary>owner</secondary></indexterm>
+    <indexterm><primary>group</primary><secondary>owner</secondary></indexterm>
+    <indexterm><primary>owner</primary><secondary>user</secondary></indexterm>
+    <indexterm><primary>owner</primary><secondary>group</secondary></indexterm>
+
+    <para>Each file or directory has specific permissions for three categories
+    of users:</para>
+    <itemizedlist>
+      <listitem>
+	<para>its owner (symbolized by <literal>u</literal> as in
+	“user”);</para>
+      </listitem>
+      <listitem>
+	<para>its owner group (symbolized by <literal>g</literal> as in
+	“group”), representing all the members of the group;</para>
+      </listitem>
+      <listitem>
+	<para>the others (symbolized by <literal>o</literal> as in
+	“other”).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Three types of rights can be combined:</para>
+    <itemizedlist>
+      <listitem>
+	<para>reading (symbolized by <literal>r</literal> as in
+	“read”);</para>
+      </listitem>
+      <listitem>
+	<para>writing (or modifying, symbolized by <literal>w</literal> as
+	in “write”);</para>
+      </listitem>
+      <listitem>
+	<para>executing (symbolized by <literal>x</literal> as in
+	“eXecute”).</para>
+      </listitem>
+    </itemizedlist>
+    <indexterm><primary>read, right</primary></indexterm>
+    <indexterm><primary>write, right</primary></indexterm>
+    <indexterm><primary>modification, right</primary></indexterm>
+    <indexterm><primary>execution, right</primary></indexterm>
+
+    <para>In the case of a file, these rights are easily understood: read
+    access allows reading the content (including copying), write access
+    allows changing it, and execute access allows you to run it (which will
+    only work if it is a program).</para>
+
+    <sidebar>
+      <title><emphasis>SECURITY</emphasis> <literal>setuid</literal> and <literal>setgid</literal> executables</title>
+
+      <para>Two particular rights are relevant to executable files:
+      <literal>setuid</literal> and <literal>setgid</literal> (symbolized
+      with the letter “s”). Note that we frequently speak of “bit”,
+      since each of these boolean values can be represented by a 0 or a 1.
+      These two rights allow any user to execute the program with the
+      rights of the owner or the group, respectively. This mechanism grants
+      access to features requiring higher level permissions than those you
+      would usually have.</para>
+      <indexterm><primary><literal>setuid</literal>, right</primary></indexterm>
+      <indexterm><primary><literal>setgid</literal>, right</primary></indexterm>
+
+      <para>Since a <literal>setuid</literal> root program is
+      systematically run under the super-user identity, it is very
+      important to ensure it is secure and reliable. Indeed, a user who
+      would manage to subvert it to call a command of their choice could
+      then impersonate the root user and have all rights on the
+      system.</para>
+    </sidebar>
+
+    <para>A directory is handled differently. Read access gives the right
+    to consult the list of its entries (files and directories), write
+    access allows creating or deleting files, and execute access allows
+    crossing through it (especially to go there with the
+    <command>cd</command> command). Being able to cross through a directory
+    without being able to read it gives permission to access the entries
+    therein that are known by name, but not to find them if you do not know
+    their existence or their exact name.</para>
+
+    <sidebar id="sidebar.setgid-dir">
+      <title><emphasis>SECURITY</emphasis> <literal>setgid</literal> directory and <emphasis>sticky bit</emphasis></title>
+      <indexterm><primary><literal>setgid</literal> directory</primary></indexterm>
+
+      <para>The <literal>setgid</literal> bit also applies to directories.
+      Any newly-created item in such directories is automatically assigned
+      the owner group of the parent directory, instead of inheriting the
+      creator's main group as usual. This setup avoids the user having to
+      change its main group (with the <command>newgrp</command> command)
+      when working in a file tree shared between several users of the same
+      dedicated group.</para>
+      <indexterm><primary>sticky bit</primary></indexterm>
+
+      <para>The “sticky” bit (symbolized by the letter “t”) is a
+      permission that is only useful in directories. It is especially used
+      for temporary directories where everybody has write access (such as
+      <filename>/tmp/</filename>): it restricts deletion of files so that
+      only their owner (or the owner of the parent directory) can do it.
+      Lacking this, everyone could delete other users' files in
+      <filename>/tmp/</filename>.</para>
+    </sidebar>
+
+    <para>Three commands control the permissions associated with a
+    file:</para>
+    <itemizedlist>
+      <listitem>
+	<para><command>chown <replaceable>user</replaceable>
+	<replaceable>file</replaceable></command> changes the owner of the
+	file;</para>
+      </listitem>
+      <listitem>
+	<para><command>chgrp <replaceable>group</replaceable>
+	<replaceable>file</replaceable></command> alters the owner
+	group;</para>
+      </listitem>
+      <listitem>
+	<para><command>chmod <replaceable>rights</replaceable>
+	<replaceable>file</replaceable></command> changes the permissions
+	for the file.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>There are two ways of presenting rights. Among them, the symbolic
+    representation is probably the easiest to understand and remember. It
+    involves the letter symbols mentioned above. You can define rights for
+    each category of users
+    (<literal>u</literal>/<literal>g</literal>/<literal>o</literal>), by
+    setting them explicitly (with <literal>=</literal>), by adding
+    (<literal>+</literal>), or subtracting (<literal>-</literal>). Thus the
+    <literal>u=rwx,g+rw,o-r</literal> formula gives the owner read, write,
+    and execute rights, adds read and write rights for the owner group, and
+    removes read rights for other users. Rights not altered by the addition
+    or subtraction in such a command remain unmodified. The letter
+    <literal>a</literal>, for “all”, covers all three categories of
+    users, so that <literal>a=rx</literal> grants all three categories the
+    same rights (read and execute, but not write).</para>
+    <indexterm><primary><command>chmod</command></primary></indexterm>
+    <indexterm><primary><command>chown</command></primary></indexterm>
+    <indexterm><primary><command>chgrp</command></primary></indexterm>
+    <indexterm><primary>octal representation of rights</primary></indexterm>
+    <indexterm><primary>rights</primary><secondary>octal representation</secondary></indexterm>
+
+    <para>The (octal) numeric representation associates each right with a
+    value: 4 for read, 2 for write, and 1 for execute. We associate each
+    combination of rights with the sum of the figures. Each value is then
+    assigned to different categories of users by putting them end to end in
+    the usual order (owner, group, others).</para>
+
+    <para>For instance, the <command>chmod 754
+    <replaceable>file</replaceable></command> command will set the
+    following rights: read, write and execute for the owner (since 7 = 4 +
+    2 + 1); read and execute for the group (since 5 = 4 + 1); read-only for
+    others. The <literal>0</literal> means no rights; thus <command>chmod
+    600 <replaceable>file</replaceable></command> allows for read/write
+    rights for the owner, and no rights for anyone else. The most frequent
+    right combinations are <literal>755</literal> for executable files and
+    directories, and <literal>644</literal> for data files.</para>
+
+    <para>To represent special rights, you can prefix a fourth digit to
+    this number according to the same principle, where the
+    <literal>setuid</literal>, <literal>setgid</literal> and
+    <literal>sticky</literal> bits are 4, 2 and 1, respectively.
+    <command>chmod 4754</command> will associate the
+    <literal>setuid</literal> bit with the previously described
+    rights.</para>
+
+    <para>Note that the use of octal notation only allows to set all the
+    rights at once on a file; you cannot use it to simply add a new right,
+    such as read access for the group owner, since you must take into
+    account the existing rights and compute the new corresponding numerical
+    value.</para>
+
+    <sidebar>
+      <title><emphasis>TIP</emphasis> Recursive operation</title>
+
+      <para>Sometimes we have to change rights for an entire file tree. All
+      the commands above have a <literal>-R</literal> option to operate
+      recursively in sub-directories.</para>
+
+      <para>The distinction between directories and files sometimes causes
+      problems with recursive operations. That is why the “X” letter has
+      been introduced in the symbolic representation of rights. It
+      represents a right to execute which applies only to directories (and
+      not to files lacking this right). Thus, <command>chmod -R a+X
+      <replaceable>directory</replaceable></command> will only add execute
+      rights for all categories of users (<literal>a</literal>) for all of
+      the sub-directories and files for which at least one category of user
+      (even if their sole owner) already has execute rights.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>TIP</emphasis> Changing the user and group</title>
+
+      <para>Frequently you want to change the group of a file at the
+      same time that you change the owner. The
+      <command>chown</command> command has a special syntax for that:
+      <command>chown
+      <replaceable>user</replaceable>:<replaceable>group</replaceable>
+      <replaceable>file</replaceable></command></para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>GOING FURTHER</emphasis> <command>umask</command></title>
+
+      <para>When an application creates a file, it assigns indicative
+      permissions, knowing that the system automatically removes certain
+      rights, given by the command <command>umask</command>. Enter
+      <command>umask</command> in a shell; you will see a mask such as
+      <computeroutput>0022</computeroutput>. This is simply an octal
+      representation of the rights to be systematically removed (in this
+      case, the write right for the group and other users).</para>
+      <indexterm><primary>umask</primary></indexterm>
+      <indexterm><primary>rights</primary><secondary>mask</secondary></indexterm>
+      <indexterm><primary>mask</primary><secondary>rights mask</secondary></indexterm>
+
+      <para>If you give it a new octal value, the <command>umask</command>
+      command modifies the mask. Used in a shell initialization file (for
+      example, <filename>~/.bash_profile</filename>), it will effectively
+      change the default mask for your work sessions.</para>
+    </sidebar>
+  </section>
+  <section id="sect.administration-interfaces">
+    <title>Administration Interfaces</title>
+    <indexterm><primary>interface</primary><secondary>administration interface</secondary></indexterm>
+    <indexterm><primary>administration, interfaces</primary></indexterm>
+
+    <para>Using a graphical interface for administration is interesting in
+    various circumstances. An administrator does not necessarily know all
+    the configuration details for all their services, and doesn't always
+    have the time to go seeking out the documentation on the matter. A
+    graphical interface for administration can thus accelerate the
+    deployment of a new service. It can also simplify the setup of services
+    which are hard to configure.</para>
+
+    <para>Such an interface is only an aid, and not an end in itself. In
+    all cases, the administrator must master its behavior in order to
+    understand and work around any potential problem.</para>
+
+    <para>Since no interface is perfect, you may be tempted to try several
+    solutions. This is to be avoided as much as possible, since different
+    tools are sometimes incompatible in their work methods. Even if they
+    all aim to be very flexible and try to adopt the configuration file
+    as a single reference, they are not always able to integrate external
+    changes.</para>
+    <section id="sect.webmin">
+      <title>Administrating on a Web Interface: <command>webmin</command></title>
+      <indexterm><primary><emphasis>webmin</emphasis></primary></indexterm>
+
+      <para>This is, without a doubt, one of the most successful
+      administration interfaces. It is a modular system managed through a
+      web browser, covering a wide array of areas and tools. Furthermore,
+      it is internationalized and available in many languages.</para>
+
+      <para>Sadly, <command>webmin</command> is no longer part of Debian.
+      Its Debian maintainer — Jaldhar H. Vyas — removed the packages he created
+      because he no longer had the time required to maintain them at an
+      acceptable quality level. Nobody has officially taken over, so
+      <emphasis role="distribution">Jessie</emphasis> does not have the
+      <command>webmin</command> package.</para>
+
+      <para>There is, however, an unofficial package distributed on the
+      <literal>webmin.com</literal> website. Contrary to the original
+      Debian packages, this package is monolithic; all of its configuration
+      modules are installed and activated by default, even if the
+      corresponding service is not installed on the machine.</para>
+
+      <sidebar>
+        <title><emphasis>SECURITY</emphasis> Changing the root password</title>
+
+	<para>On the first login, identification is conducted with the root
+	username and its usual password. It is recommended to change the
+	password used for <command>webmin</command> as soon as possible, so
+	that if it is compromised, the root password for the server will
+	not be involved, even if this confers important administrative
+	rights to the machine.</para>
+
+	<para>Beware! Since <command>webmin</command> has so many features,
+	a malicious user accessing it could compromise the security of the
+	entire system. In general, interfaces of this kind are not
+	recommended for important systems with strong security constraints
+	(firewall, sensitive servers, etc.).</para>
+      </sidebar>
+
+      <para>Webmin is used through a web interface, but it does not require
+      Apache to be installed. Essentially, this software has its own
+      integrated mini web server. This server listens by default on port
+      10000 and accepts secure HTTP connections.</para>
+
+      <para>Included modules cover a wide variety of services, among
+      which:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>all base services: creation of users and groups, management
+	  of <filename>crontab</filename> files, init scripts, viewing of
+	  logs, etc.</para>
+        </listitem>
+        <listitem>
+	  <para>bind: DNS server configuration (name service);</para>
+        </listitem>
+        <listitem>
+	  <para>postfix: SMTP server configuration (e-mail);</para>
+        </listitem>
+        <listitem>
+	  <para>inetd: configuration of the <command>inetd</command>
+	  super-server;</para>
+        </listitem>
+        <listitem>
+	  <para>quota: user quota management;</para>
+        </listitem>
+        <listitem>
+	  <para>dhcpd: DHCP server configuration;</para>
+        </listitem>
+        <listitem>
+	  <para>proftpd: FTP server configuration;</para>
+        </listitem>
+        <listitem>
+	  <para>samba: Samba file server configuration;</para>
+        </listitem>
+        <listitem>
+	  <para>software: installation or removal of software from Debian
+	  packages and system updates.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>The administration interface is available in a web browser at
+      <literal>https://localhost:10000</literal>. Beware! Not all the
+      modules are directly usable. Sometimes they must be configured by
+      specifying the locations of the corresponding configuration files and
+      some executable files (program). Frequently the system will politely
+      prompt you when it fails to activate a requested module.</para>
+
+      <sidebar>
+        <title><emphasis>ALTERNATIVE</emphasis> GNOME control center</title>
+        <indexterm><primary><emphasis role="pkg">gnome-control-center</emphasis></primary></indexterm>
+
+	<para>The GNOME project also provides multiple administration
+	interfaces that are usually accessible via the “Settings”
+	entry in the user menu on the top right.
+	<command>gnome-control-center</command> is the main program
+	that brings them all together but many of the system wide
+	configuration tools are effectively provided by other packages
+	(<emphasis role="pkg">accountsservice</emphasis>, <emphasis role="pkg">system-config-printer</emphasis>, etc.).  Although
+	they are easy to use, these applications cover only a limited
+	number of base services: user management, time configuration,
+	network configuration, printer configuration, and so
+	on.</para>
+      </sidebar>
+    </section>
+    <section id="sect.debconf">
+      <title>Configuring Packages: <command>debconf</command></title>
+      <indexterm><primary><command>debconf</command></primary></indexterm>
+      <indexterm><primary><command>dpkg-reconfigure</command></primary></indexterm>
+
+      <para>Many packages are automatically configured after asking a few
+      questions during installation through the Debconf tool. These
+      packages can be reconfigured by running <command>dpkg-reconfigure
+      <replaceable>package</replaceable></command>.</para>
+
+      <para>For most cases, these settings are very simple; only a few
+      important variables in the configuration file are changed. These
+      variables are often grouped between two “demarcation” lines so
+      that reconfiguration of the package only impacts the enclosed area.
+      In other cases, reconfiguration will not change anything if the
+      script detects a manual modification of the configuration file, in
+      order to preserve these human interventions (because the script can't
+      ensure that its own modifications will not disrupt the existing
+      settings).</para>
+
+      <sidebar>
+        <title><emphasis>DEBIAN POLICY</emphasis> Preserving changes</title>
+
+	<para>The Debian Policy expressly stipulates that everything should
+	be done to preserve manual changes made to a configuration file, so
+	more and more scripts take precautions when editing configuration
+	files. The general principle is simple: the script will only make
+	changes if it knows the status of the configuration file, which is
+	verified by comparing the checksum of the file against that of the
+	last automatically generated file. If they are the same, the script
+	is authorized to change the configuration file. Otherwise, it
+	determines that the file has been changed and asks what action it
+	should take (install the new file, save the old file, or try to
+	integrate the new changes with the existing file). This
+	precautionary principle has long been unique to Debian, but other
+	distributions have gradually begun to embrace it.</para>
+
+	<para>The <command>ucf</command> program (from the Debian package
+	of the same name) can be used to implement such a behavior.</para>
+        <indexterm><primary><command>ucf</command></primary></indexterm>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.syslog">
+    <title><command>syslog</command> System Events</title>
+    <indexterm><primary><command>rsyslogd</command></primary></indexterm>
+    <indexterm><primary>files</primary><secondary>log files</secondary></indexterm>
+    <indexterm><primary>logs</primary><secondary>dispatching</secondary></indexterm>
+    <section id="sect.syslog-principe">
+      <title>Principle and Mechanism</title>
+
+      <para>The <command>rsyslogd</command> daemon is responsible for
+      collecting service messages coming from applications and the kernel,
+      then dispatching them into log files (usually stored in the
+      <filename>/var/log/</filename> directory). It obeys the
+      <filename>/etc/rsyslog.conf</filename> configuration file.</para>
+
+      <para>Each log message is associated with an application subsystem
+      (called “facility” in the documentation):</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>auth</literal> and <literal>authpriv</literal>:
+	  for authentication;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>cron</literal>: comes from task scheduling
+	  services, <command>cron</command> and
+	  <command>atd</command>;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>daemon</literal>: affects a daemon without any
+	  special classification (DNS, NTP, etc.);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ftp</literal>: concerns the FTP server;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>kern</literal>: message coming from the
+	  kernel;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>lpr</literal>: comes from the printing
+	  subsystem;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>mail</literal>: comes from the e-mail
+	  subsystem;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>news</literal>: Usenet subsystem message
+	  (especially from an NNTP — Network News Transfer Protocol —
+	  server that manages newsgroups);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>syslog</literal>: messages from the
+	  <command>syslogd</command> server, itself;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>user</literal>: user messages (generic);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>uucp</literal>: messages from the UUCP server
+	  (Unix to Unix Copy Program, an old protocol notably used to
+	  distribute e-mail messages);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>local0</literal> to <literal>local7</literal>:
+	  reserved for local use.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Each message is also associated with a priority level. Here is
+      the list in decreasing order:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>emerg</literal>: “Help!” There is an emergency,
+	  the system is probably unusable.</para>
+        </listitem>
+        <listitem>
+	  <para><literal>alert</literal>: hurry up, any delay can be
+	  dangerous, action must be taken immediately;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>crit</literal>: conditions are critical;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>err</literal>: error;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>warn</literal>: warning (potential error);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>notice</literal>: conditions are normal, but the
+	  message is important;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>info</literal>: informative message;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>debug</literal>: debugging message.</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+    <section id="sect.syslog-config">
+      <title>The Configuration File</title>
+
+      <para>The syntax of the <filename>/etc/rsyslog.conf</filename> file
+      is detailed in the
+      <citerefentry><refentrytitle>rsyslog.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+      manual page, but there is also HTML documentation available in the
+      <emphasis role="pkg">rsyslog-doc</emphasis> package
+      (<filename>/usr/share/doc/rsyslog-doc/html/index.html</filename>).
+      The overall principle is to write “selector” and “action”
+      pairs. The selector defines all relevant messages, and the actions
+      describes how to deal with them.</para>
+      <section id="sect.syslog-selector-syntax">
+        <title>Syntax of the Selector</title>
+
+	<para>The selector is a semicolon-separated list of
+	<literal><replaceable>subsystem</replaceable>.<replaceable>priority</replaceable></literal>
+	pairs (example: <literal>auth.notice;mail.info</literal>). An
+	asterisk may represent all subsystems or all priorities (examples:
+	<literal>*.alert</literal> or <literal>mail.*</literal>). Several
+	subsystems can be grouped, by separating them with a comma
+	(example: <literal>auth,mail.info</literal>). The priority
+	indicated also covers messages of equal or higher priority; thus
+	<literal>auth.alert</literal> indicates the <literal>auth</literal>
+	subsystem messages of <literal>alert</literal> or
+	<literal>emerg</literal> priority. Prefixed with an exclamation
+	point (!), it indicates the opposite, in other words the strictly
+	lower priorities; <literal>auth.!notice</literal>, thus, indicates
+	messages issued from <literal>auth</literal>, with
+	<literal>info</literal> or <literal>debug</literal> priority.
+	Prefixed with an equal sign (=), it corresponds to precisely and
+	only the priority indicated (<literal>auth.=notice</literal> only
+	concerns messages from <literal>auth</literal> with
+	<literal>notice</literal> priority).</para>
+
+	<para>Each element in the list on the selector overrides previous
+	elements. It is thus possible to restrict a set or to exclude
+	certain elements from it. For example,
+	<literal>kern.info;kern.!err</literal> means messages from the
+	kernel with priority between <literal>info</literal> and
+	<literal>warn</literal>. The <literal>none</literal> priority
+	indicates the empty set (no priorities), and may serve to exclude a
+	subsystem from a set of messages. Thus,
+	<literal>*.crit;kern.none</literal> indicates all the messages of
+	priority equal to or higher than <literal>crit</literal> not coming
+	from the kernel.</para>
+      </section>
+      <section id="sect.syslog-action-syntax">
+        <title>Syntax of Actions</title>
+
+        <sidebar>
+          <title><emphasis>BACK TO BASICS</emphasis> The named pipe, a persistent pipe</title>
+          <indexterm><primary>named pipe</primary></indexterm>
+          <indexterm><primary>pipe, named pipe</primary></indexterm>
+
+	  <para>A named pipe is a particular type of file that operates
+	  like a traditional pipe (the pipe that you make with the “|”
+	  symbol on the command line), but via a file. This mechanism has
+	  the advantage of being able to relate two unrelated processes.
+	  Anything written to a named pipe blocks the process that writes
+	  until another process attempts to read the data written. This
+	  second process reads the data written by the first, which can
+	  then resume execution.</para>
+
+	  <para>Such a file is created with the <command>mkfifo</command>
+	  command.</para>
+        </sidebar>
+
+	<para>The various possible actions are:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>add the message to a file (example:
+	    <filename>/var/log/messages</filename>);</para>
+          </listitem>
+          <listitem>
+	    <para>send the message to a remote <command>syslog</command>
+	    server (example: <literal>@log.falcot.com</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>send the message to an existing named pipe (example:
+	    <literal>|/dev/xconsole</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>send the message to one or more users, if they are logged
+	    in (example: <literal>root,rhertzog</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>send the message to all logged in users (example:
+	    <literal>*</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>write the message in a text console (example:
+	    <literal>/dev/tty8</literal>).</para>
+          </listitem>
+        </itemizedlist>
+
+        <sidebar>
+          <title><emphasis>SECURITY</emphasis> Forwarding logs</title>
+          <indexterm><primary>log</primary><secondary>forwarding</secondary></indexterm>
+
+	  <para>It is a good idea to record the most important logs on a
+	  separate machine (perhaps dedicated for this purpose), since this
+	  will prevent any possible intruder from removing traces of their
+	  intrusion (unless, of course, they also compromise this other
+	  server). Furthermore, in the event of a major problem (such as a
+	  kernel crash), you have the logs available on another machine,
+	  which increases your chances of determining the sequence of
+	  events that caused the crash.</para>
+
+	  <para>To accept log messages sent by other machines, you must
+	  reconfigure <emphasis>rsyslog</emphasis>: in practice, it is
+	  sufficient to activate the ready-for-use entries in
+	  <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad
+	  imudp</literal> and <literal>$UDPServerRun 514</literal>).</para>
+        </sidebar>
+      </section>
+    </section>
+  </section>
+  <section id="sect.inetd">
+    <title>The <command>inetd</command> Super-Server</title>
+
+    <para>Inetd (often called “Internet super-server”) is a server of
+    servers. It executes rarely used servers on demand, so that they do not
+    have to run continuously.</para>
+    <indexterm><primary><command>inetd</command></primary></indexterm>
+    <indexterm><primary>super-server</primary></indexterm>
+
+    <para>The <filename>/etc/inetd.conf</filename> file lists these servers
+    and their usual ports. The <command>inetd</command> command listens to
+    all of them; when it detects a connection to any such port, it executes
+    the corresponding server program.</para>
+
+    <sidebar>
+      <title><emphasis>DEBIAN POLICY</emphasis> Register a server in <filename>inetd.conf</filename></title>
+
+      <para>Packages frequently want to register a new server in the
+      <filename>/etc/inetd.conf</filename> file, but Debian Policy
+      prohibits any package from modifying a configuration file that it
+      doesn't own. This is why the <command>update-inetd</command> script
+      (in the package with the same name) was created: It manages the
+      configuration file, and other packages can thus use it to register a
+      new server to the super-server's configuration.</para>
+    </sidebar>
+
+    <para>Each significant line of the <filename>/etc/inetd.conf</filename>
+    file describes a server through seven fields (separated by
+    spaces):</para>
+    <itemizedlist>
+      <listitem>
+	<para>The TCP or UDP port number, or the service name (which is
+	mapped to a standard port number with the information contained in
+	the <filename>/etc/services</filename> file).</para>
+      </listitem>
+      <listitem>
+	<para>The socket type: <literal>stream</literal> for a TCP
+	connection, <literal>dgram</literal> for UDP datagrams.</para>
+      </listitem>
+      <listitem>
+	<para>The protocol: <literal>tcp</literal> or
+	<literal>udp</literal>.</para>
+      </listitem>
+      <listitem>
+	<para>The options: two possible values: <literal>wait</literal> or
+	<literal>nowait</literal>, to tell <command>inetd</command> whether
+	it should wait or not for the end of the launched process before
+	accepting another connection. For TCP connections, easily
+	multiplexable, you can usually use <literal>nowait</literal>. For
+	programs responding over UDP, you should use
+	<literal>nowait</literal> only if the server is capable of managing
+	several connections in parallel. You can suffix this field with a
+	period, followed by the maximum number of connections authorized
+	per minute (the default limit is 256).</para>
+      </listitem>
+      <listitem>
+	<para>The user name of the user under whose identity the server
+	will run.</para>
+      </listitem>
+      <listitem>
+	<para>The full path to the server program to execute.</para>
+      </listitem>
+      <listitem>
+	<para>The arguments: this is a complete list of the program's
+	arguments, including its own name (<literal>argv[0]</literal> in
+	C).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>The following example illustrates the most common cases:</para>
+
+    <example id="example.inetd-conf">
+      <title>Excerpt from <filename>/etc/inetd.conf</filename></title>
+
+      <programlisting>talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
+finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i
+</programlisting>
+    </example>
+    <indexterm><primary><command>tcpd</command></primary></indexterm>
+
+    <para>The <command>tcpd</command> program is frequently used in the
+    <filename>/etc/inetd.conf</filename> file. It allows limiting incoming
+    connections by applying access control rules, documented in the
+    <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+    manual page, and which are configured in the
+    <filename>/etc/hosts.allow</filename> and
+    <filename>/etc/hosts.deny</filename> files. Once it has been determined
+    that the connection is authorized, <command>tcpd</command> executes the
+    real server (like <command>in.fingerd</command> in our
+    example). It is worth noting that <command>tcpd</command> relies on the
+    name under which it was invoked (that is the first argument,
+    <literal>argv[0]</literal>) to identify the real program
+    to run. So you should not start the arguments list with <literal>tcpd</literal>
+    but with the program that must be wrapped.</para>
+
+    <sidebar>
+      <title><emphasis>COMMUNITY</emphasis> Wietse Venema</title>
+      <indexterm><primary>Wietse Venema</primary></indexterm>
+      <indexterm><primary>Venema, Wietse</primary></indexterm>
+
+      <para>Wietse Venema, whose expertise in security has made him a
+      renowned programmer, is the author of the <command>tcpd</command>
+      program. He is also the main creator of Postfix, the modular e-mail
+      server (SMTP, Simple Mail Transfer Protocol), designed to be safer
+      and more reliable than <command>sendmail</command>, which features a
+      long history of security vulnerabilities.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIVE</emphasis> Other <command>inetd</command> commands</title>
+
+      <para>While Debian installs <emphasis role="pkg">openbsd-inetd</emphasis> by default, there is no lack of
+      alternatives: we can mention <emphasis role="pkg">inetutils-inetd</emphasis>,
+      <emphasis role="pkg">micro-inetd</emphasis>,
+      <emphasis role="pkg">rlinetd</emphasis> and
+      <emphasis role="pkg">xinetd</emphasis>.</para>
+
+      <para>This last incarnation of a super-server offers very interesting
+      possibilities. Most notably, its configuration can be split into
+      several files (stored, of course, in the
+      <filename>/etc/xinetd.d/</filename> directory), which can make an
+      administrator's life easier.</para>
+
+      <para>Last but not least, it is even possible to emulate <command>inetd</command>'s
+      behaviour with <command>systemd</command>'s socket-activation
+      mechanism (see <xref linkend="sect.systemd" />).</para>
+    </sidebar>
+  </section>
+  <section id="sect.task-scheduling-cron-atd">
+    <title>Scheduling Tasks with <command>cron</command> and <command>atd</command></title>
+    <indexterm><primary><command>cron</command></primary></indexterm>
+    <indexterm><primary><command>atd</command></primary></indexterm>
+    <indexterm><primary>scheduled commands</primary></indexterm>
+    <indexterm><primary>command scheduling</primary></indexterm>
+
+    <para><command>cron</command> is the daemon responsible for executing
+    scheduled and recurring commands (every day, every week, etc.);
+    <command>atd</command> is that which deals with commands to be executed
+    a single time, but at a specific moment in the future.</para>
+
+    <para>In a Unix system, many tasks are scheduled for regular
+    execution:</para>
+    <itemizedlist>
+      <listitem>
+	<para>rotating the logs;</para>
+      </listitem>
+      <listitem>
+	<para>updating the database for the <command>locate</command>
+	program;</para>
+      </listitem>
+      <listitem>
+	<para>back-ups;</para>
+      </listitem>
+      <listitem>
+	<para>maintenance scripts (such as cleaning out temporary
+	files).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>By default, all users can schedule the execution of tasks. Each
+    user has thus their own <emphasis>crontab</emphasis> in which they can
+    record scheduled commands. It can be edited by running <command>crontab
+    -e</command> (its content is stored in the
+    <filename>/var/spool/cron/crontabs/<replaceable>user</replaceable></filename>
+    file).</para>
+
+    <sidebar>
+      <title><emphasis>SECURITY</emphasis> Restricting <command>cron</command> or <command>atd</command></title>
+
+      <para>You can restrict access to <command>cron</command> by creating
+      an explicit authorization file (whitelist) in
+      <filename>/etc/cron.allow</filename>, in which you indicate the only
+      users authorized to schedule commands. All others will automatically
+      be deprived of this feature. Conversely, to only block one or two
+      troublemakers, you could write their username in the explicit
+      prohibition file (blacklist), <filename>/etc/cron.deny</filename>.
+      This same feature is available for <command>atd</command>, with the
+      <filename>/etc/at.allow</filename> and
+      <filename>/etc/at.deny</filename> files.</para>
+    </sidebar>
+
+    <para>The root user has their own <emphasis>crontab</emphasis>, but can
+    also use the <filename>/etc/crontab</filename> file, or write
+    additional <emphasis>crontab</emphasis> files in the
+    <filename>/etc/cron.d</filename> directory. These last two solutions
+    have the advantage of being able to specify the user identity to use
+    when executing the command.</para>
+
+    <para>The <emphasis>cron</emphasis> package includes by default some
+    scheduled commands that execute:</para>
+    <itemizedlist>
+      <listitem>
+	<para>programs in the <filename>/etc/cron.hourly/</filename>
+	directory once per hour;</para>
+      </listitem>
+      <listitem>
+	<para>programs in <filename>/etc/cron.daily/</filename> once per
+	day;</para>
+      </listitem>
+      <listitem>
+	<para>programs in <filename>/etc/cron.weekly/</filename> once per
+	week;</para>
+      </listitem>
+      <listitem>
+	<para>programs in <filename>/etc/cron.monthly/</filename> once per
+	month.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Many Debian packages rely on this service: by putting maintenance
+    scripts in these directories, they ensure optimal operation of their
+    services.</para>
+    <section id="sect.format-crontab">
+      <title>Format of a <filename>crontab</filename> File</title>
+      <indexterm><primary><filename>crontab</filename></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>TIP</emphasis> Text shortcuts for <command>cron</command></title>
+
+	<para><command>cron</command> recognizes some abbreviations which
+	replace the first five fields in a <filename>crontab</filename>
+	entry. They correspond to the most classic scheduling
+	options:</para>
+        <itemizedlist>
+          <listitem>
+	    <para><literal>@yearly</literal>: once per year (January 1, at
+	    00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@monthly</literal>: once per month (the 1st of
+	    the month, at 00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@weekly</literal>: once per week (Sunday at
+	    00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@daily</literal>: once per day (at
+	    00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@hourly</literal>: once per hour (at the
+	    beginning of each hour).</para>
+          </listitem>
+        </itemizedlist>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>SPECIAL CASE</emphasis> <command>cron</command> and daylight savings time</title>
+
+	<para>In Debian, <command>cron</command> takes the time change (for
+	Daylight Savings Time, or in fact for any significant change in the
+	local time) into account as best as it can. Thus, the commands that
+	should have been executed during an hour that never existed (for
+	example, tasks scheduled at 2:30 am during the Spring time change
+	in France, since at 2:00 am the clock jumps directly to 3:00 am)
+	are executed shortly after the time change (thus around 3:00 am
+	DST). On the other hand, in autumn, when commands would be executed
+	several times (2:30 am DST, then an hour later at 2:30 am standard
+	time, since at 3:00 am DST the clock turns back to 2:00 am) are
+	only executed once.</para>
+
+	<para>Be careful, however, if the order in which the different
+	scheduled tasks and the delay between their respective executions
+	matters, you should check the compatibility of these constraints
+	with <command>cron</command>'s behavior; if necessary, you can
+	prepare a special schedule for the two problematic nights per
+	year.</para>
+      </sidebar>
+
+      <para>Each significant line of a <emphasis>crontab</emphasis>
+      describes a scheduled command with the six (or seven) following
+      fields:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>the value for the minute (number from 0 to 59);</para>
+        </listitem>
+        <listitem>
+	  <para>the value for the hour (from 0 to 23);</para>
+        </listitem>
+        <listitem>
+	  <para>the value for the day of the month (from 1 to 31);</para>
+        </listitem>
+        <listitem>
+	  <para>the value for the month (from 1 to 12);</para>
+        </listitem>
+        <listitem>
+	  <para>the value for the day of the week (from 0 to 7, 1
+	  corresponding to Monday, Sunday being represented by both 0 and
+	  7; it is also possible to use the first three letters of the name
+	  of the day of the week in English, such as
+	  <literal>Sun</literal>, <literal>Mon</literal>, etc.);</para>
+        </listitem>
+        <listitem>
+	  <para>the user name under whose identity the command must be
+	  executed (in the <filename>/etc/crontab</filename> file and in
+	  the fragments located in <filename>/etc/cron.d/</filename>, but
+	  not in the users' own crontab files);</para>
+        </listitem>
+        <listitem>
+	  <para>the command to execute (when the conditions defined by the
+	  first five columns are met).</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>All these details are documented in the
+      <citerefentry><refentrytitle>crontab</refentrytitle>
+      <manvolnum>5</manvolnum></citerefentry> man page.</para>
+
+      <para>Each value can be expressed in the form of a list of possible
+      values (separated by commas). The syntax <literal>a-b</literal>
+      describes the interval of all the values between <literal>a</literal>
+      and <literal>b</literal>. The syntax <literal>a-b/c</literal>
+      describes the interval with an increment of <literal>c</literal>
+      (example: <literal>0-10/2</literal> means
+      <literal>0,2,4,6,8,10</literal>). An asterisk <literal>*</literal> is
+      a wildcard, representing all possible values.</para>
+
+      <example id="example.crontab">
+        <title>Sample <filename>crontab</filename> file</title>
+
+        <programlisting>#Format
+#min hour day mon dow  command
+
+# Download data every night at 7:25 pm
+ 25  19   *   *   *    $HOME/bin/get.pl
+
+# 8:00 am, on weekdays (Monday through Friday)
+ 00  08   *   *   1-5  $HOME/bin/dosomething
+
+# Restart the IRC proxy after each reboot
+@reboot /usr/bin/dircproxy
+</programlisting>
+      </example>
+
+      <sidebar>
+        <title><emphasis>TIP</emphasis> Executing a command on boot</title>
+
+	<para>To execute a command a single time, just after booting the
+	computer, you can use the <literal>@reboot</literal> macro (a
+	simple restart of <command>cron</command> does not trigger a
+	command scheduled with <literal>@reboot</literal>). This macro
+	replaces the first five fields of an entry in the
+	<emphasis>crontab</emphasis>.</para>
+      </sidebar>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIVE</emphasis> Emulating <command>cron</command> with <command>systemd</command></title>
+
+      <para>It is possible to emulate part of
+      <command>cron</command>'s behaviour with
+      <command>systemd</command>'s timer mechanism (see <xref linkend="sect.systemd" />).</para>
+    </sidebar>
+
+    </section>
+    <section id="sect.at-command">
+      <title>Using the <command>at</command> Command</title>
+      <indexterm><primary><command>at</command></primary></indexterm>
+
+      <para>The <command>at</command> executes a command at a specified
+      moment in the future. It takes the desired time and date as
+      command-line parameters, and the command to be executed in its
+      standard input. The command will be executed as if it had been
+      entered in the current shell. <command>at</command> even takes care
+      to retain the current environment, in order to reproduce the same
+      conditions when it executes the command. The time is indicated by
+      following the usual conventions: <literal>16:12</literal> or
+      <literal>4:12pm</literal> represents 4:12 pm. The date can be
+      specified in several European and Western formats, including
+      <literal>DD.MM.YY</literal> (<literal>27.07.15</literal> thus
+      representing 27 July 2015), <literal>YYYY-MM-DD</literal> (this same
+      date being expressed as <literal>2015-07-27</literal>),
+      <literal>MM/DD/[CC]YY</literal> (ie., <literal>12/25/15</literal> or
+      <literal>12/25/2015</literal> will be December 25, 2015), or simple
+      <literal>MMDD[CC]YY</literal> (so that <literal>122515</literal> or
+      <literal>12252015</literal> will, likewise, represent December 25,
+      2015). Without it, the command will be executed as soon as the clock
+      reaches the time indicated (the same day, or tomorrow if that time
+      has already passed on the same day). You can also simply write
+      “today” or “tomorrow”, which is self-explanatory.</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>at 09:00 27.07.15 &lt;&lt;END</userinput>
+<computeroutput>&gt; </computeroutput><userinput>echo "Don't forget to wish a Happy Birthday to Raphaël!" \</userinput>
+<computeroutput>&gt; </computeroutput><userinput>  | mail lolando@debian.org</userinput>
+<computeroutput>&gt; </computeroutput><userinput>END</userinput>
+<computeroutput>warning: commands will be executed using /bin/sh
+job 31 at Mon Jul 27 09:00:00 2015</computeroutput>
+</screen>
+
+      <para>An alternative syntax postpones the execution for a given
+      duration: <command>at now + <replaceable>number</replaceable>
+      <replaceable>period</replaceable></command>. The
+      <replaceable>period</replaceable> can be <literal>minutes</literal>,
+      <literal>hours</literal>, <literal>days</literal>, or
+      <literal>weeks</literal>. The <replaceable>number</replaceable>
+      simply indicates the number of said units that must elapse before
+      execution of the command.</para>
+
+      <para>To cancel a task scheduled by <command>cron</command>, simply
+      run <command>crontab -e</command> and delete the corresponding line
+      in the <emphasis>crontab</emphasis> file. For <command>at</command>
+      tasks, it is almost as easy: run <command>atrm
+      <replaceable>task-number</replaceable></command>. The task number is
+      indicated by the <command>at</command> command when you scheduled it,
+      but you can find it again with the <command>atq</command> command,
+      which gives the current list of scheduled tasks.</para>
+      <indexterm><primary><command>atrm</command></primary></indexterm>
+      <indexterm><primary><command>atq</command></primary></indexterm>
+    </section>
+  </section>
+  <section id="sect.asynchronous-task-scheduling-anacron">
+    <title>Scheduling Asynchronous Tasks: <command>anacron</command></title>
+
+    <para><command>anacron</command> is the daemon that completes
+    <command>cron</command> for computers that are not on at all times.
+    Since regular tasks are usually scheduled for the middle of the night,
+    they will never be executed if the computer is off at that time. The
+    purpose of <command>anacron</command> is to execute them, taking into
+    account periods in which the computer is not working.</para>
+    <indexterm><primary><command>anacron</command></primary></indexterm>
+
+    <para>Please note that <command>anacron</command> will frequently
+    execute such activity a few minutes after booting the machine, which
+    can render the computer less responsive. This is why the tasks in the
+    <filename>/etc/anacrontab</filename> file are started with the
+    <command>nice</command> command, which reduces their execution priority
+    and thus limits their impact on the rest of the system. Beware, the
+    format of this file is not the same as that of
+    <filename>/etc/crontab</filename>; if you have particular needs for
+    <command>anacron</command>, see the
+    <citerefentry><refentrytitle>anacrontab</refentrytitle>
+    <manvolnum>5</manvolnum></citerefentry> manual page.</para>
+
+    <sidebar>
+      <title><emphasis>BACK TO BASICS</emphasis> Priorities and <command>nice</command></title>
+
+      <para>Unix systems (and thus Linux) are multi-tasking and multi-user
+      systems. Indeed, several processes can run in parallel, and be owned
+      by different users: the kernel mediates access to the resources
+      between the different processes. As a part of this task, it has a
+      concept of priority, which allows it to favor certain processes over
+      others, as needed. When you know that a process can run in low
+      priority, you can indicate so by running it with <command>nice
+      <replaceable>program</replaceable></command>. The program will then
+      have a smaller share of the CPU, and will have a smaller impact on
+      other running processes. Of course, if no other processes needs to
+      run, the program will not be artificially held back.</para>
+
+      <para><command>nice</command> works with levels of “niceness”:
+      the positive levels (from 1 to 19) progressively lower the priority,
+      while the negative levels (from -1 to -20) will increase it — but
+      only root can use these negative levels. Unless otherwise indicated
+      (see the <citerefentry><refentrytitle>nice</refentrytitle>
+      <manvolnum>1</manvolnum></citerefentry> manual page),
+      <command>nice</command> increases the current level by 10.</para>
+
+      <para>If you discover that an already running task should have been
+      started with <command>nice</command> it is not too late to fix it;
+      the <command>renice</command> command changes the priority of an
+      already running process, in either direction (but reducing the
+      “niceness” of a process is reserved for the root user).</para>
+    </sidebar>
+
+    <para>Installation of the <emphasis role="pkg">anacron</emphasis>
+    package deactivates execution by <command>cron</command> of the scripts
+    in the <filename>/etc/cron.hourly/</filename>,
+    <filename>/etc/cron.daily/</filename>,
+    <filename>/etc/cron.weekly/</filename>, and
+    <filename>/etc/cron.monthly/</filename> directories. This avoids their
+    double execution by <command>anacron</command> and
+    <command>cron</command>. The <command>cron</command> command remains
+    active and will continue to handle the other scheduled tasks
+    (especially those scheduled by users).</para>
+  </section>
+  <section id="sect.quotas">
+    <title>Quotas</title>
+    <indexterm><primary>額度</primary></indexterm>
+
+    <para>The quota system allows limiting disk space allocated to a user
+    or group of users. To set it up, you must have a kernel that supports
+    it (compiled with the <varname>CONFIG_QUOTA</varname> option) — as is
+    the case with Debian kernels. The quota management software is found in
+    the <emphasis role="pkg">quota</emphasis> Debian package.</para>
+
+    <para>To activate quota in a filesystem, you have to indicate the
+    <literal>usrquota</literal> and <literal>grpquota</literal> options in
+    <filename>/etc/fstab</filename> for the user and group quotas,
+    respectively. Rebooting the computer will then update the quotas in the
+    absence of disk activity (a necessary condition for proper accounting
+    of already used disk space).</para>
+
+    <para>The <command>edquota <replaceable>user</replaceable></command>
+    (or <command>edquota -g <replaceable>group</replaceable></command>)
+    command allows you to change the limits while examining current disk
+    space usage.</para>
+    <indexterm><primary><command>edquota</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>GOING FURTHER</emphasis> Defining quotas with a script</title>
+      <indexterm><primary><command>setquota</command></primary></indexterm>
+
+      <para>The <command>setquota</command> program can be used in a script
+      to automatically change many quotas. Its
+      <citerefentry><refentrytitle>setquota</refentrytitle>
+      <manvolnum>8</manvolnum></citerefentry> manual page details the
+      syntax to use.</para>
+    </sidebar>
+
+    <para>The quota system allows you to set four limits:</para>
+    <itemizedlist>
+      <listitem>
+	<para>two limits (called “soft” and “hard”) refer to the
+	number of blocks consumed. If the filesystem was created with a
+	block-size of 1 kibibyte, a block contains 1024 bytes from the
+	same file. Unsaturated blocks thus induce losses of disk space. A
+	quota of 100 blocks, which theoretically allows storage of 102,400
+	bytes, will however be saturated with just 100 files of 500 bytes
+	each, only representing 50,000 bytes in total.</para>
+      </listitem>
+      <listitem>
+	<para>two limits (soft and hard) refer to the number of inodes
+	used. Each file occupies at least one inode to store information
+	about it (permissions, owner, timestamp of last access, etc.). It
+	is thus a limit on the number of user files.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>A “soft” limit can be temporarily exceeded; the user will
+    simply be warned that they are exceeding the quota by the
+    <command>warnquota</command> command, which is usually invoked by
+    <command>cron</command>. A “hard” limit can never be exceeded: the
+    system will refuse any operation that will cause a hard quota to be
+    exceeded.</para>
+
+    <sidebar>
+      <title><emphasis>VOCABULARY</emphasis> Blocks and inodes</title>
+      <indexterm><primary>block (disk)</primary></indexterm>
+      <indexterm><primary>inode</primary></indexterm>
+
+      <para>The filesystem divides the hard drive into blocks — small
+      contiguous areas. The size of these blocks is defined during creation
+      of the filesystem, and generally varies between 1 and 8
+      kibibytes.</para>
+
+      <para>A block can be used either to store the real data of a file, or
+      for meta-data used by the filesystem. Among this meta-data, you will
+      especially find the inodes. An inode uses a block on the hard drive
+      (but this block is not taken into consideration in the block quota,
+      only in the inode quota), and contains both the information on the
+      file to which it corresponds (name, owner, permissions, etc.) and the
+      pointers to the data blocks that are actually used. For very large
+      files that occupy more blocks than it is possible to reference in a
+      single inode, there is an indirect block system; the inode references
+      a list of blocks that do not directly contain data, but another list
+      of blocks.</para>
+    </sidebar>
+    <indexterm><primary><command>warnquota</command></primary></indexterm>
+
+    <para>With the <command>edquota -t</command> command, you can define a
+    maximum authorized “grace period” within which a soft limit may be
+    exceeded. After this period, the soft limit will be treated like a
+    hard limit, and the user will have to reduce their disk space usage to
+    within this limit in order to be able to write anything to the hard
+    drive.</para>
+
+    <sidebar>
+      <title><emphasis>GOING FURTHER</emphasis> Setting up a default quota for new users</title>
+
+      <para>To automatically setup a quota for new users, you have to
+      configure a template user (with <command>edquota</command> or
+      <command>setquota</command>) and indicate their user name in the
+      <varname>QUOTAUSER</varname> variable in the
+      <filename>/etc/adduser.conf</filename> file. This quota configuration
+      will then be automatically applied to each new user created with the
+      <command>adduser</command> command.</para>
+    </sidebar>
+  </section>
+  <section id="sect.backup">
+    <title>備份</title>
+
+    <para>Making backups is one of the main responsibilities of any
+    administrator, but it is a complex subject, involving powerful tools
+    which are often difficult to master.</para>
+    <indexterm><primary>backup</primary></indexterm>
+    <indexterm><primary>restoration</primary></indexterm>
+
+    <para>Many programs exist, such as <command>amanda</command>,
+    <command>bacula</command>, <command>BackupPC</command>. Those
+    are client/server system featuring many options, whose configuration is
+    rather difficult. Some of them provide user-friendly web interfaces
+    to mitigate this. But Debian contains dozens of other
+    backup software covering all possible use cases, as you can easily confirm
+    with <command>apt-cache search backup</command>.</para>
+    <indexterm><primary><command>amanda</command></primary></indexterm>
+    <indexterm><primary><command>bacula</command></primary></indexterm>
+    <indexterm><primary><command>BackupPC</command></primary></indexterm>
+
+    <para>Rather than detailing some of them, this section will present the
+    thoughts of the Falcot Corp administrators when they defined their
+    backup strategy.</para>
+
+    <para>At Falcot Corp, backups have two goals: recovering erroneously
+    deleted files, and quickly restoring any computer (server or desktop)
+    whose hard drive has failed.</para>
+    <section>
+      <title>Backing Up with <command>rsync</command></title>
+
+      <para>Backups on tape having been deemed too slow and costly, data
+      will be backed up on hard drives on a dedicated server, on which the
+      use of software RAID (see <xref linkend="sect.raid-soft" />) will
+      protect the data from hard drive failure. Desktop computers are not
+      backed up individually, but users are advised that their personal
+      account on their department's file server will be backed up. The
+      <command>rsync</command> command (from the package of the same name)
+      is used daily to back up these different servers.</para>
+      <indexterm><primary><command>rsync</command></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>BACK TO BASICS</emphasis> The hard link, a second name for the file</title>
+        <indexterm><primary>link</primary><secondary>hard link</secondary></indexterm>
+        <indexterm><primary>hard link</primary></indexterm>
+
+	<para>A hard link, as opposed to a symbolic link, cannot be
+	differentiated from the linked file. Creating a hard link is
+	essentially the same as giving an existing file a second name. This
+	is why the deletion of a hard link only removes one of the names
+	associated with the file. As long as another name is still assigned
+	to the file, the data therein remain present on the filesystem. It
+	is interesting to note that, unlike a copy, the hard link does not
+	take up additional space on the hard drive.</para>
+
+	<para>A hard link is created with the <command>ln
+	<replaceable>target</replaceable>
+	<replaceable>link</replaceable></command> command. The
+	<replaceable>link</replaceable> file is then a new name for the
+	<replaceable>target</replaceable> file. Hard links can only be
+	created on the same filesystem, while symbolic links are not
+	subject to this limitation.</para>
+      </sidebar>
+
+      <para>The available hard drive space prohibits implementation of a
+      complete daily backup. As such, the <command>rsync</command> command
+      is preceded by a duplication of the content of the previous backup
+      with hard links, which prevents usage of too much hard drive space.
+      The <command>rsync</command> process then only replaces files that
+      have been modified since the last backup. With this mechanism a great
+      number of backups can be kept in a small amount of space. Since all
+      backups are immediately available and accessible (for example, in
+      different directories of a given share on the network), you can
+      quickly make comparisons between two given dates.</para>
+      <indexterm><primary>copy, backup copy</primary></indexterm>
+      <indexterm><primary>backup</primary><secondary>copy</secondary></indexterm>
+      <indexterm><primary><emphasis role="pkg">dirvish</emphasis></primary></indexterm>
+
+      <para>This backup mechanism is easily implemented with the
+      <command>dirvish</command> program. It uses a backup storage space
+      (“bank” in its vocabulary) in which it places timestamped copies
+      of sets of backup files (these sets are called “vaults” in the
+      dirvish documentation).</para>
+
+      <para>The main configuration is in the
+      <filename>/etc/dirvish/master.conf</filename> file. It defines the
+      location of the backup storage space, the list of “vaults” to
+      manage, and default values for expiration of the backups. The rest of
+      the configuration is located in the
+      <filename><replaceable>bank</replaceable>/<replaceable>vault</replaceable>/dirvish/default.conf</filename>
+      files and contains the specific configuration for the corresponding
+      set of files.</para>
+
+      <example id="example.dirvish-master">
+        <title>The <filename>/etc/dirvish/master.conf</filename> file</title>
+
+        <programlisting>bank:
+    /backup
+exclude:
+    lost+found/
+    core
+    *~
+Runall:
+    root    22:00
+expire-default: +15 days
+expire-rule:
+#   MIN HR    DOM MON       DOW  STRFTIME_FMT
+    *   *     *   *         1    +3 months
+    *   *     1-7 *         1    +1 year
+    *   *     1-7 1,4,7,10  1
+</programlisting>
+      </example>
+
+      <para>The <literal>bank</literal> setting indicates the directory in
+      which the backups are stored. The <literal>exclude</literal> setting
+      allows you to indicate files (or file types) to exclude from the
+      backup. The <literal>Runall</literal> is a list of file sets to
+      backup with a time-stamp for each set, which allows you to assign the
+      correct date to the copy, in case the backup is not triggered at
+      precisely the assigned time. You have to indicate a time just before
+      the actual execution time (which is, by default, 10:04 pm in Debian,
+      according to <filename>/etc/cron.d/dirvish</filename>). Finally, the
+      <literal>expire-default</literal> and <literal>expire-rule</literal>
+      settings define the expiration policy for backups. The above example
+      keeps forever backups that are generated on the first Sunday of each
+      quarter, deletes after one year those from the first Sunday of each
+      month, and after 3 months those from other Sundays. Other daily
+      backups are kept for 15 days. The order of the rules does matter,
+      Dirvish uses the last matching rule, or the
+      <literal>expire-default</literal> one if no other
+      <literal>expire-rule</literal> matches.</para>
+
+      <sidebar>
+        <title><emphasis>IN PRACTICE</emphasis> Scheduled expiration</title>
+
+	<para>The expiration rules are not used by
+	<command>dirvish-expire</command> to do its job. In reality, the
+	expiration rules are applied when creating a new backup copy to
+	define the expiration date associated with that copy.
+	<command>dirvish-expire</command> simply peruses the stored copies
+	and deletes those for which the expiration date has passed.</para>
+      </sidebar>
+
+      <example id="example.dirvish-vault">
+        <title>The <filename>/backup/root/dirvish/default.conf</filename> file</title>
+
+        <programlisting>client: rivendell.falcot.com
+tree: /
+xdev: 1
+index: gzip
+image-default: %Y%m%d
+exclude:
+    /var/cache/apt/archives/*.deb
+    /var/cache/man/**
+    /tmp/**
+    /var/tmp/**
+    *.bak
+</programlisting>
+      </example>
+
+      <para>The above example specifies the set of files to back up: these
+      are files on the machine <emphasis>rivendell.falcot.com</emphasis>
+      (for local data backup, simply specify the name of the local machine
+      as indicated by <command>hostname</command>), especially those in the
+      root tree (<literal>tree: /</literal>), except those listed in
+      <literal>exclude</literal>. The backup will be limited to the
+      contents of one filesystem (<literal>xdev: 1</literal>). It will not
+      include files from other mount points. An index of saved files will
+      be generated (<literal>index: gzip</literal>), and the image will be
+      named according to the current date (<literal>image-default:
+      %Y%m%d</literal>).</para>
+
+      <para>There are many options available, all documented in the
+      <citerefentry><refentrytitle>dirvish.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>
+      manual page. Once these configuration files are setup, you have to
+      initialize each file set with the <command>dirvish --vault
+      <replaceable>vault</replaceable> --init</command> command. From there
+      on the daily invocation of <command>dirvish-runall</command> will
+      automatically create a new backup copy just after having deleted
+      those that expired.</para>
+
+      <sidebar>
+        <title><emphasis>IN PRACTICE</emphasis> Remote backup over SSH</title>
+
+	<para>When dirvish needs to save data to a remote machine, it will
+	use <command>ssh</command> to connect to it, and will start
+	<command>rsync</command> as a server. This requires the root user
+	to be able to automatically connect to it. The use of an SSH
+	authentication key allows precisely that (see <xref linkend="sect.ssh-key-based-auth" />).</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Restoring Machines without Backups</title>
+
+      <para>Desktop computers, which are not backed up, will be easy to
+      reinstall from custom DVD-ROMs prepared with <emphasis>Simple-CDD</emphasis>
+      (see <xref linkend="sect.simple-cdd" />). Since this performs
+      an installation from scratch, it loses any customization that can have
+      been made after the initial installation. This is fine since
+      the systems are all hooked to a central LDAP directory for
+      accounts and most desktop applications are preconfigured
+      thanks to dconf (see <xref linkend="sect.gnome-desktop" />
+      for more information about this).</para>
+
+      <para>The Falcot Corp administrators are aware of the limits in their
+      backup policy. Since they can't protect the backup server as well as
+      a tape in a fireproof safe, they have installed it in a separate room
+      so that a disaster such as a fire in the server room won't destroy
+      backups along with everything else. Furthermore, they do an
+      incremental backup on DVD-ROM once per week — only files that have
+      been modified since the last backup are included.</para>
+
+      <sidebar>
+        <title><emphasis>GOING FURTHER</emphasis> Backing up SQL and LDAP services</title>
+
+	<para>Many services (such as SQL or LDAP databases) cannot be
+	backed up by simply copying their files (unless they are properly
+	interrupted during creation of the backups, which is frequently
+	problematic, since they are intended to be available at all times).
+	As such, it is necessary to use an “export” mechanism to create
+	a “data dump” that can be safely backed up. These are often
+	quite large, but they compress well. To reduce the storage space
+	required, you will only store a complete text file per week, and a
+	<command>diff</command> each day, which is created with a command
+	of the type <command>diff
+	<replaceable>file_from_yesterday</replaceable>
+	<replaceable>file_from_today</replaceable></command>. The
+	<command>xdelta</command> program produces incremental differences
+	from binary dumps.</para>
+        <indexterm><primary><command>xdelta</command></primary></indexterm>
+        <indexterm><primary><command>不同</command></primary></indexterm>
+        <indexterm><primary>dump</primary></indexterm>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>CULTURE</emphasis> <emphasis>TAR</emphasis>, the standard for tape backups</title>
+        <indexterm><primary>backup</primary><secondary>on tape</secondary></indexterm>
+        <indexterm><primary>tape, backup</primary></indexterm>
+        <indexterm><primary>TAR</primary></indexterm>
+
+	<para>Historically, the simplest means of making a backup on Unix
+	was to store a <emphasis>TAR</emphasis> archive on a tape. The
+	<command>tar</command> command even got its name from “Tape
+	ARchive”.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.hotplug">
+    <title>Hot Plugging: <emphasis>hotplug</emphasis></title>
+    <section>
+      <title>Introduction</title>
+
+      <para>The <emphasis>hotplug</emphasis> kernel subsystem dynamically
+      handles the addition and removal of devices, by loading the appropriate
+      drivers and by creating the corresponding device files (with the
+      help of <command>udevd</command>). With modern hardware and virtualization,
+      almost everything can be hotplugged: from the usual USB/PCMCIA/IEEE 1394
+      peripherals to SATA hard drives, but also the CPU and the memory.</para>
+
+      <para>The kernel has a database that associates each device ID
+      with the required driver. This database is used during boot to load
+      all the drivers for the peripheral devices detected on the different
+      buses, but also when an additional hotplug device is
+      connected. Once the device is ready for use, a message is sent to
+      <command>udevd</command> so it will be able to create the
+      corresponding entry in <filename>/dev/</filename>.</para>
+
+      <indexterm><primary><emphasis>hotplug</emphasis></primary></indexterm>
+      <indexterm><primary>hotplug</primary></indexterm>
+      <indexterm><primary>USB</primary></indexterm>
+      <indexterm><primary>IEEE 1394</primary></indexterm>
+      <indexterm><primary>PCMCIA</primary></indexterm>
+      <indexterm><primary>SATA</primary></indexterm>
+    </section>
+    <section>
+      <title>The Naming Problem</title>
+
+      <para>Before the appearance of hotplug connections, it was easy to
+      assign a fixed name to a device. It was based simply on the position
+      of the devices on their respective bus. But this is not possible when
+      such devices can come and go on the bus. The typical case is the use
+      of a digital camera and a USB key, both of which appear to the
+      computer as disk drives. The first one connected may be
+      <filename>/dev/sdb</filename> and the second
+      <filename>/dev/sdc</filename> (with <filename>/dev/sda</filename>
+      representing the computer's own hard drive). The device name is not
+      fixed; it depends on the order in which devices are connected.</para>
+
+      <para>Additionally, more and more drivers use dynamic values for
+      devices' major/minor numbers, which makes it impossible to have
+      static entries for the given devices, since these essential
+      characteristics may vary after a reboot.</para>
+
+      <para><emphasis>udev</emphasis> was created precisely to solve this
+      problem.</para>
+
+      <sidebar>
+        <title><emphasis>IN PRACTICE</emphasis> Network card management</title>
+
+	<para>Many computers have multiple network cards (sometimes
+	two wired interfaces and a wifi interface), and with
+	<emphasis>hotplug</emphasis> support on most bus types, the Linux kernel
+	does not guarantee fixed naming of
+	network interfaces. But users who want to configure their
+	network in <filename>/etc/network/interfaces</filename> need
+	a fixed name!</para>
+
+	<para>It would be difficult to ask every user to create their own
+	<emphasis>udev</emphasis> rules to address this problem. This is
+	why <emphasis>udev</emphasis> was configured in a rather peculiar
+	manner; on first boot (and, more generally, each time that a new
+	network card appears) it uses the name of the network interface and
+	its MAC address to create new rules that will reassign the same
+	name on subsequent boots. These rules are stored in
+	<filename>/etc/udev/rules.d/70-persistent-net.rules</filename>.</para>
+
+        
+	<para>This mechanism has some side effects that you should know
+	about. Let's consider the case of a computer that has only one PCI
+	network card. The network interface is named
+	<literal>eth0</literal>, logically. Now say the card breaks down,
+	and the administrator replaces it; the new card will have a new MAC
+	address. Since the old card was assigned the name,
+	<literal>eth0</literal>, the new one will be assigned
+	<literal>eth1</literal>, even though the <literal>eth0</literal>
+	card is gone for good (and the network will not be functional
+	because <filename>/etc/network/interfaces</filename> likely
+	configures an <literal>eth0</literal> interface). In this case, it
+	is enough to simply delete the
+	<filename>/etc/udev/rules.d/70-persistent-net.rules</filename> file
+	before rebooting the computer. The new card will then be given the
+	expected <literal>eth0</literal> name.</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>How <emphasis>udev</emphasis> Works</title>
+
+      <para>When <emphasis>udev</emphasis> is notified by the kernel of the
+      appearance of a new device, it collects various information on the
+      given device by consulting the corresponding entries in
+      <filename>/sys/</filename>, especially those that uniquely identify
+      it (MAC address for a network card, serial number for some USB
+      devices, etc.).</para>
+
+      <para>Armed with all of this information, <emphasis>udev</emphasis>
+      then consults all of the rules contained in
+      <filename>/etc/udev/rules.d/</filename> and
+      <filename>/lib/udev/rules.d/</filename>. In this process it decides
+      how to name the device, what symbolic links to create (to give it
+      alternative names), and what commands to execute. All of these files
+      are consulted, and the rules are all evaluated sequentially (except
+      when a file uses “GOTO” directives). Thus, there may be several
+      rules that correspond to a given event.</para>
+
+      <para>The syntax of rules files is quite simple: each row contains
+      selection criteria and variable assignments. The former are used to
+      select events for which there is a need to react, and the latter
+      defines the action to take. They are all simply separated with
+      commas, and the operator implicitly differentiates between a
+      selection criterion (with comparison operators, such as
+      <literal>==</literal> or <literal>!=</literal>) or an assignment
+      directive (with operators such as <literal>=</literal>,
+      <literal>+=</literal> or <literal>:=</literal>).</para>
+
+      <para>Comparison operators are used on the following
+      variables:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>KERNEL</literal>: the name that the kernel assigns
+	  to the device;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ACTION</literal>: the action corresponding to the
+	  event (“add” when a device has been added, “remove” when
+	  it has been removed);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>DEVPATH</literal>: the path of the device's
+	  <filename>/sys/</filename> entry;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SUBSYSTEM</literal>: the kernel subsystem which
+	  generated the request (there are many, but a few examples are
+	  “usb”, “ide”, “net”, “firmware”, etc.);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ATTR{<replaceable>attribute</replaceable>}</literal>:
+	  file contents of the <replaceable>attribute</replaceable> file in
+	  the
+	  <filename>/sys/<replaceable>$devpath</replaceable>/</filename>
+	  directory of the device. This is where you find the MAC address
+	  and other bus specific identifiers;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>KERNELS</literal>, <literal>SUBSYSTEMS</literal>
+	  and
+	  <literal>ATTRS{<replaceable>attributes</replaceable>}</literal>
+	  are variations that will try to match the different options on
+	  one of the parent devices of the current device;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>PROGRAM</literal>: delegates the test to the
+	  indicated program (true if it returns 0, false if not). The
+	  content of the program's standard output is stored so that it can
+	  be reused by the <literal>RESULT</literal> test;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RESULT</literal>: execute tests on the standard
+	  output stored during the last call to
+	  <literal>PROGRAM</literal>.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>The right operands can use pattern expressions to match several
+      values at the same time. For instance, <literal>*</literal> matches
+      any string (even an empty one); <literal>?</literal> matches any
+      character, and <literal>[]</literal> matches the set of characters
+      listed between the square brackets (or the opposite thereof if the
+      first character is an exclamation point, and contiguous ranges of
+      characters are indicated like <literal>a-z</literal>).</para>
+
+      <para>Regarding the assignment operators, <literal>=</literal>
+      assigns a value (and replaces the current value); in the case of a
+      list, it is emptied and contains only the value assigned.
+      <literal>:=</literal> does the same, but prevents later changes to
+      the same variable. As for <literal>+=</literal>, it adds an item to a
+      list. The following variables can be changed:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>NAME</literal>: the device filename to be created
+	  in <filename>/dev/</filename>. Only the first assignment counts;
+	  the others are ignored;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SYMLINK</literal>: the list of symbolic links that
+	  will point to the same device;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>OWNER</literal>, <literal>GROUP</literal> and
+	  <literal>MODE</literal> define the user and group that owns the
+	  device, as well as the associated permission;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RUN</literal>: the list of programs to execute in
+	  response to this event.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>The values assigned to these variables may use a number of
+      substitutions:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>$kernel</literal> or <literal>%k</literal>:
+	  equivalent to <literal>KERNEL</literal>;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$number</literal> or <literal>%n</literal>: the
+	  order number of the device, for example, for
+	  <literal>sda3</literal>, it would be “3”;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$devpath</literal> or <literal>%p</literal>:
+	  equivalent to <literal>DEVPATH</literal>;</para>
+        </listitem>
+        <listitem>
+	 
+	  <para><literal>$attr{<replaceable>attribute</replaceable>}</literal>
+	  or <literal>%s{<replaceable>attribute</replaceable>}</literal>:
+	  equivalent to
+	  <literal>ATTRS{<replaceable>attribute</replaceable>}</literal>;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$major</literal> or <literal>%M</literal>: the
+	  kernel major number of the device;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$minor</literal> or <literal>%m</literal>: the
+	  kernel minor number of the device;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$result</literal> or <literal>%c</literal>: the
+	  string output by the last program invoked by
+	  <literal>PROGRAM</literal>;</para>
+        </listitem>
+        <listitem>
+	  <para>and, finally, <literal>%%</literal> and
+	  <literal>$$</literal> for the percent and dollar sign,
+	  respectively.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>The above lists are not complete (they include only the most
+      important parameters), but the
+      <citerefentry><refentrytitle>udev</refentrytitle><manvolnum>7</manvolnum></citerefentry>
+      manual page should be exhaustive.</para>
+    </section>
+    <section>
+      <title>A concrete example</title>
+
+      <para>Let us consider the case of a simple USB key and try to assign
+      it a fixed name. First, you must find the elements that will identify
+      it in a unique manner. For this, plug it in and run <command>udevadm
+      info -a -n /dev/sdc</command> (replacing
+      <replaceable>/dev/sdc</replaceable> with the actual name assigned to
+      the key).</para>
+
+      <screen><computeroutput># </computeroutput><userinput>udevadm info -a -n /dev/sdc</userinput>
+<computeroutput>[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</computeroutput>
+</screen>
+
+      <para>To create a new rule, you can use tests on the device's
+      variables, as well as those of one of the parent devices. The above
+      case allows us to create two rules like these:</para>
+
+      <programlisting>KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"
+</programlisting>
+
+      <para>Once these rules are set in a file, named for example
+      <filename>/etc/udev/rules.d/010_local.rules</filename>, you can
+      simply remove and reconnect the USB key. You can then see that
+      <filename>/dev/usb_key/disk</filename> represents the disk associated
+      with the USB key, and <filename>/dev/usb_key/part1</filename> is its
+      first partition.</para>
+
+      <sidebar>
+        <title><emphasis>GOING FURTHER</emphasis> Debugging <emphasis>udev</emphasis>'s configuration</title>
+
+	<para>Like many daemons, <command>udevd</command> stores logs in
+	<filename>/var/log/daemon.log</filename>. But it is not very
+	verbose by default, and it is usually not enough to understand
+	what is happening. The <command>udevadm control
+	--log-priority=info</command> command increases the verbosity level
+	and solves this problem. <command>udevadm control
+	--log-priority=err</command> returns to the default verbosity
+	level.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.power-management">
+    <title>Power Management: Advanced Configuration and Power Interface (ACPI)</title>
+    <indexterm><primary>power management</primary></indexterm>
+    <indexterm><primary>management, power management</primary></indexterm>
+
+    <para>The topic of power management is often problematic. Indeed,
+    properly suspending the computer requires that all the computer's
+    device drivers know how to put them to standby, and that they properly
+    reconfigure the devices upon waking. Unfortunately, there are still
+    a few devices unable to sleep well under Linux, because their
+    manufacturers have not provided the required specifications.</para>
+
+    <para>Linux supports ACPI (Advanced Configuration and Power
+    Interface) — the most recent standard in power management. The
+    <emphasis role="pkg">acpid</emphasis> package provides a daemon that
+    looks for power management related events (switching between AC and
+    battery power on a laptop, etc.) and that can execute various commands
+    in response.</para>
+
+    <indexterm><primary>ACPI</primary></indexterm>
+    <indexterm><primary>Advanced Configuration and Power Interface</primary></indexterm>
+    <indexterm><primary><command>acpid</command></primary></indexterm>
+    
+    <sidebar>
+      <title><emphasis>BEWARE</emphasis> Graphics card and standby</title>
+
+      <para>The graphics card driver is often the culprit
+      when standby doesn't work properly. In that case, it is a good idea
+      to test the latest version of the X.org graphics server.</para>
+    </sidebar>
+
+    <para>After this overview of basic services common to many Unix
+    systems, we will focus on the environment of the administered machines:
+    the network. Many services are required for the network to work
+    properly. They will be discussed in the next chapter.</para>
+  </section>
+</chapter>

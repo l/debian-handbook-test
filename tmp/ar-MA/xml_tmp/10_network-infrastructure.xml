@@ -1,0 +1,1182 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="network-infrastructure">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-network-infrastructure.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>شبكة</keyword>
+      <keyword>البوابات</keyword>
+      <keyword>‏TCP/IP</keyword>
+      <keyword>‏IPv6</keyword>
+      <keyword>‏DNS</keyword>
+      <keyword>‏Bind</keyword>
+      <keyword>‏DHCP</keyword>
+      <keyword>‏QoS</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title id="infrastructure.title">البنية التحتية للشبكات</title>
+  <highlights>
+    <para>يستفيد لينكس من الميراث الكبير لنظام يونكس في مجال الشبكات، وتقدم توزيعة دبيان مجموعة كاملة من الأدوات لإنشاء وإدارة الشبكات. يستعرض هذا الفصل هذه الأدوات.</para>
+  </highlights>
+  <section id="sect.gateway">
+    <title>البوابات</title>
+
+    <para>البوابة gateway هي نظام يربط عدة شبكات. يشير هذا المصطلح غالبًا إلى ”نقطة خروج“ الشبكة المحلية، وهي نقطة العبور الإجبارية للوصول لأي عنوان IP خارجي. تتصل البوابة بكل من الشبكتين اللتين تصل بينهما، وتعمل كموجه (router) لنقل رزم IP بين واجهاتها المختلفة.</para>
+    <indexterm><primary>بوابة</primary></indexterm>
+    <indexterm><primary>شبكة</primary><secondary>بوابة</secondary></indexterm>
+    <indexterm><primary>موجه (راوتر)</primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>أساسيات</emphasis> رزم IP</title>
+      <indexterm><primary>رزمة</primary><secondary>IP</secondary></indexterm>
+
+      <para>تستخدم معظم الشبكات اليوم بروتوكول IP (<emphasis>بروتوكول الإنترنت Internet Protocol</emphasis>). يجزئ هذا البروتوكول البيانات المرسلة إلى رزم محددة الحجم. تتضمن كل رزمة – بالإضافة إلى حمولتها من البيانات – عدداً من التفاصيل المطلوبة للتوجيه السليم للبيانات.</para>
+    </sidebar>
+
+    <sidebar id="sidebar.tcp-udp">
+      <title><emphasis>أساسيات</emphasis> TCP/UDP</title>
+      <indexterm><primary>منفذ</primary><secondary>TCP</secondary></indexterm>
+      <indexterm><primary>منفذ</primary><secondary>UDP</secondary></indexterm>
+      <indexterm><primary>TCP، منفذ</primary></indexterm>
+      <indexterm><primary>UDP، منفذ</primary></indexterm>
+
+      <para>معظم البرامج لا تعالج الرزم المفردة بنفسها، رغم أن البيانات التي ترسلها تنتقل فعلاً عبر IP؛ إلا أنها غالبًا ما تستخدم TCP (<emphasis>بروتوكول التحكم بالإرسال Transmission Control Protocol</emphasis>). بروتوكول TCP هو طبقة فوق IP تسمح بفتح اتصال مخصص لنقل البيانات بين نقطتين. يرى البرنامج عندها نقطة دخول يمكن تغذيتها بالبيانات مع ضمان أن البيانات نفسها ستخرج دون ضياع (وبالترتيب نفسه) من نقطة الخروج عند الطرف الآخر من الاتصال. بالرغم من إمكانية حدوث العديد من الأخطاء في الطبقات السفلى، إلا أن TCP يصلحها: يعاد إرسال الرزم المفقودة، وترتب الرزم التي تصل غير مرتبة (إذا انتقلت عبر مسارات مختلفة مثلاً) بشكل مناسب.</para>
+
+      <para>UDP (<emphasis>بروتوكول بيانات المستخدم User Datagram Protocol</emphasis>) هو بروتوكول آخر يعتمد على IP. بعكس TCP، هذا البروتوكول يركز على الرزم. أهداف هذا البروتوكول مختلفة: فالغرض من UDP هو إرسال رزمة واحدة من تطبيق ما إلى آخر. لا يحاول البروتوكول تعويض خسارة الرزم التي يحتمل حدوثها على الطريق، كما لا يضمن وصول الرزم بنفس ترتيب إرسالها. الميزة الرئيسية لهذا البروتوكول هي أن تحسين زمن الوصول (latency) بشكل كبير، نظراً لأن خسارة رزمة واحدة لا تؤخر استقبال الرزم التالية حتى إعادة إرسال الرزمة المفقودة.</para>
+
+      <para>يحتاج كل من TCP و UDP إلى منافذ، وهي ”أرقام امتدادية“ لإنشاء اتصال مع تطبيق معين على الجهاز. يسمح هذا المفهوم بفتح عدة اتصالات مختلفة على التوازي مع نفس المراسل، بما أنه يمكن التمييز بين هذه الاتصالات عبر رقم المنفذ.</para>
+
+      <para>بعض أرقام هذه المنافذ – التي وحدتها IANA (سلطة أرقام الإنترنت المحجوزة <emphasis>Internet Assigned Numbers Authority</emphasis>) – ”مشهورة“ باقترانها مع خدمات شبكية معينة. مثلاً، منفذ TCP 25 يستخدمه مخدم البريد الإلكتروني عادة. <ulink type="block" url="http://www.iana.org/assignments/port-numbers" /></para>
+    </sidebar>
+
+    <para>عندما تستخدم الشبكة المحلية مجال عناوين خاص (لا يمكن التوجيه إليه من الإنترنت)، يجب أن تدعم البوابة (<emphasis>تنكر العناوين address masquerading</emphasis>) حتى تتمكن الأجهزة على الشبكة من التواصل مع العالم الخارجي. عملية التنكر هي نوع من أنواع البروكسي الذي يعمل على مستوى الشبكة: يستبدل كل اتصال خارج من جهاز داخلي باتصال من البوابة نفسها (بما أن البوابة تملك عنواناً خارجيًا يمكن التوجيه إليه)، ترسل البيانات الخارجة من الشبكة من الاتصال المتنكر عبر الاتصال الجديد، والبيانات الراجعة في الرد ترسل إلى الاتصال المتنكر إلى الجهاز الداخلي. تستخدم البوابة مجالاً من منافذ TCP المخصصة لهذا الغرض، بأرقام كبيرة جداً عادة (فوق 60000). عندئذ يظهر كل اتصال وارد من جهاز داخلي على الشبكة للعالم الخارجي على أنه اتصال وارد من أحد هذه المنافذ المحجوزة.</para>
+    <indexterm><primary>تنكر IP</primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>ثقافة</emphasis> المجالات الخاصة للعناوين</title>
+      <indexterm><primary>IP</primary><secondary>عنوان خاص</secondary></indexterm>
+      <indexterm><primary>عنوان IP خاص</primary></indexterm>
+
+      <para>يُعرِّف RFC 1918 ثلاثة مجالات لعناوين IPv4 غير مخصصة للتوجيه عبر الإنترنت بل للاستخدام في الشبكات المحلية فقط. المجال الأول، <literal>10.0.0.0/8</literal> (انظر الملاحظة الجانبية <xref linkend="sidebar.networking-basics" />)، هو مجال من الفئة A (وفيه 2<superscript>24</superscript> عنوان IP). المجال الثاني، <literal>172.16.0.0/12</literal>، يجمع 16 مجالاً من الفئة B (من <literal>172.16.0.0/16</literal> إلى <literal>172.31.0.0/16</literal>)، كل منها يحوي 2<superscript>16</superscript> عنوان IP. أخيراً، <literal>192.168.0.0/16</literal> هو مجال من الفئة B (يجمع 256 مجالاً من الفئة C، من <literal>192.168.0.0/24</literal> وحتى <literal>192.168.255.0/24</literal>، في كل منها 256 عنوان IP). <ulink type="block" url="http://www.faqs.org/rfcs/rfc1918.html" /></para>
+    </sidebar>
+
+    <para>تستطيع البوابات أيضًا إجراء نوعين من <emphasis>ترجمة عناوين الشبكة Network Address Translation</emphasis> (أو  NAT اختصاراً). النوع الأول، <emphasis>Destination NAT</emphasis> (أو DNAT) هي تقنية لتبديل عنوان IP الخاص بالوجهة (وربما منفذ TCP أو UDP أيضًا) للاتصالات الواردة (عموماً). كما تبدل آلية تتبع الاتصال (connection tracking mechanism) الرزم اللاحقة أيضًا في الاتصال نفسه لضمان استمرار الاتصال. النوع الثاني من NAT هو <emphasis>Source NAT</emphasis> (أو SNAT)، ويعتبر التنكر <emphasis>masquerading</emphasis> حالة خاصة من هذا النوع؛ يبدل SNAT عناوين IP المصدرية (وربما أرقام منافذ TCP أو UDP) للاتصالات الصادرة (عموماً). وكما هو الحال في DNAT، تتولى آلية تتبع الاتصال معالجة جميع الرزم في الاتصال. لاحظ أن NAT يستخدم فقط مع IPv4 وفضاء عناوينه المحدود؛ أما مع IPv6، فإن الوفرة الكبيرة للعناوين تحدُّ كثيراً من جدوى NAT من خلال السماح بالتوجيه المباشر لجميع العناوين ”الداخلية“ إلى الإنترنت (هذا لا يعني أنه يمكن الوصول إلى الأجهزة الداخلية، لأنه يمكن فلترة حركة الشبكة عبر جدران نارية وسيطة).</para>
+    <indexterm><primary>NAT</primary></indexterm>
+    <indexterm><primary>شبكة</primary><secondary>ترجمة العناوين</secondary></indexterm>
+    <indexterm><primary>SNAT</primary></indexterm>
+    <indexterm><primary>DNAT</primary></indexterm>
+    <indexterm><primary>Destination NAT</primary></indexterm>
+    <indexterm><primary>Source NAT</primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>أساسيات</emphasis> توجيه المنافذ</title>
+      <indexterm><primary>توجيه المنافذ</primary></indexterm>
+
+      <para>من التطبيقات العملية للـDNAT توجيه المنافذ <emphasis>port forwarding</emphasis>. حيث يتم توجيه الاتصالات الواردة إلى منفذ معين لجهاز ما إلى منفذ آخر على جهاز آخر. إلا أن هناك حلولاً أخرى للحصول على نتيجة مشابهة، خصوصًا على مستوى طبقة التطبيقات حيث يستخدم <command>ssh</command> (انظر <xref linkend="sect.ssh-port-forwarding" />) أو يستخدم redir.</para>
+    </sidebar>
+
+    <para>بعد الكلام النظري، لننتقل إلى التطبيق. لتحويل نظام دبيان إلى بوابة، كل ما يلزم هو تفعيل الخيار المناسب في النواة لينكس، وذلك عبر نظام الملفات الظاهري <filename>/proc/</filename>:</para>
+
+    <screen>
+<computeroutput># </computeroutput><userinput>echo 1 &gt; /proc/sys/net/ipv4/conf/default/forwarding</userinput>
+</screen>
+
+    <para>يمكن أيضًا تفعيل هذا الخيار تلقائيًا عند الإقلاع إذا كان الملف <filename dir="ltr">/etc/sysctl.conf</filename> يعطي القيمة <literal>1</literal> للخيار <literal>net.ipv4.conf.default.forwarding</literal>.</para>
+
+    <example id="example.sysctl.conf">
+      <title>الملف <filename dir="ltr">/etc/sysctl.conf</filename></title>
+
+      <programlisting>
+net.ipv4.conf.default.forwarding = 1
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.tcp_syncookies = 1
+</programlisting>
+    </example>
+
+    <para>يمكن الحصول على النتيجة نفسها ولكن مع IPv6 باستبدال كلمة <literal>ipv4</literal> بكلمة <literal>ipv6</literal> في الأمر اليدوي الأول أو استخدام الخيار <literal>net.ipv6.conf.all.forwarding</literal> في الملف <filename dir="ltr">/etc/sysctl.conf</filename>.</para>
+
+    <para>تفعيل تنكر IPv4 هي عملية أعقد من هذه بقليل وتحتاج لضبط الجدار الناري <emphasis>netfilter</emphasis>.</para>
+
+    <para>كما أن استخدام NAT (مع IPv4) يحتاج ضبط <emphasis>netfilter</emphasis>. بما أن الهدف من هذا العنصر هو فلترة الرزم، فإن تفاصيل إعداده مذكورة في <xref linkend="security" xrefstyle="select: label quotedtitle nopage" /> (انظر <xref linkend="sect.firewall-packet-filtering" />).</para>
+  </section>
+  <section id="sect.virtual-private-network">
+    <title>الشبكة الظاهرية الخاصة</title>
+
+    <para><emphasis>الشبكة الظاهرية الخاصة Virtual Private Network</emphasis> (أو VPN اختصاراً) هي طريقة لربط شبكتين محليتين مختلفتين بوساطة نفق عبر الإنترنت؛ عادة ما يكون النفق مشفراً لضمان سرية البيانات. غالبًا ما تستخدم شبكات VPN لدمج جهاز بعيد مع الشبكة المحلية للشركة.</para>
+    <indexterm><primary>شبكة</primary><secondary>خاصة ظاهرية</secondary></indexterm>
+    <indexterm><primary>VPN</primary></indexterm>
+    <indexterm><primary>ظاهرية، شبكة خاصة</primary></indexterm>
+
+    <para>هناك عدة أدوات توفر هذا. OpenVPN هو حل فعال، وسهل النشر والصيانة (المتابعة)، ويعتمد على SSL/TLS. من الاحتمالات الأخرى استعمال IPsec لتشفير IP traffic بين جهازين، بأسلوب شفاف؛ أي لا توجد حاجة لتعديل التطبيقات التي تعمل على هذين الجهازين حتى تستفيد من وجود VPN. يمكن استخدام SSH أيضًا لتوفير شبكة خاصة ظاهرية، بالإضافة لمزاياه التقليدية الأخرى. أخيراً، يمكن إنشاء VPN باستخدام بروتوكول PPTP الخاص بشركة Microsoft. هناك حلول أخرى متاحة، لكنها تقع خارج مدى هذا الكتاب.</para>
+    <section id="sect.openvpn">
+      <title>‏OpenVPN</title>
+      <indexterm><primary>OpenVPN</primary></indexterm>
+
+      <para>OpenVPN هو برنامج مخصص لإنشاء الشبكات الخاصة الظاهرية. يحتاج إعداد OpenVPN إلى إنشاء واجهات شبكية ظاهرية (بطاقات شبكة ظاهرية) على مخدم VPN وعلى العميل (أو العملاء)؛ يدعم البرنامج كلاً من واجهات <literal>tun</literal> (للأنفاق على مستوى IP) وواجهات <literal>tap</literal> (للأنفاق على مستوى Ethernet). عملياً، تستخدم واجهات <literal>tun</literal> في معظم الحالات إلا في حال الرغبة بدمج عملاء VPN مع شبكة المخدم المحلية عبر جسر Ethernet.</para>
+
+      <para>يعتمد OpenVPN على OpenSSL في جميع عمليات تشفير SSL/TLS والمزايا المرتبطة بها (السرية، المصادقة، سلامة البيانات، منع الإنكار non-repudiation). يمكن إعداد OpenVPN باستخدام مفتاح خاص مشترك أو باستخدام شهادات X.509 تعتمد على بنية تحتية للمفاتيح العامة (Public Key Infrastructure). الأسلوب الثاني في الإعداد مفضل دوماً لأنه يسمح بمرونة أكبر في حال وجود عدد متزايد من المستخدمين الرُحَّل الذين يتصلون بشبكة VPN.</para>
+
+      <sidebar>
+        <title><emphasis>ثقافة</emphasis> SSL وTLS</title>
+        <indexterm><primary>SSL</primary></indexterm>
+        <indexterm><primary>TLS</primary></indexterm>
+
+	<para>اخترعت Netscape بروتوكول SSL ‏(<emphasis>Secure Socket Layer</emphasis>) لتأمين الاتصالات مع مخدمات الوب. لاحقًا جعلت IETF هذا البروتوكول معياراً قياسيًا تحت اسم TLS‏ (<emphasis>Transport Layer Security</emphasis>). ومنذ ذلك الحين استمر TLS بالتطور والآن أصبح SSL مهجوراً نتيجة اكتشاف عيوب عديدة في التصميم.</para>
+      </sidebar>
+      <section id="sect.easy-rsa">
+        <title>البنية التحتية للمفاتيح العامة: <emphasis>easy-rsa</emphasis></title>
+        <indexterm><primary>PKI (Public Key Infrastructure)</primary></indexterm>
+        <indexterm><primary>بنية تحتية للمفاتيح العامة</primary></indexterm>
+        <indexterm><primary>X.509، شهادة</primary></indexterm>
+        <indexterm><primary>شهادة</primary><secondary>X.509</secondary></indexterm>
+        <indexterm><primary><emphasis>easy-rsa</emphasis></primary></indexterm>
+        <indexterm><primary>RSA (خوارزمية)</primary></indexterm>
+        <indexterm><primary>زوج مفاتيح</primary></indexterm>
+
+	<para>تستخدم خوارزمية RSA كثيراً في مجال التشفير بالمفتاح العام (التشفير غير المتناظر). تحتاج عملية التشفير إلى زوج من المفاتيح، يتألف من مفتاح خاص ومفتاح عام. المفتاحان متعلقان ببعضهما، ومن خصائصهما الرياضية أن الرسالة المشفرة بالمفتاح العام لا يمكن فك تشفيرها إلا بالمفتاح الخاص، وهذا يضمن سرية البيانات. من جهة أخرى، يستطيع أي شخص يملك المفتاح العام فك تشفير الرسائل المشفرة بالمفتاح الخاص، وهذا يسمح بالتحقق من أصالة مصدر الرسالة لأنه لا يستطيع أحد توليدها ما لم يملك المفتاح الخاص. وعند اقتران هذه الطريقة مع تابع تهشير رقمي digital hash function (مثل MD5 أو SHA1، أو بديل أحدث)، ينتج عنها آلية توقيع يمكن تطبيقها على أي رسالة.</para>
+
+	<para>على أي حال، يستطيع أي أحد أن يولد زوجاً من المفاتيح، ويخزن عليه أي هوية يريد، ثم ينتحل الهوية التي يختار. لحل هذه المشكلة قدم معيار X.509 مفهوم <emphasis>سلطة التصديق Certification Authority</emphasis> ‏(CA). هذه الهيئة تملك زوجاً موثوقاً من المفاتيح يعرف باسم <emphasis>الشهادة الجذر root certificate</emphasis>. تستخدم هذه الشهادة لتوقيع الشهادات (أزواج المفاتيح) الأخرى فقط، وذلك بعد اتخاذ الإجراءات المناسبة للتأكد من الهوية المخزنة في زوج المفاتيح. تستطيع بعدها التطبيقات التي تستفيد من X.509 أن تتحقق من الشهادات المقدمة لها، إذا كانت تعرف الشهادات الجذر الموثوقة من قبل.</para>
+
+	<para>يتبع OpenVPN هذه القاعدة. بما أن سلطات التصديق العامة لا توقع الشهادات إلا بمقابل رسوم مالية (كبيرة)، فإنه يمكن أيضًا إنشاء سلطة تصديق خاصة داخل الشركة. توفر الحزمة <emphasis role="pkg">easy-rsa</emphasis> الأدوات التي تقدم بنية تحتية للتصديق وفق X.509، وهي عبارة عن مجموعة من السكربتات التي تستعمل  الأمر <command>openssl</command>.</para>
+
+        <sidebar>
+          <title><emphasis>ملاحظة</emphasis> <emphasis>easy-rsa</emphasis> قبل <emphasis role="distribution">جيسي</emphasis></title>
+
+          <para>في إصدارات دبيان السابقة وصولاً إلى <emphasis role="distribution">ويزي</emphasis>، كانت <emphasis>easy-rsa</emphasis> توزع كجزء من الحزمة <emphasis role="pkg">openvpn</emphasis>، وكانت سكربتاتها توضع في المجلد <filename>/usr/share/doc/openvpn/examples/easy-rsa/2.0/</filename>. وكان يجب نسخ ذلك المجلد لإعداد سلطة تصديق بدلاً من استخدام الأمر <command>make-cadir</command> كما هو مشروح هنا.</para>
+        </sidebar>
+
+	<para>قرر مديرو النظم في شركة فلكوت استخدام هذه الأداة لإنشاء الشهادات المطلوبة لكل من المخدم والعملاء. هذا يجعل إعدادات العملاء متشابهة لأنها تحتاج فقط لضبطها بحيث تثق بالشهادات الصادرة عن سلطة التصديق المحلية في فلكوت. أول شهادة يجب إنشاؤها هي سلطة التصديق هذه؛ لذلك سوف يجهز مديرو النظام مجلداً يحوي الملفات المطلوبة لسلطة التصديق في مكان مناسب، ويفضل أن يكون على جهاز غير متصل بالشبكة للحد من خطر سرقة المفتاح الخاص بسلطة التصديق (CA). </para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>make-cadir pki-falcot
+</userinput><computeroutput>$ </computeroutput><userinput>cd pki-falcot</userinput></screen>
+
+	<para>بعدها سوف يحفظون المتغيرات المطلوبة في ملف <filename>vars</filename>، خصوصًا تلك التي يبدأ اسمها بـ<literal dir="ltr">KEY_</literal>؛ ثم تدمج هذه المتغيرات في البيئة:</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>vim vars
+</userinput><computeroutput>$ </computeroutput><userinput>grep KEY_ vars
+</userinput><computeroutput>export KEY_CONFIG=`$EASY_RSA/whichopensslcnf $EASY_RSA`
+export KEY_DIR="$EASY_RSA/keys"
+echo NOTE: If you run ./clean-all, I will be doing a rm -rf on $KEY_DIR
+export KEY_SIZE=2048
+export KEY_EXPIRE=3650
+export KEY_COUNTRY="FR"
+export KEY_PROVINCE="Loire"
+export KEY_CITY="Saint-Étienne"
+export KEY_ORG="Falcot Corp"
+export KEY_EMAIL="admin@falcot.com"
+export KEY_OU="Certificate authority"
+export KEY_NAME="Certificate authority for Falcot Corp"
+# If you'd like to sign all keys with the same Common Name, uncomment the KEY_CN export below
+# export KEY_CN="CommonName"
+$ </computeroutput><userinput>. ./vars
+</userinput><computeroutput>NOTE: If you run ./clean-all, I will be doing a rm -rf on /home/roland/pki-falcot/keys
+$ </computeroutput><userinput>./clean-all
+</userinput></screen>
+
+	<para>الخطوة التالية هي إنشاء زوج المفاتيح الخاص بسلطة التصديق نفسه (سيخزن جزئي الزوج في <filename>keys/ca.crt</filename> و <filename>keys/ca.key</filename> خلال هذه الخطوة):</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>./build-ca</userinput>
+<computeroutput>Generating a 2048 bit RSA private key
+...................................................................+++
+...+++
+writing new private key to 'ca.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [FR]:
+State or Province Name (full name) [Loire]:
+Locality Name (eg, city) [Saint-Étienne]:
+Organization Name (eg, company) [Falcot Corp]:
+Organizational Unit Name (eg, section) [Certificate authority]:
+Common Name (eg, your name or your server's hostname) [Falcot Corp CA]:
+Name [Certificate authority for Falcot Corp]:
+Email Address [admin@falcot.com]:
+</computeroutput></screen>
+
+	<para>يمكن الآن إنشاء شهادة مخدم VPN، بالإضافة إلى متغيرات Diffie-Hellman التي يحتاجها الطرف المخدم في اتصالات SSL/TLS. يعرف مخدم VPN باسم DNS الخاص به: <literal>vpn.falcot.com</literal>؛ سيستخدم هذا الاسم في ملفات المفاتيح المولدة (<filename>keys/vpn.falcot.com.crt</filename> للشهادة العامة، و<filename>keys/vpn.falcot.com.key</filename> للمفتاح الخاص):</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>./build-key-server vpn.falcot.com
+</userinput><computeroutput>Generating a 2048 bit RSA private key
+.....................................................................................................................+++
+...........+++
+writing new private key to 'vpn.falcot.com.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [FR]:
+State or Province Name (full name) [Loire]:
+Locality Name (eg, city) [Saint-Étienne]:
+Organization Name (eg, company) [Falcot Corp]:
+Organizational Unit Name (eg, section) [Certificate authority]:
+Common Name (eg, your name or your server's hostname) [vpn.falcot.com]:
+Name [Certificate authority for Falcot Corp]:
+Email Address [admin@falcot.com]:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+Using configuration from /home/roland/pki-falcot/openssl-1.0.0.cnf
+Check that the request matches the signature
+Signature ok
+The Subject's Distinguished Name is as follows
+countryName           :PRINTABLE:'FR'
+stateOrProvinceName   :PRINTABLE:'Loire'
+localityName          :T61STRING:'Saint-\0xFFFFFFC3\0xFFFFFF89tienne'
+organizationName      :PRINTABLE:'Falcot Corp'
+organizationalUnitName:PRINTABLE:'Certificate authority'
+commonName            :PRINTABLE:'vpn.falcot.com'
+name                  :PRINTABLE:'Certificate authority for Falcot Corp'
+emailAddress          :IA5STRING:'admin@falcot.com'
+Certificate is to be certified until Mar  6 14:54:56 2025 GMT (3650 days)
+Sign the certificate? [y/n]:</computeroutput><userinput>y
+</userinput><computeroutput>
+
+1 out of 1 certificate requests certified, commit? [y/n]</computeroutput><userinput>y
+</userinput><computeroutput>Write out database with 1 new entries
+Data Base Updated
+$ </computeroutput><userinput>./build-dh
+</userinput><computeroutput>Generating DH parameters, 2048 bit long safe prime, generator 2
+This is going to take a long time
+[…]
+</computeroutput></screen>
+
+	<para>تنشئ الخطوة التالية شهادات عملاء VPN؛ كل حاسوب أو شخص يسمح له باستخدام VPN يحتاج لشهادة:</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>./build-key JoeSmith
+</userinput><computeroutput>Generating a 2048 bit RSA private key
+................................+++
+..............................................+++
+writing new private key to 'JoeSmith.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [FR]:
+State or Province Name (full name) [Loire]:
+Locality Name (eg, city) [Saint-Étienne]:
+Organization Name (eg, company) [Falcot Corp]:
+Organizational Unit Name (eg, section) [Certificate authority]:</computeroutput><userinput>Development unit
+</userinput><computeroutput>Common Name (eg, your name or your server's hostname) [JoeSmith]:</computeroutput><userinput>Joe Smith
+</userinput><computeroutput>[…]</computeroutput></screen>
+
+	<para>الآن بعد إنشاء جميع الشهادات، يجب نسخها إلى الأماكن المناسبة: يجب تخزين المفتاح العام للشهادة الجذر (<filename>keys/ca.crt</filename>) على جميع الأجهزة (المخدم والعملاء) في الملف <filename dir="ltr">/etc/ssl/certs/Falcot_CA.crt</filename>. تنصب شهادة المخدم على المخدم فقط (<filename>keys/vpn.falcot.com.crt</filename> يذهب إلى <filename dir="ltr">/etc/ssl/vpn.falcot.com.crt</filename>، و <filename>keys/vpn.falcot.com.key</filename> يذهب إلى <filename>/etc/ssl/private/vpn.falcot.com.key</filename> مع تقييد الصلاحيات بحيث لا يستطيع قراءتها أحد إلا مدير النظام)، مع تنصيب متغيرات Diffie-Hellman ‏(<filename>keys/dh2048.pem</filename>) في <filename dir="ltr">/etc/openvpn/dh2048.pem</filename>. تنصب شهادات العملاء على أجهزة العملاء الموافقة لها بأسلوب مشابه.</para>
+      </section>
+      <section>
+        <title>إعداد مخدم OpenVPN</title>
+
+	<para>افتراضيًا، يحاول سكربت تهيئة OpenVPN بدء جميع الشبكات الخاصة الظاهرية المعرفة في <filename dir="ltr">/etc/openvpn/*.conf</filename>. إذن لإعداد مخدم VPN يكفي تخزين ملف الضبط المناسب في هذا المجلد. يمكن الاستفادة من الملف <filename dir="ltr">/usr/share/doc/openvpn/examples/sample-config-files/server.conf.gz</filename>، الذي ينشئ مخدماً قياسيًا نسبيًا. طبعاً هناك بعض المتغيرات التي يجب تعديلها: حيث يجب أن تذكر المتغيرات <literal>ca</literal>، ‏<literal>cert</literal>، ‏<literal>key</literal>، و <literal>dh</literal> المواقع الموافقة (وهي على الترتيب: <literal dir="ltr">/etc/ssl/certs/Falcot_CA.crt</literal>، ‏<literal dir="ltr">/etc/ssl/vpn.falcot.com.crt</literal>،‏ <literal dir="ltr">/etc/ssl/private/vpn.falcot.com.key</literal> و<literal dir="ltr">/etc/openvpn/dh2048.pem</literal>). تُعرِّف التعليمة التوجيهية <literal>server 10.8.0.0 255.255.255.0</literal> الشبكة الفرعية (subnet) المستخدمة في شبكة VPN؛ يستعمل المخدم عنوان IP الأول في ذلك المجال (وهو العنوان <literal>10.8.0.1</literal>) أما بقية العناوين فمخصصة للعملاء.</para>
+
+	<para>في هذا الإعداد، لا تنشأ الواجهة الشبكية الظاهرية إلا عند تشغيل OpenVPN، وعادة ما تدعى <literal>tun0</literal>. لكن ضبط الجدران النارية يتم غالبًا في نفس وقت ضبط الواجهات الشبكية الحقيقية، وهو ما يحدث قبل بدء OpenVPN. لذلك كان من الأفضل إنشاء واجهة شبكية ظاهرية دائمة، وإعداد OpenVPN بحيث يستعمل هذه الواجهة الموجودة مسبقًا. كما أن هذا يسمح باختيار اسمٍ لهذه الواجهة. ينشئ الأمر <command>openvpn --mktun --dev vpn --dev-type tun</command> واجهة شبكية ظاهرية اسمها <literal>vpn</literal> من النوع <literal>tun</literal>؛ يمكن تضمين هذا الأمر بسهولة في سكربت إعداد الجدار الناري، أو في تعليمة <literal>up</literal> توجيهية في الملف <filename dir="ltr">/etc/network/interfaces</filename>. يجب تحديث ملف إعداد OpenVPN أيضًا بما يناسب ذلك، باستخدام التوجيهين <literal>dev vpn</literal> و<literal>dev-type tun</literal>.</para>
+
+	<para>إذا لم نضف أي إجراءات أخرى، لا يستطيع عملاء VPN الوصول إلا لمخدم VPN نفسه، وذلك عبر العنوان <literal>10.8.0.1</literal>. للسماح للعملاء بالوصول إلى الشبكة المحلية (192.168.0.0/24)، يجب إضافة تعليمة <literal>push route 192.168.0.0 255.255.255.0</literal> إلى إعدادات OpenVPN بحيث يحصل عملاء VPN تلقائياً على مسار توجيه شبكي يبين لهم أن الوصول لهذه الشبكة يتم عبر VPN. بالإضافة لهذا، يجب إعلام الأجهزة في الشبكة المحلية أيضًا أن الوصول إلى شبكة VPN يتم عبر مخدم VPN (هذه هي الحالة الافتراضية إذا كان مخدم VPN منصب على بوابة الشبكة المحلية). أو يمكن ضبط مخدم VPN لإجراء تنكر لعناوين IP بحيث تبدو الاتصالات الواردة من عملاء VPN كما لو كانت ترد من مخدم VPN (انظر <xref linkend="sect.gateway" />).</para>
+      </section>
+      <section>
+        <title>إعداد عملاء OpenVPN</title>
+
+	<para>لإعداد عميل VPN يجب أيضاً إنشاء ملف إعداد في المجلد <filename>/etc/openvpn/</filename>. يمكن الاستعانة بالملف <filename dir="ltr">/usr/share/doc/openvpn/examples/sample-config-files/client.conf</filename> للحصول على إعداد قياسي. تُعرِّف التعلمية التوجيهية <literal>remote vpn.falcot.com 1194</literal> عنوان مخدم OpenVPN ورقم المنفذ؛ يجب أيضًا تعديل <literal>ca</literal>، ‏<literal>cert</literal>، و<literal>key</literal> بحيث تشير إلى مواقع ملفات المفاتيح.</para>
+
+	<para>إذا لم تكن هناك رغبة بتشغيل VPN تلقائياً عند الإقلاع، فيجب ضبط خيار <literal>AUTOSTART</literal> إلى <literal>none</literal> في الملف <filename dir="ltr">/etc/default/openvpn</filename>. يمكن دائماً بدء اتصال VPN أو قطعه باستخدام الأمر <command>service openvpn@<replaceable>name</replaceable> start</command> والأمر <command>service openvpn@<replaceable>name</replaceable> stop</command> (حيث يوافق المتغير <replaceable>name</replaceable> اسم الاتصال المعرف في <filename dir="ltr">/etc/openvpn/<replaceable>name</replaceable>.conf</filename>).</para>
+
+	<para>تحوي الحزمة <emphasis role="pkg">network-manager-openvpn-gnome</emphasis> إضافة لبرنامج إدارة الشبكة (انظر <xref linkend="sect.roaming-network-config" />) تسمح بإدارة شبكات OpenVPN الخاصة الظاهرية. هذا يسمح لكل مستخدم بإعداد اتصالات OpenVPN رسوميًا والتحكم بها عبر أيقونة إدارة الشبكة. <indexterm><primary><emphasis role="pkg">network-manager-openvpn-gnome</emphasis></primary></indexterm></para>
+      </section>
+    </section>
+    <section id="sect.ssh-vpn">
+      <title>الشبكات الخاصة الظاهرية باستخدام SSH</title>
+      <indexterm><primary>SSH</primary></indexterm>
+      <indexterm><primary>PPP</primary></indexterm>
+
+      <para>في الواقع هناك طريقتين لإنشاء الشبكات الخاصة الظاهرية باستخدام SSH. الطريقة القديمة تتضمن إنشاء طبقة PPP عبر وصلة SSH. هذه الطريقة مشروحة في وثيقة HOWTO التالية: <ulink type="block" url="http://www.tldp.org/HOWTO/ppp-ssh/" /></para>
+
+      <para>الطريقة الثانية أحدث من السابقة، وقد ظهرت في OpenSSH 4.3؛ حيث أصبح OpenSSH قادراً على إنشاء واجهات شبكية ظاهرية (<literal dir="ltr">tun*</literal>) على طرفي اتصال SSH، ويمكن إعداد هذه الواجهات الظاهرية تماماً كما لو كانت واجهات فيزيائية. يجب أولاً تفعيل نظام الأنفاق من خلال ضبط قيمة الخيار <literal>PermitTunnel</literal> على ”yes“ في ملف إعداد مخدم SSH ‏(<filename dir="ltr">/etc/ssh/sshd_config</filename>). عند إنشاء اتصال SSH، يجب طلب إنشاء النفق صراحة باستخدام الخيار <literal dir="ltr">-w any:any</literal> (يمكن استبدال <literal>any</literal> برقم جهاز <literal>tun</literal> المرغوب). هذا يتطلب من المستخدم تقديم صلاحيات مدير النظام على طرفي الاتصال، وذلك حتى يتمكن من إنشاء الجهاز الشبكي (بكلمات أخرى، يجب بدء الاتصال بصلاحيات root).</para>
+
+      <para>كل من هاتين الطريقتين لإنشاء الشبكات الخاصة الظاهرية عبر SSH بسيطة جداً. لكن شبكات VPN الناتجة ليست أكثر الخيارات المتاحة فعالية؛ خصوصًا أنها لا تتعامل مع الكميات الكبيرة من البيانات بشكل جيد.</para>
+
+      <para>السبب هو أنه عندما يتم تغليف طبقات البروتوكول TCP/IP ضمن اتصال TCP/IP (اتصال SSH)، سوف يستخدم بروتوكول TCP/IP مرتين، مرة لاتصال SSH ومرة داخل النفق. هذا يؤدي إلى مشاكل، خصوصاً نتيجة أسلوب TCP في التكيّف مع شروط الشبكة من خلال تعديل مهلة timeout. يشرح الموقع التالي المشكلة بتفصيل أكبر: <ulink type="block" url="http://sites.inka.de/sites/bigred/devel/tcp-tcp.html" /> إذن يجب عدم استخدام شبكات VPN عبر SSH إلا عند إنشاء الأنفاق المؤقتة التي لا يكون الأداء الضعيف فيها مهماً.</para>
+    </section>
+    <section id="sect.ipsec">
+      <title>‏IPsec</title>
+      <indexterm><primary>IPsec</primary></indexterm>
+      <indexterm><primary><command>strongswan</command></primary></indexterm>
+      <indexterm><primary><command>racoon</command></primary></indexterm>
+
+      <para>رغم أن IPsec هو المعيار القياسي لشبكات IP VPN، إلا أن استخدامه أصعب بكثير. إن IPsec نفسه مدمج في النواة لينكس؛ أما أدوات المستخدم المطلوبة –أدوات التحكم والإعداد– فهي متوفرة في الحزمة <emphasis role="pkg">ipsec-tools</emphasis>. من الناحية العملية، لكل جهاز ملف <filename dir="ltr">/etc/ipsec-tools.conf</filename> يحوي متغيرات <emphasis>أنفاق IPsec</emphasis> (أو <emphasis>Security Associations</emphasis>، حسب مصطلحات IPsec) الخاصة بالجهاز؛ ويسمح السكربت <command dir="ltr">/etc/init.d/setkey</command> بفتح النفق وإغلاقه (كل نفق هو اتصال مؤمن مع جهاز آخر متصل بالشبكة الخاصة الظاهرية). يبنى هذا الملف يدويًا من التوثيق المتوفر في صفحة التعليمات <citerefentry><refentrytitle>setkey</refentrytitle> <manvolnum>8</manvolnum></citerefentry>‎. إلا أن كتابة المتغيرات صراحة لكل جهاز في مجموعة كبيرة من الأجهزة ستصبح مهمة شاقة سريعاً، لأن عدد الأنفاق سيكبر بسرعة. سوف يبسط تثبيت خدمة IKE (اختصاراً للعبارة <emphasis>IPsec Key Exchange</emphasis>) مثل <emphasis role="pkg">racoon</emphasis>، أو <emphasis role="pkg">strongswan</emphasis> العملية كثيراً بتجميع مهام الإدارة في موقع مركزي، وسيجعلها آمن من خلال تدوير (rotating) المفاتيح دورياً.</para>
+      <indexterm><primary>IKE</primary></indexterm>
+      <indexterm><primary>IPsec</primary><secondary>IPsec Key Exchange</secondary></indexterm>
+      <indexterm><primary>زوج مفاتيح</primary></indexterm>
+      <indexterm><primary><command>setkey</command></primary></indexterm>
+
+      <para>رغم أن IPsec هو المرجع في شبكات VPN، إلا أن تعقيد إعداده يحد من استخدامه عمليًا. الحلول التي تعتمد على OpenVPN مفضلة عموماً عندما لا تكون الأنفاق المطلوبة كثيرة العدد ولا كثيرة التغير مع الزمن.</para>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> IPsec وNAT</title>
+
+	<para>الجدران النارية التي تقدم خدمة NAT لا تعمل جيداً مع IPsec: بما أن IPsec يوقّع الحزم، فإن أي تغيير يجريه الجدار الناري عليها سوف يبطل التوقيع، وسوف ترفض الحزم عندما تصل إلى وجهتها. تتضمن العديد من تطبيقات IPsec اليوم تقنية <emphasis>NAT-T</emphasis> (اختصاراً للعبارة <emphasis>NAT Traversal</emphasis>)، التي تعمل أساساً على تغليف حزم IPsec بحزم UDP قياسية.</para>
+        <indexterm><primary>NAT-T</primary></indexterm>
+        <indexterm><primary>NAT Traversal</primary></indexterm>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>أمن</emphasis> IPsec والجدران النارية</title>
+
+	<para>الوضع القياسي لعمل IPsec يتضمن تبادل البيانات عبر منفذ UDP رقم 500 (وأيضاً على منفذ UDP رقم 4500 في حال استخدام NAT-T). بالإضافة لذلك، تستخدم حزم IPsec بروتوكولي IP مخصَّصَين يجب أن يسمح الجدار الناري بمرورهما؛ يعتمد استقبال هذه الحزم على أرقام بروتوكولاتها، 50 (ESP)، و51 (AH).</para>
+        <indexterm><primary>ESP، بروتوكول</primary></indexterm>
+        <indexterm><primary>AH، بروتوكول</primary></indexterm>
+        <indexterm><primary>بروتوكول</primary><secondary>AH</secondary></indexterm>
+        <indexterm><primary>بروتوكول</primary><secondary>ESP</secondary></indexterm>
+      </sidebar>
+    </section>
+    <section id="sect.pptp">
+      <title>‏PPTP</title>
+
+      <para>يستخدم PPTP (اختصاراً للعبارة <emphasis>Point-to-Point Tunneling Protocol</emphasis>) قناتي اتصال، واحدة لمعلومات التحكم، والأخرى لتبادل البيانات؛ تستخدم القناة الأخيرة بروتوكول GRE‏ (<emphasis>Generic Routing Encapsulation</emphasis>). بعدها يتم إعداد اتصال PPP قياسي عبر قناة تبادل البيانات.</para>
+      <indexterm><primary>PPTP</primary></indexterm>
+      <indexterm><primary>Point-to-Point Tunneling Protocol</primary></indexterm>
+      <indexterm><primary>GRE، بروتوكول</primary></indexterm>
+      <indexterm><primary>بروتوكول</primary><secondary>GRE</secondary></indexterm>
+      <section id="sect.pptp-config-client">
+        <title>إعداد العميل</title>
+
+	<para>تحوي الحزمة <emphasis role="pkg">pptp-linux</emphasis> عميل PPTP سهل الإعداد لنظام لينكس. الخطوات التالية مستوحاة من التوثيق الرسمي: <ulink type="block" url="http://pptpclient.sourceforge.net/howto-debian.phtml" /></para>
+        <indexterm><primary><emphasis role="pkg">pptp-linux</emphasis></primary></indexterm>
+
+	<para>لقد أنشأ مديرو النظم في شركة فلكوت عدة ملفات: <filename dir="ltr">/etc/ppp/options.pptp</filename>،‏ <filename dir="ltr">/etc/ppp/peers/falcot</filename>،‏ <filename dir="ltr">/etc/ppp/ip-up.d/falcot</filename>، و <filename dir="ltr">/etc/ppp/ip-down.d/falcot</filename>.</para>
+
+        <example id="example.ppp-options.pptp">
+          <title>الملف <filename dir="ltr">/etc/ppp/options.pptp</filename></title>
+
+          <programlisting>
+# PPP options used for a PPTP connection
+lock
+noauth
+nobsdcomp
+nodeflate
+</programlisting>
+        </example>
+
+        <example id="example.ppp-peers-falcot">
+          <title>الملف <filename dir="ltr">/etc/ppp/peers/falcot</filename></title>
+
+          <programlisting>
+# vpn.falcot.com is the PPTP server
+pty "pptp vpn.falcot.com --nolaunchpppd"
+# the connection will identify as the "vpn" user
+user vpn
+remotename pptp
+# encryption is needed
+require-mppe-128
+file /etc/ppp/options.pptp
+ipparam falcot
+</programlisting>
+        </example>
+
+        <example id="example.ppp-ip-up.d-falcot">
+          <title>الملف <filename dir="ltr">/etc/ppp/ip-up.d/falcot</filename></title>
+
+          <programlisting>
+# Create the route to the Falcot network
+if [ "$6" = "falcot" ]; then
+  # 192.168.0.0/24 is the (remote) Falcot network
+  route add -net 192.168.0.0 netmask 255.255.255.0 dev $1
+fi
+</programlisting>
+        </example>
+
+        <example id="example.ppp-ip-down.d-falcot">
+          <title>الملف <filename dir="ltr">/etc/ppp/ip-down.d/falcot</filename></title>
+
+          <programlisting>
+# Delete the route to the Falcot network
+if [ "$6" = "falcot" ]; then
+  # 192.168.0.0/24 is the (remote) Falcot network
+  route del -net 192.168.0.0 netmask 255.255.255.0 dev $1
+fi
+</programlisting>
+        </example>
+
+        <sidebar>
+          <title><emphasis>أمن</emphasis> MPPE</title>
+
+	  <para>لتأمين PPTP يجب استخدام ميزة MPPE ‏(<emphasis>Microsoft Point-to-Point Encryption</emphasis>)، وهي متوفرة في النوى القياسية لتوزيعة دبيان بشكل وحدة.</para>
+          <indexterm><primary>MPPE</primary></indexterm>
+          <indexterm><primary>Microsoft</primary><secondary>Point-to-Point Encryption</secondary></indexterm>
+        </sidebar>
+      </section>
+      <section id="sect.pptp-config-serveur">
+        <title>إعداد المخدم</title>
+
+        <sidebar>
+          <title><emphasis>تحذير</emphasis> PPTP والجدران النارية</title>
+
+	  <para>يجب ضبط الجداران النارية الوسيطة للسماح بعبور حزم IP التي تستخدم البروتوكول 47 (GRE). بالإضافة لهذا، يجب فتح منفذ مخدم PPTP رقم 1723 حتى يسمح لقناة الاتصال بأن تفتح.</para>
+        </sidebar>
+
+	<para><command>pptpd</command> هو مخدم PPTP في لينكس. لا يحتاج ملف إعداداته الرئيسي، <filename dir="ltr">/etc/pptpd.conf</filename>، إلا لبعض التغييرات القليلة: <emphasis>localip</emphasis> (عنوان IP المحلي)، و<emphasis>remoteip</emphasis> (عنوان IP البعيد). في المثال التالي، يمتلك مخدم PPTP العنوان <literal>192.168.0.199</literal> دوماً، أما عملاء PPTP فيأخذون العناوين من <literal>192.168.0.200</literal> وحتى <literal>192.168.0.250</literal>.</para>
+
+        <example id="example.pptpd.conf">
+          <title>الملف <filename dir="ltr">/etc/pptpd.conf</filename></title>
+
+          <programlisting>
+# TAG: speed
+#
+#       Specifies the speed for the PPP daemon to talk at.
+#
+speed 115200
+
+# TAG: option
+#
+#       Specifies the location of the PPP options file.
+#       By default PPP looks in '/etc/ppp/options'
+#
+option /etc/ppp/pptpd-options
+
+# TAG: debug
+#
+#       Turns on (more) debugging to syslog
+#
+# debug
+
+# TAG: localip
+# TAG: remoteip
+#
+#       Specifies the local and remote IP address ranges.
+#
+#       You can specify single IP addresses separated by commas or you can
+#       specify ranges, or both. For example:
+#
+#               192.168.0.234,192.168.0.245-249,192.168.0.254
+#
+#       IMPORTANT RESTRICTIONS:
+#
+#       1. No spaces are permitted between commas or within addresses.
+#
+#       2. If you give more IP addresses than MAX_CONNECTIONS, it will
+#          start at the beginning of the list and go until it gets
+#          MAX_CONNECTIONS IPs. Others will be ignored.
+#
+#       3. No shortcuts in ranges! ie. 234-8 does not mean 234 to 238,
+#          you must type 234-238 if you mean this.
+#
+#       4. If you give a single localIP, that's ok - all local IPs will
+#          be set to the given one. You MUST still give at least one remote
+#          IP for each simultaneous client.
+#
+#localip 192.168.0.234-238,192.168.0.245
+#remoteip 192.168.1.234-238,192.168.1.245
+#localip 10.0.1.1
+#remoteip 10.0.1.2-100
+localip 192.168.0.199
+remoteip 192.168.0.200-250
+</programlisting>
+        </example>
+
+	<para>كما أن إعدادات PPP التي يستخدمها مخدم PPTP تحتاج أيضاً بعض التعديلات على الملف <filename dir="ltr">/etc/ppp/pptpd-options</filename>. المتغيرات المهمة هي اسم المخدم (<literal>pptp</literal>)، واسم النطاق (<literal>falcot.com</literal>)، وعناوين IP لمخدمات DNS و WINS.</para>
+
+        <example id="example.ppp-pptpd-options">
+          <title>الملف <filename dir="ltr">/etc/ppp/pptpd-options</filename></title>
+
+          <programlisting>
+## turn pppd syslog debugging on
+#debug
+
+## change 'servername' to whatever you specify as your server name in chap-secrets
+name pptp
+## change the domainname to your local domain
+domain falcot.com
+
+## these are reasonable defaults for WinXXXX clients
+## for the security related settings
+# The Debian pppd package now supports both MSCHAP and MPPE, so enable them
+# here. Please note that the kernel support for MPPE must also be present!
+auth
+require-chap
+require-mschap
+require-mschap-v2
+require-mppe-128
+
+## Fill in your addresses
+ms-dns 192.168.0.1
+ms-wins 192.168.0.1
+
+## Fill in your netmask
+netmask 255.255.255.0
+
+## some defaults
+nodefaultroute
+proxyarp
+lock
+</programlisting>
+        </example>
+
+	<para>الخطوة الأخيرة هي تسجيل المستخدم <literal>vpn</literal> (وكلمة سره) في الملف <filename dir="ltr">/etc/ppp/chap-secrets</filename>. يجب تعبئة اسم المخدم بشكل صريح هنا، بخلاف الحالات الأخرى حيث يمكن استخدام النجمة (<literal>*</literal>) فيها. بالإضافة لذلك، تعرّف عملاء PPTP التي تعمل على ويندوز نفسها بالشكل <literal><replaceable>DOMAIN</replaceable>\\<replaceable>USER</replaceable></literal>، بدلاً من تقديم اسم المستخدم فقط. هذا يفسر وجود المستخدم <literal>FALCOT\\vpn</literal> في الملف. من الممكن أيضاً تحديد عناوين IP الخاصة بالمستخدمين؛ استخدام النجمة في هذا الحقل يدل على أننا نريد استخدام العنونة الديناميكية.</para>
+
+        <example id="example.ppp-chap-secrets">
+          <title>الملف <filename dir="ltr">/etc/ppp/chap-secrets</filename></title>
+
+          <programlisting>
+# Secrets for authentication using CHAP
+# client        server  secret      IP addresses
+vpn             pptp    f@Lc3au     *
+FALCOT\\vpn     pptp    f@Lc3au     *</programlisting>
+        </example>
+
+        <sidebar>
+          <title><emphasis>أمن</emphasis> ثغرات PPTP</title>
+
+	  <para>التطبيقات الأولى لبروتوكول PPTP من مايكروسوفت تلقت نقداً حاداً لوجود العديد من الثغرات الأمنية فيها؛ لقد أصلحت معظمها منذ ذلك الوقت في الإصدارات الحديثة. الإعداد المقدم في هذا القسم يعتمد على أحدث إصدار من البروتوكول. لكن انتبه إلى أن إزالة بعض الخيارات (مثل <literal>require-mppe-128</literal> و<literal>require-mschap-v2</literal>) سوف يجعل الخدمة ضعيفة ثانية.</para>
+        </sidebar>
+      </section>
+    </section>
+  </section>
+  <section id="sect.quality-of-service">
+    <title>جودة الخدمة</title>
+    <section id="sect.qos-principe">
+      <title>المبدأ والآلية</title>
+
+      <para>يشير مصطلح جودة الخدمة <emphasis>Quality of Service</emphasis> (أو <emphasis>QoS</emphasis> اختصاراً) لمجموعة من التقنيات التي تضمن أو تحسن جودة الخدمة المقدمة للتطبيقات. من أشهر هذه التقنيات تصنيف بيانات الشبكة في فئات، وتمييز معالجة البيانات وفقًا للفئة التي تنتمي إليها. التطبيق الرئيسي لهذه الخدمة هو <emphasis>traffic shaping</emphasis>، الذي يحدد معدلات نقل البيانات للاتصالات المتعلقة بخدمات أو أجهزة معينة حتى لا تستهلك كل السرعة المتاحة على حساب خدمات مهمة أخرى. هذه التقنية مفيدة خصوصًا مع رزم TCP، بما أن هذا البروتوكول يتكيّف آلياً مع سرعة الشبكة المتاحة.</para>
+      <indexterm><primary>QoS</primary></indexterm>
+      <indexterm><primary>جودة الخدمة</primary></indexterm>
+      <indexterm><primary>جودة</primary><secondary>الخدمة</secondary></indexterm>
+      <indexterm><primary>خدمة</primary><secondary>جودة</secondary></indexterm>
+
+      <para>من الممكن أيضًا تغيير أولويات البيانات، وهذا يسمح برفع أولوية رزم الخدمات التفاعلية (مثل <command>ssh</command> و<command>telnet</command>) أو الخدمات التي تتعامل مع كميات قليلة فقط من البيانات.</para>
+
+      <para>تتضمن نوى دبيان المزايا المطلوبة لخدمة QoS مع جميع الوحدات المرتبطة بها. هناك العديد من الوحدات، وكل منها تقدم خدمة مختلفة، من خلال تقديم مُجَدْوِلاتٍ خاصة لأرتال الانتظار الخاصة برزم IP؛ إن المجال الواسع من المجدولات المتوفرة يغطي جميع أنواع الاحتياجات الممكنة.</para>
+
+      <sidebar>
+        <title><emphasis>ثقافة</emphasis> LARTC ‏— <emphasis>Linux Advanced Routing &amp; Traffic Control</emphasis></title>
+
+	<para>إن وثيقة HOWTO المسماة <emphasis>Linux Advanced Routing &amp; Traffic Control</emphasis> هي الوثيقة المرجعية التي تغطي كل شيء يتعلق بجودة الخدمة في الشبكات. <ulink type="block" url="http://www.lartc.org/howto/" /></para>
+        <indexterm><primary>توجيه</primary><secondary>متقدم</secondary></indexterm>
+        <indexterm><primary>حركة الرزم</primary><secondary>تحكم</secondary></indexterm>
+        <indexterm><primary>تحكم بحركة رزم الشبكة</primary></indexterm>
+      </sidebar>
+    </section>
+    <section id="sect.qos-config">
+      <title>الإعداد والتطبيق</title>
+
+      <para>تضبط متغيرات QoS عبر الأمر <command>tc</command> (المتوفر في الحزمة <emphasis role="pkg">iproute</emphasis>). بما أن واجهة هذا الأمر معقدة للغاية، يستحسن استخدام أدوات ذات مستوى أعلى.</para>
+      <indexterm><primary><emphasis>iproute</emphasis></primary></indexterm>
+      <indexterm><primary><command>tc</command></primary></indexterm>
+      <section id="sect.qos-wondershaper">
+        <title>تقليل زمن الوصول: <command>wondershaper</command></title>
+
+	<para>إن الهدف الرئيسي لبرنامج <command>wondershaper</command> (في الحزمة ذات الاسم نفسه) هو تقليل أزمنة الوصول بغض النظر عن حمل الشبكة. يتحقق هذا من خلال حد حركة البيانات الكلية إلى قيمة أصغر بقليل من قيمة إشباع الخط.</para>
+        <indexterm><primary><command>wondershaper</command></primary></indexterm>
+        <indexterm><primary>تحديد حجم تبادل البيانات على الشبكة</primary></indexterm>
+        <indexterm><primary>حركة الرزم</primary><secondary>تقييد</secondary></indexterm>
+
+	<para>بعد إعداد الواجهة الشبكية، يتم ضبط هذا التقييد في حركة البيانات عبر الأمر <command>wondershaper <replaceable>interface</replaceable> <replaceable>download_rate</replaceable> <replaceable>upload_rate</replaceable></command>. يمكن أن تكون الواجهة إما <literal>eth0</literal> أو <literal>ppp0</literal> على سبيل المثال، ويُقدَّر كلٌ من معدلي النقل بالكيلوبت بالثانية. يعطل الأمر <command>wondershaper remove <replaceable>interface</replaceable></command> التحكم بحركة البيانات على الواجهة المحددة.</para>
+
+	<para>بالنسبة لاتصالات إيثرنت، أفضل حل هو استدعاء هذا السكربت تلقائياً بعد إعداد الواجهة الشبكية. يتم هذا بإضافة التعليمتين التوجيهيتين <literal>up</literal> (تشير إلى أمر يتم تنفيذه بعد إعداد الواجهة الشبكية) و<literal>down</literal> (تشير إلى أمر يتم تنفيذه قبل إلغاء إعداد الواجهة الشبكية) إلى الملف <filename dir="ltr">/etc/network/interfaces</filename> وإضافة الأمرين السابقين كما يلي: </para>
+
+        <example id="example.network-interfaces">
+          <title>التغيرات في الملف <filename dir="ltr">/etc/network/interfaces</filename></title>
+
+          <programlisting>
+iface eth0 inet dhcp
+    up /sbin/wondershaper eth0 500 100
+    down /sbin/wondershaper remove eth0
+</programlisting>
+        </example>
+
+	<para>في حالة اتصالات PPP، يمكن تفعيل التحكم بحركة البيانات مباشرة بعد بدء الاتصال عبر إنشاء سكربت يستدعي <command>wondershaper</command> وتخزينه في <filename>/etc/ppp/ip-up.d/</filename>.</para>
+
+        <sidebar>
+          <title><emphasis>التعمق أكثر</emphasis> الإعداد المثالي</title>
+
+	  <para>يصف الملف <filename dir="ltr">/usr/share/doc/wondershaper/README.Debian.gz</filename> –بشيء من التفصيل– طريقة الإعداد التي ينصح بها مشرف الحزمة. على وجه الخصوص، ينصح بقياس سرعتي التنزيل والرفع لتقدير الحدود الحقيقية بأفضل ما يمكن.</para>
+        </sidebar>
+      </section>
+      <section id="sect.qos-config-standard">
+        <title>الإعداد القياسي</title>
+
+	<para>إذا لم يستخدم أي إعداد QoS خاص، سوف تستخدم النواة لينكس مجدول الأرتال <literal>pfifo_fast</literal>، الذي يوفر بعض المزايا المفيدة. كل رزمة IP لها أولوية تعتمد على حقل ToS (أي <emphasis>Type of Service</emphasis>) الخاص بهذه الرزمة؛ ويكفي تعديل هذا الحقل للاستفادة من مزايا الجدولة. هناك خمس قيم ممكنة:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>خدمة عادية (0) (Normal-Service)؛</para>
+          </listitem>
+          <listitem>
+	    <para>تقليل الكلفة (2) (Minimize-Cost)؛</para>
+          </listitem>
+          <listitem>
+	    <para>رفع الوثوقية (4) (Maximize-Reliability)؛</para>
+          </listitem>
+          <listitem>
+	    <para>رفع مستوى النقل (8) (Maximize-Throughput)؛</para>
+          </listitem>
+          <listitem>
+	    <para> تقليل التأخير (16) (Minimize-Delay).</para>
+          </listitem>
+        </itemizedlist>
+        <indexterm><primary>ToS</primary></indexterm>
+        <indexterm><primary>Type of Service (نوع الخدمة)</primary></indexterm>
+
+	<para>يمكن للتطبيق الذي يولد رزم IP تحديد قيمة الحقل ToS، أو يمكن تعديلها آنياً باستخدام <emphasis>netfilter</emphasis>. القواعد التالية كافية لزيادة استجابة خدمة في مخدم SSH:</para>
+
+        <programlisting role="scale">
+iptables -t mangle -A PREROUTING -p tcp --sport ssh -j TOS --set-tos Minimize-Delay
+iptables -t mangle -A PREROUTING -p tcp --dport ssh -j TOS --set-tos Minimize-Delay
+</programlisting>
+      </section>
+    </section>
+  </section>
+  <section id="sect.dynamic-routing">
+    <title>التوجيه الديناميكي</title>
+    <indexterm><primary>توجيه</primary><secondary>ديناميكي</secondary></indexterm>
+    <indexterm><primary><command>quagga</command></primary></indexterm>
+    <indexterm><primary><command>zebra</command></primary></indexterm>
+
+    <para>الأداة المرجعية في التوجيه الديناميكي حالياً هي <command>quagga</command>، المتوفرة في الحزمة ذات الاسم نفسه؛ لقد كان اسمها <command>zebra</command> إلى أن توقف تطويرها. على أي حال، فإن <command>quagga</command> حافظت على أسماء البرامج بدافع الحفاظ على التوافقية وهذا ما يفسر وجود الأمر <command>zebra</command> فيما يلي.</para>
+
+    <sidebar>
+      <title><emphasis>أساسيات</emphasis> التوجيه الديناميكي</title>
+
+      <para>يسمح التوجيه الديناميكي للموجهات بضبط مسارات إرسال رزم IP في الزمن الحقيقي. لكل بروتوكول طريقته الخاصة بتعريف المسارات (الطريق الأقصر، استخدام المسارات التي يعلن عنها النظراء، وغيرها).</para>
+
+      <para>في النواة لينكس، يصل المسار بين الجهاز الشبكي مع مجموعة من الأجهزة التي يمكن الوصول إليها عبر هذا الجهاز. يعرف الأمر <command>route</command> مسارات جديدة، ويعرض المسارات الموجودة سابقاً.</para>
+      <indexterm><primary><command>route</command></primary></indexterm>
+    </sidebar>
+
+    <para>Quagga هي مجموعة من الخدمات التي تتعاون مع بعضها لتعريف جداول التوجيه التي تستخدمها النواة لينكس؛ يقدم كل بروتوكول توجيه (أهمها BGP، و OSPF، و RIP) خدمته الخاصة. تجمع الخدمة <command>zebra</command> المعلومات من الخدمات الأخرى وتدير جداول التوجيه الستاتيكية وفقاً لها. الخدمات الأخرى هي <command>bgpd</command>،‏ <command>ospfd</command>،‏ <command>ospf6d</command>،‏ <command>ripd</command>،‏ <command>ripngd</command>،‏ <command>isisd</command> و<command>babeld</command>.</para>
+    <indexterm><primary>OSPF</primary></indexterm>
+    <indexterm><primary>BGP</primary></indexterm>
+    <indexterm><primary>RIP</primary></indexterm>
+    <indexterm><primary>IS-IS</primary></indexterm>
+    <indexterm><primary>BABEL wireless mesh routing</primary></indexterm>
+    <indexterm><primary><command>bgpd</command></primary></indexterm>
+    <indexterm><primary><command>ospfd</command></primary></indexterm>
+    <indexterm><primary><command>ospf6d</command></primary></indexterm>
+    <indexterm><primary><command>ripd</command></primary></indexterm>
+    <indexterm><primary><command>ripngd</command></primary></indexterm>
+    <indexterm><primary><command>isisd</command></primary></indexterm>
+    <indexterm><primary><command>babeld</command></primary></indexterm>
+
+    <para>يتم تفعيل الخدمات بتحرير الملف <filename dir="ltr">/etc/quagga/daemons</filename> وإنشاء ملف الإعداد المناسب في <filename>/etc/quagga/</filename>؛ ويجب تسمية هذا الملف بنفس اسم الخدمة مع إضافة اللاحقة <filename dir="ltr">.conf</filename> ويجب أن يكون مالكه المستخدم <literal>quagga</literal> و المجموعة <literal>quaggavty</literal>، حتى يستدعي السكربت <filename dir="ltr">/etc/init.d/quagga</filename> الخدمة.</para>
+
+    <para>إن إعداد كل من هذه الخدمات يتطلب معرفة بروتوكول التوجيه المرتبط بها. لا يمكن شرح هذه البروتوكولات بالتفصيل هنا، لكن الحزمة <emphasis role="pkg">quagga-doc</emphasis> توفر شرحاً وافياً في ملف <command>info</command>. يمكن تصفح المحتوى نفسه بصيغة HTML على موقع Quagga: <ulink type="block" url="http://www.nongnu.org/quagga/docs/docs-info.html" /></para>
+
+    <para>بالإضافة لذلك، صيغة هذه الملفات قريبة جداً من واجهة إعداد الموجهات الشبكية، لذلك سوف يتأقلم مديرو الشبكات سريعاً مع <command>quagga</command>.</para>
+
+    <sidebar>
+      <title><emphasis>ممارسة عملية</emphasis> OSPF، ‏BGP أو RIP؟</title>
+
+      <para>إن OSPF هو أفضل بروتوكول للتوجيه الديناميكي عموماً في الشبكات الخاصة، لكن BGP أكثر انتشاراً في التوجيه على الإنترنت. بروتوكول RIP قديم جداً، ونادراً ما يستخدم في الوقت الحاضر.</para>
+    </sidebar>
+  </section>
+  <section id="sect.ipv6">
+    <title>‏IPv6</title>
+
+    <para>IPv6 هو الإصدار الجديد من بروتوكول IP اللاحق للإصدار IPv4، وهو مصمم لتصحيح عيوب IPv4 وأهمها قلة عناوين IP المتاحة. يتحكم هذا البروتوكول بطبقة الشبكة؛ وهو يهدف لتوفير وسيلة لعنونة الأجهزة، وإيصال البيانات إلى وجهتها الصحيحة، ومعالجة تجزئة البيانات عند الحاجة (أي تجزئة الحزم إلى قطع يعتمد حجمها على وصلات الشبكة المستخدمة على الطريق وإعادة تجميع هذه القطع بترتيبها الصحيح عند الاستلام).</para>
+
+    <para>تتضمن نوى دبيان دعم IPv6 في لب النواة (عدا بعض المعماريات التي تتضمن دعم IPv6 بشكل وحدة اسمها <literal>ipv6</literal>). هناك مكافِئات للأدوات الأساسية تعتمد IPv6 مثل <command>ping6</command> التي تقابل <command>ping</command> و<command>traceroute6</command> التي تقابل <command>traceroute</command>، وهاتان متوفرتان في الحزمتين <emphasis role="pkg">iputils-ping</emphasis> و<emphasis role="pkg">iputils-tracepath</emphasis>.</para>
+    <indexterm><primary>IPv6</primary></indexterm>
+    <indexterm><primary><emphasis role="pkg">iputils-ping</emphasis></primary></indexterm>
+    <indexterm><primary><emphasis role="pkg">iputils-tracepath</emphasis></primary></indexterm>
+
+    <para>يشبه إعداد شبكات IPv6 إعداد شبكات IPv4، عبر الملف <filename dir="ltr">/etc/network/interfaces</filename>. لكن إذا أردت أن تتاح الشبكة عالميًا، فعليك أن تتأكد أنك تملك موجهاً يدعم IPv6 لتوجيه حركة البيانات إلى شبكة IPv6 العالمية.</para>
+
+    <example id="example.network-interfaces-ipv6">
+      <title> مثال عن إعدادات IPv6</title>
+
+      <programlisting>
+iface eth0 inet6 static
+    address 2001:db8:1234:5::1:1
+    netmask 64
+    # Disabling auto-configuration
+    # autoconf 0
+    # The router is auto-configured and has no fixed address
+    # (accept_ra 1). If it had:
+    # gateway 2001:db8:1234:5::1
+</programlisting>
+    </example>
+
+    <para>لشبكات IPv6 أقنعة من 64 بت عادة. هذا يعني وجود 2<superscript>64</superscript> عنوان مستقل ضمن الشبكة الفرعية. هذا يسمح لإعداد العناوين التلقائي <acronym>SLAAC</acronym>‏ (Stateless Address Autoconfiguration) باختيار عنوان IP اعتماداً على عنوان MAC الخاص بالوجهة الشبكية. افتراضياً، إذا كان <acronym>SLAAC</acronym> مفعلاً على الشبكة، وكان IPv6 مفعلاً على الحاسب، فسوف تعثر النواة آلياً على موجهات الشبكة وتضبط الواجهات الشبكية.</para>
+
+    <para>لكن هذا السلوك قد يضر بالخصوصية. فإذا كنت تتنقل بين الشبكات كثيراً، مع حاسبك المحمول مثلاً، قد لا تريد أن يكون عنوان <acronym>MAC</acronym> الخاص بك جزءاً من عنوان IPv6 العمومي، لأن هذا يسهل التعرف على الجهاز نفسه بين الشبكات. من حلول هذه القضية استخدام إضافات الخصوصية للبروتوكول IPv6 (التي تفعلها دبيان افتراضياً إذا اكتشفت اتصال IPv6 أثناء التثبيت الأولي)، التي تعين عنواناً إضافياً مولداً عشوائياً للواجهة الشبكية، وتغيره دورياً وتفضل استخدامه للاتصالات الصادرة. أما الاتصالات الواردة فتستطيع استخدام العنوان الذي يولده SLAAC. المثال التالي، وهو جزء من ملف <filename dir="ltr">/etc/network/interfaces</filename>، يُفَعّل إضافات الخصوصية هذه.</para>
+
+    <example id="example.network-interface-ipv6-privext">
+      <title>إضافات الخصوصية في IPv6</title>
+
+      <programlisting>
+iface eth0 inet6 auto
+    # Prefer the randomly assigned addresses for outgoing connections.
+    privext 2
+</programlisting>
+    </example>
+
+    <sidebar>
+      <title><emphasis>تلميح</emphasis> البرامج المبنية مع IPv6</title>
+
+      <para>يجب تعديل العديد من البرامج للتعامل مع IPv6. لقد تم تعديل معظم الحزم في دبيان بالفعل، لكن ليس جميعها. إذا كانت حزمتك المفضلة لا تعمل مع IPv6 بعد، يمكنك طلب المساعدة على القائمة البريدية <emphasis>debian-ipv6</emphasis>. قد يخبرونك عن بديل يعمل مع IPv6 أو قد يبلغون عن علة لمتابعة القضية بشكل سليم. <ulink type="block" url="http://lists.debian.org/debian-ipv6/" /></para>
+    </sidebar>
+
+    <indexterm><primary>IPv6، جدار ناري</primary></indexterm>
+    <indexterm><primary>جدار ناري</primary><secondary>IPv6</secondary></indexterm>
+    <indexterm><primary><command>ip6tables</command></primary></indexterm>
+    <para>يمكن تقييد اتصالات IPv6 بنفس أسلوب IPv4: إذ تتضمن النَوَى القياسية في دبيان تعديلاً لـ<emphasis>netfilter</emphasis> للتعامل مع IPv6. يتم إعداد <emphasis>netfilter</emphasis> الذي يعمل مع IPv6 بأسلوب يشبه مقابله الذي يعمل مع IPv4، فيما عدا أن البرنامج الذي يجب استعماله هو <command>ip6tables</command> بدلاً من <command>iptables</command>.</para>
+
+    <section id="sect.ipv6-tunneling">
+      <title>الأنفاق</title>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> أنفاق IPv6 والجدران النارية</title>
+
+        <para>إن استخدام أنفاق IPv6 عبر بروتوكول IPv4 (بدلاً من استخدام native IPv6) يتطلب من الجدار الناري قبول حركة البيانات التي تستخدم بروتوكول IPv4 رقم 41.</para>
+      </sidebar>
+
+      <para>إذا لم يكن اتصال IPv6 الnative متوفراً، يمكن استخدام نفق عبر IPv4 كحل بديل. Gogo6 هو أحد مزودي هذه الأنفاق (مجاناً): <ulink type="block" url="http://www.gogo6.com/freenet6/tunnelbroker" /></para>
+      <indexterm><primary>Freenet6</primary></indexterm>
+      <indexterm><primary>Gogo6</primary></indexterm>
+
+      <para>لاستخدام نفق Freenet6، عليك التسجيل بحساب Freenet6 Pro على الموقع، ثم تثبيت حزمة <emphasis role="pkg">gogoc</emphasis> وإعداد النفق. هذا يتطلب تعديل الملف <filename dir="ltr">/etc/gogoc/gogoc.conf</filename>: حيث يجب إضافة السطرين <literal>userid</literal> و<literal>password</literal> الذين تم استلامهما عبر البريد الإلكتروني، ويجب استبدال <literal>server</literal> بالسطر <literal>authenticated.freenet6.net</literal>.</para>
+
+      <para>بإضافة التعليمات التوجيهية الثلاث التالية إلى الملف <filename dir="ltr">/etc/gogoc/gogoc.conf</filename> سوف تتاح إمكانية الاتصال عبر IPv6 لجميع الأجهزة على الشبكة المحلية (على فرض أن الشبكة المحلية تتصل بالواجهة eth0):</para>
+
+      <programlisting>
+host_type=router
+prefixlen=56
+if_prefix=eth0
+</programlisting>
+
+      <para>بعدها يصبح الجهاز موجه الوصول لشبكة فرعية ذات بادئة طولها 56 بت. بعد أن يعلم النفق بهذا التعديل، يجب إعلام الشبكة المحلية به؛ وهذا يتضمن تثبيت الخدمة <command>radvd</command> (من الحزمة ذات الاسم نفسه). تؤدي خدمة إعداد IPv6 هذه دوراً مشابهاً لخدمة <command>dhcpd</command> في عالم IPv4.</para>
+
+      <para>يجب بعدها إنشاء ملف الإعداد <filename dir="ltr">/etc/radvd.conf</filename> (استعن بالملف <filename dir="ltr">/usr/share/doc/radvd/examples/simple-radvd.conf</filename> كنقطة انطلاق). في حالتنا، التغيير الوحيد المطلوب هو تغيير البادئة، التي يجب استبدالها بالبادئة التي يقدمها Freenet6؛ يمكن العثور عليها في مخرجات الأمر <command>ifconfig</command>، في القسم المتعلق بالواجهة <literal>tun</literal>.</para>
+      <indexterm><primary><command>radvd</command></primary></indexterm>
+
+      <para>بعدها استدع الأمر <command>service gogoc restart</command> والأمر <command>service radvd start</command>، ويجب عندها أن تعمل شبكة IPv6.</para>
+    </section>
+
+  </section>
+  <section id="sect.domain-name-servers">
+    <title>مخدمات أسماء النطاقات Domain Name Servers ‏(DNS)</title>
+    <section id="sect.dns-principe">
+      <title>المبدأ والآلية</title>
+      <indexterm><primary>DNS</primary></indexterm>
+      <indexterm><primary>مخدم</primary><secondary>اسم</secondary></indexterm>
+
+      <para>خدمة أسماء النطاقات <emphasis>Domain Name Service</emphasis>‏ (DNS) هي مكون أساسي في شبكة الإنترنت: فهي تقابل أسماء الحواسيب بعناوين IP (والعكس أيضًا)، وهذا ما يسمح باستخدام <literal>www.debian.org</literal> بدلاً من <literal dir="ltr">5.153.231.4</literal> أو <literal dir="ltr">2001:41c8:1000:21::21:4</literal>.</para>
+
+      <para>تصنف سجلات DNS في مناطق – zones؛ كل منطقة تقابل نطاقاً (أو نطاقاً فرعياً) أو مجالاً من عناوين IP (بما أن عناوين IP عموماً تحجز بشكل مجالات متسلسلة). يتحكم المخدم الأساسي بمحتويات المنطقة؛ أما المخدمات الفرعية، التي تعمل عادة على أجهزة منفصلة، توفر نسخاً تُحدّث بانتظام عن المنطقة الأساسية.</para>
+      <indexterm><primary>منطقة</primary><secondary>DNS</secondary></indexterm>
+      <indexterm><primary>DNS</primary><secondary>منطقة</secondary></indexterm>
+
+      <para>يمكن أن تحوي كل منطقة سجلات من أنواع مختلفة (<emphasis>Resource Records</emphasis>):</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>A</literal>: عنوان IPv4. <indexterm><primary>A، سجل DNS</primary></indexterm></para>
+        </listitem>
+        <listitem>
+	  <para><literal>CNAME</literal>: لقب (<emphasis>canonical name</emphasis>). <indexterm><primary>CNAME، سجل DNS</primary></indexterm></para>
+        </listitem>
+        <listitem>
+	  <para><literal>MX</literal>: ‏<emphasis>mail exchange</emphasis>، مخدم بريد إلكتروني. تستخدم مخدمات البريد الإلكتروني الأخرى هذه المعلومات لتعرف المخدم الموافق لعنوان الوجهة الذي سترسل البريد إليه. لكل سجل MX هناك أولوية. يستقبل المخدم ذا الأولوية الأعلى (صاحب الرقم الأصغر) اتصال SMTP أولاً (انظر الملاحظة الجانبية <xref linkend="sidebar.smtp" />)؛ وإذا لم يجب، يتم الاتصال بالمخدمات التي تليه حسب ترتيب الأولوية. <indexterm><primary>MX</primary><secondary>سجل DNS</secondary></indexterm></para>
+        </listitem>
+        <listitem>
+	  <para><literal>PTR</literal>: رقم IP الموافق للاسم. هذه السجلات تخزن في ”المناطق العكسية“ التي تسمى تبعاً لمجال عناوين IP. مثلاً، <literal dir="ltr">1.168.192.in-addr.arpa</literal> هي المنطقة العكسية لجميع العناوين في المجال <literal>192.168.1.0/24</literal>. <indexterm><primary>PTR، سجل DNS</primary></indexterm></para>
+        </listitem>
+        <listitem>
+	  <para><literal>AAAA</literal>: عنوان IPv6. <indexterm><primary>AAAA، سجل DNS</primary></indexterm></para>
+        </listitem>
+        <listitem>
+	  <para><literal>NS</literal>: الاسم المقابل لمخدم DNS. كل نطاق يجب أن يحوي سجل NS واحد على الأقل. تشير هذه السجلات إلى مخدم DNS الذي يستطيع الإجابة على الطلبات المتعلقة بهذا النطاق؛ عادة ما تشير هذه السجلات إلى مخدمات أساسية وثانوية للنطاق. تسمح هذه السجلات أيضًا بما يعرف بانتداب DNS‏ – DNS delegation، مثلاً، يمكن أن يحوي النطاق <literal>falcot.com</literal> سجل NS بالاسم <literal>internal.falcot.com</literal>، وهذا يعني أن النطاق <literal>internal.falcot.com</literal> يديره مخدم DNS آخر. طبعاً، يجب أن يصرح هذا المخدم الأخير عن المنطقة <literal>internal.falcot.com</literal>. <indexterm><primary>NS، سجل DNS</primary></indexterm></para>
+        </listitem>
+      </itemizedlist>
+      
+      <indexterm><primary>سجل</primary><secondary>DNS</secondary></indexterm>
+      <indexterm><primary>DNS، سجل</primary></indexterm>
+
+      <para>إن مخدم الأسماء المرجعي (Bind) قد طوره ويعمل على صيانته ISC ‏(<emphasis>Internet Software Consortium</emphasis>). تقدم دبيان هذا المخدم في الحزمة bind9. تقدم النسخة 9 تغيرين كبيرين عن النسخ السابقة. أولاً، يستطيع مخدم DNS الآن العمل بصلاحيات المستخدم العادي، بحيث لا تمنح الثغرات الأمنية security vulnerabilities في المخدم صلاحيات الجذر للمهاجمين (كما تكرر مع النسخ ‎8.x مرات عديدة).</para>
+
+      <para>بالإضافة لذلك، أصبح Bind يدعم معيار DNSSEC لتوقيع سجلات DNS (ومصادقتها أيضاً)، وهذا يسمح بمنع تزوير (spoofing) هذه البيانات عبر هجمات man-in-the-middle. </para>
+      <indexterm><primary><emphasis role="pkg">bind9</emphasis></primary></indexterm>
+      <indexterm><primary>ISC</primary></indexterm>
+      <indexterm><primary>Internet Software Consortium</primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>ثقافة</emphasis> DNSSEC</title>
+        <indexterm><primary>DNSSEC</primary></indexterm>
+
+	<para>معيار DNSSEC معقد جداً؛ وهذا يفسر جزئياً عدم انتشار استخدامه حتى الآن (رغم أنه يتعايش بشكل ممتاز مع مخدمات DNS التي لا تدعم DNSSEC). لفهم مناحي هذا المعيار، عليك الاطلاع على المقالة التالية. <ulink type="block" url="http://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions" /></para>
+      </sidebar>
+    </section>
+    <section id="sect.dns-config">
+      <title>الإعداد</title>
+
+      <para>مهما كان إصدار <command>bind</command>، فإن ملفات إعداده لها البنية نفسها.</para>
+
+      <para>أنشأ مديرو النظم في شركة فلكوت منطقة أساسية <literal>falcot.com</literal> لتخزين المعلومات المتعلقة بهذا النطاق، ومنطقة <literal dir="ltr">168.192.in-addr.arpa</literal> للمقابلة العكسية (reverse mapping) لعناوين IP في الشبكات المحلية.</para>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> أسماء المناطق العكسية</title>
+        <indexterm><primary>منطقة</primary><secondary>عكسية</secondary></indexterm>
+        <indexterm><primary>منطقة عكسية</primary></indexterm>
+        <indexterm><primary><literal>in-addr.arpa</literal></primary></indexterm>
+        <indexterm><primary><literal>ip6.arpa</literal></primary></indexterm>
+	<indexterm><primary>nibble format</primary></indexterm>
+
+	<para>للمناطق العكسية أسماء خاصة. فالمنطقة التي تغطي الشبكة <literal>192.168.0.0/16</literal> يجب أن تسمى <literal dir="ltr">168.192.in-addr.arpa</literal>: حيث تعكس أجزاء عنوان IP، وتتبع باللاحقة <literal>in-addr.arpa</literal>.</para>
+
+	<para>بالنسبة لشبكات IPv6، فاللاحقة هي <literal>ip6.arpa</literal> كما تكتب أجزاء عنوان IP المعكوسة بالتمثيل الست عشري الكامل لعناوين IP. بالتالي، يجب تسمية المنطقة الخاصة بالشبكة <literal dir="ltr">2001:0bc8:31a0::/48</literal> كالتالي: <literal dir="ltr">0.a.1.3.8.c.b.0.1.0.0.2.ip6.arpa</literal>.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>تلميح</emphasis> اختبار مخدم DNS</title>
+
+	<para>يستعلم الأمر <command>host</command> (من الحزمة <emphasis role="pkg">bind9-host</emphasis>) عن مخدم DNS، ويمكن استخدامه لاختبار إعدادات المخدم. مثلاً، يتحقق الأمر <command>host machine.falcot.com localhost</command> من إجابة المخدم المحلي على الطلب <literal>machine.falcot.com</literal>. أما الأمر <command>host <replaceable>ipaddress</replaceable> localhost</command> فيختبر الاستبيان العكسي ( reverse resolution).</para>
+	<indexterm><primary><command>host</command></primary></indexterm>
+      </sidebar>
+
+      <para>يمكن أن تساعد المقتطفات التالية، المأخوذة من ملفات شركة فلكوت، على ضبط مخدم DNS:</para>
+      <indexterm><primary><filename>named.conf</filename></primary></indexterm>
+      <indexterm><primary><filename>/etc/bind/named.conf</filename></primary></indexterm>
+
+      <example id="example.bind-named.conf.local">
+        <title>مقتطفات من <filename dir="ltr">/etc/bind/named.conf.local</filename></title>
+
+        <programlisting>
+zone "falcot.com" {
+        type master;
+        file "/etc/bind/db.falcot.com";
+        allow-query { any; };
+        allow-transfer {
+                195.20.105.149/32 ; // ns0.xname.org
+                193.23.158.13/32 ; // ns1.xname.org
+        };
+};
+
+zone "internal.falcot.com" {
+        type master;
+        file "/etc/bind/db.internal.falcot.com";
+        allow-query { 192.168.0.0/16; };
+};
+
+zone "168.192.in-addr.arpa" {
+        type master;
+        file "/etc/bind/db.192.168";
+        allow-query { 192.168.0.0/16; };
+};
+</programlisting>
+      </example>
+
+      <example id="example.bind-db.falcot.com">
+        <title>مقتطفات من <filename dir="ltr">/etc/bind/db.falcot.com</filename></title>
+
+        <programlisting>; falcot.com Zone 
+; admin.falcot.com. =&gt; zone contact: admin@falcot.com
+$TTL    604800
+@       IN      SOA     falcot.com. admin.falcot.com. (
+                        20040121        ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+; The @ refers to the zone name ("falcot.com" here)
+; or to $ORIGIN if that directive has been used
+;
+@       IN      NS      ns
+@       IN      NS      ns0.xname.org.
+
+internal IN      NS      192.168.0.2
+
+@       IN      A       212.94.201.10
+@       IN      MX      5 mail
+@       IN      MX      10 mail2
+
+ns      IN      A       212.94.201.10
+mail    IN      A       212.94.201.10
+mail2   IN      A       212.94.201.11
+www     IN      A       212.94.201.11
+
+dns     IN      CNAME   ns
+</programlisting>
+      </example>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> صيغة الاسم</title>
+
+	<para>تتبع صيغة أسماء الأجهزة قواعد صارمة. مثلاً، كلمة <literal>machine</literal> تعني ضمنيًا <literal>machine.<replaceable>domain</replaceable></literal>. في حال كانت إضافة اسم النطاق غير مرغوبة، فيجب كتابة الاسم بالشكل <literal dir="ltr">machine.</literal> (مع إضافة النقطة إلى نهاية الاسم). وللإشارة إلى اسم DNS يقع خارج النطاق الحالي كتابة الاسم كما في <literal dir="ltr">machine.otherdomain.com.</literal> (مع نقطة في النهاية).</para>
+      </sidebar>
+
+      <example id="example.bind-db.192.168">
+        <title>مقتطفات من <filename dir="ltr">/etc/bind/db.192.168</filename></title>
+
+        <programlisting>; Reverse zone for 192.168.0.0/16
+; admin.falcot.com. =&gt; zone contact: admin@falcot.com
+$TTL    604800
+@       IN      SOA     ns.internal.falcot.com. admin.falcot.com. (
+                        20040121        ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+
+        IN      NS      ns.internal.falcot.com.
+
+; 192.168.0.1 -&gt; arrakis
+1.0     IN      PTR     arrakis.internal.falcot.com.
+; 192.168.0.2 -&gt; neptune
+2.0     IN      PTR     neptune.internal.falcot.com.
+
+; 192.168.3.1 -&gt; pau
+1.3     IN      PTR     pau.internal.falcot.com.
+</programlisting>
+      </example>
+    </section>
+  </section>
+  <section id="sect.dhcp">
+    <title>‏DHCP</title>
+
+    <para>DHCP (اختصاراً للعبارة <emphasis>Dynamic Host Configuration Protocol</emphasis>) هو بروتوكول يسمح للأجهزة بالحصول على إعدادات الشبكة الخاصة بها عند الإقلاع. هذا يسمح بإدارة إعدادات الشبكة مركزياً، ويضمن أن جميع الأجهزة المكتبية ستحصل على إعدادات متشابهة.</para>
+    <indexterm><primary>DHCP</primary></indexterm>
+    <indexterm><primary>Dynamic Host Configuration Protocol</primary></indexterm>
+    <indexterm><primary>شبكة</primary><secondary>إعداد DHCP</secondary></indexterm>
+
+    <para>يقدم مخدم DHCP العديد من المتغيرات الشبكية. أكثرها شيوعاً عنوان IP والشبكة التي ينتمي لها الجهاز، لكنه يستطيع أيضًا تقديم معلومات أخرى، مثل مخدمات DNS، ومخدمات WINS، ومخدمات NTP، وغيرها. </para>
+
+    <para>المطور الأساسي لمخدم DHCP هو Internet Software Consortium (الذي يطور <command>bind</command> أيضًا). حزمة دبيان التي تحوي مخدم DHCP هي <emphasis role="pkg">isc-dhcp-server</emphasis>.</para>
+
+    <section id="sect.dhcp-config">
+      <title>الإعداد</title>
+
+      <para>أولى العناصر التي يجب تحريرها في ملف إعداد مخدم DHCP ‏(<filename dir="ltr">/etc/dhcp/dhcpd.conf</filename>) هي اسم النطاق ومخدمات DNS. إذا كان هذا المخدم وحيداً على الشبكة المحلية (وفقاً لتعريف انتشار البث – broadcast propagation)، يجب أيضًا تفعيل (أو إزالة التعليق عن) التعليمة التوجيهية <literal>authoritative</literal>. كما يجب إنشاء قسم <literal>subnet</literal> يصف الشبكة المحلية ومعلومات الإعداد المقدمة. المثال التالي يتناسب مع الشبكة المحلية <literal>192.168.0.0/24</literal> فيها موجه عنوانه <literal>192.168.0.1</literal> يخدم كبوابة للشبكة. تقع عناوين IP المتاحة ضمن المجال <literal>192.168.0.128</literal> وحتى <literal>192.168.0.254</literal>.</para>
+
+      <example id="example.dhcp-dhcpd.conf">
+        <title>مقتطفات من <filename dir="ltr">/etc/dhcp/dhcpd.conf</filename></title>
+
+        <programlisting>
+#
+# Sample configuration file for ISC dhcpd for Debian
+#
+
+# The ddns-updates-style parameter controls whether or not the server will
+# attempt to do a DNS update when a lease is confirmed. We default to the
+# behavior of the version 2 packages ('none', since DHCP v2 didn't
+# have support for DDNS.)
+ddns-update-style interim;
+
+# option definitions common to all supported networks...
+option domain-name "internal.falcot.com";
+option domain-name-servers ns.internal.falcot.com;
+
+default-lease-time 600;
+max-lease-time 7200;
+
+# If this DHCP server is the official DHCP server for the local
+# network, the authoritative directive should be uncommented.
+authoritative;
+
+# Use this to send dhcp log messages to a different log file (you also
+# have to hack syslog.conf to complete the redirection).
+log-facility local7;
+
+# My subnet
+subnet 192.168.0.0 netmask 255.255.255.0 {
+    option routers 192.168.0.1;
+    option broadcast-address 192.168.0.255;
+    range 192.168.0.128 192.168.0.254;
+    ddns-domainname "internal.falcot.com";
+}
+</programlisting>
+      </example>
+    </section>
+    <section id="sect.dhcp-dns">
+      <title>‏DHCP و DNS</title>
+      <indexterm><primary>DNS</primary><secondary>التحديثات المؤتمتة</secondary></indexterm>
+
+      <para>من الميزات القيمة التسجيل الآلي لعملاء DHCP في منطقة DNS، بحيث يحصل كل جهاز على اسم ذو معنى (بدلاً من اسم غريب مثل <literal>machine-192-168-0-131.internal.falcot.com</literal>). لاستخدام هذه الميزة يجب ضبط مخدم DNS لقبول التحديثات على منطقة ‏<literal>internal.falcot.com</literal> من مخدم DHCP، وإعداد مخدم DHCP لإرسال التحديثات عند كل عملية تسجيل.</para>
+
+      <para>في حال استخدام <command>bind</command>، يجب إضافة التعليمة التوجيهية <literal>allow-update</literal> لكل منطقة يحتاج مخدم DHCP تعديلها (منطقة النطاق <literal>internal.falcot.com</literal>، والمنطقة العكسية). هذه التعليمة تحدد عناوين IP التي يسمح لها بإجراء هذه التحديثات؛ بالتالي يجب أن تسجل فيها جميع عناوين مخدم DHCP (العناوين المحلية والعنوان العام، في حال وجوده).</para>
+
+      <programlisting>
+allow-update { 127.0.0.1 192.168.0.1 212.94.201.10 !any };
+</programlisting>
+
+      <para>انتبه! المنطقة التي يمكن تعديلها <emphasis>سوف</emphasis> يغيرها <command>bind</command>، وسوف يستبدل ملفات إعدادها في فواصل زمنية منتظمة. بما أن هذه العملية المؤتمتة تنتج ملفات صعبة القراءة مقارنة بالملفات المكتوبة يدويًا، فإن مديري النظم في فلكوت قرروا معالجة النطاق <literal>internal.falcot.com</literal> باستخدام مخدم DNS منتدب (delegated)؛ هذا يعني أن ملفات المنطقة <literal>falcot.com</literal> تبقى بالكامل تحت التحكم اليدوي.</para>
+
+      <para>تتضمن المقتطفات من إعدادات مخدم DHCP أعلاه التعليمات التوجيهية المطلوبة لتحديث مناطق DNS: وهي السطور  <literal>ddns-update-style interim;</literal> و <literal>ddns-domain-name "internal.falcot.com";</literal> في القسم الذي يوصّف الشبكة الفرعية.</para>
+    </section>
+  </section>
+  <section id="sect.network-diagnosis-tools">
+    <title>أدوات تشخيص الشبكات</title>
+
+    <para>عندما لا يعمل التطبيق الشبكي كما يجب، فمن المهم أن يتمكن المرء من فحص ما يجري عن قرب. وحتى عندما يبدو أن كل شيء على ما يرام، قد يساعد تشخيص الشبكة على التأكد أن كل شيء يعمل كما يجب. هناك العديد من أدوات التشخيص المخصصة لهذا الغرض؛ وكل منها يعمل على مستوى مختلف.</para>
+    <section id="sect.netstat">
+      <title>التشخيص المحلي: <command>netstat</command></title>
+      <indexterm><primary><command>netstat</command></primary></indexterm>
+
+      <para>لنتحدث أولاً عن الأمر <command>netstat</command> (من حزمة <emphasis role="pkg">net-tools</emphasis>)؛ يعرض هذا الأمر ملخصًا آنياً عن نشاط الشبكة في الجهاز. عند استدعاء هذا الأمر بدون متغيرات، سوف يعرض جميع الاتصالات المفتوحة؛ قد تكون هذه القائمة طويلة جداً لأنها تحوي العديد من مقابس نطاق يونكس – Unix-domain sockets (التي تستخدمها خدمات النظام بشكل واسع) والتي لا علاقة لها بالشبكة مطلقًا (مثل اتصالات <literal>dbus</literal>، أو بيانات <literal>X11</literal>، والاتصالات بين نظم الملفات الظاهرية وسطح المكتب).</para>
+
+      <para>لذلك تستخدم عادة خيارات لتغيير هذا السلوك عند استدعاء <command>netstat</command>. من الخيارات الأكثر استخداماً نذكر:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal dir="ltr">-t</literal>، الذي يفلتر النتائج بحيث تعرض اتصالات TCP فقط؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal dir="ltr">-u</literal>، الذي يعطي نتيجة مشابهة ولكن لاتصالات UDP؛ يمكن استخدام هذين الخيارين معاً، ويكفي استخدام أحدهما لإيقاف عرض اتصالات نطاق يونكس؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal dir="ltr">-a</literal>، يستخدم لعرض المقابس المنصتة أيضًا (التي تنتظر اتصالات واردة)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal dir="ltr">-n</literal>، لعرض النتائج عددياً: إظهار عناوين IP (دون مقابلات DNS)، وأرقام المنافذ (دون ألقاب كما هي معرفة في <filename dir="ltr">/etc/services</filename>) وأرقام تعريف المستخدمين (دون أسماء تسجيل الدخول)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal dir="ltr">-p</literal>، يستخدم لعرض العمليات المتصلة؛ هذا الخيار مفيد فقط عند تشغيل <command>netstat</command> بصلاحيات root، لأن المستخدمين العاديين لن يروا إلا عملياتهم؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal dir="ltr">-c</literal>، لتحديث قائمة الاتصالات بشكل مستمر.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>هناك خيارات أخرى، موثـقة في صفحة التعليمات <citerefentry><refentrytitle>netstat</refentrytitle> <manvolnum>8</manvolnum></citerefentry>‎، تقدم تحكماً أكبر بالنتائج المعروضة. عملياً، تستخدم الخيارات الخمسة الأولى معاً كثيراً حتى أن مديري النظم والشبكات اكتسبوا التعليمة <command>netstat -tupan</command> كمنعكس لا إرادي. قد تبدو النتائج النموذجية لهذا الأمر، على جهاز حمله خفيف، كما يلي:</para>
+
+      <screen role="scale">
+<computeroutput># </computeroutput><userinput>netstat -tupan</userinput>
+<computeroutput>Active Internet connections (servers and established)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:111             0.0.0.0:*               LISTEN      397/rpcbind     
+tcp        0      0 0.0.0.0:22              0.0.0.0:*               LISTEN      431/sshd        
+tcp        0      0 0.0.0.0:36568           0.0.0.0:*               LISTEN      407/rpc.statd   
+tcp        0      0 127.0.0.1:25            0.0.0.0:*               LISTEN      762/exim4       
+tcp        0    272 192.168.1.242:22        192.168.1.129:44452     ESTABLISHED 1172/sshd: roland [
+tcp6       0      0 :::111                  :::*                    LISTEN      397/rpcbind     
+tcp6       0      0 :::22                   :::*                    LISTEN      431/sshd        
+tcp6       0      0 ::1:25                  :::*                    LISTEN      762/exim4       
+tcp6       0      0 :::35210                :::*                    LISTEN      407/rpc.statd   
+udp        0      0 0.0.0.0:39376           0.0.0.0:*                           916/dhclient    
+udp        0      0 0.0.0.0:996             0.0.0.0:*                           397/rpcbind     
+udp        0      0 127.0.0.1:1007          0.0.0.0:*                           407/rpc.statd   
+udp        0      0 0.0.0.0:68              0.0.0.0:*                           916/dhclient    
+udp        0      0 0.0.0.0:48720           0.0.0.0:*                           451/avahi-daemon: r
+udp        0      0 0.0.0.0:111             0.0.0.0:*                           397/rpcbind     
+udp        0      0 192.168.1.242:123       0.0.0.0:*                           539/ntpd        
+udp        0      0 127.0.0.1:123           0.0.0.0:*                           539/ntpd        
+udp        0      0 0.0.0.0:123             0.0.0.0:*                           539/ntpd        
+udp        0      0 0.0.0.0:5353            0.0.0.0:*                           451/avahi-daemon: r
+udp        0      0 0.0.0.0:39172           0.0.0.0:*                           407/rpc.statd   
+udp6       0      0 :::996                  :::*                                397/rpcbind     
+udp6       0      0 :::34277                :::*                                407/rpc.statd   
+udp6       0      0 :::54852                :::*                                916/dhclient    
+udp6       0      0 :::111                  :::*                                397/rpcbind     
+udp6       0      0 :::38007                :::*                                451/avahi-daemon: r
+udp6       0      0 fe80::5054:ff:fe99::123 :::*                                539/ntpd        
+udp6       0      0 2001:bc8:3a7e:210:a:123 :::*                                539/ntpd        
+udp6       0      0 2001:bc8:3a7e:210:5:123 :::*                                539/ntpd        
+udp6       0      0 ::1:123                 :::*                                539/ntpd        
+udp6       0      0 :::123                  :::*                                539/ntpd        
+udp6       0      0 :::5353                 :::*                                451/avahi-daemon: r
+</computeroutput></screen>
+
+      <para>كما هو متوقع، يسرد هذا الأمر الاتصالات المفتوحة، وهما اتصالا SSH في هذا المثال، والتطبيقات التي تنتظر الاتصالات الواردة (ذات الحالة <literal>LISTEN</literal>)، أهمها مخدم البريد الإلكتروني Exim4 الذي ينصت على المنفذ 25.</para>
+    </section>
+    <section id="sect.nmap">
+      <title>التشخيص عن بعد: <command>nmap</command></title>
+      <indexterm><primary><command>nmap</command></primary></indexterm>
+
+      <para>إن <command>nmap</command> (المتوفر في الحزمة ذات الاسم نفسه) هو –بشكل أو بآخر– مكافئ لـ <command>netstat</command> ولكن يعمل عن بعد. يستطيع <command>nmap</command> فحص مجموعة من المنافذ ”المعروفة“ لمخدم بعيد واحد أو لمجموعة من المخدمات، وسرد المنافذ التي يجد تطبيقاً يجيب على الاتصالات الواردة إليها. بالإضافة لذلك، يستطيع <command>nmap</command> التعرف على بعض هذه التطبيقات، بل يتعرف أحياناً على أرقام إصدارها. الجانب السلبي لهذه الأداة هو أنها لا تستطيع تقديم معلومات عن العمليات أو المستخدمين، لأنها تعمل عن بعد بطبيعة الحال؛ لكنها تستطيع العمل على عدة أهداف في الوقت ذاته.</para>
+
+      <para>في الحالة النموذجية لا يستخدم إلا الخيار <literal dir="ltr">-A</literal> عند استدعاء <command>nmap</command> (حتى يحاول <command>nmap</command> التعرف على إصدارات برمجيات المخدم التي يعثر عليها) يليه عنوان IP واحد أو أكثر أو أسماء DNS للأجهزة المراد فحصها. هنا أيضًا توجد الكثير من الخيارات الأخرى للتحكم بسلوك <command>nmap</command>؛ ولمعرفتها يمكنك الرجوع إلى التوثيق المتاح في صفحة التعليمات <citerefentry> <refentrytitle>nmap</refentrytitle> <manvolnum>1</manvolnum> </citerefentry>‎.</para>
+
+      <screen role="scale" width="80">
+<computeroutput># </computeroutput><userinput>nmap mirtuel</userinput>
+<computeroutput>
+Starting Nmap 6.47 ( http://nmap.org ) at 2015-03-09 16:46 CET
+Nmap scan report for mirtuel (192.168.1.242)
+Host is up (0.000013s latency).
+rDNS record for 192.168.1.242: mirtuel.internal.placard.fr.eu.org
+Not shown: 998 closed ports
+PORT    STATE SERVICE
+22/tcp  open  ssh
+111/tcp open  rpcbind
+
+Nmap done: 1 IP address (1 host up) scanned in 2.41 seconds
+# </computeroutput><userinput>nmap -A localhost</userinput>
+<computeroutput>
+Starting Nmap 6.47 ( http://nmap.org ) at 2015-03-09 16:46 CET
+Nmap scan report for localhost (127.0.0.1)
+Host is up (0.000013s latency).
+Other addresses for localhost (not scanned): 127.0.0.1
+Not shown: 997 closed ports
+PORT    STATE SERVICE VERSION
+22/tcp  open  ssh     OpenSSH 6.7p1 Debian 3 (protocol 2.0)
+|_ssh-hostkey: ERROR: Script execution failed (use -d to debug)
+25/tcp  open  smtp    Exim smtpd 4.84
+| smtp-commands: mirtuel Hello localhost [127.0.0.1], SIZE 52428800, 8BITMIME, PIPELINING, HELP, 
+|_ Commands supported: AUTH HELO EHLO MAIL RCPT DATA NOOP QUIT RSET HELP 
+111/tcp open  rpcbind 2-4 (RPC #100000)
+| rpcinfo: 
+|   program version   port/proto  service
+|   100000  2,3,4        111/tcp  rpcbind
+|   100000  2,3,4        111/udp  rpcbind
+|   100024  1          36568/tcp  status
+|_  100024  1          39172/udp  status
+Device type: general purpose
+Running: Linux 3.X
+OS CPE: cpe:/o:linux:linux_kernel:3
+OS details: Linux 3.7 - 3.15
+Network Distance: 0 hops
+Service Info: Host: mirtuel; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+OS and Service detection performed. Please report any incorrect results at http://nmap.org/submit/ .
+Nmap done: 1 IP address (1 host up) scanned in 11.54 seconds
+</computeroutput></screen>
+
+      <para>كما هو متوقع، التطبيقان SSH و Exim4 مذكوران. لاحظ أنه لا تنصت جميع التطبيقات إلى جميع عناوين IP؛ فبما أن الوصول إلى Exim4 ممكن عبر الواجهة المحلية <literal>lo</literal> فقط، نراه يظهر فقط أثناء تحليل <literal>localhost</literal> ولا نراه عند فحص <literal>mirtuel</literal> (الذي يشير إلى الواجهة <literal>eth0</literal> على الجهاز نفسه).</para>
+    </section>
+    <section id="sect.sniffers">
+      <title>برامج التقاط الرزم (Sniffers): ‏<command>tcpdump</command> و<command>wireshark</command></title>
+
+      <para>أحياناً، يحتاج المرء للاطلاع على ما يجري في الكابلات، رزمة رزمة. هذه الحالات تحتاج ”محلل إطارات – frame analyzer“، أو ما يعرف أكثر باسم <emphasis>sniffer</emphasis>. تراقب هذه الأدوات كافة الرزم التي تصل إلى واجهة شبكية معينة، وتعرضها بأسلوب قريب للمستخدم.</para>
+      <indexterm><primary><command>tcpdump</command></primary></indexterm>
+
+      <para>الأداة الرائدة في هذا المجال هي <command>tcpdump</command> بلا منازع، وهي متوفرة في العديد من المنصات كأداة قياسية. تسمح هذه الأداة بأنماط عديدة لالتقاط رزم الشبكة، لكن تمثيل هذه الرزم يبقى غامضاً نوعاً ما. لذلك لن نُفصِّل في شرحها أكثر من ذلك هنا.</para>
+      <indexterm><primary><command>wireshark</command></primary></indexterm>
+
+      <para><command>wireshark</command> (في الحزمة <emphasis role="pkg">wireshark</emphasis>) هو برنامج أحدث (وأكثر تطوراً)، وقد أصبح الأداة المرجعية الجديدة في مجال تحليل نشاط الشبكات وذلك نتيجة تعدد وحدات فك الترميز التي تسمح له بتقديم تحليل مبسط للرزم الملتقطة. تعرض الرزم رسومياً وتنظم حسب طبقات البروتوكول. هذا يسمح للمستخدم برؤية جميع بروتوكولات الرزمة. مثلاً، إحدى الرزم تحوي طلب HTTP، سوف يعرض <command>wireshark</command> المعلومات المتعلقة بالطبقة الفيزيائية، وطبقة إيثرنت، ومعلومات IP الخاصة بالرزمة، ومتغيرات اتصالات TCP، وأخيراً طلب HTTP نفسه، وذلك بصورة منفصلة؛ كل على حدة.</para>
+
+      <figure id="figure.wireshark">
+        <title>محلل رزم الشبكة <command>wireshark</command></title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/wireshark.png" scalefit="1" width="75%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>في مثالنا، لا تظهر الرزم المرسلة عبر SSH (بسبب الفلتر <literal dir="ltr">!tcp.port == 22</literal>). أما الرزمة المحددة في الصورة فقد تطورت في طبقة HTTP.</para>
+
+      <sidebar>
+        <title><emphasis>تلميح</emphasis> <command>wireshark</command> دون الواجهة الرسومية: <command>tshark</command></title>
+        <indexterm><primary><command>tshark</command></primary></indexterm>
+
+	<para>عندما لا يمكن تشغيل واجهة رسومية، أو عندما لا يرغب المرء في ذلك لسبب ما، يمكن استخدام النسخة النصية من <command>wireshark</command> المتوفرة بالاسم <command>tshark</command> (في الحزمة المنفصلة <emphasis role="pkg">tshark</emphasis>). معظم مزايا الالتقاط وفك الترميز متاحة فيه، لكن افتقاره إلى واجهة رسومية يؤدي بالضرورة إلى تقييد التفاعل مع البرنامج (فلترة الرزم بعد التقاطها، أو تتبع اتصال TCP معين، وغيرها). إلا أنه يمكن استخدامه كمرحلة أولى. وإذا كان هناك نية في تنفيذ المزيد من المعالجة التي تحتاج للواجهة الرسومية، يمكن حفظ الرزم في ملف ثم تحميل هذا الملف في نسخة <command>wireshark</command> رسومية تعمل على جهاز آخر.</para>
+      </sidebar>
+    </section>
+  </section>
+</chapter>

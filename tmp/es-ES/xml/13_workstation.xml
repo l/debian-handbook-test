@@ -1,0 +1,891 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="workstation" lang="es-ES">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>Estación de trabajo</keyword>
+			 <keyword>Escritorio gráfico</keyword>
+			 <keyword>Trabajo de oficina</keyword>
+			 <keyword>X.org</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Estación de trabajo</title>
+	 <highlights> <para>
+		Ahora que ya se desplegaron los servidores, los administradores pueden enfocarse en instalar las estaciones de trabajo individuales y crear una configuración típica.
+	</para>
+	 </highlights> <section id="sect.x11-server-configuration">
+		<title>Configuración del servidor X11</title>
+		 <indexterm>
+			<primary>XFree86</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>X.org</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>X11</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>interfaz</primary>
+			<secondary>gráfica</secondary>
+		</indexterm>
+		 <para>
+			La configuración inicial de la interfaz gráfica a veces puede ser extraña; tarjetas de video muy recientes muchas veces no funcionan perfectamente con la versión de X.org que se encuentra en la versión estable de Debian.
+		</para>
+		 <para>
+			Un breve recordatorio: X.org es el componente de software que permite que las aplicaciones gráficas muestren ventanas en la pantalla. Incluye un controlador que utiliza la tarjeta de video de forma eficiente. Se exporta la funcionalidad ofrecida a las aplicaciones gráficas a través de una interfaz estándar, <emphasis>X11</emphasis> (<emphasis role="distribution">Jessie</emphasis> contiene la versión <emphasis>X11R7.7</emphasis>).
+		</para>
+		 <sidebar> <title><emphasis>PERSPECTIVA</emphasis> X11, XFree86 y X.org</title>
+		 <para>
+			X11 es el sistema gráfico más utilizado en sistemas tipo Unix (también disponible en, ademàs del sistema nativo, Windows y Mac OS). Estrictamente hablando, el término «X11» sólo se refiere a la especificación del protocolo, pero en la práctica también se lo utiliza para referirse a la implementación.
+		</para>
+		 <para>
+			X11 tuvo un comienzo escabroso, pero XFree86 surgió en los 1990s como la implementación de referencia porque era software libre, portable y mantenido de forma colaborativa por su comunidad. Sin embargo, la velocidad de evolución se redujo hacia el final cuando el software sólo obtenía nuevos controladores. Dicha situación, junto con el controvertido cambio de licencia llevó a la bifurcación en X.org en 2004. Esta es ahora la implementación de referencia y Debian <emphasis role="distribution">Jessie</emphasis> utiliza la versión 7.7 de X.org.
+		</para>
+		 </sidebar> <para>
+			Las versiones actuales de X.org pueden detectar automáticamente el hardware disponible: tanto la tarjeta de video y el monitor como el teclado y ratón; de hecho, es tan conveniente que el paquete ya no crea un archivo de configuración <filename>/etc/X11/xorg.conf</filename>. Todo esto es posible gracias a las funcionalidades que provee el núcleo Linux (en particular para teclados y ratones), en el que cada controlador indica con qué tarjetas de video es compatible y utilizando el protocolo DDC para obtener las características del monitor.
+		</para>
+		 <indexterm>
+			<primary>resolución</primary>
+		</indexterm>
+		 <para>
+			Actualmente, la configuración del teclado está definida en <filename>/etc/default/keyboard</filename>. Se utiliza este archivo tanto para configurar la consola de texto como la interfaz gráfica y es gestionado por el paquete <emphasis role="pkg">keyboard-configuration</emphasis>. Puede encontrar detalles sobre la configuración del teclado en la <xref linkend="sect.keyboard-config" />.
+		</para>
+		 <para>
+			El paquete <emphasis role="pkg">xserver-xorg-core</emphasis> provee un servidor X genérico, como el utilizado en las versiones 7.x de X.org. Este servidor es modular y utiliza un conjunto de controladores independientes para gestionar la gran variedad de tipos de tarjetas de video. Instalar <emphasis role="pkg">xserver-xorg</emphasis> le asegurará que se instale tanto el servidor como al menos un controlador de video.
+		</para>
+		 <indexterm>
+			<primary>servidor</primary>
+			<secondary>X</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">xserver-xorg</emphasis></primary>
+		</indexterm>
+		 <para>
+			Sepa que si la tarjeta de video detectada no es compatible con ninguno de los controladores disponibles, X.org intentará utilizar los controladores VESA y fbdev. El primero es un controlador genérico que debería funcionar siempre, pero con capacidades limitadas (menos resoluciones disponibles, sin aceleración por hardware para juegos o efectos visuales del escritorio, etc.) mientras que el último funciona sobre el dispositivo «framebuffer» del núcleo. El servidor X escribe sus mensajes al archivo de registro <filename>/var/log/Xorg.0.log</filename>, donde uno buscaría para saber qué controlador está utilizando actualmente. Por ejemplo, el siguiente extracto coincide con la salida de cuando se carga el controlador <literal>intel</literal>:
+		</para>
+		 
+<programlisting>
+(==) Matched intel as autoconfigured driver 0
+(==) Matched modesetting as autoconfigured driver 1
+(==) Matched vesa as autoconfigured driver 2
+(==) Matched fbdev as autoconfigured driver 3
+(==) Assigned the driver to the xf86ConfigLayout
+(II) LoadModule: "intel"
+(II) Loading /usr/lib/xorg/modules/drivers/intel_drv.so</programlisting>
+		 <indexterm>
+			<primary>VESA</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>tarjeta de video</primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>EXTRA</emphasis> Controladores privativos</title>
+		 <para>
+			Algunos fabricantes de tarjetas de video (más notablemente, nVidia) se niegan a publicar las especificaciones de hardware que son necesarias para implementar buenos controladores libres. Sí proveen, sin embargo, controladores privativos que permiten utilizar su hardware. Esta política es nefasta ya que aún cuando existen los controladores necesarios, generalmente no están tan pulidos como deberían; lo que es más importante, no siguen necesariamente las actualizaciones de X.org, lo que podría evitar que cargue correctamente (o por completo) el último controlador disponible. No podemos justificar este comportamiento y recomendamos que evite a estos fabricantes en favor de aquellos más cooperativos.
+		</para>
+		 <para>
+			Si aún así termina con una de estas tarjetas, encontrará los paquetes necesarios en la sección <emphasis>non-free</emphasis>: <emphasis role="pkg">nvidia-glx</emphasis> para tarjetas nVidia y <emphasis role="pkg">fglrx-driver</emphasis> para algunas tarjetas ATI. En ambos casos necesitará los módulos de núcleo correspondientes. Puede automatizar la compilación de estos módulos con la instalación de los paquetes <emphasis role="pkg">nvidia-kernel-dkms</emphasis> (para nVidia) o <emphasis role="pkg">fglrx-modules-dkms</emphasis> (para ATI).
+		</para>
+		 <para>
+			El proyecto «nouveau» intenta desarrollar un controlador que sea software libre para las tarjetas nVidia. Desde <emphasis role="distribution">Jessie</emphasis>, su conjunto de funcionalidad no alcanza al controlador privativo. En defensa de los desarrolladores debemos mencionar que sólo pueden conseguir la información necesaria con ingeniería inversa, lo que dificulta la cuestión. El controlador libre para las tarjetas de video ATI, llamado «radeon», es mucho mejor en dicho aspecto pero generalmente necesita firmware privativo.
+		</para>
+		 <indexterm>
+			<primary>ATI</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>nVidia</primary>
+		</indexterm>
+		 </sidebar>
+	</section>
+	 <section id="sect.customizing-graphical-interface">
+		<title>Personalización de la interfaz gráfica</title>
+		 <section>
+			<title>Elección de un gestor de pantalla</title>
+			 <indexterm>
+				<primary>gestor</primary>
+				<secondary>de pantalla</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>gdm</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>kdm</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>xdm</command></primary>
+			</indexterm>
+			 <para>
+				La interfaz gráfica sólo provee un espacio en la pantalla. Ejecutar únicamente el servidor X sólo le llevará a una pantalla vacía, razón por la que la mayoría de las instalaciones utilizan un <emphasis>gestor de pantalla</emphasis> («Display Manager») para mostrar la pantalla de autenticación de usuarios e iniciar el escritorio gráfico una vez que se autenticó el usuario. Los tres gestores de pantalla más populares utilizados actualmente son <emphasis role="pkg">gdm3</emphasis> (<foreignphrase>GNOME Display Manager</foreignphrase>), <emphasis role="pkg">kdm</emphasis> (<foreignphrase>KDE Display Manager</foreignphrase>) y <emphasis role="pkg">lightdm</emphasis> (<foreignphrase>Light Display Manager</foreignphrase>). Debido a que los administradores de Falcot Corp eligieron utilizar el entorno de escritorio GNOME, lógicamente seleccionaron <command>gdm3</command> como gestor de pantalla también. El archivo de configuración <filename>/etc/gdm3/daemon.conf</filename> tiene muchas opciones (puede encontrar la lista en el archivo de esquemas <filename>/usr/share/gdm/gdm.schemas</filename>) para controlar su comportamiento y el archivo <filename>/etc/gdm3/greeter.dconf-defaults</filename> contiene la configuración de la «sesión» de inicio (es más que sólo una pantalla para inicio de sesión, es un escritorio limitado con herramientas de accesibilidad y gestión de energía). Tenga en cuenta que puede personalizar las opciones más útiles para los usuarios desde el centro de control de GNOME.
+			</para>
+
+		</section>
+		 <section>
+			<title>Elección de un gestor de ventanas</title>
+			 <para>
+				Debido a que cada escritorio gráfico provee su propio gestor de ventanas, elegir el primero generalmente implica una elección de software para el último. GNOME utiliza el gestor de ventanas <command>mutter</command>, KDE utiliza <command>kwin</command> y Xfce (que presentaremos más adelante) utiliza <command>xfwm</command>. La filosofía Unix siempre permitió utilizar el gestor de ventanas que uno prefiera, pero utilizar los recomendados permite que un administrador aproveche mejor los esfuerzos de integración que realiza cada proyecto.
+			</para>
+			 <indexterm>
+				<primary><command>metacity</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>mutter</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>kwin</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>VOLVER A LOS CIMIENTOS</emphasis> Gestor de ventanas</title>
+			 <indexterm>
+				<primary>gestor</primary>
+				<secondary>de ventanas</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>ventanas, gestor</emphasis></primary>
+			</indexterm>
+			 <para>
+				Continuando la tradición Unix de sólo hacer una cosa pero hacerla bien, el gestor de ventanas muestra las «decoraciones» alrededor de las ventanas que pertenecen a las aplicaciones que están ejecutando actualmente, lo que incluye marcos y la barra de título. También permite reducir, restaurar, maximizar y esconder ventanas. La mayoría de los gestores de ventanas también proveen un menú que aparece cuando se pulsa el escritorio de una forma específica. Este menú provee una forma de cerrar la sesión del gestor de ventanas, iniciar nuevas aplicaciones y, en algunos casos, cambiar a otro gestor de ventanas (si hay algún otro instalado).
+			</para>
+			 </sidebar> <para>
+				Para los equipos más antiguos, sin embargo, es más complicado ejecutar entornos gráficos de escritorio pesados. En estos casos, debería utilizar una configuración más ligera. Gestores de ventanas «ligeros» (con una pequeña carga) incluyen: WindowMaker (en el paquete <emphasis role="pkg">wmaker</emphasis>), Afterstep, fvwm, icewm, blackbox, fluxbox u openbox. En estos casos, deberá configurar el sistema para que el gestor de ventanas apropiado tenga precedencia; la forma estándar es cambiar la alternativa <command>x-window-manager</command> ejecutando <command>update-alternatives --config x-window-manager</command>.
+			</para>
+			 <indexterm>
+				<primary>WindowMaker</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Afterstep</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Blackbox</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Icewm</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Fluxbox</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Openbox</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>x-window-manager</command></primary>
+			</indexterm>
+			 <sidebar id="sidebar.alternatives"> <title><emphasis>ESPECÍFICO EN DEBIAN</emphasis> Alternativas</title>
+			 <indexterm>
+				<primary><emphasis>alternativa</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>elección</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>update-alternatives</command></primary>
+			</indexterm>
+			 <para>
+				La normativa Debian enumera una cantidad de órdenes estandarizadas para ejecutar una acción particular. Por ejemplo, la orden <command>x-window-manager</command> ejecuta el gestor de ventanas. Pero Debian no asigna esta orden a un gestor de ventanas particular. El administrador puede elegir qué gestor de ventanas debe ejecutar.
+			</para>
+			 <para>
+				Para cada gestor de ventanas, el paquete relevante registra el programa relevante como una opción posible para <command>x-window-manager</command> junto con la prioridad asociada. Siempre que no existan configuraciones explícitas por el administrador, esta prioridad permite seleccionar el mejor gestor de ventanas instalado cuando se ejecuta la orden genérica.
+			</para>
+			 <para>
+				Tanto registrar un programa como configurarlo explícitamente involucran el script <command>update-alternatives</command>. Seleccionar a dónde apunta una orden simbólica es simplemente cuestión de ejecutar <command>update-alternatives --config <replaceable>orden-simbólica</replaceable></command>. El script <command>update-alternatives</command> crea (y administra) enlaces simbólicos en el directorio <filename>/etc/alternatives/</filename> que, a su vez, referencia la ubicación del ejecutable. Con el paso del tiempo, se instalarán o eliminarán paquetes y/o el administrador hará cambios explícitos a la configuración. Cuando se elimina el paquete que provee una alternativa, ésta automáticamente deriva en la siguiente mejor opción entre los programas disponibles que continúan instalados.
+			</para>
+			 <para>
+				La normativa Debian no enumera explícitamente todas las órdenes simbólicas; algunos encargados de paquetes Debian deliberadamente eligieron utilizar este mecanismo en casos menos directos en los que provee una flexibilidad interesante (los ejemplos incluyen <command>x-www-browser</command>, <command>www-browser</command>, <command>cc</command>, <command>c++</command>, <command>awk</command>, etc.).
+			</para>
+			 <indexterm>
+				<primary><command>x-www-browser</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>www-browser</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>cc</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>c++</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>awk</command></primary>
+			</indexterm>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Gestión del menú</title>
+			 <indexterm>
+				<primary><command>menu</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>update-menus</command></primary>
+			</indexterm>
+			 <para>
+				Los entornos de escritorio modernos y muchos gestores de ventanas proveen menús que enumeran las aplicaciones disponibles al usuario. Para poder mantenerlos actualizados en relación al conjunto real de aplicaciones disponibles, normalmente cada paquete proporciona un fichero <filename>.desktop</filename> en <filename>/usr/share/applications</filename>. El formato de los cuales ha sido estandarizado por FreeDesktop.org: <ulink type="block" url="http://standards.freedesktop.org/desktop-entry-spec/latest/" />
+			</para>
+			 <para>
+				Los menús de las aplicaciones pueden ser personalizados por los administradores mediante fichero de configuración del sistema, tal y como se explica en la "Especificación de Menú de Escritorio". Los usuarios finales también pueden personalizar los menús con herramientas gráficas, tales como <emphasis role="pkg">kmenuedit</emphasis> (en KDE), <emphasis role="pkg">alacarte</emphasis> (en GNOME) or <emphasis role="pkg">menulibre</emphasis>. <ulink type="block" url="http://standards.freedesktop.org/menu-spec/latest/" />
+			</para>
+			 <sidebar> <title><emphasis>HISTORIA</emphasis> El sistema de menús de Debian</title>
+			 <para>
+				Históricamente -- mucho antes de que surgieran los estándares de FreeDesktop.org -- Debian había inventado su propio sistema de menús, donde cada paquete proporcionaba una descripción genérica de las entradas de menú en <filename>/usr/share/menu/</filename>. Esta herramienta todavía está disponible en Debian ( en el paquete <emphasis role="pkg">menu</emphasis>) pero se usa marginalmente, ya que los reponsable aconsejan confiar en los ficheros <filename>.desktop</filename>.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.graphical-desktops">
+		<title>Escritorios gráficos</title>
+		 <para>
+			El campo de escritorios gráficos libres es dominado por dos grandes colecciones de software: GNOME y KDE. Ambos son muy populares. Esto es algo raro en el mundo del software libre; el servidor web Apache, por ejemplo, tiene pocos pares.
+		</para>
+		 <indexterm>
+			<primary>escritorio gráfico</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>GNOME</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>KDE</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>GTK+</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Qt</primary>
+		</indexterm>
+		 <para>
+			Esta diversidad tiene un origen histórico. KDE fue el primer proyecto de escritorio gráfico pero eligió las herramientas gráficas Qt, una elección que no era aceptable para una gran cantidad de desarrolladores. Qt no era software libre en aquél entonces y GNOME comenzó basándose en las herramientas GTK+. Qt se convirtió en software libre mientras tanto, pero los proyectos nunca se fusionaron y, en cambio, evolucionaron en paralelo.
+		</para>
+		 <para>
+			GNOME y KDE todavía trabajan juntos: bajo el ala de FreeDesktop.org, los proyectos colaboran en la definición de estándares de interoperatividad entre aplicaciones.
+		</para>
+		 <indexterm>
+			<primary>FreeDesktop.org</primary>
+		</indexterm>
+		 <para>
+			Elegir «el mejor» escritorio gráfico es un tema sensible que preferimos evitar. Simplemente describiremos las muchas posibilidades y proveeremos algunas ideas para considerar. La mejor opción es aquella que tome por su cuenta luego de un poco de experimentación.
+		</para>
+		 <section id="sect.gnome-desktop">
+			<title>GNOME</title>
+			 <para>
+				Debian <emphasis role="distribution">Jessie</emphasis> incluye GNOME versión 3.14, que puede instalar con <command>apt-get install gnome</command> (también puede instalarlo si selecciona la tarea «Entorno de escritorio Debian»).
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">gnome</emphasis></primary>
+			</indexterm>
+			 <para>
+				GNOME es notable por sus esfuerzos en cuanto a usabilidad y accesibilidad. Profesionales de diseño estuvieron involucrados en la escritura de estándares y recomendaciones. Esto ayudó a los desarrolladores a crear interfaces gráficas de usuario satisfactorias. El proyecto también obtiene estímo de grandes miembros de la informática como Intel, IBM, Oracle, Novell y, por supuesto, varias distribuciones Linux. Finalmente, puede utilizar muchos lenguajes de programación para desarrollar aplicaciones que interactúen con GNOME.
+			</para>
+			 <figure>
+				<title>El escritorio GNOME</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/gnome.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Para los administadores, GNOME parece estar mejor preparado para despliegues masivos. La configuración de la aplicación se gestiona a través del interfaz GSettings, y almacena sus datos en la base de datos DConf. La configuración puede consultarse y editarse con las herramientas de línea de comando <command>gsettings</command> y <command>dconf</command> , o mediante el interfaz de usuario de <command>dconf-editor</command>. Por lo tanto, el administrador puede modificar la configuración de los usuarios con un simple <ulink type="block" url="https://help.gnome.org/admin/" />
+			</para>
+			 <indexterm>
+				<primary><command>gsettings</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>dconf</command></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>KDE</title>
+			 <para>
+				Debian <emphasis role="distribution">Jeesie</emphasis> incluye la versión 4.14 de KDE, que puede instalar con <command>apt-get install kde-standard</command>.
+			</para>
+			 <para>
+				KDE tuvo una evolución rápida basándose en un enfoce muy práctico. Sus autores obtuvieron muy buenos resultados rápidamente, lo que les permitió obtener una gran base de usuarios. Estos factores contribuyeron a la calidad general del proyecto. KDE es un entorno de escritorio perfectamente maduro con un amplio rango de aplicaciones.
+			</para>
+			 <figure>
+				<title>El escritorio KDE</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/kde.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Con la publicación de Qt 4.0 desapareció el último problema de licencias de KDE. Se publicó esta versión bajo la GPL tanto para Linux como para Windows (anteriormente, la versión de windows se encontraba bajo una licencia privativa). Sepa que se deben desarrollar las aplicaciones KDE con el lenguaje C++.
+			</para>
+
+		</section>
+		 <section>
+			<title>Xfce y otros</title>
+			 <para>
+				XFce es un escritorio gráfico simple y liviano, ideal para equipos con recursos limitados. Puede instalarlo con <command>apt-get install xfce4</command>. Al igual que GNOME, Xfce está basado en las herramientas GTK+ y ambos escritorios comparten varios componentes.
+			</para>
+			 <indexterm>
+				<primary>Xfce</primary>
+			</indexterm>
+			 <para>
+				A diferencia de GNOME y KDE, Xfce no tiene como objetivo ser un gran proyecto. Más allá de los componentes básicos de un escritorio moderno (gestor de archivos, gestor de ventanas, gestor de sesiones, panel para lanzadores de aplicaciones, etc.), sólo provee unas pocas aplicaciones específicas: un terminal, un calendario (Orage), un visor de imágenes, una herramienta de grabación de CD/DVD, un reproductor de medios (Parole), un control de volumen de sonido y un editor de texto (mousepad).
+			</para>
+			 <figure>
+				<title>El escritorio Xfce</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/xfce.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Otro entorno de escritorio que provee <emphasis role="distribution">Jessie</emphasis> es LXDE, el cual se enfoca en el aspecto «ligero». Puede instalarlo con ayuda del metapaquete <emphasis role="pkg">lxde</emphasis>.
+			</para>
+			 <indexterm>
+				<primary>LXDE</primary>
+			</indexterm>
+
+		</section>
+
+	</section>
+	 <section id="sect.main-desktop-tools">
+		<title>Correo</title>
+		 <indexterm>
+			<primary>correo</primary>
+			<secondary>software</secondary>
+		</indexterm>
+		 <section>
+			<title>Evolution</title>
+			 <indexterm>
+				<primary>Evolution</primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>COMUNIDAD</emphasis> Paquetes <emphasis>populares</emphasis></title>
+			 <para>
+				Si instala el paquete <emphasis role="pkg">popularity-contest</emphasis> puede participar en una encuesta automática que informa al proyecto Debian sobre los paquetes más populares. Semanalmente <command>cron</command> ejecutará un script que enviará (a través de HTTP o correo) una lista anónima de los paquetes instalados y la fecha del último acceso a los archivos que contienen. Esto permite diferenciar, entre aquellos paquetes instalados, a aquellos que realmente utiliza.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">popularity-contest</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>popularidad de paquetes</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>paquete</primary>
+				<secondary>popularidad</secondary>
+			</indexterm>
+			 <para>
+				Esta información es de gran ayuda al proyecto Debian. La utiliza para determinar qué paquetes deben estar en el primer disco de instalación. Los datos de instalación también son un factor importante en la decisión sobre la eliminación de la distribución de un paquete con muy pocos usuarios. Recomendamos sinceramente instalar el paquete <emphasis role="pkg">popularity-contest</emphasis> y participar en la encuesta.
+			</para>
+			 <para>
+				Todos los días se publican los datos recolectados. <ulink type="block" url="http://popcon.debian.org/" />
+			</para>
+			 <para>
+				Estas estadísticas también puede ayudar a elegir entre dos paquetes que, de otra forma, parecerían equivalentes. Elegir el paquete más popular aumenta la probabilidad de realizar una buena elección.
+			</para>
+			 </sidebar> <para>
+				Evolution es el cliente de correo de GNOME y lo puede instalar con <command>apt-get install evolution</command>. Evolution es más que un simple cliente de correo, también provee un calendario, libreta de direcciones, lista de tareas y una aplicación de notas (de texto libre). Su componente de correo incluye un poderoso sistema de indexación que permite crear carpetas virtuales basadas en consultas de búsqueda sobre todos los mensajes archivados. En otras palabras, se almacenan todos los mensajes de la misma forma pero se los muestra organizados en carpetas, cada una de las cuales contiene los mensajes que coinciden con un filtro particular.
+			</para>
+			 <figure>
+				<title>El software de correo Evolution</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/evolution.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Una extensión de Evolution permite integrarlo al sistema de correos Microsoft Exchange; el paquete necesario es <emphasis role="pkg">evolution-ews</emphasis>.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">evolution-ews</emphasis></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>KMail</title>
+			 <indexterm>
+				<primary>KMail</primary>
+			</indexterm>
+			 <para>
+				Puede instalar el software de correo de KDE con <command>apt-get install kmail</command>. KMail sólo gestiona correo, pero pertenece a un conjunto de software llamado KDE-PIM (<emphasis>gestor de información personal</emphasis>: «Personal Information Manager») que incluye funcionalidades como libretas de direcciones, un componente de calendario, etc. KMail tiene toda la funcionalidad que uno podría esperar de un excelente cliente de correo.
+			</para>
+			 <figure>
+				<title>El software de correo KMail</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/kmail.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+		 <section>
+			<title>Thunderbird y Icedove</title>
+			 <para>
+				Este software de correo, incluido en el paquete <emphasis role="pkg">icedove</emphasis>, es parte del conjunto de software de Mozilla. Se encuentran disponibles varios conjuntos de localización en los paquetes <emphasis role="pkg">icedove-l10n-*</emphasis>; la extensión <emphasis role="pkg">enigmail</emphasis> gestiona la firma y cifrado de mensajes (pero no está disponible en todos los idiomas).
+			</para>
+			 <figure>
+				<title>El software de correo Icedove</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/icedove.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <indexterm>
+				<primary>Thunderbird, Mozilla</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Mozilla</primary>
+				<secondary>Thunderbird</secondary>
+			</indexterm>
+			 <para>
+				Thunderbird es uno de los mejores clientes de correo y parece ser un gran éxito, al igual que Mozilla Firefox.
+			</para>
+			 <para>
+				Estrictamente hablando, Debian <emphasis role="distribution">Jessie</emphasis> contiene Icedove, no Thunderbird, por cuestiones legales que detallaremos en la barra lateral <xref linkend="sidebar.firefox-iceweasel" />; pero, excepto por el nombre (e íconos), no hay diferencias reales entre ambos.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.web-browsers">
+		<title>Navegadores web</title>
+		 <indexterm>
+			<primary>Navegadores web</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>web, navegador</primary>
+		</indexterm>
+		 <para>
+			Epiphany, el navegador web de GNOME, utiliza el motor de visualización Webkit desarrollado por Apple para su navegador Safari. El paquete relevante es <emphasis role="pkg">epiphany-browser</emphasis>.
+		</para>
+		 <indexterm>
+			<primary>WebKit</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Epiphany</primary>
+		</indexterm>
+		 <para>
+			Konqueror, el gestor de archivos de KDE, también se comporta como un navegador web. Utiliza el motor de visualización KHTML, específico de KDE; KHTML es un motor excelente, como evidencia el hecho de que WebKit de Apple está basado en KHTML. Konqueror está disponible en el paquete <emphasis role="pkg">konqueror</emphasis>. <indexterm><primary>Konqueror</primary></indexterm>
+		</para>
+		 <para>
+			Los usuarios que no estén satisfechos con ninguno de los anteriores pueden utilizar Iceweasel. Este navegador, disponible en el paquete <emphasis role="pkg">iceweasel</emphasis>, utiliza el visualizador Gecko del proyecto Mozilla, con una interfaz delgada y extensible sobre él. <indexterm><primary>Gecko</primary></indexterm> <indexterm><primary>Mozilla</primary><secondary>Firefox</secondary></indexterm> <indexterm><primary>Firefox, Mozilla</primary></indexterm>
+		</para>
+		 <figure>
+			<title>El navegador web Iceweasel</title>
+			 <mediaobject>
+				<imageobject>
+					<imagedata fileref="images/iceweasel.png" format="PNG" scalefit="1" width="70%" />
+				</imageobject>
+
+			</mediaobject>
+
+		</figure>
+		 <sidebar id="sidebar.firefox-iceweasel"> <title><emphasis>CULTURA</emphasis> Iceweasel, Firefox y otros</title>
+		 <indexterm>
+			<primary>Iceweasel</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Icedove</primary>
+		</indexterm>
+		 <para>
+			Sin duda, muchos usuarios estarán sorprendidos por la ausencia de Mozilla Firefox en los menús de Debian <emphasis role="distribution">Jessie</emphasis>. No hay necesidad de entrar en pánico: el paquete <emphasis role="pkg">iceweasel</emphasis> contiene Iceweasel, que es básicamente Firefox bajo otro nombre.
+		</para>
+		 <para>
+			La razón detrás de este cambio de nombre es el resultado de las reglas de uso impuestas por la Mozilla Foundation en la marca registrada <trademark>Firefox</trademark>: cualquier software llamado Firefox debe utilizar el logo y los íconos oficiales de Firefox. Sin embargo, debido a que estos elementos no son publicados bajo una licencia libre, Debian no puede distribuirlos en su sección <emphasis>main</emphasis>. En lugar de mover todo el navegador a <emphasis>non-free</emphasis>, el encargado del paquete decidió utilizar un nombre diferente.
+		</para>
+		 <para>
+			Todavía existe el programa <command>firefox</command> en el paquete <emphasis role="pkg">iceweasel</emphasis>, pero sólo por compatibilidad con las herramientas que intenten utilizarlo.
+		</para>
+		 <para>
+			Por razones similares, se cambió el nombre del cliente de correo <trademark>Thunderbird</trademark> a Icedove de la misma forma.
+		</para>
+		 </sidebar> <indexterm>
+			<primary>Mozilla</primary>
+			<secondary>Firefox</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>Firefox, Mozilla</primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>CULTURA</emphasis> Mozilla</title>
+		 <para>
+			Netscape Navigator era el navegador estándar cuando la web comenzó a llegar a las masas, pero fue dejado atrás progresivamente cuando surgió Microsoft Internet Explorer. Frente a este fracaso, Netscape (la empresa) decidió «liberar» su código fuente, publicándolo bajo una licencia libre, para darle una segunda vida. Este fue el comienzo del proyecto Mozilla. Luego de muchos años de desarrollo, los resultados son más que satisfactorios: el proyecto Mozilla llevó adelante un motor de visualización HTML (llamado Gecko) que se encuentra entre los más compatibles con estádares. En particular, este motor de visualización es utilizado por el navegador Mozilla Firefox, uno de los navegadores más existosos con una base de usuarios que crece rápidamente.
+		</para>
+		 <indexterm>
+			<primary>Mozilla</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Netscape</primary>
+		</indexterm>
+		 </sidebar> <para>
+			Por último, si bien no menos importante, Debian también contiene el navegador web <emphasis>Chromium</emphasis> (disponible en el paquete <emphasis role="pkg">chromium-browser</emphasis>). Google desarrolla este navegador a un ritmo tan rápido que probablemente no sea posible mantener sólo una versión del mismo durante todo el ciclo de vida de Debian <emphasis role="distribution">Jessie</emphasis>. Su propósito es hacer más atractivos los servicios web, tanto optimizando el rendimiento del navegador como aumentando la seguridad del usuario. El código libre que hace funcionar a Chromium también es utilizado por su versión privativa llamada Google Chrome.
+		</para>
+
+	</section>
+	 <section id="sect.development">
+		<title>Desarrollo</title>
+		 <section>
+			<title>Herramientas para GTK+ en GNOME</title>
+			 <para>
+				Anjuta (en el paquete <emphasis role="pkg">anjuta</emphasis>) es un entorno de desarrollo optimizado para crear aplicación GTK+ para GNOME. Glade (en el paquete <emphasis role="pkg">glade</emphasis>) es una aplicación diseñada para crear interfaces gráficas GTK+ para GNOME y guardarlas en una archivo XML. La biblioteca compartida <emphasis>libglade</emphasis> puede cargar estos archivos XML y recrear dinámicamente las interfaces guardadas; esta funcionalidad puede ser interesante, por ejemplo para los plugins que necesitan ventanas interactivas.
+			</para>
+			 <indexterm>
+				<primary>Anjuta</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Glade</primary>
+			</indexterm>
+			 <para>
+				El objetivo de Anjuta es combinar, de forma modular, todas las características que uno podría esperar de un entorno integrado de desarrollo.
+			</para>
+
+		</section>
+		 <section>
+			<title>Herramientas para Qt en KDE</title>
+			 <para>
+				Las aplicaciones equivalentes para KDE son KDevelop (en el paquete <emphasis role="pkg">kdevelop</emphasis>) para el entorno de desarrollo y Qt Designer (en el paquete <emphasis role="pkg">qttools5-dev-tools</emphasis>) para el diseño de interfaces gráficas de aplicaciones Qt en KDE.
+			</para>
+			 <indexterm>
+				<primary>KDevelop</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Qt</primary>
+				<secondary>Designer</secondary>
+			</indexterm>
+
+		</section>
+
+	</section>
+	 <section id="sect.collaborative-work">
+		<title>Trabajo colaborativo</title>
+		 <indexterm>
+			<primary>Trabajo colaborativo</primary>
+		</indexterm>
+		 <section>
+			<title>Trabajo en grupo: <foreignphrase>groupware</foreignphrase></title>
+			 <indexterm>
+				<primary><emphasis>groupware</emphasis></primary>
+			</indexterm>
+			 <para>
+				Las herramientas de trabajo en grupo («groupware») suelen ser bastante complejas de mantener porque concentran varias herramientas y tienen requerimientos que no siempre son fáciles de cumplir en el contexto de una distribución integrada. Existe, por lo tanto, una larga lista de groupware que estuvo disponible en Debian en algún momento pero fueron eliminadas por falta de encargados o incompatibilidades con otro software (más reciente) en Debian. Este fue el caso de PHPGroupware, eGroupware y Kolab. <ulink type="block" url="http://www.phpgroupware.org/" /> <ulink type="block" url="http://www.egroupware.org/" /> <ulink type="block" url="http://www.kolab.org/" />
+			</para>
+			 <indexterm>
+				<primary>PHPGroupware</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>eGroupware</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Kolab</primary>
+			</indexterm>
+			 <para>
+				Sin embargo, no todo está perdido. Mucha de las características clásicas que provee el software «groupware» están siendo integradas al software «estándar». Esto reduce la necesidad de software groupware específico y especializado. Por el otro lado, esto generalmente necesita un servidor específico. Más interesantes son las alternativas Citadel (en el paquete <emphasis role="pkg">citadel-suite</emphasis>) y Sogo (en el paquete <emphasis role="pkg">sogo</emphasis>) disponibles en Debian <emphasis role="distribution">Jessie</emphasis>.
+			</para>
+
+		</section>
+		 <section>
+			<title>Trabajo colaborativo con FusionForge</title>
+			 <indexterm>
+				<primary>FusionForge</primary>
+			</indexterm>
+			 <para>
+				FusionForge es una herramienta de desarrollo colaborativo derivado de SourceForge, un servicio de almacenamiento de proyectos de software libre. Tiene el mismo enfoque general basado en el modelo estándar de desarrollo de software libre. El software en sí continuó evolucionando luego que el código de SourceForge pasó a ser privativo. Sus autores iniciales, VA Software, decidieron no publicar más versiones libres. Lo mismo pasó cuando su primer bifurcación (GForge) siguió el mismo camino. Debido a que muchas personas y organizaciones participaron en su desarrollo, el FusionForge actual también incluye funcionalidad que apuntan a un enfoque más tradicional de desarrollo así como también proyectos que no están completamente enfocados en el desarrollo de software.
+			</para>
+			 <indexterm>
+				<primary>SourceForge</primary>
+			</indexterm>
+			 <para>
+				Se puede considerar a FusionForge como una amalgama de varias herramientas dedicadas a gestionar, seguir y coordinar proyectos. Podríamos clasificar estas herramientas, a grandes rasgos, en tres familias:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<emphasis>comunicación</emphasis>: foros web, gestor de listas de correo, sistemas de anuncios que permiten que el proyecto publique noticias;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<emphasis>seguimiento</emphasis>: gestor de tareas para controlar el progreso y programar tareas, seguimiento de errores (o parches, o pedidos de funcionalidad, o cualquier otro tipo de reporte ­— «ticket»), encuestas;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<emphasis>compartir</emphasis>: gestor de documentación para proveer un único punto central para documentos relacionados a un proyecto, gestor genérico de publicación de archivos, sitio web dedicado a cada proyecto.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Debido a que, en gran parte, FusionForge está dedicado a desarrollo de proyectos, también integra muchas herramientas como CVS, Subversion, Git, Bazaar, Darcs, Mercurial y Arch para gestión de control de fuente o «gestión de configuración» o «control de versiones» — este proceso tiene muchos nombres. Estos programas mantienen un historial de todas las revisiones de todos los archivos seguidos (generalmente archivos de código fuente), con todos los cambios que atravesaron y pueden integrar modificaciones cuando varios desarrolladores trabajan simultáneamente en la misma porción de un proyecto.
+			</para>
+			 <para>
+				Muchas de estas herramientas están disponible, o inclusive son administradas, en una interfaz web con un sistema de permisos muy detallado y notificaciones por correo de algunos eventos.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.office-suites">
+		<title>Suites de oficina</title>
+		 <indexterm>
+			<primary>suite de oficina</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>oficina, suite de</primary>
+		</indexterm>
+		 <para>
+			Durante mucho tiempo el mundo del software libre era limitado en cuanto a software de oficina. Los usuarios pedían reemplazos de las herramientas de Microsoft como Word y Excel, pero éstas son tan complejas que el desarrollo de dichos reemplazos fue complejo. La situación cambió cuando comenzó el proyecto OpenOffice.org (luego de que Sun publicara el código de StarOffice bajo una licencia libre). Actualmente, Debian incluye Libre Office, una bigurcación de OpenOffice.org. Los proyectos GNOME y KDE continúan trabajando en sus ofertas (GNOME Office y Calligra Suite) y la competencia amigable lleva a resultados interesantes. Por ejemplo, la hoja de cálculo Gnumeric (parte de GNOME Office) es inclusive mejor que OpenOffice.org/Libre Office en algunos aspectos, notablemente en la precisión de sus cálculos. En cuanto al procesamiento de texto, las suites OpenOffice.org y Libre Office todavía llevan la delantera.
+		</para>
+		 <indexterm>
+			<primary>OpenOffice.org</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>StarOffice</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Libre Office</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>GNOME Office</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Calligra Suite</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Gnumeric</primary>
+		</indexterm>
+		 <para>
+			Otra característica importante para los usuarios es la capacidad de importar documentos Word y Excel que encuentran o reciben de contactos. Aún cuando todas las suites de oficina poseen filtros que permiten trabajar con estos formatos, sólo aquellos en OpenOffice.org y Libre Office son suficientemente funcionales para usar diariamente.
+		</para>
+		 <sidebar> <title><emphasis>UNA VISIÓN MÁS AMPLIA</emphasis> Libre Office reemplaza OpenOffice.org</title>
+		 <para>
+			Los colaboradores de OpenOffice.org crearon una fundación (<emphasis>The Document Foundation</emphasis>) para abarcar el desarrollo del proyecto. Se discutió la idea por un tiempo, pero el disparador fue la adquisición de Sun por parte de Oracle. Los nuevos dueños hicieron incierto el futuro de OpenOffice bajo la mano de Oracle. Debido a que Oracle decidió no unirse a la fundación, los desarrolladores debieron abandonar el nombre OpenOffice.org. Ahora se conoce al software como <emphasis>Libre Office</emphasis>. Luego de un período de relativo estancamiento en el campo de OpenOffice.org, Oracle decidió migrar el código y los derechos asociados a la «Apache Software Foundation» (fundación de software Apache), y ahora OpenOffice es un proyecto de Apache.
+		</para>
+		 <para>
+			Debian solo incluye Libre Office. El paquete de software OpenOffice, publicado por la Fundación de Software Apache no está actualmente disponible en Debian.
+		</para>
+		 </sidebar> <indexterm>
+			<primary>Word, Microsoft</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Excel, Microsoft</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Microsoft</primary>
+			<secondary>Word</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>Microsoft</primary>
+			<secondary>Excel</secondary>
+		</indexterm>
+		 <para>
+			Libre Office y el paquete Calligra se encuentran disponibles, respectivamente, en los paquetes Debian <emphasis role="pkg">libreoffice</emphasis> y <emphasis role="pkg">calligra</emphasis>. No hay más paquetes para GNOME Office (era <emphasis role="pkg">gnome-office</emphasis>). Los paquetes específicos de idioma para Libre Office se distribyen en paquetes separados: los más importantes son <emphasis role="pkg">libreoffice-l10n-*</emphasis> y <emphasis role="pkg">libreoffice-help-*</emphasis>; algunas funcionalidades, como los diccionarios de ortografía, patrones para separado en sílabas y thesaurus se encuentran en paquetes tales como <emphasis role="pkg">myspell-*</emphasis>/<emphasis role="pkg">hunspell-*</emphasis>), <emphasis role="pkg">hyphen-*</emphasis> y <emphasis role="pkg">mythes-*</emphasis>. Tenga en cuenta que Calligra Suite solía llamarse KOffice.
+		</para>
+
+	</section>
+	 <section id="sect.windows-emulation">
+		<title>Emulación de Windows: Wine</title>
+		 <indexterm>
+			<primary>emulación de Windows</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Windows, emulación</primary>
+		</indexterm>
+		 <para>
+			A pesar de todos los esfuerzos mencionados anteriormente, existen todavía herramientas sin equivalente en Linux, o para las que las versiones originales son absolutamente necesarias. Aquí es donde son útiles los sistemas de emulación de Windows. El más conocido entre ellos es Wine. <ulink type="block" url="https://www.winehq.org/" />
+		</para>
+		 <sidebar> <title><emphasis>COMPLEMENTOS</emphasis> CrossOver Linux</title>
+		 <para>
+			<emphasis>CrossOver</emphasis>, producido por CodeWeavers, es un conjunto de mejoras a Wine que amplían el conjunto de funcionalidades de emulación al punto que se puede utilizar completamente Microsoft Office. Algunas de estas mejoras son incorporadas periódicamente en Wine. <ulink type="block" url="http://www.codeweavers.com/products/" />
+		</para>
+		 <indexterm>
+			<primary><emphasis>CrossOver</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>CodeWeavers</primary>
+		</indexterm>
+		 </sidebar> <para>
+			Sin embargo, uno debe tener en cuenta que sólo es una solución entre muchas otras y que también puede enfrentar el problema con una máquina virtual o VNC, ambas soluciones son detalladas en los recuadros <xref linkend="sidebar.virtual-machines" /> y <xref linkend="sidebar.wts-or-vnc" />.
+		</para>
+		 <para>
+			Comencemos con un recordatorio: la emulación permite ejecutar un programa (desarrollado para un sistema objetivo) en un sistema anfitrión diferente. El software de emulación utiliza el sistema anfitrión, donde ejecuta la aplicación, para imitar la funcionalidad requerida del sistema objetivo.
+		</para>
+		 <indexterm>
+			<primary>Wine</primary>
+		</indexterm>
+		 <para>
+			Ahora vamos a instalar los paquetes requeridos (<emphasis role="pkg">ttf-mscorefonts-installer</emphasis> se encuentra en la sección de contribuciones):
+		</para>
+		 
+<screen>
+<computeroutput># </computeroutput><userinput>apt-get install wine ttf-mscorefonts-installer</userinput></screen>
+		 <indexterm>
+			<primary><command>winecfg</command></primary>
+		</indexterm>
+		 <para>
+			En un sistema de 64 bits (amd64), si sus aplicaciones Windows son de 32 bits, entonces tendrá que activar "multi-arch" para poder instalar wine32 de arquitectura i386 (vea <xref linkend="sect.multi-arch" /> ).
+		</para>
+		 <para>
+			El usuario necesita ejecutar <command>winecfg</command> y configurar qué ubicaciones (Debian) estarán asociadas a qué dispositivos (Windows). <command>winecfg</command> tiene algunos valores predeterminados sensatos y puede autodetectar algunos dispositivos adicionales. Tenga en cuenta que si posee un sistema de arranque dual no debería apuntar el disco <literal>C:</literal> donde está montada la partición Windows en Debian ya que es probable que Wine sobreescriba algunos datos de esta partición, haciendo que Windows no sea utilizable. Puede mantener otras configuraciones en sus valores predeterminados. Para ejecutar programas Windows primero necesitará instalarlos ejecutando su instalador (de Windows) bajo Wine, ejecutando algo como <command>wine <replaceable>.../setup.exe</replaceable></command>; una vez que el programa está instalado, puede ejecutarlo con <command>wine <replaceable>.../programa.exe</replaceable></command>. La ubicación exacta del archivo <filename>programa.exe</filename> depende de a dónde está asociado el disco <literal>C:</literal>; sin embargo, en muchos casos, ejecutar simplemente <command>wine <replaceable>programa</replaceable></command> funcionará ya que generalmente se lo instala en una ubicación donde Wine podrá encontrarlo por su cuenta.
+		</para>
+		 <sidebar> <title><emphasis>CONSEJO</emphasis> Trabajando con un error winecfg</title>
+		 <para>
+			En algunas ocasiones, <command>winecfg</command> (que solo es un envoltorio) puede fallar. Para resolverlo, es posible tratar de ejecutar el comando subyacente manualmente: <command>wine64 /usr/lib/x86_64-linux-gnu/wine/wine/winecfg.exe.so</command> o <command>wine32 /usr/lib/i386-linux-gnu/wine/wine/winecfg.exe.so</command>.
+		</para>
+		 </sidebar> <para>
+			Sepa que no debe depender de Wine (o soluciones similares) sin probar realmente el software particular: sólo una prueba de uso real determinará sin dudas si la emulación es completamente funcional.
+		</para>
+		 <sidebar id="sidebar.virtual-machines"> <title><emphasis>ALTERNATIVA</emphasis> Máquinas virtuales</title>
+		 <para>
+			Una alternativa para emular el sistema operativo de Microsoft es ejecutarlo realmente en una máquina virtual que emula el hardware completo de un equipo. Esto permite ejecutar cualquier sistema operativo. El <xref linkend="advanced-administration" /> describe varios sistemas de virtualización, más notablemente Xen y KVM (pero también QEMU, VMWare y Bochs).
+		</para>
+		 </sidebar> <sidebar id="sidebar.wts-or-vnc"> <title><emphasis>ALTERNATIVA</emphasis> <foreignphrase>Windows Terminal Server</foreignphrase> o VNC</title>
+		 <para>
+			Otra posibilidad es ejecutar remotamente las aplicaciones Windows en un servidor central con <emphasis>Windows Terminal Server</emphasis> y acceder a la aplicación desde máquinas Linux utilizando <emphasis>rdesktop</emphasis>. Éste es un cliente Linux para el protocolo RDP (<emphasis>protocolo de escritorio remoto</emphasis>: «Remote Desktop Protocol») que <foreignphrase>Windows NT/2000 Terminal Server</foreignphrase> utiliza para mostrar escritorios en máquinas remotas.
+		</para>
+		 <indexterm>
+			<primary>RDP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>Remote Desktop Protocol</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>Windows Terminal Server</emphasis></primary>
+		</indexterm>
+		 <para>
+			El software VNC provee funcionalidades similares, con el beneficio adicional de que también funciona con muchos sistemas operativos. Describimos los clientes y servidores VNC Linux en la <xref linkend="sect.remote-login" />.
+		</para>
+		 </sidebar>
+	</section>
+	 <section id="sect.rtc-clients">
+		<title>Software de comunicaciones en tiempo real</title>
+		 <para>
+			Debian proporciona un amplo rango de sofware cliente de comunicaciones en tiempo real (RTC). La configuración de servidores RTC se cubre en <xref linkend="sect.rtc-services" />. En terminología SIP, también se denomina como agente de usuario a una aplicación cliente o dispositivo.
+		</para>
+		 <indexterm>
+			<primary>Agente de usuario (SIP)</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>SIP</primary>
+			<secondary>agente de usuario</secondary>
+		</indexterm>
+		 <para>
+			Cada aplicación de cliente varía en funcionalidad. Alunas aplicaciones son más convenientes para usuarios intensivos de chat, mientras que otras aplicaciones son más estables para usuarios de cámaras web. Puede ser necesario probar varias aplicaciones para identificar cual de ellas es la adecuada. Un usuario puede decidir finalmente que necesita más de una aplicación, por ejemplo, una aplicación XMPP para mensajería con clientes y una aplicacion IRC para colaborar con algunas comunidades en línea.
+		</para>
+		 <para>
+			Para maximizar la posibilidad de los usuarios a comunicarse con gran parte de mundo, se recomienda configurar clientes SIP y XMPP, o un solo cliente que soporte ambos protocolos.
+		</para>
+		 <indexterm>
+			<primary>SIP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>XMPP</primary>
+		</indexterm>
+		 <para>
+			El escritorio por defecto de GNOME incluye el cliente de comunicaciones Empathy. Empathy puede soportar SIP y XMPP. Soporta mensajería instantánea (IM), voz y vídeo. El escritorio KDE proporciona Telepathy, un cliente de comunicaciones basado en la misma API que Telepathy , empleado en el cliente Empathy de GNOME.
+		</para>
+		 <indexterm>
+			<primary>Empathy</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Telepathy</primary>
+		</indexterm>
+		 <para>
+			Las alternativas populares a Empathy/Telepathy incluyen Ekiga, Jitsi, Linphone, Psi y Ring (anteriormente conocido como SFLphone).
+		</para>
+		 <indexterm>
+			<primary>Ekiga</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Jitsi</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Linphone</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Psi</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Ring (teléfono software)</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>SFLphone</primary>
+		</indexterm>
+		 <para>
+			Algunas de estas aplicaciones también pueden interactuar con usuarios móviles, usando aplicaciones como Lumicall en Android. <ulink type="block" url="http://lumicall.org" />
+		</para>
+		 <indexterm>
+			<primary>Lumicall</primary>
+		</indexterm>
+		 <para>
+			La <emphasis>Guía rápida de inicio a comunicaciones en tiempo real</emphasis> tiene un capítulo dedicado al software cliente. <ulink type="block" url="http://rtcquickstart.org/guide/multi/useragents.html" />
+		</para>
+		 <sidebar> <title><emphasis>CONSEJO</emphasis> Busque clientes que soporten ICE y TURN</title>
+		 <para>
+			Alguno clientes RTC tienen problema significativos enviando voz y vídeo a traves de firewalls y redes NAT. Los usuarios pueden recibir llamadas fantasma (su teléfono suena, pero no oyen a la otra persona) o no pueden realizar llamadas.
+		</para>
+		 <para>
+			Los protocolos ICE y TURN se desarrollaron para resolver este tipo de problemas. Trabajar con un servidor TURN con direcciones IP públicas en cada punto, y usando clientes software que soporten ICE y TURN proporciona la mejor experiencia de usuario.
+		</para>
+		 <para>
+			Si el software de cliente solo se necesita para mensajería instantánea, no hay necesidad de contar con soporte ICE o TURN.
+		</para>
+		 </sidebar> <para>
+			Los desarrolladores de Debian operan un servicio SIP de la comunidad en <ulink url="https://rtc.debian.org">rtc.debian.org</ulink>. La comunidad mantiene un wiki con la documentación sobre la configuración de la mayoría de las aplicaciones cliente empaquetadas en Debian. Los artículos de la wiki, y las capturas de pantalla son una buena fuente de información para cualquiera que desee configurar un servicio similar en su propio dominio. <ulink type="block" url="https://wiki.debian.org/UnifiedCommunications/DebianDevelopers/UserGuide" />
+		</para>
+		 <sidebar> <title><emphasis>ALTERNATIVA</emphasis> IRC: «Internet Relay Chat»</title>
+		 <para>
+			También podemos considerar IRC, además de SIP y XMPP. IRC está más orientado al concepto de canales, cuyos nombres comienzan con un símbolo de numeral <literal>#</literal>. Frecuentemente, cada canal está dedicado a un tema específico y cualquier cantidad de personas pueden unirse a un canal para discutirlo (pero los usuarios también pueden tener conversaciones privadas sólo entre dos si es necesario). El protocolo IRC es más antiguo y no permite cifrado punta-a-punta de los mensajes; sí es posible cifrar la comunicación entre los usuarios y el servidor utilizando un túnel SSL para el tráfico del protocolo IRC.
+		</para>
+		 <indexterm>
+			<primary>IRC</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><foreignphrase>Internet Relay Chat</foreignphrase></primary>
+		</indexterm>
+		 <para>
+			Los clientes IRC son un poco más complejos y generalmente proveen muchas funcionalidades con un uso limitado en un entorno corporativo. Por ejemplo, los «operadores» de los canales son usuarios con capacidad de echar otros usuarios de un canal o inclusive bloquearlos permanentemente cuando interrumpan la discusión normal.
+		</para>
+		 <para>
+			Debido a que el protocolo IRC es muy antiguo, hay disponibles muchos clientes que se adaptan a muchos grupos de usuario; los ejemplos incluyen XChat y Smuxi (clientes gráficos basados en GTK+), Irssi (modo texto), Erc (integrado a Emacs), etc.
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>VISTA RÁPIDA</emphasis> Conferencias de video con Ekiga</title>
+		 <para>
+			Ekiga (anteriormente GnomeMeeting) es una aplicación destacada para conferencias de video en Linux. Es estable, funcional y muy sencilla de utilizar en una red local; configurar el servicio en una red global es mucho más complejo cuando los firewalls involucrados no son compatibles explícitamente con los protocolos de teleconferencias H323 y/o SIP y todas sus peculiaridades.
+		</para>
+		 <indexterm>
+			<primary>conferencia de video</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>H323</primary>
+		</indexterm>
+		 <para>
+			Si sólo se ejecutará un cliente Ekiga detrás del firewall, la configuración es bastante directa ya que sólo involucra redirigir unos pocos puertos al equipo dedicado: el puerto TCP 1720 (que espera conexiones entrantes), el puerto TCP 5060 (para SIP), los puertos TCP 30000 a 30010 (para control de conexiones abiertas) y los puertos UDP 5000 a 5100 (para transmisión de datos de audio y video así como registración con un proxy H323).
+		</para>
+		 <indexterm>
+			<primary>GnomeMeeting</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Ekiga</primary>
+		</indexterm>
+		 <para>
+			Cuando se ejecuten varios clientes Ekiga detrás del firewall, la complejidad aumenta considerablemente. Deberá configurar un proxy H323 (por ejemplo el paquete <emphasis role="pkg">gnugk</emphasis>), tarea que dista de ser sencilla.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gnugk</emphasis></primary>
+		</indexterm>
+		 </sidebar>
+	</section>
+</chapter>
+

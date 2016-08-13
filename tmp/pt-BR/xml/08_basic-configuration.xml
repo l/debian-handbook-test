@@ -1,0 +1,2119 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="basic-configuration" lang="pt-BR">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>Configuração</keyword>
+			 <keyword>Localização</keyword>
+			 <keyword>Localidades</keyword>
+			 <keyword>Rede</keyword>
+			 <keyword>Resolução de nomes</keyword>
+			 <keyword>Usuários</keyword>
+			 <keyword>Grupos</keyword>
+			 <keyword>Contas</keyword>
+			 <keyword>Interpretador de linha de comando</keyword>
+			 <keyword>Shell</keyword>
+			 <keyword>Impressão</keyword>
+			 <keyword>Sistema de iniciação</keyword>
+			 <keyword>Compilação de kernel</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Configuração Básica: Rede, Contas, Impressão...</title>
+	 <highlights> <para>
+		Um computador com uma nova instalação criada com o <command>debian-installer</command> tenta ser tão funcional quanto possível, mas muitos serviços ainda devem ser configurados. Além disso, é sempre bom saber como mudar certos elementos de configuração definidos durante o processo de instalação inicial.
+	</para>
+	 </highlights> <para>
+		Este capítulo revisa tudo que pode ser incluído no que se pode chamar de "configuração básica": redes, idioma e localização, usuários e grupos, impressão, pontos de montagem, etc.
+	</para>
+	 <section id="sect.config-language-support">
+		<title>Configurando o Sistema para Outra Língua</title>
+		 <indexterm>
+			<primary>Localização francesa</primary>
+		</indexterm>
+		 <para>
+			Se o sistema foi instalado usando Francês, a máquina provavelmente já vai ter o francês configurado como o idioma padrão. Mas é bom saber que o instalador vai configurar o idioma, de forma que, se mais tarde surgir a necessidade, você pode mudá-lo.
+		</para>
+		 <sidebar> <title><emphasis>FERRAMENTA</emphasis> O comando <command>locale</command> para mostrar a configuração atual</title>
+		 <para>
+			O comando <command>locale</command> lista um resumo da configuração atual de vários parâmetros do locale (formato de data, formato de números, etc.), apresentados na forma de um grupo de variáveis de ambiente padrão dedicadas à modificação dinâmica destas configurações.
+		</para>
+		 </sidebar> <section id="sect.default-language">
+			<title>Definindo a Língua Padrão</title>
+			 <indexterm>
+				<primary>locales</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>língua</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>locale-gen</command></primary>
+			</indexterm>
+			 <para>
+				Um "locale" é um grupo de configurações regionais. Isto inclui não apenas o idioma do texto, mas também o formato para exibir números, datas, horas e valores monetários, assim como as regras de comparação alfabéticas (para considerar corretamente os caracteres acentuados). Embora cada um destes parâmetros possa ser especificado independentemente dos outros, geralmente usamos um "locale", que é um conjunto coerente de valores para estes parâmetros correspondendo a uma "região" no sentido amplo. Estes "locales" são usualmente indicados na forma, <literal><replaceable>código-de-idioma</replaceable>_<replaceable>CÓDIGO-DE-PAÍS</replaceable></literal>, algumas vezes com um sufixo para especificar o conjunto de caracteres e codificação a ser usado. Isto habilita considerações de diferenças idiomáticas ou tipográficas entre regiões com uma linguagem em comum.
+			</para>
+			 <sidebar> <title><emphasis>CULTURA</emphasis> Conjuntos de Caracteres</title>
+			 <indexterm>
+				<primary>conjunto de caracter</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>codificação</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>ISO-8859-1</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>ISO-8859-15</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Latin 1</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Latin 9</primary>
+			</indexterm>
+			 <para>
+				Historicamente, cada localidade tem associado um "conjunto de caracteres" (um grupo de caracteres conhecidos) e uma "codificação" preferida (representação interna para caracteres dentro do computador).
+			</para>
+			 <para>
+				As codificações mais populares para idiomas derivados do latim são limitadas a 256 caracteres pois ele optaram por usar um único byte para cada caractere. Uma vez que 256 caracteres não é o suficiente para cobrir todas as línguas européias, codificações múltiplas são necessárias, e assim nós acabamos com <emphasis>ISO-8859-1</emphasis> (também conhecido como “Latin 1”) até o <emphasis>ISO-8859-15</emphasis> (também conhecido como “Latin 9”), entre outros.
+			</para>
+			 <para>
+				Trabalhar com línguas estrangeiras comumente implica trocar regularmente entre várias codificações e conjuntos de caracteres. Além disso, escrever um documento em diversas linguas leva a problemas maiores, quase intratáveis. Unicode (um super catálogo de quase todos os sistemas de escrita de todas as línguas do mundo) foi criado para contornar este problema. Uma das codificações Unicode, UTF-8, retém todos os 128 símbolos ASCII (códigos 7-bits), mas lida com outros caracteres diferentemente. Estes outros são precedidos por uma sequencia de escape específica de poucos bits, que implicitamente define o tamanho do caractere. Isto permite a codificação de todos os caracteres Unicode em uma sequência de um ou mais bytes. Seu uso foi popularizado pelo fato de ser a codificação padrão em documentos XML.
+			</para>
+			 <indexterm>
+				<primary>ASCII</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>UTF-8</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Unicode</primary>
+			</indexterm>
+			 <para>
+				Esta é a codificação que deve ser geralmente usada, e é portanto a padrão nos sistemas Debian.
+			</para>
+			 </sidebar> <para>
+				O pacote <emphasis role="pkg">locales</emphasis> inclui todos os elementos necessários para o funcionamento correto da "localização" de vários aplicativos. Durante a instalação, este pacote vai pedir que você selecione um conjunto de idiomas suportados. Este conjunto de idiomas pode ser alterado executando o comando <command>dpkg-reconfigure locales</command> como o root.
+			</para>
+			 <para>
+				The first question invites you to select “locales” to support. Selecting all English locales (meaning those beginning with “<literal>en_</literal>”) is a reasonable choice. Do not hesitate to also enable other locales if the machine will host foreign users. The list of locales enabled on the system is stored in the <filename>/etc/locale.gen</filename> file. It is possible to edit this file by hand, but you should run <command>locale-gen</command> after any modifications. It will generate the necessary files for the added locales to work, and remove any obsolete files.
+			</para>
+			 <para>
+				A segunda pergunta, "Default locale for the system environment" ("locale padrão para o ambiente do sistema"), pede um locale padrão. A escolha recomendada no Brasil é "<literal>pt_BR.UTF-8</literal>". Portugueses de portugal vão preferir "<literal>pt_PT.UTF-8</literal>" e franceses, "<literal>fr.UTF-8</literal>", enquanto que canadenses que falam francês, vão preferir "<literal>en_CA.UTF-8</literal>". O arquivo <filename>/etc/default/locale</filename> vai ser então modificado para armazenar esta escolha. E a partir dele, a escolha será selecionada por todas as sessões de usuário, já que o PAM vai injetar seu conteúdo na variável de ambiente <varname>LANG</varname>.
+			</para>
+			 <indexterm>
+				<primary>ambiente</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>localidade</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><varname>LANG</varname></primary>
+			</indexterm>
+			 <sidebar id="sidebar.intro-pam"> <title><emphasis>ATRÁS DAS CENAS</emphasis> <filename>/etc/environment</filename> e <filename>/etc/default/locale</filename></title>
+			 <para>
+				O arquivo <filename>/etc/environment</filename> dá aos programas <command>login</command>, <command>gdm</command>, ou até mesmo <command>ssh</command> as variáveis de ambiente corretas a serem criadas.
+			</para>
+			 <para>
+				Estes aplicativos não criam essas variáveis diretamente, mas sim via um módulo PAM (<filename>pam_env.so</filename>). PAM (Pluggable Authentication Module - Módulo de autenticação plugável) é uma biblioteca centralizadora de mecanismos para autenticação, inicialização de sessão, e gerenciamento de senhas. Veja <xref linkend="sect.config-pam" /> para um exemplo da configuração do PAM.
+			</para>
+			 <para>
+				O arquivo <filename>/etc/default/locale</filename> funciona de maneira similar, mas contém apenas a variável de ambiente <varname>LANG</varname>. Graças a esta divisão, alguns usuários PAM podem herdar um ambiente sem localização. Na verdade, geralmente é desencorajado executar programas servidores com localização habilitada; por outro lado, configurações regionais e de localização são recomendadas para programas que abrem sessões de usuário.
+			</para>
+			 <indexterm>
+				<primary>PAM</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>pam_env.so</filename></primary>
+			</indexterm>
+			 </sidebar>
+		</section>
+		 <section id="sect.keyboard-config">
+			<title>Configurando o Teclado</title>
+			 <indexterm>
+				<primary>disposição do teclado</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>leiaute, teclado</primary>
+			</indexterm>
+			 <para>
+				Mesmo com o layout do teclado sendo gerenciado diferentemente nos modos console e gráfico, o Debian oferece uma interface de configuração única que funciona para ambos: é baseada no debconf e é implementada no pacote <emphasis role="pkg">keyboard-configuration</emphasis>. Portanto, o comando <command>dpkg-reconfigure keyboard-configuration</command> pode ser usado a qualquer momento para reconfigurar o layout do teclado.
+			</para>
+			 <indexterm>
+				<primary><emphasis>console-data</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>console-tools</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>keyboard-configuration</emphasis></primary>
+			</indexterm>
+			 <para>
+				<indexterm><primary><literal>azerty</literal></primary></indexterm>As perguntas são relevantes para a disposição do teclado físico (um teclado PC padrão nos EUA será um "Generic 104 key"), e depois a disposição para escolher (geralmente "US"), e por fim a posição da tecla AltGr (Alt da direita). Finalmente vem a pergunta da tecla a usar para a "Compose key", que permite a entrada de caracteres especiais combinando conjuntos de teclas. Digite sucessivamente <keycombo action="seq"><keycap>Compose</keycap><keycap>'</keycap><keycap>e</keycap></keycombo> e produza um e-agudo ("é"). Todas estas combinações são descritas no arquivo <filename>/usr/share/X11/locale/en_US.UTF-8/Compose</filename> (ou outro arquivo, determinado de acordo com o locale atual indicado por <filename>/usr/share/X11/locale/compose.dir</filename>).
+			</para>
+			 <indexterm>
+				<primary><literal>Compose</literal>, tecla</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Meta</literal>, tecla</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>tecla</primary>
+				<secondary><literal>Meta</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>tecla</primary>
+				<secondary><literal>Compose</literal></secondary>
+			</indexterm>
+			 <para>
+				Note que a configuração do teclado para o ambiente gráfico é descrita aqui somente afeta a layout padrão; os ambientes GNOME e KDE, entre outros, provê um painel de controle para teclado em suas preferências permitem para usuário ter sua própria configuração. Algumas opções adicionais relacionadas ao comportamento de algumas teclas particulares também estão presentes nestes painéis.
+			</para>
+
+		</section>
+		 <section id="sect.utf8-migration">
+			<title>Migrando para UTF-8</title>
+			 <para>
+				A generalização da codificação UTF-8 foi uma solução a muito aguardada para várias dificuldades de interoperabilidade, já que ela facilita intercâmbio internacional e remove os limites arbitrários de caracteres que podem ser usados em um documento. O único problema é que é que ela teve que passar por uma difícil fase de transição. Como esta fase de transição não pôde ser completamente transparente (ou seja, não pôde acontecer ao mesmo tempo em todo o mundo), duas operações de conversão foram necessárias: uma no conteúdo dos arquivos e outra nos nomes dos arquivos. Felizmente, a maior parte desta migração já foi completada e discutimos ela amplamente para referência.
+			</para>
+			 <sidebar> <title><emphasis>CULTURA</emphasis> <foreignphrase>Mojibake</foreignphrase> e erros de interpretação</title>
+			 <para>
+				Quando um texto é enviado (ou armazenado) sem informações de codificação, nem sempre é possível para o destinatário saber com certeza qual a convenção foi usada para determinar o significado dos conjuntos de bytes. Você pode normalmente ter uma noção olhando as estatísticas da distribuição de valores apresentados no texto, mas isto nem sempre dá uma resposta definitiva. Quando o sistema de codificação escolhido para a leitura difere do usado na escrita do arquivo, os bytes serão mal interpretados, e você terá, na melhor das hipóteses, erros em alguns caracteres, e na pior das hipóteses, algo completamente ilegível.
+			</para>
+			 <para>
+				Então, se um texto em francês aparenta estar normal com exceção das letras acentuadas e de certos símbolos que parece terem sido substituídos com sequencias de caracteres como "Ã©" ou "Ã¨" ou "Ã§", provavelmente este é um texto codificado com UTF-8 mas interpretado como ISO-8859-1 ou ISO-8859-15. Este é um sinal de uma instalação local que ainda não foi migrada para UTF-8. Se, ao invés disto, você vê interrogações no lugar de letras acentuadas — mesmo se estas interrogações parecem substituir também um caractere que deve estar depois de uma letra acentuada — é provável que sua instalação já esteja configurada para UTF-8 e que você tenha recebido um documento codificado em ISO ocidental.
+			</para>
+			 <para>
+				Tanto para casos "simples". Estes casos aparecem apenas na cultura ocidental, uma vez que o Unicode (e UTF-8) foram projetados para maximizar os pontos em comum com codificações de idiomas ocidentais baseadas no alfabeto Latino, que permite o reconhecimento de partes do texto mesmo quando alguns caracteres estão faltando.
+			</para>
+			 <para>
+				Em configurações mais complexas, que, por exemplo, envolvem dois ambientes correspondendo a dois idiomas diferentes que não usam o mesmo alfabeto, você frequentemente se vê com resultados completamente ilegíveis — uma série de símbolos abstratos que não tem nada a ver uns com os outros. Isto é especialmente comum com idiomas asiáticos devido devido a seus numerosos idiomas e sistemas de escrita. A palavra japonesa <foreignphrase>mojibake</foreignphrase> foi adotada para descrever este fenômeno. Quando ele acontece, o diagnóstico é mais complexo e a solução mais simples em geral é migrar os dois lados para UTF-8.
+			</para>
+			 </sidebar> <para>
+				As far as file names are concerned, a migração pode ser relativamente simples. A ferramenta <command>convmv</command> (no pacote com o mesmo nome) foi criada especificamente com este objetivo; ela permite renomear arquivos de uma codificação para outra. O uso desta ferramenta é relativamente simples, mas recomendamos fazê-lo em dois passos para evitar surpresas. O seguinte exemplo ilustra um ambiente UTF-8 contendo nomes de diretórios codificados em ISO-8859-15, e o uso do <command>convmv</command> para renomeá-los.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>ls travail/</userinput>
+<computeroutput>Ic?nes  ?l?ments graphiques  Textes
+$ </computeroutput><userinput>convmv -r -f iso-8859-15 -t utf-8 travail/</userinput>
+<computeroutput>Starting a dry run without changes...
+mv "travail/�l�ments graphiques"        "travail/Éléments graphiques"
+mv "travail/Ic�nes"     "travail/Icônes"
+No changes to your files done. Use --notest to finally rename the files.
+$ </computeroutput><userinput>convmv -r --notest -f iso-8859-15 -t utf-8 travail/</userinput>
+<computeroutput>mv "travail/�l�ments graphiques"        "travail/Éléments graphiques"
+mv "travail/Ic�nes"     "travail/Icônes"
+Ready!
+$ </computeroutput><userinput>ls travail/</userinput>
+<computeroutput>Éléments graphiques  Icônes  Textes</computeroutput></screen>
+			 <para>
+				Para o conteúdo dos arquivos, os procedimentos de conversão são mais complexos devido à vasta variedade de formatos de arquivos existentes. Alguns formatos de arquivos incluem informação de codificação que facilita a tarefa de softwares usados para tratá-los; é suficiente, portanto, abrir estes arquivos e regravá-los especificando a codificação UTF-8. Em outros casos, você tem que especificar a codificação original (ISO-8859-1 ou “Ocidental”, ou ISO-8859-15 ou “Ocidental (Euro)”, de acordo com as formulações) quando abrir o arquivo.
+			</para>
+			 <para>
+				Para arquivos de texto simples, você pode usar o <command>recode</command> (que está no pacote de mesmo nome) para fazer recodificação automática. Esta ferramenta tem várias opções, explore bastante. Nós recomendamos que você consulte a documentação, a página man <citerefentry> <refentrytitle>recode</refentrytitle>
+				 <manvolnum>1 </manvolnum> </citerefentry>, ou a página info <citerefentry> <refentrytitle>recode</refentrytitle>
+				 </citerefentry> (mais completa).
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.network-config">
+		<title>Configurando a Rede</title>
+		 <sidebar id="sidebar.networking-basics"> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Conceitos essenciais de rede (Ethernet, endereço IP, sub-rede, broadcast)</title>
+		 <indexterm>
+			<primary>Ethernet</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>10BASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>100BASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>1000BASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>10GBASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>conector, RJ45</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>conector RJ45</primary>
+		</indexterm>
+		 <para>
+			A maioria das redes locais modernas usam o protocolo Ethernet, onde dados são quebrados em pequenos blocos chamados quadros (frames, em inglês) e transmitidos através do fio um quadro por vez. As velocidades de transmissão de dados variam de 10 Mb/s para placas Ethernet antigas a 10 Gb/s nas mais novas (com as taxas mais comuns atualmente crescendo de 100 Mb/s a 1 Gb/s). Os cabos mais amplamente usados são chamados 10BASE-T, 100BASE-T, 1000BASE-T ou 10GBASE-T dependendo da vazão que eles podem fornecer confiavelmente (o T significa "twisted pair", ou "par trançado"); estes cabos terminam num conector RJ45. Existem outros tipos de cabos, usados normalmente para velocidades de 1 Gb/s ou mais.
+		</para>
+		 <indexterm>
+			<primary>endereço, endereço IP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>endereço IP</primary>
+		</indexterm>
+		 <para>
+			Um endereço IP é um número usado para identificar uma interface de rede num computador em uma rede local ou na internet. Na sua versão mais utilizada atualmente (IPv4), este número é codificado em 32 bits, e é normalmente representado como 4 números separados por pontos (e.g. <literal>192.168.0.1</literal>), cada número entre 0 e 255 (inclusive, o que corresponde a 8 bits de dados). A próxima versão do protocolo, IPv6, estende este espaço de endereçamento para 128 bits, e os endereços são geralmente representados como uma série de números hexadecimais separados por dois-pontos (e.g., 2001:0db8:13bb:0002:0000:0000:0000:0020, ou 2001:db8:13bb:2::20 resumidamente).
+		</para>
+		 <indexterm>
+			<primary>sub-rede</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>máscara</primary>
+			<secondary>máscara de sub-rede</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>rede</primary>
+			<secondary>endereço</secondary>
+		</indexterm>
+		 <para>
+			Uma máscara de subrede (máscara de rede) define no seu código binário que porções de um endereço IP correspondem à rede, e o restante especifica a máquina. No exemplo de configurar um endereço IPv4 estático dado aqui, a máscara de subrede, <literal>255.255.255.0</literal> (24 “1”s seguidos de 8 “0”s na representação binária) indica que os primeiros 24 bits do endereço IP correspondem ao endereço de rede, e os outros 8 são específicos da máquina. Em IPv6, por legibilidade, apenas os números “1”s são mostrados; a máscara de rede para uma rede IPv6 poderia ser, portanto, <literal>64</literal>.
+		</para>
+		 <para>
+			O endereço de rede é um endereço IP no qual a parte descrevendo o número da máquina é 0. O intervalo de endereços IPv4 em uma rede é às vezes indicado pela sintaxe, <emphasis>a.b.c.d/x</emphasis>, onde <emphasis>a.b.c.d</emphasis> é o endereço de rede e <emphasis>x</emphasis> é o número de bits afetados pela parte da rede no endereço IP. A rede de exemplo pode então ser escrita: <literal>192.168.0.0/24</literal>. A sintaxe é similar no IPv6: <literal>2001:db8:13bb:2::/64</literal>.
+		</para>
+		 <indexterm>
+			<primary>roteador</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>ponte</primary>
+		</indexterm>
+		 <para>
+			Um roteador é uma máquina que conecta várias redes umas às outras. Todo o tráfego que passa por um roteador é direcionado para a rede correta. Para fazer isto, o roteador analisa pacotes entrando e os redireciona de acordo com o endereço IP de destino. O roteador é às vezes conhecido como um gateway; nesta configuração, ele funciona como uma máquina que ajuda a alcançar mais do que a rede local (indo por uma rede extendida, como a Internet).
+		</para>
+		 <indexterm>
+			<primary>broadcast</primary>
+		</indexterm>
+		 <para>
+			O endereço especial de broadcast conecta todas as estações numa rede. Quase nunca é "roteado", ele apenas funciona na rede em questão. Especificamente, significa que um pacote de dados endereçado para o broadcast nunca atravessa o roteador.
+		</para>
+		 <para>
+			Este capítulo foca nos endereços IPv4, já que eles são os mais comumente usados. Os detalhes sobre o protocolo IPv6 são discutidos aqui <xref linkend="sect.ipv6" />, mas os conceitos se mantém os mesmos.
+		</para>
+		 </sidebar> <para>
+			Já que a rede é automaticamente configurada durante a instalação inicial, o arquivo <filename>/etc/network/interfaces</filename> já contém uma configuração válida. Uma linha começando com <literal>auto</literal> provê uma lista de interfaces que são configuradas automaticamente na inicialização pelo <emphasis role="pkg">ifupdown</emphasis> e seu script de início <filename>/etc/init.d/networking</filename>. Comumente será <literal>eth0</literal>, o qual se refere a primeira placa de rede.
+		</para>
+		 <indexterm>
+			<primary>rede</primary>
+			<secondary>configuração</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>configuração</primary>
+			<secondary>da rede</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>interface</primary>
+			<secondary>interface de rede</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><literal>eth0</literal></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>ALTERNATIVO</emphasis> NetworkManager</title>
+		 <indexterm>
+			<primary><emphasis role="pkg">network-manager</emphasis></primary>
+		</indexterm>
+		 <para>
+			Mesmo o Network Manager sendo particularmente recomendado em situações de roaming (veja <xref linkend="sect.roaming-network-config" />), ele é também perfeitamente útil como ferramenta de gerencia de redes padrão. Você pode criar “conexões de sistema” que são usadas assim que o computador liga tanto manualmente quando com um arquivo estilo <filename>.ini</filename> em <filename>/etc/NetworkManager/system-connections/</filename> ou através de uma ferramenta gráfica (<command>nm-connection-editor</command>). Somente lembre de desativar todas as entradas em <filename>/etc/network/interfaces</filename> se você quiser que o Network Manager manipule elas. <ulink type="block" url="https://wiki.gnome.org/Projects/NetworkManager/SystemSettings/jessie" /> <ulink type="block" url="https://developer.gnome.org/NetworkManager/0.9/ref-settings.html" />
+		</para>
+		 </sidebar> <section id="sect.interface-ethernet">
+			<title>Interface de Rede</title>
+			 <para>
+				Se o computador tem uma placa Ethernet, a rede IP que é associada a ela deve ser configurada escolhendo um de dois métodos. O método mais simples é a configuração dinâmica com DHCP, e requer um servidor DHCP na rede local. Ele pode indicar um hostname ("nome de máquina") desejado, correspondendo à configuração de <literal>hostname</literal> no exemplo abaixo. O servidor DHCP então manda as configurações para a rede apropriada.
+			</para>
+			 <indexterm>
+				<primary>Ethernet</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>DHCP</primary>
+			</indexterm>
+			 <example id="example.config-dhcp">
+				<title>Configuração DHCP</title>
+				 
+<programlisting>
+auto eth0
+iface eth0 inet dhcp
+  hostname arrakis</programlisting>
+
+			</example>
+			 <para>
+				Uma configuração "static" deve indicar uma configuração de rede de maneira fixa. Isto incluí ao menos o endereço IP e uma máscara de sub rede; endereços de rede e brodcasts são algumas vezes listados também. Um roteador conectado ao exterior será especificado como um gateway.
+			</para>
+			 <example id="example.static-network">
+				<title>Configuração estática</title>
+				 
+<programlisting>
+auto eth0
+iface eth0 inet static
+  address 192.168.0.3
+  netmask 255.255.255.0
+  broadcast 192.168.0.255
+  network 192.168.0.0
+  gateway 192.168.0.1</programlisting>
+
+			</example>
+			 <sidebar> <title><emphasis>NOTA</emphasis> Múltiplos endereços</title>
+			 <para>
+				É possível associar não só várias interfaces de rede a uma única placa de rede, como também vários endereços IP a uma única interface. Lembre também que um endereço IP pode corresponder a qualquer número de nomes via DNS, e que um nome pode corresponder a qualquer número de endereços IP.
+			</para>
+			 <para>
+				Como você pode imaginar, as configurações podem ser complexas, mas estas opções são usadas somente em casos especiais. Os exemplos citados aqui são configurações habituais típicas.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.ppp-rtc">
+			<title>Conectando com PPP através de um modem PSTN</title>
+			 <indexterm>
+				<primary>PPP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>ponto a ponto</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>conexão</primary>
+				<secondary>por um modem PSTN</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>modem</primary>
+				<secondary>PSTN</secondary>
+			</indexterm>
+			 <para>
+				Uma conexão ponto a ponto (PPP) cria uma conexão intermitente; está é a solução mais comum para conexão feitas com um modem telefônico ("modem PSTN", já que a conexão vai pela rede de telefonia).
+			</para>
+			 <para>
+				Uma conexão via modem telefônico precisa de uma conta com um provedor de acesso, incluindo um número telefônico, usuário, senha e às vezes o protocolo de autenticação a ser usado. tal conexão é configurada usando a ferramenta <command>pppconfig</command> do pacote Debian de mesmo nome. Por padrão, ela configura uma conexão chamada <literal>provider</literal> (de provedor de acesso). Quando em dúvida sobre o protocolo de autenticação, escolha <emphasis>PAP</emphasis>: ele é o oferecido pela maioria dos provedores de acesso a Internet.
+			</para>
+			 <indexterm>
+				<primary><command>pppconfig</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>PAP</primary>
+			</indexterm>
+			 <para>
+				Depois da configuração, é possível conectar usando o comando <command>pon</command> (dando a ele o nome da conexão como parâmetro, quando o valor padrão de <literal>provedor</literal> não for apropriado). O link é desconectado com o comando <command>poff</command>. Estes dois comandos podem ser executados pelo usuário root, ou por qualquer outro usuário que esteja no grupo <literal>dip</literal>.
+			</para>
+			 <indexterm>
+				<primary><command>pon</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>poff</command></primary>
+			</indexterm>
+
+		</section>
+		 <section id="sect.adsl">
+			<title>Conectando através de um modem ADSL</title>
+			 <indexterm>
+				<primary>conexão</primary>
+				<secondary>por modem ADSL</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>modem</primary>
+				<secondary>ADSL</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>ADSL, modem</primary>
+			</indexterm>
+			 <para>
+				O termo genérico "modem ADSL" cobre uma infinidade de dispositivos com fuções muito diferentes. Os modems que são os mais simples de usar com Linux são aqueles que tem uma interface Ethernet (e não aqueles que só tem interface USB). Estes tendem a ser bastatne populares; a maioria dos provedores de serviços internet ADSL emprestam ou fazem "leasing" de um aparelho com interfaces Ethernet. Dependendo do tipo de modem, a configuração necessária pode variar grandemente.
+			</para>
+			 <section id="sect.adsl-pppoe">
+				<title>Modems que Suportam PPPOE</title>
+				 <indexterm>
+					<primary>PPPOE</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>pppoeconf</command></primary>
+				</indexterm>
+				 <para>
+					Alguns modens Ethernet funcionam com o protocolo PPPOE (Point to Point Protocol over Ethernet). A ferramenta <command>pppoeconf</command> (do pacote de mesmo nome) vai configurar a conexão. Para isto, ele modifica o arquivo <filename>/etc/ppp/peers/dsl-provider</filename> com as configurações fornecidas e grava a informação de login nos arquivos <filename>/etc/ppp/pap-secrets</filename> e <filename>/etc/ppp/chap-secrets</filename>. Ele é recomendado para aceitar todas as modificações que se propõe.
+				</para>
+				 <para>
+					Uma vez que essa configuração está completa, você pode iniciar a conexão ADSL com o comando, <command>pon dsl-provider</command> ou desconectar com <command>poff dsl-provider</command>.
+				</para>
+				 <indexterm>
+					<primary><literal>dsl-provider</literal></primary>
+				</indexterm>
+				 <sidebar> <title><emphasis>DICA</emphasis> Iniciando o <command>ppp</command> na inicialização</title>
+				 <indexterm>
+					<primary><command>systemd</command></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>init</command></primary>
+				</indexterm>
+				 <para>
+					As conexões PPP sobre ADSL são, por definição, intermitentes. Como elas normalmente não são cobradas por tempo, existem poucos problemas com relação a tentação de mantê-las abertas sempre. O padrão para se fazer isto é usar o sistema init.
+				</para>
+				 <para>
+					O sistema init padrão na <emphasis role="distribution">Jessie</emphasis> é o <command>systemd</command>. Adicionar uma tarefa de reinício automático para uma conexão ADSL é uma simples questão de criar um “arquivo unit” tal como <filename>/etc/systemd/system/adsl-connection.service</filename>, com conteúdo tal como o seguinte:
+				</para>
+				 
+<programlisting>[Unit]
+Description=ADSL connection
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/pppd call dsl-provider
+Restart=always
+
+[Install]
+WantedBy=multi-user.target</programlisting>
+				 <para>
+					Uma vez que esse arquivo unit tenha sido definido, ele precisa ser habilitado com <command>systemctl enable adsl-connection</command>. Então o "loop" pode ser iniciado manualmente com <command>systemctl start adsl-connection</command>; ele também será iniciado automaticamente na inicialização.
+				</para>
+				 <para>
+					Em sistemas em que não é usado o <command>systemd</command> (incluíndo <emphasis role="distribution">Wheezy</emphasis> e versões anteriores do Debian), o init System V padrão funciona de maneira diferente. Em tais sistemas, tudo que é preciso é adicionar uma linha como a seguinte no final do arquivo <filename>/etc/inittab</filename>; então, a qualquer momento que a conexão cai, o <command>init</command> reconecta.
+				</para>
+				 
+<programlisting>
+adsl:2345:respawn:/usr/sbin/pppd call dsl-provider</programlisting>
+				 <para>
+					Para conexões ADSL que se auto desconectam diariamente, este método reduz a duração da interrupção.
+				</para>
+				 </sidebar>
+			</section>
+			 <section id="sect.adsl-pptp">
+				<title>Modems que Suportam PPTP</title>
+				 <indexterm>
+					<primary>PPTP</primary>
+				</indexterm>
+				 <para>
+					O protocolo PPTP (Point-to-Point Tunneling Protocol) foi criado pela Microsoft. Publicado no começo da ADSL, foi rapidamente substituído pelo PPPOE. Se você for obrigado a usar este protocolo, veja <xref linkend="sect.pptp" />.
+				</para>
+
+			</section>
+			 <section id="sect.adsl-dhcp">
+				<title>Modems que Suportam DHCP</title>
+				 <para>
+					Quando um modem está conectado ao computador via cabo ethernet (crossover) você tipicamente configura uma conexão de rede pelo DHCP no computador; o modem age automaticamente como um gateway por padrão e cuida do roteamento (o que significa que ele gerencia o tráfego de rede entre o computador e a Internet).
+				</para>
+				 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Cabos de par trançado para conexão de rede direta</title>
+				 <indexterm>
+					<primary>cabo de par trançado</primary>
+				</indexterm>
+				 <para>
+					Placas de rede de computadores esperam receber dados em certos fios do cabo, e enviar por outros. Quando você conecta um computador em uma rede local, você normalmente conecta um cabo (normal ou crossover) entre a placa de rede e o repetidor ou switch. Entretanto, se você quer conectar dois computadores diretamente (sem um switch ou repetidor intermediário), você deve rotear o sinal enviado por uma placa para o lado receptor da outra placa, e vice-versa. Este é o objetivo de um cabo crossover, e a razão para usá-lo.
+				</para>
+				 <para>
+					Note que esta distinção tem se tornado quase que irrelevante com o passar do tempo, já que placas de rede modernas são capazes de detectar o tipo de cabo presente e se adaptar a ele. Portanto, não é raro que ambos os tipos de cabo funcionem em vários locais.
+				</para>
+				 </sidebar> <para>
+					A maioria dos “roteadores ADSL” no mercado podem ser usados desta forma, assim como a maioria dos modens ADSL fornecidos por provedores de serviço de Internet.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.roaming-network-config">
+			<title>Configuração Automática de Rede para Usuários em Roaming</title>
+			 <indexterm>
+				<primary><emphasis role="pkg">network-manager</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>rede</primary>
+				<secondary>configuração de roaming</secondary>
+			</indexterm>
+			 <para>
+				Muitos engenheiros da Falcot tem um laptop que, por motivos pessoais, também são usados em casa. A configuração de rede muda de acordo com o local. Em casa, pode ser uma rede sem fio (protegida por uma chave WPA), enquanto que no trabalho se usa uma rede cabeada para mais segurança e mais banda.
+			</para>
+			 <para>
+				Para evitar ter que conectar ou desconectar manualmente as interface de rede correspondentes, os administradores instalaram o pacote <emphasis role="pkg">network-manager</emphasis> nestas "roaming machines". Com este software o usuário pode mudar de uma rede para outra usando um pequeno ícone exibido na área de notificação de suas área de trabalho gráficas. Ao clicar nestes ícones é exibida uma lista de redes disponíveis (com e sem fios), para o usuário simplesmente escolher qual ele deseja usar. O programa grava a configuração das redes que o usuário já tenha usado e automaticamente troca para a melhor rede disponível quando a rede atual cai.
+			</para>
+			 <para>
+				Para fazer isto, o programa é estruturado em duas partes: um daemon rodando como root cuida da ativação e configuração das interfaces de rede e uma interface de usuário controla este daemon. O PolicyKit cuida das autorizações necessárias para controlar este programa e o Debian configura o PolicyKit de forma que os membros do grupo netdev possam adicionar ou mudar as conexões do Network Manager.
+			</para>
+			 <para>
+				O Network Manager sabe como manipular vários tipos de conexões (DHCP, manual, rede local), mas apenas se a configuração for ajustada com o próprio programa. É por isto que ele vai ignorar sistematicamente todas as interfaces de rede no <filename>/etc/network/interfaces</filename> para as quais ele não foi projetado. Já que o Network Manager não dá detalhes quando nenhuma conexão de rede é mostrada, a forma fácil é apagar do <filename>/etc/network/interfaces</filename> quaisquer configurações de todas as interfaces que devem ser gerenciadas pelo Network Manager.
+			</para>
+			 <para>
+				Note que este programa já é instalado por padrão quando a tarefa "Desktop Environment" é escolhida durante a instalação.
+			</para>
+			 <sidebar> <title><emphasis>ALTERNATIVA</emphasis> Configuração por "perfil de rede"</title>
+			 <indexterm>
+				<primary><emphasis role="pkg">guessnet</emphasis></primary>
+			</indexterm>
+			 <para>
+				Usuários mais avançados talvez queiram usar o pacote <emphasis role="pkg">guessnet</emphasis> para configuração automática de rede. Um grupo de scripts determina qual o perfil de rede deve ser ativado e configura a rede na hora.
+			</para>
+			 <para>
+				Usuários que preferem selecionar manualmente o perfil de rede preferirá o programa <emphasis role="pkg">netenv</emphasis>, encontrado no pacote do mesmo nome.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.hostname-name-service">
+		<title>Ajustando o Nome de Host e Configurando o Serviço de Nomes</title>
+		 <indexterm>
+			<primary>nome</primary>
+			<secondary>atribuição e resolução</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>atribuição de nomes</primary>
+		</indexterm>
+		 <para>
+			O motivo de atribuir nomes a números de IP é fazê-los fáceis de lembrar. Na verdade, um endereço IP identifica uma interface de rede associada a um dispositivo como uma placa de rede. Já que cada máquina pode ter várias placas de rede, e várias interfaces em cada cada placa, um computador único pode ter vários nomes no sistema de nomes de domínio.
+		</para>
+		 <para>
+			Entretanto, cada máquina é identificada por um nome principal (ou "canônico"), armazenado no arquivo <filename>/etc/hostname</filename> e comunicado ao núcleo Linux por scripts de início através do comando <command>hostname</command>. O valor atual é disponível num sistema de arquivos virtual, e você pode obtê-lo com o comando <command>cat /proc/sys/kernel/hostname</command>.
+		</para>
+		 <indexterm>
+			<primary><command>hostname</command></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> <filename>/proc/</filename> e <filename>/sys/</filename>, sistemas de arquivos virtuais</title>
+		 <indexterm>
+			<primary><filename>/proc/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>proc</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/sys/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>sys</filename></primary>
+		</indexterm>
+		 <para>
+			As árvores de arquivos <filename>/proc/</filename> e <filename>/sys/</filename> são geradas por sistemas de arquivos "virtuais". Esta é uma forma prática de recuperar informações do núcleo (listando arquivos virtuais) e comunicando-os para o núcleo (escrevendo para arquivos virtuais).
+		</para>
+		 <para>
+			<filename>/sys/</filename> em particular, é projetado para fornecer acesso a objetos de kernel interno, especialmente aqueles que representam os diversos dispositivos no sistema. O kernel pode, assim, partilhar vários pedaços de informação: o status de cada dispositivo (por exemplo, se está no modo de poupança de energia), seja um dispositivo removível, etc. Note-se que <filename>/sys/</filename> só existe desde a versão do kernel 2.6.
+		</para>
+		 </sidebar> <para>
+			Surpreendentemente, o nome de domínio não é gerenciado da mesma forma, mas vem de um nome de máquina completo, adquirido através de resolução de nome. Você pode mudá-lo no arquivo <filename>/etc/hosts</filename>; simplesmente escreva um nome completo para a máquina no começo da lista de nomes associada com o endereço da máquina, como no exemplo seguinte:
+		</para>
+		 <informalexample> 
+<programlisting>
+127.0.0.1     localhost
+192.168.0.1   arrakis.falcot.com arrakis</programlisting>
+		 </informalexample> <indexterm>
+			<primary><filename>hosts</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/hosts</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>domínio</primary>
+			<secondary>nome</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>nome</primary>
+			<secondary>domínio</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>NSS</primary>
+		</indexterm>
+		 <section id="sect.name-resolution">
+			<title>Resolução de Nome</title>
+			 <indexterm>
+				<primary>resolução</primary>
+				<secondary>nome</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>nome</primary>
+				<secondary>resolução</secondary>
+			</indexterm>
+			 <para>
+				O mecanismo para resolução de nomes no Linux é modular e pode usar várias fontes de informação declarada no arquivo <filename>/etc/nsswitch.conf</filename>. A entrada que envolve a resolução de nomes de host é <literal>hosts</literal>. Por padrão, contém <literal>files dns</literal>, o que significa que o sistema consulta o arquivo <filename>/etc/hosts</filename> primeiro, então os servidores DNS. NIS / NIS + ou LDAP servidores são outras fontes possíveis.
+			</para>
+			 <sidebar> <title><emphasis>NOTA</emphasis> NSS e DNS</title>
+			 <para>
+				Esteja ciente de que os comandos destinados especificamente a consulta DNS (especialmente <command>host</command>) não utilize o mecanismo de resolução de nome padrão (NSS). Como conseqüência, eles não levam em consideração <filename>/etc/nsswitch.conf</filename> e, portanto, não <filename>/etc/hosts</filename> também.
+			</para>
+			 </sidebar> <section id="sect.dns-server-configuration">
+				<title>Configurando Servidores DNS</title>
+				 <indexterm>
+					<primary>DNS</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>Domain Name Service</primary>
+				</indexterm>
+				 <para>
+					DNS (Domain Name System - Sistema de Nomes de Domínios) é um mapeamento de serviço distribuída e hierárquica nomes para endereços IP e vice-versa. Especificamente, ele pode transformar um nome amigável como <literal>www.eyrolles.com</literal> no endereço IP real, <literal>213.244.11.247</literal>.
+				</para>
+				 <para>
+					Para acessar informações de DNS, um servidor DNS deve estar disponível para solicitações de retransmissão. Falcot Corp tem a sua própria, mas um usuário individual é mais propensos a usar os servidores DNS fornecidos pelo seu ISP.
+				</para>
+				 <indexterm>
+					<primary><filename>resolv.conf</filename></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>nameserver</literal></primary>
+				</indexterm>
+				 <para>
+					Os servidores DNS a serem usados são indicados no <filename>/etc/resolv.conf</filename>, um por linha, com a palavra-chave <literal>nameserver</literal> seguida por um endereço IP, como no exemplo a seguir:
+				</para>
+				 
+<programlisting>
+nameserver 212.27.32.176
+nameserver 212.27.32.177
+nameserver 8.8.8.8</programlisting>
+				 <para>
+					Note que o arquivo <filename>/etc/resolv.conf</filename> pode ser manipulado automaticamente (e sobrescrito) quando a rede é gerenciada pelo NetworkManager ou configurada via DHCP.
+				</para>
+
+			</section>
+			 <section id="sect.etc-hosts">
+				<title>O arquivo <filename>/etc/hosts</filename></title>
+				 <indexterm>
+					<primary><filename>hosts</filename></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><filename>/etc/hosts</filename></primary>
+				</indexterm>
+				 <para>
+					Se não houver nenhum nome do servidor na rede local, é ainda possível estabelecer uma pequena tabela de mapeamento de endereços IP e nomes de máquina no <filename>/etc/hosts</filename>, normalmente reservados para as estações da rede local. A sintaxe deste arquivo é muito simples: cada linha indica um endereço IP específico, seguido pela lista de quaisquer denominações associadas (sendo o primeiro "completamente qualificado", ou seja, inclui o nome de domínio).
+				</para>
+				 <para>
+					Este arquivo está disponível mesmo durante interrupções de rede ou quando os servidores DNS são inacessíveis, mas realmente só serão úteis quando duplicados em todas as máquinas na rede. A menor alteração em correspondência exigirá o arquivo a ser atualizado em todos os lugares. É por isso que <filename>/etc/hosts</filename> geralmente contém apenas as entradas mais importantes.
+				</para>
+				 <para>
+					Este arquivo será suficiente para uma rede pequena sem conexão com a internet, mas com 5 máquinas ou mais, é recomendado a instalação de um servidor DNS adequado.
+				</para>
+				 <sidebar> <title><emphasis>DICA</emphasis> Ignorando o DNS</title>
+				 <para>
+					Desde que os aplicativos verificar o <filename>/etc/hosts</filename> antes de consultar o DNS, é possível incluir informações que é diferente do que o DNS retornaria e, portanto, ignorar a resolução de nome DNS com base em normal.
+				</para>
+				 <para>
+					Isso permite que, em caso de alterações DNS ainda não propagadas, para testar o acesso a um Web site com o nome pretendido, mesmo que este nome não está devidamente mapeado para o endereço IP correto ainda.
+				</para>
+				 <para>
+					Outro uso possível é o redirecionamento de tráfico feito de uma máquina específica para o localhost, evitando assim qualquer comunicação com a dada máquina. Por exemplo, nomes de hosts de servidores dedicados a fornecer propaganda podem ser desviados o que evitaria estas propagandas tornando a navegação mais fluida e menos dispersa.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.user-group-databases">
+		<title>Usuário e grupo bancos de dados</title>
+		 <indexterm>
+			<primary>usuário</primary>
+			<secondary>banco de dados</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>grupo</primary>
+			<secondary>banco de dados</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>banco de dados</primary>
+			<secondary>de usuários</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>banco de dados</primary>
+			<secondary>de grupos</secondary>
+		</indexterm>
+		 <para>
+			A lista de usuários é normalmente armazenada no <filename>/etc/passwd</filename>, enquanto o <filename>/etc/shadow</filename> armazena senhas criptografadas. Ambos são arquivos de texto, em um formato relativamente simples, que podem ser lidos e modificados com um editor de texto. Cada usuário está listado lá em uma linha com vários campos separados por dois-pontos (“<literal>:</literal>”).
+		</para>
+		 <sidebar> <title><emphasis>NOTA</emphasis> Editando arquivos do sistema</title>
+		 <para>
+			Os arquivos de sistema mencionados neste capítulo são todos os arquivos de texto simples e podem ser editados com um editor de texto. Considerando sua importância para a funcionalidade de núcleo do sistema, é sempre uma boa idéia tomar precauções extras ao editar arquivos do sistema. Primeiro, sempre faça uma cópia ou backup de um arquivo de sistema antes de abrir ou alterar isso. Em segundo lugar, em servidores ou máquinas, onde mais de uma pessoa potencialmente poderia acessar o mesmo arquivo ao mesmo tempo, tome medidas extras para proteção contra corrupção de arquivo.
+		</para>
+		 <para>
+			Por este motivo, é suficiente usar o comando <command>vipw</command> para editar o arquivo <filename>/etc/passwd</filename>, ou <command>vigr</command> para editar <filename>/etc/group</filename>. Estes comandos travam o arquivo em questão antes de executar o editor de texto (o <command>vi</command> por padrão , a menos que a variável de ambiente <varname>EDITOR</varname> tenha sido alterada). A opção <literal>-s</literal> nestes comandos permite a edição do arquivo <foreignphrase>shadow</foreignphrase> correspondente.
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Crypt, uma função de mão única</title>
+		 <indexterm>
+			<primary>crypt</primary>
+		</indexterm>
+		 <para>
+			<command>crypt</command> é uma função unidirecional que transforma uma string (<varname>A</varname>) em outra string (<varname>B</varname>) de forma que <varname>A</varname> não possa ser derivada de <varname>B</varname>. A única forma de identificar <varname>A</varname> é testando todos os valores possíveis, verificando cada um para determinar se a transformação pela função vai produzir <varname>B</varname> ou não. Ele usa até 8 caracteres como entrada (string <varname>A</varname>) e gera uma string de 13 caracteres ASCII, imprimível (string <varname>B</varname>).
+		</para>
+		 </sidebar> <section id="sect.etc-passwd">
+			<title>Lista de Usuários: <filename>/etc/passwd</filename></title>
+			 <para>
+				Aqui está uma lista de campos do arquivo <filename>/etc/passwd</filename>:
+			</para>
+			 <indexterm>
+				<primary><command>passwd</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/passwd</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>uid</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>gid</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>GECOS</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>login</literal></primary>
+			</indexterm>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						login, por exemplo <literal>rhertzog</literal>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						password: é uma senha criptografada por uma função unidirecional (<command>crypt</command>), que se baseia em <literal>DES</literal>, <literal>MD5</literal>, <literal>SHA-256</literal> ou <literal>SHA-512</literal>. O valor especial “<literal>x</literal>” indica que a senha criptografada é armazenada em <filename>/etc/shadow</filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>uid</literal>: identificar numérico único para cada usuário;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>gid</literal>:número único para o grupo principal do usuário (O Debian cria, por padrão, um grupo específico para cada usuário);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>GECOS</literal>: campo de dados contendo normalmente o nome completo de usuário;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						diretório de login, atribuído ao usuário para armazenar arquivos pessoais (a variável de ambiente <varname>$HOME</varname> geralmente aponta para ele);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						programa para executar no login. Em geral é um interpretador de comandos (shell), deixando o usuário com "rédea solta". Se você especificar <command>/bin/false</command> (que não faz nada e devolve o controle imediatamente), o usuário não vai conseguir fazer login.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Grupo Unix</title>
+			 <indexterm>
+				<primary>grupo</primary>
+			</indexterm>
+			 <para>
+				Um grupo do Unix é uma entidade que contém vários usuários de forma que eles possam compartilhar arquivos facilmente usando o sistema de permissões integrado (com os benefícios dos mesmos direitos). Você também pode restringir o uso de certos programas a um grupo específico.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.etc-shadow">
+			<title>O Oculto e Criptografo Arquivo de Senhas: <filename>/etc/shadow</filename></title>
+			 <indexterm>
+				<primary><filename>shadow</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/shadow</filename></primary>
+			</indexterm>
+			 <para>
+				O arquivo <filename>/etc/shadow</filename> contém os seguintes campos:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						login;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						senha criptografada;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						diversos campos controlam a expiração da senha.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <sidebar> <title><emphasis>DOCUMENTAÇÃO</emphasis> formatos de arquivos de <filename>/etc/passwd</filename>, <filename>/etc/shadow</filename> e <filename>/etc/group</filename></title>
+			 <para>
+				Estes formatos estão documentados nas seguintes páginas de manuais: <citerefentry><refentrytitle>passwd</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>, <citerefentry><refentrytitle>shadow</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>, e <citerefentry><refentrytitle>group</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>SEGURANÇA</emphasis> <filename>/etc/shadow</filename> segurança de arquivos</title>
+			 <para>
+				<filename>/etc/shadow</filename>, ao contrário do seu alter-ego, <filename>/etc/passwd</filename>, não pode ser lido por usuários normais. Qualquer senha criptografada armazenada em <filename>/etc/passwd</filename> pode ser lida por todo mundo; um cracker pode tentar "quebrar" (ou revelar) uma senha através de um dos vários métodos "força bruta" que, de forma geral, tantam adivinhar uma combinação muito usada de caracteres. Este ataque — chamado de "ataque de dicionário" — não é mais possível em sistemas usando o <filename>/etc/shadow</filename>.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.account-modification">
+			<title>Modificando uma Conta de Usuário Existente ou Senha</title>
+			 <indexterm>
+				<primary><command>chsh</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>chfn</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>passwd</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>chage</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>senha</primary>
+			</indexterm>
+			 <para>
+				Os seguintes comandos permitem a modificação das informações armazenadas em campos específicos do banco de dados do usuário: <command>passwd</command> permite que um usuário comum altere sua senha, que por sua vez, atualiza o arquivo <filename>/etc/shadow</filename>; <command>chfn</command>(CHange Full Name), reservado para o superusuário (root), modifica o campo <literal>GECOS</literal>.<command>chsh</command> (CHange SHell) permite que o usuário altere seu shell de login, contudo, as opções disponíveis estarão limitadas as opções listadas em <filename>/etc/shells</filename>; o administrador, por outro lado, não tem essa restrição e pode definir o shell para qualquer programa de sua escolha.
+			</para>
+			 <para>
+				Finalmente, o comando <command>chage</command> (CHange AGE) permite ao administrador alterar as configurações de expiração da senha (a opção <literal>-l <replaceable>user</replaceable></literal> irá listar as configurações corrente). Vocẽ também pode forçar a expiração da senha usando o comando <command>passwd -e <replaceable>user</replaceable></command>, o qual irá requerer que o usuário altere sua senha na próxima vez que iniciar uma sessão.
+			</para>
+
+		</section>
+		 <section id="sect.disabling-account">
+			<title>Desabilitando uma Conta</title>
+			 <indexterm>
+				<primary>Desabilitando uma conta</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>conta</primary>
+				<secondary>desativar</secondary>
+			</indexterm>
+			 <para>
+				Você pode necessitar “desabilitar uma conta” (bloquear um usuário), como uma medida disciplinar, para propósitos de uma investigação, ou simplesmente no caso de uma prolongada ou definitiva ausência de um usuário. Uma conta desabilitada significa que o usuário não pode iniciar uma sessão ou ganhar acesso a máquina. A conta permanece intacta na máquina e nenhum arquivo ou dado é apagado; ela é simplesmente inacessível. Isso é feito usando o comando <command>passwd -l <replaceable>user</replaceable></command> (bloqueio). Reabilitar a conta é feito de maneira similar, com a opção <literal>-u</literal> (desbloqueio).
+			</para>
+			 <sidebar id="sidebar.intro-nss"> <title><emphasis>APROFUNDANDO</emphasis> NSS e banco de dados do sistema</title>
+			 <indexterm>
+				<primary>NSS</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Name Service Switch</primary>
+			</indexterm>
+			 <para>
+				Ao invés de usar os arquivos usuais para gerenciar listas de usuários e grupos, você pode usar outros tipos de banco de dados, como LDAP ou <command>db</command>, usando o módulo NSS (Name Service Switch) apropriado. Os módulos usados estão listados no arquivo <filename>/etc/nsswitch.conf</filename>, sob as entradas <literal>passwd</literal>, <literal>shadow</literal> e <literal>group</literal>. Veja <xref linkend="sect.config-nss" /> para um exemplo específico de uso do módulo NSS pelo LDAP.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.etc-group">
+			<title>Lista de Grupo: <filename>/etc/group</filename></title>
+			 <para>
+				Grupos são listados no arquivo <filename>/etc/group</filename>, um banco de dados de texto simples em um formato similar ao arquivo <filename>/etc/passwd</filename>, com os seguintes campos:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						nome do grupo;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						senha (opcional): Isso só é usado para participar de um grupo quando não se é um membro usual (com os comandos <command>newgrp</command> ou <command>sg</command>, veja barra lateral <xref linkend="sidebar.working-with-several-groups" />);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>gid</literal>: identificar numérico único para cada grupo;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						lista de membros: lista de nomes de usuários que são membros do grupo, separados por vírgulas.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+			</para>
+			 <sidebar id="sidebar.working-with-several-groups"> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Trabalhando com grupos diversos</title>
+			 <indexterm>
+				<primary><command>newgrp</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>sg</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>id</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>grupo</primary>
+				<secondary>mudança</secondary>
+			</indexterm>
+			 <para>
+				Cada usuário pode ser membro de muitos grupos; um deles é seu “grupo principal”. O grupo principal de um usuário é, por padrão, criado durante a configuração inicial do usuário. Por padrão, cada arquivo que o usuário criar pertencerá a eles, assim como ao seu grupo principal. Isso nem sempre é desejável; por exemplo, quando o usuário precisa trabalhar em um diretório compartilhado por um grupo diferente de seu grupo principal. Neste caso, o usuário precisa alterar seu grupo principal usando os seguintes comandos: <command>newgrp</command>, o qual inicia um novo shell, ou <command>sg</command>, o qual simplesmente executa um comando usando o grupo alternativo fornecido. Esses comandos também permitem ao usuário participar de um grupo o qual ele não pertence. Se o grupo é protegido por senha, ele terá de fornecer a senha apropriada antes de o comando ser executado.
+			</para>
+			 <para>
+				Alternativamente, o usuário pode definir o bit <literal>setgid</literal> no diretório, o que causa aos arquivos criados neste diretório serem automaticamente pertencentes ao grupo correto. Para mais detalhes, veja a barra lateral <xref linkend="sidebar.setgid-dir" />.
+			</para>
+			 <para>
+				O comando <command>id</command> exibe o estado corrente de um usuário, com sua identidade pessoal(variável <varname>uid</varname>), grupo principal corrente (variável <varname>gid</varname>), e a lista de grupos aos quais pertence (variável <varname>groups</varname>).
+			</para>
+			 </sidebar> <indexterm>
+				<primary><filename>group</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/group</filename></primary>
+			</indexterm>
+			 <para>
+				Os comandos <command>addgroup</command> e <command>delgroup</command> adicionam ou apagam um grupo, respectivamente. O comando <command>groupmod</command> modifica a informação do grupo (seu <literal>gid</literal> ou identificador). O comando <command>passwd -g <replaceable>grupo</replaceable></command> altera a senha para o grupo, enquanto o comando <command>passwd -r -g <replaceable>grupo</replaceable></command> o apaga.
+			</para>
+			 <indexterm>
+				<primary><command>addgroup</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>delgroup</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>groupmod</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>grupo</primary>
+				<secondary>criação</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>criação</primary>
+				<secondary>de grupos</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>grupo</primary>
+				<secondary>remoção</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>remoção de um grupo</primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>DICA</emphasis> <command>getent</command></title>
+			 <indexterm>
+				<primary><command>getent</command></primary>
+			</indexterm>
+			 <para>
+				O comando <command>getent</command> (obter entradas) faz a checagem padrão do banco de dados do sistemas, usando as funções de biblioteca apropriadas, as quais, por sua vez, chamam os módulos NSS configurados no arquivo <filename>/etc/nsswitch.conf</filename>. O comando recebe um ou dois argumentos: o nome do banco de dados a ser checado, e uma possível chave de busca. Assim, o comando <command>getent passwd rhertzog</command> dará as informações do banco de dados do usuário em relação ao usuário<literal>rhertzog</literal>.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.creating-accounts">
+		<title>Criação de Contas</title>
+		 <indexterm>
+			<primary>conta</primary>
+			<secondary>criação</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>criação</primary>
+			<secondary>de contas de usuários</secondary>
+		</indexterm>
+		 <para>
+			Uma das primeiras ações que um administrador precisa fazer enquanto configura uma nova máquina é criar contas de usuário. Isso é tipicamente feito usando o comando <command>adduser</command> o qual recebe um nome-de-usuário para o novo usuário a ser criado, como um argumento.
+		</para>
+		 <indexterm>
+			<primary><command>adduser</command></primary>
+		</indexterm>
+		 <para>
+			O comando <command>adduser</command> faz algumas perguntas antes de criar a conta, mas seu uso é bastante simples. Seu arquivo de configuração, <filename>/etc/adduser.conf</filename>, inclui todas as configurações interessantes: ele pode ser usado para automaticamente definir uma cota para cada novo usuário, criando um modelo de usuário, ou para alterar a localização das contas de usuário; essa última é raramente útil, mas se torna interessante quando você tem um grande número de usuários e quer dividir suas contas por vários discos, por exemplo. Você pode também escolher um shell padrão diferente.
+		</para>
+		 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Cota</title>
+		 <indexterm>
+			<primary>cota</primary>
+		</indexterm>
+		 <para>
+			O termo "cota" se refere a um limite de recursos da máquina que um usuário é permitido usar. Isto é frequentemente se refere ao espaço de disco.
+		</para>
+		 </sidebar> <para>
+			A criação de uma conta povoa o diretório home do usuário com o conteudo do template de <filename>/etc/skel/</filename>. Isso provê ao usuário um conjunto padrão de diretórios e arquivos de configuração.
+		</para>
+		 <indexterm>
+			<primary>grupo</primary>
+			<secondary>adicionar um usuário</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>adicionar um usuário a um grupo</primary>
+		</indexterm>
+		 <para>
+			Em alguns casos, será útil adicionar um usuário em um grupo (diferente do grupo principal padrão) em razão de garantir a ele permissões adicionais. Por exemplo, um usuário que seja incluído no grupo <emphasis>audio</emphasis> pode acessar dispositivos de audio (veja barra lateral <xref linkend="sidebar.special-files" />). Isso pode ser alcançável com um comando como o <command>adduser <replaceable>usuário</replaceable> <replaceable>grupo</replaceable></command>.
+		</para>
+		 <sidebar id="sidebar.special-files"> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Permissão de acesso a dispositivos</title>
+		 <indexterm>
+			<primary>dispositivo</primary>
+			<secondary>permissões de acesso</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>arquivo</primary>
+			<secondary>especial</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>modo</primary>
+			<secondary>carácter</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>modo</primary>
+			<secondary>bloco</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>bloco, modo</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>carácter, modo</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>especial, arquivo</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>mknod</command></primary>
+		</indexterm>
+		 <para>
+			Cada dispositivo periférico de hardware é representado sob o Unix como um arquivo especial, usualmente armazenado na árvore de arquivos sob <filename>/dev/</filename> (DEVices). Existem dois tipos de arquivos especiais, de acordo com a natureza do dispositivos: arquivos “modo caracter” e “modo bloco”, cada modo permite apenas um limitado número de operações. Enquanto o modo caracter limita a interação com operações de leitura/escrita, o modo bloco também permite a busca dentro dos dados disponíveis. Finalmente, cada arquivo especial é associado com dois numeros (“major” and “minor”) que identifica o dispositivo no kernel de maneira única. Esse tipo de arquivo, criado pelo comando <command>mknod</command>, simplesmente contém um nome simbólico (e mais amigável para humanos).
+		</para>
+		 <para>
+			As permissões de um arquivo especial mapeiam as permissões necessárias para acessar o próprio dispositivo. Assim,,um arquivo como o <filename>/dev/mixer</filename>, representando o mixador de audio, apenas tem permissões de leitura/escrita para o usuário root e membros do grupo <literal>audio</literal>. Apenas esses usuários podem operar o mixador de audio.
+		</para>
+		 <para>
+			Deve ser notado que a combinação de <emphasis role="pkg">udev</emphasis>, <emphasis role="pkg">consolekit</emphasis> e <emphasis role="pkg">policykit</emphasis> pode somar permissões adicionais a usuários fisicamente conectados ao console (e não através da rede) acessarem certos dispositivos.
+		</para>
+		 </sidebar>
+	</section>
+	 <section id="sect.shell-environment">
+		<title>Ambiente Shell</title>
+		 <para>
+			Interpretadores de comandos (ou shells) podem ser o primeiro ponto de contato do usuário com o computador, e eles devem portanto ser bastante amigáveis. a maioria deles usa scripts de inicialização que permitem a configuração de seus comportamentos (completação automática, texto de prompt, etc).
+		</para>
+		 <indexterm>
+			<primary>interface de linha de comando</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>interpretador de comandos</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>shell</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>bash</command></primary>
+		</indexterm>
+		 <para>
+			<command>bash</command>, o shell padrão, usa o script de inicialização <filename>/etc/bash.bashrc</filename> para shells "interativos", e o <filename>/etc/profile</filename> para shells de "login".
+		</para>
+		 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> shell de login e shell (não-)interativo</title>
+		 <para>
+			Em termos simples, um shell de login é invocado quando você se autentica (log in) no console tanto localmente quanto remotamente via <command>ssh</command>, ou quando você executa um comando <command>bash --login</command> explicitamente. Independente de ser um shell de login ou não, um shell pode ser interativo (num terminal estilo <command>xterm</command>, por exemplo); ou não-interativo (quando executando um script).
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>DISCOVERY</emphasis> Outros shells, outros scripts</title>
+		 <para>
+			Cada interpretador de comando tem uma sintaxe específica e seus próprios arquivos de configuração. Assim, <command>zsh</command> usa <filename>/etc/zshrc</filename> e <filename>/etc/zshenv</filename>; <command>csh</command> usa <filename>/etc/csh.cshrc</filename>, <filename>/etc/csh.login</filename> e <filename>/etc/csh.logout</filename>. As páginas de manual desses programas documentam quais arquivos eles usam.
+		</para>
+		 <indexterm>
+			<primary><command>zsh</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>csh</command></primary>
+		</indexterm>
+		 </sidebar> <para>
+			Para o <command>bash</command>, é útil ativar “preenchimento automático” no arquivo <filename>/etc/bash.bashrc</filename> (simplesmente descomentando algumas linhas).
+		</para>
+		 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Preenchimento automático</title>
+		 <indexterm>
+			<primary>preenchimento automático</primary>
+		</indexterm>
+		 <para>
+			Muitos interpretadores de comando fornecem o recurso de complementação, o qual permite ao shell completar automaticamente um nome de comando parcialmente digitado ou argumento quando o usuário pressiona a tecla <keycap>Tab</keycap>. Isso faz com que os usuários trabalhem com mais eficiência e sejam menos propensos a erros.
+		</para>
+		 <para>
+			Essa função é muito poderosa e flexível. É possível configurar seu comportamento de acordo com cada comando. Assim, o primeiro argumento seguido de <command>apt-get</command> irá ser proposto de acordo com a sintaxe deste comando, mesmo que não coincida com nenhum arquivo (neste caso, as opções possíveis são <literal>install</literal>, <literal>remove</literal>, <literal>upgrade</literal>, etc.).
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> O til, um atalho para o HOME</title>
+		 <indexterm>
+			<primary>~</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>til</primary>
+		</indexterm>
+		 <para>
+			O til geralmente é usado para indicar o diretório o qual a variável de ambiente, <varname>HOME</varname>, aponta (sendo o diretório home do usuário, como por exemplo <filename>/home/rhertzog/</filename>). Interpretadores de comando automaticamente fazem a substituição: <filename>~/hello.txt</filename> se torna <filename>/home/rhertzog/hello.txt</filename>.
+		</para>
+		 <para>
+			O til também permite acesso para o diretório home de outro usuário. Assim, <filename>~rmas/bonjour.txt</filename> é sinônimo de <filename>/home/rmas/bonjour.txt</filename>.
+		</para>
+		 </sidebar> <para>
+			Em adição a esses scripts comuns, cada usuário pode criar seu próprio <filename>~/.bashrc</filename> e <filename>~/.bash_profile</filename> para configurar seu shell. As mudanças mais comuns são a adição de "aliases"; palavras que são automaticamente substituidas pela execução de um comando, o que faz ficar mais rápido a invocação desse comando. Por exemplo, você poderia criar o "alias" <literal>la</literal> para o comando <command>ls -la | less</command>; assim você tem apenas que digitar <command>la</command> para inspecionar o conteúdo do diretório detalhadamente.
+		</para>
+		 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Variáveis de ambiente</title>
+		 <indexterm>
+			<primary>ambiente</primary>
+			<secondary>variável de ambiente</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>variável, ambiente</primary>
+		</indexterm>
+		 <para>
+			Variáveis de ambiente permitem o armazenamento de configurações globais para o shell ou vários outros programas executados. Elas são contextuais (cada processo tem seu próprio conjunto de variáveis de ambiente) porém hereditárias. Essa última característica oferece a possibilidade para o shell de login declarar variáveis que serão repassadas para todos os programas que ele executa.
+		</para>
+		 </sidebar> <para>
+			Definir as variáveis de ambiente padrão é um elemento importante da configuração do shell. Deixando de lado as variáveis específicas do shell, é preferível colocá-las no arquivo <filename>/etc/environment</filename>, já que ele é usado por vários programas passíveis de iniciar uma sessão do shell. Variáveis tipicamente definidas lá incluem <varname>ORGANIZATION</varname>, a qual usualmente contém o nome da compania ou organização, e <varname>HTTP_PROXY</varname>, a qual indica a existência e localização de um proxy HTTP.
+		</para>
+		 <sidebar> <title><emphasis>DICA</emphasis> Todos os shells configurados identicamente</title>
+		 <para>
+			Os usuários geralmente querem configurar seu login e shell interativo de maneira similar. Para fazer isso, eles escolhem interpretar (ou “fonte”) o contéudo de <filename>~/.bashrc</filename> no arquivo <filename>~/.bash_profile</filename>. É possível fazer a mesma coisa com arquivos comuns a todos os usuários (referenciando <filename>/etc/bash.bashrc</filename> a partir de <filename>/etc/profile</filename>).
+		</para>
+		 </sidebar>
+	</section>
+	 <section id="sect.config-printing">
+		<title>Configuração da Impressora</title>
+		 <indexterm>
+			<primary>configuração</primary>
+			<secondary>imprimindo</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>imprimindo</primary>
+			<secondary>configuração</secondary>
+		</indexterm>
+		 <para>
+			A configuração de impressora geralmente causava muitas dores de cabeça para administradores e usuários. Essas dores de cabeça são agora quase que uma coisa do passado, obrigado ao <emphasis role="pkg">cups</emphasis>, o servidor de impressão usando o protocolo IPP (Internet Printing Protocol).
+		</para>
+		 <indexterm>
+			<primary>IPP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Internet Printing Protocol</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>cups</command></primary>
+		</indexterm>
+		 <para>
+			Esse programa é dividido em vários pacotes Debian: <emphasis role="pkg">cups</emphasis> é o servidor de impressão central; <emphasis role="pkg">cups-bsd</emphasis> é uma camada de compatibilidade que permite o uso de comandos a partir do daemon do sistema de impressão BSD tradicional (comandos <command>lpd</command>, <command>lpr</command> e <command>lpq</command>, etc.); <emphasis role="pkg">cups-client</emphasis> contém um grupo de programas para interagir com o servidor (bloquear ou desbloquear uma impressora, ver ou apagar trabalhos de impressão em execução, etc.); e finalmente, <emphasis role="pkg">cups-driver-gutenprint</emphasis> contém uma coleção de drivers de impressora adicionais para o <command>cups</command>.
+		</para>
+		 <indexterm>
+			<primary><command>lpr</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>lpd</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>lpq</command></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>COMUNIDADE</emphasis> CUPS</title>
+		 <indexterm>
+			<primary>CUPS</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Common Unix Printing System</primary>
+		</indexterm>
+		 <para>
+			CUPS (Common Unix Printing System) é um projeto (e uma marca registrada) gerenciado pela Apple, Inc. <ulink type="block" url="http://www.cups.org/" />
+		</para>
+		 </sidebar> <para>
+			Após a instalação desses diferentes pacotes, <command>cups</command> é facilmente administrado através da interface web acessível pelo endereço local: <literal>http://localhost:631/</literal>. Lá você pode adicionar impressoras (incluindo impressoras na rede), remover, e administrá-las. Você também pode administrar o <command>cups</command> com a interface gráfica fornecida pelo ambiente de área de trabalho. Finalmente, existe também a interface gráfica <command>system-config-printer</command> (a partir do pacote Debian de mesmo nome).
+		</para>
+		 <indexterm>
+			<primary><command>cups</command></primary>
+			<secondary>administração</secondary>
+		</indexterm>
+		 <sidebar> <title><emphasis>NOTA</emphasis> Obsolescência do <filename>/etc/printcap</filename></title>
+		 <para>
+			<emphasis>cups</emphasis> não mais usa o arquivo <filename>/etc/printcap</filename>, que agora é obsoleto. Os programas que dependem deste arquivo para obter uma lista de impressoras disponíveis irão, assim, falhar. Para evitar esse problema, apague esse arquivo e faça um link simbólico (veja barra lateral <xref linkend="sidebar.symbolic-link" />) para <filename>/var/run/cups/printcap</filename>, o qual é mantido pelo <emphasis>cups</emphasis> para garantir compatibilidade.
+		</para>
+		 <indexterm>
+			<primary><filename>printcap</filename></primary>
+		</indexterm>
+		 </sidebar>
+	</section>
+	 <section id="sect.config-bootloader">
+		<title>Configurando o carregador de boot (bootloader)</title>
+		 <indexterm>
+			<primary>carregador</primary>
+			<secondary>carregador de inicialização</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>carregador de inicialização</primary>
+		</indexterm>
+		 <para>
+			Isso provavelmente já é funcional, mas é sempre bom saber configurar e instalar o carregador de inicialização em caso dele desaparecer da MBR (Master Boot Record). Isso pode ocorrer depois da instalação de outro sistema operacional, como o Windows. A seguinte informação pode também ajudar você a modificar a configuração do carregador de inicialização caso necessário.
+		</para>
+		 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Registro mestre de inicialização</title>
+		 <indexterm>
+			<primary>MBR</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Master Boot Record</primary>
+		</indexterm>
+		 <para>
+			A MBR (Master Boot Record) ocupa os primeiros 512 bytes do primeiro disco rígido, e é a primeira coisa carregada pela BIOS para entregar o controle a um programa capaz de inicializar o sistema operacional desejado. Em geral, um carregador de inicialização fica instalado dentro da MBR, removendo seu conteúdo prévio.
+		</para>
+		 </sidebar> <section id="sect.identify-disks">
+			<title>Identificando os Discos</title>
+			 <sidebar> <title><emphasis>CULTURA</emphasis> <emphasis>udev</emphasis> e <filename>/dev/</filename></title>
+			 <para>
+				O diretório <filename>/dev/</filename> tradicionalmente hospeda os chamados arquivos “especiais”, destinados a representar os periféricos do sistema (veja barra lateral <xref linkend="sidebar.special-files" />). Tempos atrás, era usado para armazenar todos os arquivos especiais que potencialmente poderiam ser usados. Essa abordagem tinha uma série de inconvenientes entre os quais o fato de restringir o número de dispositivos que alguém poderia usar (devido a lista de nomes codificados), e que era impossível saber quais arquivos especiais eram realmente úteis.
+			</para>
+			 <para>
+				Atualmente, o gerenciamento de arquivos especiais é completamente dinâmico e combina mais com a natureza de encaixe a quente dos dispositivos. O núcleo coopera com o <emphasis>udev</emphasis> para criar e apagar os dispositovs quando necessário a medida em que tais dispositivos aparecem ou desaparecem. Por esta razão, <filename>/dev/</filename> não precisa ser persistente e é portanto um sistema de arquivos em RAM que inicia vazio e contém apenas entradas relevantes.
+			</para>
+			 <para>
+				O kernel comunica um monte de informação sobre qualquer novo dispositivo adicionado e define um par de números major/minor para identificá-lo. Com isso, o <command>udevd</command> pode criar um arquivo especial sob o nome e com as permissões que ele quiser. Ele também pode criar apelidos (aliases) e realizar ações adicionais (tais como inicialização ou tarefas de registro). O comportamento do <command>udevd</command> é comandado por um grande conjunto de regras (customizáveis).
+			</para>
+			 <para>
+				Com nomes atribuídos dinamicamente, você pode assim manter um mesmo nome para um determinado dispositivo, independentemente do conector utilizado ou a ordem da conexão, o que é especialmente útil quando você usa vários periféricos USB. A primeira partição no primeiro disco rígido pode então ser chamada de <filename>/dev/sda1</filename> por questões de compatibilidade, ou <filename>/dev/root-partition</filename> se você preferir, ou ainda as duas opções ao mesmo tempo já que o <command>udevd</command> pode ser configurado para automaticamente criar uma ligação simbólica.
+			</para>
+			 <para>
+				Antigamente, alguns módulos do kernel eram carregados automaticamente quando você tentava acessar o arquivo do dispositivo correspondente. Esse não é mais o caso, e o arquivo especial do periférico não mais existe antes do carregamento do módulo, o que não é um grande problema, já que a maioria dos módulos são carregados na inicialização, graças à detecção automática de hardware. Porém para periféricos não detectados (como drives de disco muito antigos ou mouse PS/2), isso não funciona. Considere adicionar os módulos, <literal>floppy</literal>, <literal>psmouse</literal> e <literal>mousedev</literal> no <filename>/etc/modules</filename> para forçar o carregamento deles na inicialização.
+			</para>
+			 </sidebar> <indexterm>
+				<primary>disco rígido, nomes</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>nomes</primary>
+				<secondary>dos discos rígidos</secondary>
+			</indexterm>
+			 <para>
+				A configuração do carregador de inicialização tem que identificar os diferentes discos rígidos e suas partições. O Linux usa arquivos especiais “block” armazenados no diretório <filename>/dev/</filename>, para esse propósito. Desde o Debian <emphasis role="distribution">Squeeze</emphasis>, o esquema de nomeação para discos rígidos foi unificado pelo kernel Linux, e todos os discos rígidos (IDE/PATA, SATA, SCSI, USB, IEEE 1394) são agora representados por <filename>/dev/sd*</filename>.
+			</para>
+			 <para>
+				Cada partição é representada por seu número no disco no qual reside: por exemplo, <filename>/dev/sda1</filename> é a primeira partição do primeiro disco, e <filename>/dev/sdb3</filename> é a terceira partição do segundo disco.
+			</para>
+			 <indexterm>
+				<primary>partição</primary>
+				<secondary>primária</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>partição</primary>
+				<secondary>estendida</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>partição</primary>
+				<secondary>secundária</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>tabela de partição</primary>
+				<secondary>formato MS-DOS</secondary>
+			</indexterm>
+			 <para>
+				A arquitetura PC (ou “i386”, incluíndo seu primo mais moço "amd64") a muito tem sido limitada a usar o formato de tabela de partição "MS-DOS", que apenas permite quatro partições “primarias” por disco. Para ir além desta limitação, sob esse esquema, uma delas tem que ser criada como uma partição “estendida”, e assim conter partições “secundárias” adicionais. Essas partições secundárias são numeradas a partir de 5. Assim a primeira partição secundária poderia ser <filename>/dev/sda5</filename>, seguida por <filename>/dev/sda6</filename>, etc.
+			</para>
+			 <para>
+				Outra restrição de um formato de tabela de partição MS-DOS é que ela apenas permite discos de até 2 TiB de tamanho, o que está se tornando um problema real com os discos recentes.
+			</para>
+			 <indexterm>
+				<primary>GPT</primary>
+				<secondary>formato de tabela de partição</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>tabela de partição</primary>
+				<secondary>formato GPT</secondary>
+			</indexterm>
+			 <para>
+				Um novo formato de tabela de partição chamado GPT relaxa essas restrições quanto ao número de partições (ele permite até 128 partições quando usando configurações padrão) e no tamanho dos discos (até 8 ZiB, o que é mais de 8 bilhões de terabytes). Se você tem a intenção de criar muitas partições físicas no mesmo disco, você dever portanto, garantir que está sendo criada a tabela de partição no formato GPT durante o particionamento de seu disco.
+			</para>
+			 <para>
+				Nem sempre é fácil lembrar qual disco está conectado a qual controladora SATA, ou na terceira posição da cadeia SCSI, especialmente a partir da nomeação de discos rígidos "hotplugged" (que inclui, entre outros, a maioria dos discos SATA e discos externos) que podem mudar de uma inicialização para outra. Felizmente, o <command>udev</command> cria, em adição ao <filename>/dev/sd*</filename>, ligações simbólicas com um nome fixo, o qual você poderia, então, usar se você deseja identificar um disco rígido de maneira não ambigua. Essas ligações simbólicas são armazenadas em <filename>/dev/disk/by-id</filename>. Em uma máquina com dois discos físicos, por exemplo, pode-se encontrar o seguinte:
+			</para>
+			 
+<screen><computeroutput>mirexpress:/dev/disk/by-id# </computeroutput><userinput>ls -l
+</userinput><computeroutput>total 0
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP-part1 -&gt; ../../sda1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP-part2 -&gt; ../../sda2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697 -&gt; ../../sdb
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697-part1 -&gt; ../../sdb1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697-part2 -&gt; ../../sdb2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP-part1 -&gt; ../../sda1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP-part2 -&gt; ../../sda2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697 -&gt; ../../sdb
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697-part1 -&gt; ../../sdb1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697-part2 -&gt; ../../sdb2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0 -&gt; ../../sdc
+lrwxrwxrwx 1 root root 10 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0-part1 -&gt; ../../sdc1
+lrwxrwxrwx 1 root root 10 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0-part2 -&gt; ../../sdc2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 wwn-0x5000c50015c4842f -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 wwn-0x5000c50015c4842f-part1 -&gt; ../../sda1
+[...]
+mirexpress:/dev/disk/by-id# </computeroutput></screen>
+			 <para>
+				Note que alguns discos são listados várias vezes (porquê eles se comportam simultaneamente como discos ATA e discos SCSI), porém a informação relevante são principalmente os números "model" e "serial" dos discos, a partir dos quais você pode encontrar o arquivo periférico.
+			</para>
+			 <para>
+				Os arquivos de configuração de exemplo dados nas seções seguintes são baseados na mesma configuração: um único disco SATA, onde a primeira partição é uma antiga instalação Windows e a segunda contém o Debian GNU/Linux.
+			</para>
+
+		</section>
+		 <section id="sect.config-lilo">
+			<title>Configurando o LILO</title>
+			 <indexterm>
+				<primary>LILO</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Carregador Linux</primary>
+			</indexterm>
+			 <para>
+				O <emphasis>LILO</emphasis> (LInux LOader) é o carregador de inicialização mais antigo — sólido, porém rústico. Ele escreve o endereço físico do kernel a ser carregado na MBR, o que faz com que a cada atualização do LILO (ou de seu arquivo de configuração) deva ser seguida pelo comando <command>lilo</command>. Esquecendo de fazer, isso fará com que o sistema seja incapaz de inicializar, se o antigo kernel foi removido ou substituído, já que o novo não estará no mesmo local no disco.
+			</para>
+			 <para>
+				O arquivo de configuração do LILO é o <filename>/etc/lilo.conf</filename>; um arquivo simples para configurações padrão é ilustrado no exemplo abaixo.
+			</para>
+			 <example id="example.lilo.conf">
+				<title>LILO arquivo de configuração</title>
+				 
+<programlisting>
+# The disk on which LILO should be installed.
+# By indicating the disk and not a partition.
+# you order LILO to be installed on the MBR.
+boot=/dev/sda
+# the partition that contains Debian
+root=/dev/sda2
+# the item to be loaded by default
+default=Linux
+
+# the most recent kernel image
+image=/vmlinuz
+  label=Linux
+  initrd=/initrd.img
+  read-only
+
+# Old kernel (if the newly installed kernel doesn't boot)
+image=/vmlinuz.old
+  label=LinuxOLD
+  initrd=/initrd.img.old
+  read-only
+  optional
+
+# only for Linux/Windows dual boot
+other=/dev/sda1
+  label=Windows</programlisting>
+
+			</example>
+
+		</section>
+		 <section id="sect.config-grub">
+			<title>Configuração do GRUB 2</title>
+			 <indexterm>
+				<primary>GRUB</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>GRUB 2</primary>
+			</indexterm>
+			 <para>
+				<emphasis>GRUB</emphasis> (GRand Unified Bootloader) é mais recente. Não é necessário invocá-lo após cada atualização do; o <emphasis>GRUB</emphasis> sabe como ler o sistema de arquivos e achar a posição do kernel no disco por conta própria. Para instalá-lo na MBR do primeiro disco, simplesmente digite <command>grub-install /dev/sda</command>. <indexterm><primary><command>grub-install</command></primary></indexterm>
+			</para>
+			 <sidebar> <title><emphasis>NOTA</emphasis> Nomes dos discos para o GRUB</title>
+			 <para>
+				O GRUB pode identificar discos rígidos apenas com base em informações fornecidas pela BIOS. <literal>(hd0)</literal> corresponde ao primeiro disco assim detectado, <literal>(hd1)</literal> o segundo, etc. Na maioria dos casos, essa ordem corresponde exatamente a ordem usual dos discos sob o Linux, mas problemas podem ocorrer quando você associa discos SCSI e IDE. O GRUB armazena as correspondências que ele detecta no arquivo <filename>/boot/grub/device.map</filename>. Se você encontrar erros lá (porquê você sabe que sua BIOS detecta drives em uma ordem diferente), corrija elas manualmente e execute <command>grub-install</command> novamente. O <command>grub-mkdevicemap</command> pode ajudar na criação de um arquivo <filename>device.map</filename> a partir do qual se pode iniciar.
+			</para>
+			 <para>
+				As partições também tem um nome específico para o GRUB. Quando você usa partições “classical” no formato MS-DOS, a prrimeira partição no disco é rotulada como, <literal>(hd0,msdos1)</literal>, a segunda <literal>(hd0,msdos2)</literal>, etc.
+			</para>
+			 </sidebar> <para>
+				A configuração do GRUB 2 é armazenada no <filename>/boot/grub/grub.cfg</filename>, mas esse arquivo (no Debian) é gerado a partir de outros. Tenha o cuidado de não modificá-lo a mão, já que modificações locais serão perdidas na próxima vez que o <command>update-grub</command> for executado (o que pode ocorrer durante a atualização de vários pacotes). A modificações mais comuns no arquivo <filename>/boot/grub/grub.cfg</filename> (adicionar parâmetros de linha de comando para o kernel ou alterar a duração que o menu é exibido, por exemplo) são feitas através de variáveis em <filename>/etc/default/grub</filename>. Para adicionar entradas no menu, você pode tanto criar um arquivo <filename>/boot/grub/custom.cfg</filename> quanto modificar o arquivo <filename>/etc/grub.d/50_custom</filename>. Para configurações mais complexas, você pode modificar outros arquivos em <filename>/etc/grub.d</filename>, ou adicionar outros arquivos; esses scripts devem retornar trechos de configurações, possivelmente fazendo uso de programas externos. Esses scripts são os que irão atualizar a lista de kernels a serem inicializados: <filename>10_linux</filename> leva em consideração os kernels Linux instalados; <filename>20_linux_xen</filename> leva em consideração sistemas virtuais Xen, e <filename>30_os-prober</filename> lista outros sistemas operacionais (Windows, OS X, Hurd).
+			</para>
+
+		</section>
+		 <section id="sect.config-yaboot">
+			<title>Para Computadores Macintosh (PowerPC): Configurando Yaboot</title>
+			 <indexterm>
+				<primary><command>yaboot</command></primary>
+			</indexterm>
+			 <para>
+				Yaboot é o carregador de boot usado por computadores Macintosh antigos que usam processadores PowerPC. Eles não iniciam como PCs, mas sim usando uma partição “bootstrap”, a partir da qual a BIOS (ou OpenFirmware) executa o carregador, e na qual o programa <command>ybin</command> instala o <command>yaboot</command> e seu arquivo de configuração. Você vai precisar executar apenas este comando de novo se o <filename>/etc/yaboot.conf</filename> for modificado (ele é duplicado na partição bootstrap, e o <command>yaboot</command> sabe como encontrar a posição do núcleo (kernel) nos discos).
+			</para>
+			 <para>
+				Antes de executar o <command>ybin</command>, você deve primeiro ter um <filename>/etc/yaboot.conf</filename> válido. O seguinte é um exemplo de uma configuração minimalista. <indexterm><primary><command>ybin</command></primary></indexterm>
+			</para>
+			 <example id="example.yaboot.conf">
+				<title>Arquivo de configuração Yaboot</title>
+				 
+<programlisting>
+# bootstrap partition
+boot=/dev/sda2
+# the disk
+device=hd:
+# the Linux partition
+partition=3
+root=/dev/sda3
+# boot after 3 seconds of inactivity
+# (timeout is in tenths of seconds)
+timeout=30
+
+install=/usr/lib/yaboot/yaboot
+magicboot=/usr/lib/yaboot/ofboot
+enablecdboot
+
+# last kernel installed
+image=/vmlinux
+        label=linux
+        initrd=/initrd.img
+        read-only
+
+# old kernel
+image=/vmlinux.old
+        label=old
+        initrd=/initrd.img.old
+        read-only
+
+# only for Linux/Mac OSX dual-boot
+macosx=/dev/sda5
+
+# bsd=/dev/sdaX and macos=/dev/sdaX
+# are also possible</programlisting>
+
+			</example>
+
+		</section>
+
+	</section>
+	 <section id="sect.config-misc">
+		<title>Outras Configurações: Sincronização de tempo, Logs, Compartilhando acesso…</title>
+		 <para>
+			Os muitos elementos listados nesta seção são importantes para quem quer dominar todos os aspectos de configuração de um sistema GNU/Linux. Eles são, contudo, tratados superficialmente e frequentemente vão te remeter à documentação.
+		</para>
+		 <section id="sect.timezone">
+			<title>Região</title>
+			 <indexterm>
+				<primary>região</primary>
+			</indexterm>
+			 <sidebar id="sidebar.symbolic-link"> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Links simbólicos</title>
+			 <indexterm>
+				<primary>link</primary>
+				<secondary>simbólico</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>link simbólico</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>ln</command></primary>
+			</indexterm>
+			 <para>
+				Uma ligação simbólica é um ponteiro para outro arquivo. Quando você a acessa, o arquivo para o qual ela aponta é aberto. A remoção da ligação não irá causar o apagar do arquivo para o qual ela aponta. Da mesma forma, ela não tem sua própria configuração de permissões, mas mantém as permissões de seu alvo. Finalmente, ela pode apontar para qualquer tipo de arquivo: diretórios, arquivos especiais (sockets, named pipes, device files, etc.), e até mesmo outras ligações simbólicas.
+			</para>
+			 <para>
+				O comando <command>ln -s <replaceable>alvo</replaceable> <replaceable>nome-da-ligação</replaceable></command> cria uma ligação simbólica, chamada <replaceable>nome-da-ligação</replaceable>, apontando para <replaceable>alvo</replaceable>.
+			</para>
+			 <para>
+				Se o alvo não existir, então a ligação estará “quebrada” e acessá-la irá resultar em um erro, indicando que o arquivo alvo não existe. Se a ligação aponta para outra ligação, você terá uma “corrente” de ligações que se tornará em um “ciclo” se um dos alvos apontar para um de seus antecessores. Neste caso, ao acessar uma das ligações do ciclo irá resultar em um erro específico (“muitos níveis de ligações simbólicas”); isso significa que o kernel desistiu após várias voltas pelo ciclo.
+			</para>
+			 </sidebar> <para>
+				O "timezone", configurado durante a instalação inicial, é um item da configuração do pacote <emphasis role="pkg">tzdata</emphasis>. Para modificá-lo, use o comando <command>dpkg-reconfigure tzdata</command>, o qual permite a você escolher o "timezone" a ser usado de maneira interativa. Sua configuração é armazenada no arquivo <filename>/etc/timezone</filename>. Adicionalmente, o arquivo correspondente no diretório <filename>/usr/share/zoneinfo</filename> é copiado para <filename>/etc/localtime</filename>; esse arquivo contém as regras que governam as datas aonde o horário de verão é ativado, para países que o usam.
+			</para>
+			 <indexterm>
+				<primary><filename>timezone</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/timezone</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>zoneinfo</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/usr/share/zoneinfo/</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>DST</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>horário de verão</primary>
+			</indexterm>
+			 <para>
+				Quando você precisar alterar temporariamente o fuso-horário (timezone), use a variável de ambiente <varname>TZ</varname>, a qual tem prioridade sobre a configuração padrão do sistema:
+			</para>
+			 <indexterm>
+				<primary><varname>TZ</varname></primary>
+			</indexterm>
+			 
+<screen id="screen.tz">
+<computeroutput>$ </computeroutput><userinput>date</userinput>
+<computeroutput>Thu Feb 19 11:25:18 CET 2015</computeroutput>
+<computeroutput>$ </computeroutput><userinput>TZ="Pacific/Honolulu" date</userinput>
+<computeroutput>Thu Feb 19 00:25:21 HST 2015</computeroutput></screen>
+			 <sidebar> <title><emphasis>NOTA</emphasis> Relógio do sistema, relógio de hardware</title>
+			 <para>
+				Existem duas fontes de horário em um computador. A placa mãe do computador tem um relógio de "hardware", chamado “CMOS clock”. Esse relógio não é muito preciso, e provê tempos de acesso muito lento. O kernel do sistema operacional tem o seu próprio, o relógio de software, o qual mantém atualizado através de seus próprios meios (possivelmente com a ajuda de servidores de horário, veja <xref linkend="sect.time-synchronization" />). Esse relógio do sistema é geralmente mais acurado, especialmente porque ele não precisa acessar variáveis de hardware. Contudo, como ele apenas existe na memória viva, ele é zerado toda vez que a máquina é inicializada, ao contrário do "CMOS clock", o qual tem uma bateria e, sendo assim, "sobrevive" a reinicialização ou desligamento da máquina. O relógio do sistema é, assim, configurado a partir do "CMOS clock" durante a inicialização, e o "CMOS clock" é atualizado no desligamento (para ser informado de possíveis alterações ou correções se ele foi ajustado inapropriadamente).
+			</para>
+			 <para>
+				Na prática, existe um problema, já que o relógio CMOS nada mais é do que um contador e não contém informação referente a fuso horário. Existe uma escolha a fazer levando em consideração essa interpretação: ou o sistema considera que ele roda no horário universal (UTC, antigamente GMT), ou em horário local. Essa escolha poderia ser uma simples opção, mas as coisas são realmente mais complicadas: como resultado de um horário de verão, essa variação não é constante. O resultado é que o sistema não tem como determinar quando a variação é correta, especialmente perto dos períodos de mudança de horário. Como é sempre possível reconstruir o horário local a partir do horário universal e da informação de fuso horário, nós recomendamos fortemente o uso do relógio CMOS no horário universal.
+			</para>
+			 <para>
+				Infelizmente, o sistema Windows em sua configuração padrão, ignora essa recomendação; ele mantém o relógio CMOS em horário local, aplicando as mudanças de horário durante a inicialização do computador, tentando adivinhar, durante a alteração de horário, se a alteração já foi aplicada ou não. Isso funciona relativamente bem, contando que o sistema tenha apenas o Windows rodando nele. Mas quando o computador tem vários sistemas (seja uma configuração “dual-boot” ou rodando outros sistemas através de uma máquina virtual), o caos se instala, sem ter como determinar se o horário está correto. Se você tem que absolutamente manter o Windows em um computador, você deveria ou configurá-lo para manter o relógio CMOS em UTC (configurando a chave de registro <literal>HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation\RealTimeIsUniversal</literal> para “1” como DWORD), ou usar <command>hwclock --localtime --set</command> no sistema Debian para configurar o relógio de hardware e marcá-lo para acompanhar o horário local (e garantir a checagem manual do seu relógio na primavera e outono).
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.time-synchronization">
+			<title>Sincronização de Tempo</title>
+			 <indexterm>
+				<primary>sincronização de tempo</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>relógio</primary>
+				<secondary>sincronização</secondary>
+			</indexterm>
+			 <para>
+				A sincronização de horário, o que pode parecer supérfluo em um computador, é muito importante em uma rede. Como os usuários não tem permissão de modificar a data e horário, é importante que essa informação seja precisa para prevenir confusão. Além do mais, ter todos os computadores em uma rede sincronizados permite melhor cruzamento de referencias de informação a partir dos logs de diferentes máquinas. Assim, em um eventual ataque, é mais fácil reconstruir a sequência cronológica das ações nas várias máquinas envolvidas no compromisso. Os dados coletados nas várias máquinas, para propósitos de estatística, não farão muito sentido se eles não estiverem sincronizados.
+			</para>
+			 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> NTP</title>
+			 <indexterm>
+				<primary>NTP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Network</primary>
+				<secondary>Time Protocol</secondary>
+			</indexterm>
+			 <para>
+				O NTP (Network Time Protocol) permite que uma máquina sincronize com outras com razoável precisão, levando em consideração os atrasos induzidos pela transferência de informação pela rede e outros possíveis desvios.
+			</para>
+			 <para>
+				Apesar de existirem vários servidores NTP na internet, os mais populares provavelmente estão sobrecarregados. Por isso que nós recomendamos o uso do servidor NTP <emphasis>pool.ntp.org</emphasis>, o qual é, na realidade, um grupo de máquinas que concordaram em servir como servidores NTP públicos. Você poderia até limitar o uso para um país específico, como um sub-grupo , como, por exemplo, <emphasis>us.pool.ntp.org</emphasis> para os Estados Unidos, ou <emphasis>ca.pool.ntp.org</emphasis> para o Canadá, etc.
+			</para>
+			 <para>
+				Contudo, se você gerencia uma grande rede, é recomendável que você instale seu próprio servidor NTP, o qual irá sincronizar com os servidores públicos. Neste caso, todas as outras máquinas de sua rede podem usar seu servidor NTP interno ao invés de aumentar a carga em servidores públicos. Você irá também aumentar a homogeneidade com seus relógios, já que todas as máquina serão sincronizadas pela mesma fonte, e essa fonte está bem próxima em termos de tempo de transferência de rede.
+			</para>
+			 </sidebar> <section id="sect.ntp-on-workstations">
+				<title>Para Estações de Trabalho</title>
+				 <para>
+					Como as estações de trabalho são reinicializadas regularmente (ainda que apenas para economizar energia), sincronizá-las pelo NTP na inicialização é o suficiente. Para fazer isso, simplesmente instale o pacote <emphasis role="pkg">ntpdate</emphasis>. Você pode alterar o servidor NTP usado, se necessário, modificando o arquivo <filename>/etc/default/ntpdate</filename>.
+				</para>
+				 <indexterm>
+					<primary><filename>ntpdate</filename></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><filename>/etc/default/ntpdate</filename></primary>
+				</indexterm>
+
+			</section>
+			 <section id="sect.ntp-on-servers">
+				<title>Para Servidores</title>
+				 <para>
+					Servidores são apenas raramente reinicializados, e é muito importante que o horário do sistema deles esteja correto. Para manter permanentemente o horário correto, você deveria instalar um servidor NTP local, um serviço oferecido pelo pacote <emphasis role="pkg">ntp</emphasis>. Na sua configuração padrão, o servidor irá sincronizar com <emphasis>pool.ntp.org</emphasis> e prover o horário em resposta as requisições vindas da rede local. Você pode configurá-lo editando o arquivo <filename>/etc/ntp.conf</filename>, sendo a mais significante alteração o servidor NTP ao qual ele se refere. Se a rede tem vários servidores, pode ser interessante ter um servidor local de horário o qual faz a sincronização com servidores públicos e é usado como fonte de horário para outros servidores na rede.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">ntp</emphasis></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>servidor</primary>
+					<secondary>NTP</secondary>
+				</indexterm>
+				 <indexterm>
+					<primary>NTP</primary>
+					<secondary>servidor</secondary>
+				</indexterm>
+				 <sidebar> <title><emphasis>APROFUNDANDO</emphasis> Módulos GPS e outros recursos de tempo</title>
+				 <indexterm>
+					<primary>GPS</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>DCF-77</primary>
+				</indexterm>
+				 <para>
+					Se a sincronização do horário for particularmente crucial para sua rede, é possível equipar um servidor com o módulo GPS (o qual irá usar o horário a partir de satélites GPS) ou o módulo DCF-77 (o qual irá sincronizar o horário com um relógio atômico perto de Frankfurt, Alemanha). Neste caso, a configuração do servidor NTP é um pouco mais complicada e uma consulta prévia à documentação é absolutamente necessária.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.rotation-logs">
+			<title>Rotação de Arquivos de Log</title>
+			 <indexterm>
+				<primary>arquivo</primary>
+				<secondary>logs, rotação</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>logs</primary>
+				<secondary>arquivos, rotação</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>rotação de arquivos de log</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>logrotate</command></primary>
+			</indexterm>
+			 <para>
+				Arquivos de log podem crescer rapidamente e é necessário arquivá-los. O esquema mais comum é a rotação dos arquivos: o arquivo de log é arquivado regularmente, e apenas os últimos <replaceable>X</replaceable> arquivos são mantidos. <command>logrotate</command>, o programa responsável por estas rotações, segue as diretivas especificadas no arquivo <filename>/etc/logrotate.conf</filename> e em todos os arquivos dentro do diretório <filename>/etc/logrotate.d/</filename>. O administrador pode modificar esses arquivos, se ele quiser adaptar a política de rotação dos logs definidas pelo Debian. A página de manual do <citerefentry><refentrytitle>logrotate</refentrytitle>
+				 <manvolnum>1</manvolnum></citerefentry> descreve todas as opções disponíveis nesses arquivos de configuração. Você pode querer aumentar o número de arquivos retidos na rotação dos arquivos de log, ou mover os arquivos de log para um diretório específico, dedicado a arquivá-los ao invés de apagá-los. Você pode também enviá-los, por email, para arquivá-los em outro lugar qualquer.
+			</para>
+			 <para>
+				O programa <command>logrotate</command> é executado diariamente pelo agendador de comandos <command>cron</command> (descrito em <xref linkend="sect.task-scheduling-cron-atd" />).
+			</para>
+
+		</section>
+		 <section id="sect.sharing-admin-rights">
+			<title>Compartilhando Direitos Administrativos</title>
+			 <indexterm>
+				<primary>conta</primary>
+				<secondary>conta do administrador</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>root</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>sudo</command></primary>
+			</indexterm>
+			 <para>
+				Frequentemente, vários administradores trabalham na mesma rede. O compartilhamento da senha do root não é muito elegante, e abre brecha para abusos devido ao anonimato que tal prática cria. A solução para esse problema é o programa <command>sudo</command>, o qual permite que certos usuários executem certos comandos com direitos especiais. Em seu caso mais comum de uso, o <command>sudo</command> permite que um usuário confiável execute qualquer comando como se fosse o root. Para fazer isso, o usuário simplesmente executa <command>sudo <replaceable>command</replaceable></command> e se autentica usando sua senha pessoal.
+			</para>
+			 <para>
+				Quando instalado, o pacote <emphasis role="pkg">sudo</emphasis> dá todos os direitos de root para os membros do grupo Unix <literal>sudo</literal>. Para delegar outros direitos, o administrador tem que usar o comando <command>visudo</command>, o qual permite a ele modificar o arquivo de configuração <filename>/etc/sudoers</filename> (mais uma vez, isso irá invocar o editor <command>vi</command>, ou qualquer outro editor indicado na variável de ambiente <varname>EDITOR</varname>). Adicionando uma linha com <literal><replaceable>usuário</replaceable> ALL=(ALL) ALL</literal> permite que o usuário em questão executar qualquer comando como root.
+			</para>
+			 <indexterm>
+				<primary><command>visudo</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>sudoers</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/sudoers</filename></primary>
+			</indexterm>
+			 <para>
+				Configurações mais sofisticadas permitem autorizar apenas comandos específicos para usuários específicos. Todos os detalhes das variadas possibilidades são dados pela página de manual <citerefentry><refentrytitle>sudoers</refentrytitle>
+				 <manvolnum>5</manvolnum></citerefentry>.
+			</para>
+
+		</section>
+		 <section id="sect.fstab-mount-points">
+			<title>Lista de Pontos de Montagem</title>
+			 <indexterm>
+				<primary>ponto, montagem</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>ponto de montagem</primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Montando e desmontando</title>
+			 <para>
+				Em sistemas Unix-like como o Debian, os arquivos são organizados em uma hierarquia no formato árvore de diretórios. O diretório <filename>/</filename> é chamado de “diretório raiz”; todos os diretório adicionais são subdiretórios dentro dessa raiz. "Montagem” é a ação de incluir o conteúdo de um dispositivo periférico (geralmente um disco rígido) em um arquivo comum da árvore do sistema. Como consequência, se você usa um disco rígido separado para armazenar dados pessoais de usuários, esse disco terá que ser “montado” no diretório <filename>/home/</filename>. O sistema de arquivos raiz é sempre montado na inicialização, pelo kernel; outros dispositivos são geralmente montados mais tarde, durante a sequência de inicialização ou manualmente com o comando <command>mount</command> command.
+			</para>
+			 <indexterm>
+				<primary><command>mount</command></primary>
+			</indexterm>
+			 <para>
+				Alguns dispositivos removíveis são montados automaticamente quando conectados, especialmente quando se está usando GNOME, KDE ou outro ambiente gráfico de trabalho. Outros tem que ser montados manualmente pelo usuário. Sendo assim, eles tem que ser desmontados (removidos da árvore de arquivos). Usuários comuns geralmente não tem permissões para executar os comandos <command>mount</command> e <command>umount</command>. O administrador pode, entretanto, autorizar essas operações (de maneira independente para cada ponto de montagem) incluindo a opção <literal>user</literal> no arquivo <filename>/etc/fstab</filename>.
+			</para>
+			 <para>
+				O comando <command>mount</command> pode ser usado sem argumentos (ele irá então listas todos os sistemas de arquivos montados). Os seguintes parâmetros são necessários para montar ou desmontar um dispositivo. Para uma lista completa, por favor veja as páginas de manual correspondentes, <citerefentry><refentrytitle>mount</refentrytitle>
+				 <manvolnum>8</manvolnum></citerefentry> e <citerefentry><refentrytitle>umount</refentrytitle>
+				 <manvolnum>8</manvolnum></citerefentry>. Para casos simples, a sintaxe também é simples: por exemplo, para montar a partição <filename>/dev/sdc1</filename>, a qual tem um sistema de arquivos ext3, no diretório <filename>/mnt/tmp/</filename>, você simplesmente rodaria <command>mount -t ext3 /dev/sdc1 /mnt/tmp/</command>.
+			</para>
+			 </sidebar> <para>
+				O arquivo <filename>/etc/fstab</filename> dá uma lista de todas as possíveis montagens que acontecem tanto automaticamente na inicialização quanto manualmente para dispositivos de armazenamento removíveis. Cada ponto de montagem é descrito em uma linha com vários campos separados por espaço: <indexterm><primary><filename>fstab</filename></primary></indexterm> <indexterm><primary><filename>/etc/fstab</filename></primary></indexterm>
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						dispositivo a ser montado: isso pode ser uma partição local (disco rígido, CD-ROM) ou um sistema de arquivos remoto (como o NFS).
+					</para>
+					 <para>
+						Esse campo é frequentemente substituído pela ID única do sistema de arquivos (a qual você pode determinar com <command>blkid <userinput>dispositivo</userinput></command>) prefixada com <literal>UUID=</literal>. Isso protege contra mudanças no nome do dispositivo no evento de adição ou remoção de discos, ou se os discos forem detectados de maneira diferente.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						ponto de montagem: esse é a localização no sistema de arquivos local aonde o dispositivo, sistema remoto, ou partição será montada.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						tipo: esse campo define o sistema de arquivos usado no dispositivo montado. <literal>ext4</literal>, <literal>ext3</literal>, <literal>vfat</literal>, <literal>ntfs</literal>, <literal>btrfs</literal>, <literal>xfs</literal> são alguns exemplos.
+					</para>
+					 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> NFS, um sistema de arquivos de rede</title>
+					 <para>
+						NFS é um sistema de arquivos de rede; no Linux, ele permite acesso transparente a arquivos remotos os incluindo no sistema de arquivo local.
+					</para>
+					 </sidebar> <para>
+						Uma lista completa dos conhecidos sistemas de arquivo está disponível na página de manual <citerefentry><refentrytitle>mount</refentrytitle>
+						 <manvolnum>8</manvolnum></citerefentry>. O valor especial <literal>swap</literal> é para partições swap; o valor especial <literal>auto</literal> diz ao programa <command>mount</command> para detectar automaticamente o sistema de arquivos (o que é especialmente útil para leitores de disco e chaves USB, já que cada um pode ter um sistema de arquivos diferente);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						opções: existem muitas delas, dependendo do sistema de arquivos, e elas estão documentadas na página de manual do <command>mount</command>. As mais comuns são
+					</para>
+					 <itemizedlist>
+						<listitem>
+							<para>
+								<literal>rw</literal> ou <literal>ro</literal>, significam, respectivamente, que o dispositivo será montado com permissão de leitura/escrita ou apenas leitura.
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>noauto</literal> desativa a montagem automática na inicialização.
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>nofail</literal> permite que a inicialização prossiga mesmo quando o dispositivo não esteja presente. Tenha a certeza de colocar essa opção para drives externos que podem estar desconectados quando você inicializar, porquê o <command>systemd</command> realmente garante que todos os pontos de montagem que tem que ser montados automaticamente estejam realmente montados antes de deixar o processo de inicialização continuar até o seu final. Note que você pode combinar isso com <literal>x-systemd.device-timeout=5s</literal> para informar o <command>systemd</command> para não esperar mais do que 5 segundos para o dispositivo aparecer (veja <citerefentry><refentrytitle>systemd.mount</refentrytitle>
+								<manvolnum>5</manvolnum></citerefentry>).
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>user</literal> autoriza todos os usuários a montar esse sistema de arquivo (uma operação que, de outra forma, seria restrita ao usuário root).
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>defaults</literal> significa o grupo de opções padrão: <literal>rw</literal>, <literal>suid</literal>, <literal>dev</literal>, <literal>exec</literal>, <literal>auto</literal>, <literal>nouser</literal> e <literal>async</literal>, sendo que cada uma pode ser individualmente desabilitada após <literal>defaults</literal> bastando adicionar <literal>nosuid</literal>, <literal>nodev</literal> e assim por diante, para bloquear <literal>suid</literal>, <literal>dev</literal> e assim por diante. Adicionando a opção <literal>user</literal> reativa-a, já que <literal>defaults</literal> inclue <literal>nouser</literal>.
+							</para>
+
+						</listitem>
+
+					</itemizedlist>
+
+				</listitem>
+				 <listitem>
+					<para>
+						backup: esse campo é quase sempre configurado com <literal>0</literal>. Quando ele é <literal>1</literal>, ele diz a ferramenta <command>dump</command> que a partição contém dados que devem ser copiados para outro dispositivo para poderem ser recuperados, caso seja necessário (backup).
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						check order: esse último campo indica quando a integridade do sistema de arquivos deve ser checada na inicialização, e em que ordem essa checagem deveria ser executada. Se ele é <literal>0</literal>, nenhuma checagem é conduzida. O sistema de arquivos raiz deve ter valor <literal>1</literal>, enquanto outros sistemas de arquivos permanentes recebem valor <literal>2</literal>.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <example id="example.fstab">
+				<title>Exemplo do arquivo <filename>/etc/fstab</filename></title>
+				 
+<programlisting>
+# /etc/fstab: static file system information.
+#
+# &lt;file system&gt; &lt;mount point&gt;   &lt;type&gt;  &lt;options&gt;       &lt;dump&gt;  &lt;pass&gt;
+proc            /proc           proc    defaults        0       0
+# / was on /dev/sda1 during installation
+UUID=c964222e-6af1-4985-be04-19d7c764d0a7 / ext3 errors=remount-ro 0 1
+# swap was on /dev/sda5 during installation
+UUID=ee880013-0f63-4251-b5c6-b771f53bd90e none swap sw  0       0
+/dev/scd0       /media/cdrom0   udf,iso9660 user,noauto 0       0
+/dev/fd0        /media/floppy   auto    rw,user,noauto  0       0
+arrakis:/shared /shared         nfs     defaults        0       0</programlisting>
+
+			</example>
+			 <para>
+				A última entrada neste exemplo corresponde ao sistema de arquivos de rede (NFS): o diretório <filename>/shared/</filename> no servidor <emphasis>arrakis</emphasis> é montado em <filename>/shared/</filename> na máquina local. O formato do arquivo <filename>/etc/fstab</filename> está documentado na página de manual <citerefentry><refentrytitle>fstab</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>.
+			</para>
+			 <sidebar> <title><emphasis>APROFUNDANDO</emphasis> Montagem automática</title>
+			 <para>
+				O pacote <emphasis>am-utils</emphasis> provê o utilitário de auto montagem <command>amd</command>, capaz de montar mídias removíveis por demanda, quando um usuário tenta acessar seus pontos de montagem usuais. Ele irá desmontar esses dispositivos quando nenhum processo estiver mais acessando eles.
+			</para>
+			 <indexterm>
+				<primary><emphasis>am-utils</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>amd</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>automount</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>autofs</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>automounter</primary>
+			</indexterm>
+			 <para>
+				Outros utilitários de auto montagem existem, como o <command>automount</command> do pacote <emphasis>autofs</emphasis> package.
+			</para>
+			 <para>
+				Note também que o GNOME, KDE, e outros ambientes gráficos de trabalho, trabalham em conjunto com o <emphasis>udisks</emphasis>, e podem montar automaticamente mídia removível quando elas forem conectadas.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.locate-updatedb">
+			<title><command>locate</command> e <command>updatedb</command></title>
+			 <indexterm>
+				<primary><command>locate</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>updatedb</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>mlocate</command></primary>
+			</indexterm>
+			 <para>
+				O comando <command>locate</command> pode encontrar a localização de um arquivo quando você sabe apenas parte do nome. Ele envia o resultado quase que instantaneamente, já que ele consulta uma base de dados que armazena a localização de todos os arquivos no sistema; essa base de dados é atualizada diariamente pelo comando <command>updatedb</command>. Existem multiplas implementações do comando <command>locate</command> e o Debian escolheu o <emphasis role="pkg">mlocate</emphasis> para seu sistema padrão.
+			</para>
+			 <para>
+				O <command>mlocate</command> é suficientemente esperto para retornar apenas os arquivos os quais são acessíveis ao usuário que está executando o comando, mesmo que ele use uma base de dados que sabe sobre todos os arquivos no sistema (já que a sua implementação <command>updatedb</command> roda com privilégio de root). Para uma segurança extra, o administrador pode usar <varname>PRUNEDPATHS</varname> no <filename>/etc/updatedb.conf</filename> para excluir alguns diretórios de serem indexados.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.kernel-compilation">
+		<title>Compilando o núcleo</title>
+		 <indexterm>
+			<primary>compilando</primary>
+			<secondary>o núcleo</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>núcleo</primary>
+			<secondary>compilação</secondary>
+		</indexterm>
+		 <para>
+			Os núcleos fornecidos pelo Debian incluem o maior número de recursos possível, assim como o máximo de drivers, para cobrir o mais amplo espectro de configurações de hardware. É por isso que alguns usuários preferem recompilar o núcleo, e assim, incluir apenas o que eles precisam especificamente. Existem duas razões para essa escolha. Primeiro, talvez seja para otimizar o consumo de memória, já que o código do núcleo, mesmo nunca sendo usado, ocupa memória para nada (e nunca "cai" no espaço swap, já que é a RAM real que ele usa), o que pode comprometer o desempenho de todo o sistema. Um núcleo compilado localmente pode também limitar o risco com problemas de segurança já que apenas uma fração do código do kernel é compilado e rodado.
+		</para>
+		 <sidebar> <title><emphasis>NOTA</emphasis> Atualizações de segurança</title>
+		 <para>
+			Se você escolher compilar seu próprio kernel, você tem que aceitar as consequências: o Debian não pode garantir atualizações de segurança para seu kernel customizado. Mantendo o kernel fornecido pelo Debian, você se beneficia das atualizações preparadas pelo time de seguração do Projeto Debian.
+		</para>
+		 </sidebar> <para>
+			A recompilação do kernel também é necessária se você quer usar certas características que só estão disponíveis através de patches (e portanto não incluídas na versão padrão do kernel).
+		</para>
+		 <sidebar> <title><emphasis>APROFUNDANDO</emphasis> Manual do Kernel do Debian</title>
+		 <indexterm>
+			<primary><emphasis role="pkg">debian-kernel-handbook</emphasis></primary>
+		</indexterm>
+		 <para>
+			O time do núcleo do Debian mantém o “Debian Kernel Handbook” (também disponível no pacote <emphasis role="pkg">debian-kernel-handbook</emphasis>) com documentação ampla sobre a maioria das tarefas relacionadas ao núcleo e sobre como os pacotes oficiais do núcleo do Debian são tratados. Esse é o primeiro lugar aonde você deve olhar caso você precise de informações além das que são fornecidas nesta seção. <ulink type="block" url="http://kernel-handbook.alioth.debian.org" />
+		</para>
+		 </sidebar> <section id="sect.kernel-compilation-prerequisites">
+			<title>Introdução e Pré-requisitos</title>
+			 <para>
+				Obviamente o Debian gerencia o núcleo na forma de pacote, que não é como os núcleos tem sido tradicionalmente compilados e instalados. Como o núcleo se mantém no controle do sistema de empacotamento, ele pode ser removido de maneira limpa, ou implantado em várias máquinas. Além do mais, os scripts associados com esses pacotes automatizam a interação com o carregador de inicialização e o gerador de initrd.
+			</para>
+			 <para>
+				Os fontes do desenvolvedor principal do Linux contém tudo o que é necessário para construir um pacote Debian do núcleo. Mas você ainda precisa instalar o <emphasis role="pkg">build-essential</emphasis> para garantir que você tem as ferramentas necessárias para construção de um pacote Debian. Além do mais, a etapa de configuração do núcleo requer o pacote <emphasis role="pkg">libncurses5-dev</emphasis>. E finalmente, o pacote <emphasis role="pkg">fakeroot</emphasis> irá permitir a criação de um pacote Debian sem usar os direitos de administrador.
+			</para>
+			 <sidebar> <title><emphasis>CULTURA</emphasis> Os bons e velhos tempos do <emphasis role="pkg">kernel-package</emphasis></title>
+			 <indexterm>
+				<primary><emphasis role="pkg">kernel-package</emphasis></primary>
+			</indexterm>
+			 <para>
+				Antes do sistema de construção do Linux ganhar a habilidade de construir pacotes Debian apropriados, a maneira recomendada de construir esses pacotes era usar o pacote <command>make-kpkg</command> from the <emphasis role="pkg">kernel-package</emphasis>.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.kernel-sources">
+			<title>Pegando os Fontes</title>
+			 <indexterm>
+				<primary>Fontes do núcleo Linux</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>núcleo</primary>
+				<secondary>fontes</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>fonte</primary>
+				<secondary>do núcleo Linux</secondary>
+			</indexterm>
+			 <para>
+				Como tudo mais que pode ser útil em um sistema Debian, os fontes do kernel Linux estão disponíveis em um pacote. Para obtê-los, apenas instale o pacote <emphasis role="pkg">linux-source-<replaceable>versão</replaceable></emphasis>. O comando <command>apt-cache search ^linux-source</command> lista as várias versões do kernel empacotadas pelo Debian. A última versão está disponível na distribuição <emphasis role="distribution">Unstable</emphasis>: você pode obtê-la sem muitos riscos (especialmente se o seu APT está configurado de acordo com as instruções em <xref linkend="sect.apt-mix-distros" />). Note que o código fonte contido nesses pacotes não correspondem precisamente com o que é publicado pelo Linus Torvalds e o desenvolvedores do kernel; como todas as distribuições, o Debian aplica inúmeros patches, que podem (ou não) serem incorporados na versão upstream do Linux. Essas modificações incluem backports de correções/recursos/drivers de novas versões do kernel, novos recursos ainda não (totalmente) inseridos na árvore do upstream do Linux, e, às vezes, até nas alterações específicas do Debian.
+			</para>
+			 <para>
+				O restante desta seção foca na versão 3.16 do kernel Linux, mas os exemplos podem, é claro, ser adaptados a versão em particular do kernel que você quiser.
+			</para>
+			 <para>
+				Nós assumimos que o pacote <emphasis role="pkg">linux-source-3.16</emphasis> foi instalado. ele contém o <filename>/usr/src/linux-source-3.16.tar.xz</filename>, um arquivo compactado dos fontes do kernel. Você deve extrair esses arquivos em um novo diretório (não diretamente sob <filename>/usr/src/</filename>, já que não é necessario permissões especiais para compilar o kernel Linux): <filename>~/kernel/</filename> é o apropriado.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>mkdir ~/kernel; cd ~/kernel</userinput>
+<computeroutput>$ </computeroutput><userinput>tar -xaf /usr/src/linux-source-3.16.tar.xz</userinput></screen>
+			 <sidebar> <title><emphasis>CULTURA</emphasis> Localização dos fontes do núcleo</title>
+			 <para>
+				Tradicionalmente, os fontes do kernel Linux deveriam ser colocados em <filename>/usr/src/linux/</filename>, e assim, requerer permissões de root para compilação. Entretanto, trabalhar com direitos de administrador deve ser evitado quando não são necessários. Existe um grupo <literal>src</literal> que permite que seus membros trabalhem nesse diretório, mas trabalhar em <filename>/usr/src/</filename> deve ser evitado entretanto. Mantendo os fontes do kernel em um diretório pessoal, você obtêm segurança em todas as contas: nenhum arquivo em <filename>/usr/</filename> desconhecido pelo sistema de empacotamento, e nenhum risco de engano por programas que leem o <filename>/usr/src/linux</filename> enquanto tentam ganhar informação do kernel em uso.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.config-kernel">
+			<title>Configurando o Núcleo</title>
+			 <indexterm>
+				<primary>núcleo</primary>
+				<secondary>configuração</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>configuração</primary>
+				<secondary>do núcleo</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>.config</filename></primary>
+			</indexterm>
+			 <para>
+				O próximo passo consiste da configuração do núcleo de acordo com suas necessidades. O procedimento exato depende dos objetivos.
+			</para>
+			 <para>
+				Quando recompilamos uma versão mais recente do núcleo (possivelmente com um patch adicional), a configuração, provavelmente, será mantida o mais próximo possível daquela proposta pelo Debian. Nesse caso, e ao invés de reconfigurar tudo a partir do zero, será suficiente copiar o arquivo <filename>/boot/config-<replaceable>versão</replaceable></filename> (a versão é aquela do núcleo atualmente usado, a qual pode ser encontrada com o comando <command>uname -r</command>) para o arquivo <filename>.config</filename> dentro do diretório contendo os fontes do núcleo.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>cp /boot/config-3.16.0-4-amd64 ~/kernel/linux-source-3.16/.config</userinput></screen>
+			 <para>
+				A menos que você precise mudar a configuração, você pode parar por aqui e pular para <xref linkend="sect.kernel-build" />. Se você precisa mudá-la, por outro lado, ou se você decidir reconfigurar tudo a partir do zero, você precisa dedicar um tempo para configurar seu núcleo. Existem varias interfaces dedicadas no diretório do fonte do núcleo que podem ser usadas executando o comando <command>make <replaceable>alvo</replaceable></command>, aonde <replaceable>alvo</replaceable> é um dos valores descritos abaixo.
+			</para>
+			 <para>
+				0 <command>make menuconfig</command> compila e executa uma interface de modo texto (é aqui que o pacote <emphasis role="pkg">libncurses5-dev</emphasis> é necessário) a qual permite a navegação pelas opções disponíveis em uma estrutura hierárquica. Pressionar a tecla <keycap>Espaço</keycap> muda o valor da opção selecionada, e <keycap>Enter</keycap> valida o botão selecionado no pé da tela; <guibutton>Select</guibutton> returna ao sub menu selecionado; <guibutton>Exit</guibutton> fecha a tela corrente e volta para cima na hierarquia; <guibutton>Help</guibutton> irá exibir informações mais detalhadas sobre a função da opção selecionada. As setas permitem mover pela lista de opções e botões. Para sair do programa de configuração, escolha <guibutton>Exit</guibutton> no menu principal. O programa então oferece salvar as alterações que você fez; aceite se você estiver satisfeito com suas escolhas.
+			</para>
+			 <para>
+				Outras interfaces tem características semelhantes, mas elas trabalham com interfaces gráficas mais modernas; como a <command>make xconfig</command>, a qual usa a interface gráfica Qt, e a <command>make gconfig</command>, a qual usa GTK+. A primeira requer <emphasis role="pkg">libqt4-dev</emphasis>, enquanto a última depende de <emphasis role="pkg">libglade2-dev</emphasis> e <emphasis role="pkg">libgtk2.0-dev</emphasis>.
+			</para>
+			 <para>
+				Ao usar uma dessa interfaces de configuração, sempre é uma boa ideia iniciar a partir de uma configuração padrão razoável. O núcleo prove tais configurações em <filename>arch/<replaceable>arch</replaceable>/configs/*_defconfig</filename> e você pode colocar sua configuração selecionada no lugar com um comando como <command>make x86_64_defconfig</command> (no caso de um PC de 64-bit) ou <command>make i386_defconfig</command> (no caso de um PC de 32-bit).
+			</para>
+			 <sidebar> <title><emphasis>DICA</emphasis> Lidando com arquivos <filename>.config</filename> desatualizados</title>
+			 <para>
+				Quando você provê um arquivo <filename>.config</filename> que tenha sido gerado por outra versão do núcleo (geralmente mais antiga), você terá que atualizá-lo. Você pode fazer isso com o <command>make oldconfig</command>, ele irá interativamente perguntar a você as perguntas correspondentes as novas opções de configuração. Se você quiser usar a resposta padrão para todas essas perguntas você pode usar o <command>make olddefconfig</command>. Com o <command>make oldnoconfig</command>, ele assumirá uma resposta negativa em todas as perguntas.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.kernel-build">
+			<title>Compilando e Construindo um Pacote</title>
+			 <indexterm>
+				<primary><command>make deb-pkg</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>NOTA</emphasis> Limpar antes de construir</title>
+			 <para>
+				Se você já fez uma compilação no diretório e quer reconstruir tudo a partir do zero (por exemplo, porque você fez mudanças substanciais na configuração do núcleo), você terá que executar <command>make clean</command> para remover os arquivos compilados. <command>make distclean</command> remove mais arquivos gerados, incluindo seu arquivo <filename>.config</filename> também, então tenha certeza de guardar uma cópia dele.
+			</para>
+			 </sidebar> <para>
+				Uma vez que a configuração do núcleo esteja pronta, um simples <command>make deb-pkg</command> irá gerar até 5 pacotes Debian: <emphasis role="pkg">linux-image-<replaceable>versão</replaceable></emphasis> que contém a imagem do núcleo e módulos associados, <emphasis role="pkg">linux-headers-<replaceable>versão</replaceable></emphasis> o qual contém os arquivos de cabeçalho necessários para construir módulos externos, <emphasis role="pkg">linux-firmware-image-<replaceable>versão</replaceable></emphasis> o qual contém os arquivos de firmware necessários por alguns drivers (esse pacote pode estar faltando quando você constroí a partir dos fontes do kernel fornecidos pelo Debian), <emphasis role="pkg">linux-image-<replaceable>versão</replaceable>-dbg</emphasis> o qual contém os símbolos de depuração para a imagem do núcleo e seus módulos, e <emphasis role="pkg">linux-libc-dev</emphasis> o qual contém cabeçalhos relevantes para algumas bibliotecas do espaço do usuário como a glibc GNU.
+			</para>
+			 <para>
+				A <replaceable>versão</replaceable> é definida pela concatenação da versão do upstream (como definido pelas variáveis <literal>VERSION</literal>, <literal>PATCHLEVEL</literal>, <literal>SUBLEVEL</literal> e <literal>EXTRAVERSION</literal> no <filename>Makefile</filename>), do parâmetro de configuração <literal>LOCALVERSION</literal>, e da variável de ambiente <literal>LOCALVERSION</literal>. A versão do pacote reusa a mesma cadeia de caracteres da versão com uma revisão adicionada, que é regularmente incrementada (e armazenada em <filename>.version</filename>), exceto se você sobrescrever ela com a variável de ambiente <literal>KDEB_PKGVERSION</literal>.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>make deb-pkg LOCALVERSION=-falcot KDEB_PKGVERSION=$(make kernelversion)-1
+</userinput><computeroutput>[...]
+$ </computeroutput><userinput>ls ../*.deb
+</userinput><computeroutput>../linux-headers-3.16.7-ckt4-falcot_3.16.7-1_amd64.deb
+../linux-image-3.16.7-ckt4-falcot_3.16.7-1_amd64.deb
+../linux-image-3.16.7-ckt4-falcot-dbg_3.16.7-1_amd64.deb
+../linux-libc-dev_3.16.7-1_amd64.deb
+</computeroutput></screen>
+
+		</section>
+		 <section id="sect.modules-build">
+			<title>Compilando Módulos Externos</title>
+			 <indexterm>
+				<primary>núcleo</primary>
+				<secondary>módulos externos</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>módulos</primary>
+				<secondary>módulos do núcleo externos</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>dkms</command></primary>
+			</indexterm>
+			 <para>
+				Alguns módulos são mantidos fora do núcleo Linux oficial. Para usá-los, eles devem ser compilados a parte do referido núcleo. Um número de módulos de terceiros comuns são fornecidos pelo Debian em pacotes dedicados, tais como o <emphasis role="pkg">xtables-addons-source</emphasis> (môdulos extra para o iptables) ou <emphasis role="pkg">oss4-source</emphasis> (Open Sound System, alguns drivers de áudio alternativos).
+			</para>
+			 <para>
+				Esses pacotes externos são muitos e variados e nós não vamos listar todos aqui; o comando <command>apt-cache search source$</command> pode diminuir o campo de pesquisa. Contudo, uma lista completa não é particularmente útil, já que não existe uma razão em particular para compilar módulos externos, exceto quando você sabe que precisa de um. Nesses casos, a documentação do dispositivo irá tipicamente detalhar os módulo(s) específicos que ele precisa para funcionar sob o Linux.
+			</para>
+			 <para>
+				Por exemplo, vamos dar uma olhada no pacote <emphasis role="pkg">xtables-addons-source</emphasis>: após a instalação, um <filename>.tar.bz2</filename> dos fontes do módulo é armazenado em <filename>/usr/src/</filename>. Ainda que nós possamos manualmente extrair o tarball e construir o módulo, na prática nós preferimos automatizar tudo isso usando o DKMS. A maioria dos módulos oferecem a requerida integração DKMS em um pacote terminando com o sufixo <literal>-dkms</literal>. No nosso caso, instalar o <emphasis role="pkg">xtables-addons-dkms</emphasis> é tudo que é preciso para compilar o módulo do núcleo para o núcleo corrente, incluindo também o pacote <emphasis role="pkg">linux-headers-*</emphasis> associado ao núcleo instalado. Por exemplo, se você usa o <emphasis role="pkg">linux-image-amd64</emphasis>, você deve também instalar o <emphasis role="pkg">linux-headers-amd64</emphasis>.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>sudo apt install xtables-addons-common-dkms</userinput>
+<computeroutput>
+[...]
+Setting up xtables-addons-dkms (2.6-1) ...
+Loading new xtables-addons-2.6 DKMS files...
+First Installation: checking all kernels...
+Building only for 3.16.0-4-amd64
+Building initial module for 3.16.0-4-amd64
+Done.
+
+xt_ACCOUNT:
+Running module version sanity check.
+ - Original module
+   - No original module exists within this kernel
+ - Installation
+   - Installing to /lib/modules/3.16.0-4-amd64/updates/dkms/
+[...]
+DKMS: install completed.
+$ </computeroutput><userinput>sudo dkms status</userinput>
+<computeroutput>xtables-addons, 2.6, 3.16.0-4-amd64, x86_64: installed
+$ </computeroutput><userinput>sudo modinfo xt_ACCOUNT</userinput>
+<computeroutput>filename:       /lib/modules/3.16.0-4-amd64/updates/dkms/xt_ACCOUNT.ko
+license:        GPL
+alias:          ipt_ACCOUNT
+author:         Intra2net AG &lt;opensource@intra2net.com&gt;
+description:    Xtables: per-IP accounting for large prefixes
+[...]
+</computeroutput></screen>
+			 <sidebar> <title><emphasis>ALTERNATIVA</emphasis>module-assistant</title>
+			 <indexterm>
+				<primary><emphasis role="pkg">module-assistant</emphasis></primary>
+			</indexterm>
+			 <para>
+				Antes do DKMS, o <emphasis role="pkg">module-assistant</emphasis> era a solução mais simples para construir e implantar módulos do núcleo. Ele ainda pode ser usado, em particular para pacotes sem integração com o DKMS: com um simples comando como <command>module-assistant auto-install xtables-addons</command> (ou <command>m-a a-i xtables-addons</command> para abreviar),os módulos são compilados para o núcleo corrente, colocado em um novo pacote Debian, e o pacote é instalado na hora.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.kernel-patch">
+			<title>Aplicando um Patch ao Núcleo</title>
+			 <indexterm>
+				<primary>núcleo</primary>
+				<secondary>patch</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>patch do núcleo</primary>
+			</indexterm>
+			 <para>
+				Alguns recursos não são incluídos no kernel padrão devido a falta de maturidade ou algum desentendimento entre os mantenedores do kernel. Tais recursos podem ser distribuídos através de patches, e assim, qualquer um está livre para aplicá-los aos fontes do kernel.
+			</para>
+			 <para>
+				O Debian distribui alguns desses patches nos parcotes <emphasis role="pkg">linux-patch-*</emphasis> ou <emphasis role="pkg">kernel-patch-*</emphasis> (por exemplo, <emphasis role="pkg">linux-patch-grsecurity2</emphasis>, o qual aperta algumas das politicas de segurança do kernel). Esses pacotes instalam arquivos no diretório <filename>/usr/src/kernel-patches/</filename>.
+			</para>
+			 <para>
+				Para aplicar um ou mais desses patches instalados, use o comando <command>patch</command> no diretório dos fontes, e então, inicie a compilação do kernel como descrito acima.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>cd ~/kernel/linux-source-3.16</userinput>
+<computeroutput>$ </computeroutput><userinput>make clean</userinput>
+<computeroutput>$ </computeroutput><userinput>zcat /usr/src/kernel-patches/diffs/grsecurity2/grsecurity-3.0-3.17.1-201410250027.patch.gz | patch -p1</userinput></screen>
+			 <para>
+				Note que um patch(qualquer um) talvez não necessariamente funcione com todas as versões do núcleo; é possível que o <command>patch</command> falhe ao aplicá-lo nos fontes do núcleo. Uma mensagem de error será exibida e informará alguns detalhes sobre a falha; neste caso, referencie a documentação disponível no pacote Debian do patch (no diretório <filename>/usr/share/doc/linux-patch-*/</filename>). Na maioria dos casos, o mantenedor indica para qual versão do núcleo o patch é feito.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.kernel-installation">
+		<title>Instalando o Núcleo</title>
+		 <indexterm>
+			<primary>instalação</primary>
+			<secondary>do núcleo</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>núcleo</primary>
+			<secondary>instalação</secondary>
+		</indexterm>
+		 <section id="sect.kernel-package">
+			<title>Características do Pacote de Núcleo do Debian</title>
+			 <indexterm>
+				<primary><filename>vmlinuz</filename></primary>
+			</indexterm>
+			 <para>
+				Um pacote Debian do núcleo instala uma imagem do núcleo (<filename>vmlinuz-<replaceable>versão</replaceable></filename>), sua configuração (<filename>config-<replaceable>versão</replaceable></filename>) e sua tabela de símbolos (<filename>System.map-<replaceable>versão</replaceable></filename>) em <filename>/boot/</filename>. A tabela de símbolos ajuda os desenvolvedores entender o significado de uma mensagem de erro do núcleo; sem isso, um “oopses” do núcleo (um “oops” é equivalente, no caso do núcleo, a uma falha de segmentação para programas em espaço do usuário, em outras palavras, mensagem gerada na sequência de uma deferência de um ponteiro inválido) apenas contém números de endereços de memória, o que é informação inútil sem uma tabela mapeando esses endereços para símbolos e nomes de funções. Os módulos são instalados no diretório <filename>/lib/modules/<replaceable>versão</replaceable>/</filename>.
+			</para>
+			 <para>
+				Os scripts de configuração do pacote automaticamente geram uma imagem initrd, a qual é um mini sistema designado a ser carregado na memória (dai o nome, que significa “init ramdisk”) pelo carregador de inicialização, e usado pelo núcleo Linux somente para carregar os módulos necessários para acessar os dispositivos que contém um sistema Debian completo (por exemplo, o driver para discos SATA). Finalmente, os scripts pós-instalação atualizam as ligações simbólicas <filename>/vmlinuz</filename>, <filename>/vmlinuz.old</filename>, <filename>/initrd.img</filename> e <filename>/initrd.img.old</filename> para que eles apontem para os dois últimos núcleos instalados, respectivamente, assim como para as imagens initrd correspondentes.
+			</para>
+			 <para>
+				A maioria dessas tarefas são delegadas aos scripts hook nos diretórios <filename>/etc/kernel/*.d/</filename>. Por exemplo, a integração com o <command>grub</command> se apoia em <filename>/etc/kernel/postinst.d/zz-update-grub</filename> e <filename>/etc/kernel/postrm.d/zz-update-grub</filename> para chamar <command>update-grub</command> quando os núcleos são instalados ou removidos.
+			</para>
+
+		</section>
+		 <section id="sect.kernel-installation-with-dpkg">
+			<title>Instalando com <command>dpkg</command></title>
+			 <para>
+				O uso do <command>apt</command> é tão conveniente que torna fácil esquecer as ferramentas de nível mais baixo, mas a maneira mais fácil de instalar um núcleo compilado é usar o comando como o <command>dpkg -i <replaceable>pacote</replaceable>.deb</command>, aonde <literal><replaceable>pacote</replaceable>.deb</literal> é o nome do pacote <emphasis role="pkg">linux-image</emphasis> como em <filename>linux-image-3.16.7-ckt4-falcot_1_amd64.deb</filename>.
+			</para>
+			 <para>
+				As etapas de configuração descritas neste capítulo são básicas e podem levar tanto a um sistema servidor ou a uma estação de trabalho, e podem ser massivamente duplicadas em modos semi-automatizados. Contudo, não é suficiente por si só para prover um sistema completamente configurado. Algumas peças ainda precisam ser configuradas, começando por programas de baixo nivel (low-level) conhecidos como “Unix services”.
+			</para>
+
+		</section>
+
+	</section>
+</chapter>
+
