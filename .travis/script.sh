@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/dash
 set -x;
 set -eu;
 
@@ -547,9 +547,6 @@ build_html_lang () {
 }
 
 build_html_all () {
-	local _LANG_LIST="$(mktemp_file \
-		'lang.list.XXXXXX' \
-	;)";
 	local _EXIT_STATUS=0;
 	find \
 		-maxdepth 1 \
@@ -557,7 +554,7 @@ build_html_all () {
 		-name '??-??' \
 		-printf '%f\n' \
 	| sort \
-		> "${_LANG_LIST}" \
+		1>"${_LANGS_TXT}" \
 	;
 	local _LANG='';
 	while read _LANG; 
@@ -569,10 +566,10 @@ build_html_all () {
 			_EXIT_STATUS=1;
 		fi
 	done \
-		< "${_LANG_LIST}" \
+		< "${_LANGS_TXT}" \
 	;
 	rm \
-		"${_LANG_LIST}" \
+		"${_LANGS_TXT}" \
 	;
 	return "${_EXIT_STATUS}";
 }
@@ -935,8 +932,8 @@ $ publican \\
 
 systems_build_repository_setup_pre () {
 	readonly _GIT_WORK_TREE="${1}";
-	readonly _GIT_HOOKS_PRE_COMMIT="${2}";
-	readonly WEBLATE_SYNC="${3}";
+	#readonly _GIT_HOOKS_PRE_COMMIT="${2}";
+	readonly WEBLATE_SYNC="${2}";
 
 	configure_publican;
 	configure_git;
@@ -962,6 +959,12 @@ systems_build_repository_setup () {
 
 systems_build_repository_build_pre () {
 	readonly _GIT_WORK_TREE="${1}";
+	readonly _FIFO_DIR="${2}";
+	readonly _LANGS_TXT="${_FIFO_DIR}/langs.txt";
+	#readonly _LANGS_FIFO="${_FIFO_DIR}/langs.fifo";
+	#mkfifo \
+	#	"${_LANGS_FIFO}" \
+	#;
 
 	configure_git;
 	configure_git_repository
@@ -1013,13 +1016,12 @@ alias _file_reformat_xml='xmllint \
 systems_build_repository_build_targets_prepare_pre () {
 	readonly _GIT_WORK_TREE="${1}";
 	readonly _GIT_DIVERT_DIR="${2}";
-	readonly _TMP_DIR="$(mktemp_directory \
-		'tmp.XXXXXX' \
-	;)";
-	readonly _TMP_FILES_FIFO="${_TMP_DIR}/files.fifo";
-	mkfifo \
-		"${_TMP_FILES_FIFO}" \
-	;
+	readonly _FIFO_DIR="${3}";
+	readonly _FILES_TXT="${_FIFO_DIR}/files.txt";
+	#readonly _FILES_FIFO="${_FIFO_DIR}/files.fifo";
+	#mkfifo \
+	#	"${_FILES_FIFO}" \
+	#;
 	return 0;
 }
 
@@ -1036,8 +1038,8 @@ systems_build_repository_build_targets_prepare () {
 		log \
 		-name '*.html' \
 	| sort \
-		1>"${_TMP_FILES_FIFO}" \
-	&
+		1>"${_FILES_TXT}" \
+	;
 	local _FILE_PATH='';
 	while read _FILE_PATH;
 	do
@@ -1059,7 +1061,10 @@ systems_build_repository_build_targets_prepare () {
 			;;
 		esac
 	done \
-		< "${_TMP_FILES_FIFO}" \
+		< "${_FILES_TXT}" \
+	;
+	rm \
+		"${_FILES_TXT}" \
 	;
 	mv \
 		publish \
@@ -1104,30 +1109,39 @@ systems_build_repository_build_results_push () {
 		"${_GIT_LOCAL_GITHUB_BRANCH}" \
 	;
 	show_remote_branch;
-	if ! rm \
-		--force \
-		--recursive \
-		publish \
-		tmp \
-		log \
-		logger \
-	;
-	then
-		: "ERROR: ${?}: rm" ;
-	fi
-	mv \
-		"${_GIT_DIVERT_DIR}/publish" \
-		"${_GIT_DIVERT_DIR}/tmp" \
-		"${_GIT_DIVERT_DIR}/log" \
-		"${_GIT_DIVERT_DIR}/logger" \
+	git \
+		rm \
+		--quiet \
+		--ignore-unmatch \
+		-r \
+		-- \
 		. \
 	;
 	git \
+		clean \
+		--force \
+		-d \
+		-x \
+	;
+	if ! find \
+		"${_GIT_DIVERT_DIR}" \
+		-mindepth 1 \
+		-maxdepth 1 \
+		-exec \
+		mv \
+		--target-directory='.' \
+		-- \
+		{} \
+		\; \
+	;
+	then
+		: "ERROR: ${?}: find" ;
+	fi
+	git \
 		add \
-		publish \
-		tmp \
-		log \
-		logger \
+		--all \
+		-- \
+		. \
 	;
 	git_commit \
 		--message="Save buid result at ${_GIT_DATE}
@@ -1164,26 +1178,45 @@ travis_pre () {
 			"${SELF}" \
 		;)/weblate-sync.pl" \
 	;)";
-	readonly _GIT_HOOKS_PRE_COMMIT="$(readlink \
-		--canonicalize \
-		"$(dirname \
-			"${SELF}" \
-		;)/../.git-hooks/pre-commit.sh" \
-	;)";
+	#readonly _GIT_HOOKS_PRE_COMMIT="$(readlink \
+	#	--canonicalize \
+	#	"$(dirname \
+	#		"${SELF}" \
+	#	;)/../.git-hooks/pre-commit.sh" \
+	#;)";
 	readonly _TRAVIS_LOG_WEB="https://travis-ci.org/${TRAVIS_REPO_SLUG}/builds/${TRAVIS_BUILD_ID}";
 	readonly _TRAVIS_LOG_RAW="https://api.travis-ci.org/jobs/${TRAVIS_JOB_ID}/log.txt";
 
-	readonly _GIT_WORK_TREE="$(mktemp_directory \
-		'build.XXXXXX' \
+	readonly _BASE_DIR="$(mktemp_directory \
+		'base.XXXXXX' \
 	;)";
-	readonly _GIT_DIVERT_DIR="$(mktemp_directory \
-		'divert.XXXXXX' \
-	;)";
+	readonly _FIFO_DIR="${_BASE_DIR}/fifo";
+	mkdir \
+		--parent \
+		"${_FIFO_DIR}" \
+	;
+	readonly _GIT_WORK_TREE="${_BASE_DIR}/build";
+	mkdir \
+		--parent \
+		"${_GIT_WORK_TREE}" \
+	;
+	#readonly _GIT_WORK_TREE="$(mktemp_directory \
+	#	'build.XXXXXX' \
+	#;)";
+	readonly _GIT_DIVERT_DIR="${_BASE_DIR}/divert";
+	mkdir \
+		--parent \
+		"${_GIT_DIVERT_DIR}" \
+	;
+	#readonly _GIT_DIVERT_DIR="$(mktemp_directory \
+	#	'divert.XXXXXX' \
+	#;)";
 	readonly _LOGGER_DIR="${_GIT_DIVERT_DIR}/logger";
 	mkdir \
 		--parent \
 		"${_LOGGER_DIR}" \
 	;
+	readonly _LOGGER_FILE="${_LOGGER_DIR}/travis.log";
 
 	return 0;
 }
@@ -1194,87 +1227,30 @@ travis_build_limitation () {
 	for _I in $(seq \
 		0 \
 		1 \
-		50 \
+		45 \
 	;);
 	do
 		: \
 			"travis_build_limitation: ${_I}" \
 		;
+		tail \
+			"${_LOGGER_FILE}" \
+		;
 		sleep \
 			60 \
 		;
 	done
-	return 0;
+	exit 100;
 }
 
-travis () {
-	travis_build_limitation \
-	&
-	travis_pre;
-	"${SELF}" \
-		'systems:host/test' \
-		1>"${_LOGGER_DIR}/systems_host_test.log" \
-		2>&1 \
+sighandler () {
+	local _SIGNUM="${1}";
+
+	: \
+		"catch ${_SIGNUM}" \
 	;
-	sudo \
-		-- \
-		"${SELF}" \
-		'systems:host/setup' \
-		1>"${_LOGGER_DIR}/systems_host_setup.log" \
-		2>&1 \
-	;
-	sudo \
-		-- \
-		"${SELF}" \
-		'systems:host/mkimage' \
-		"${CURRENT_USER}" \
-		"${CURRENT_GROUP}" \
-		1>"${_LOGGER_DIR}/systems_host_mkimage.log" \
-		2>&1 \
-	;
-	sudo \
-		-- \
-		schroot \
-		--chroot="${CHROOT_ID}" \
-		-- \
-		"${SELF}" \
-		'systems:build/setup' \
-		1>"${_LOGGER_DIR}/systems_build_setup.log" \
-		2>&1 \
-	;
-	schroot \
-		--chroot="${CHROOT_ID}" \
-		-- \
-		"${SELF}" \
-		'systems:build/repository/setup' \
-		"${_GIT_WORK_TREE}" \
-		"${_GIT_HOOKS_PRE_COMMIT}" \
-		"${WEBLATE_SYNC}" \
-		1>"${_LOGGER_DIR}/systems_build_repository_setup.log" \
-		2>&1 \
-	;
-	local _EXIT_STATUS=0;
-	if ! schroot \
-		--chroot="${CHROOT_ID}" \
-		-- \
-		"${SELF}" \
-		'systems:build/repository/build' \
-		"${_GIT_WORK_TREE}" \
-		1>"${_LOGGER_DIR}/systems_build_repository_build.log" \
-		2>&1 \
-	;
-	then
-		_EXIT_STATUS=1;
-	fi
-	schroot \
-		--chroot="${CHROOT_ID}" \
-		-- \
-		"${SELF}" \
-		'systems:build/repository/build/targets/prepare' \
-		"${_GIT_WORK_TREE}" \
-		"${_GIT_DIVERT_DIR}" \
-		1>"${_LOGGER_DIR}/systems_build_repository_build_targets_prepare.log" \
-		2>&1 \
+	tail \
+		"${_LOGGER_FILE}" \
 	;
 	schroot \
 		--chroot="${CHROOT_ID}" \
@@ -1288,6 +1264,77 @@ travis () {
 	;
 		#1>"${_LOGGER_DIR}/systems_build_repository_build_results_push.log" \
 		#2>&1 \
+	return 0;
+}
+
+travis_signal_trap () {
+	trap "_STATUS=\$?; trap - EXIT; sighandler EXIT; exit \${_STATUS};" EXIT;
+	trap "trap - EXIT; sighandler HUP;  exit $((128 +  1));" HUP;
+	trap "trap - EXIT; sighandler INT;  exit $((128 +  2));" INT;
+	trap "trap - EXIT; sighandler QUIT; exit $((128 +  3));" QUIT;
+	trap "trap - EXIT; sighandler TERM; exit $((128 + 15));" TERM;
+	return 0;
+}
+
+travis () {
+	travis_pre;
+	travis_build_limitation&
+	local _EXIT_STATUS=0;
+	{
+		travis_signal_trap;
+		systems_host_test;
+		sudo \
+			-- \
+			"${SELF}" \
+			'systems:host/setup' \
+		;
+		sudo \
+			-- \
+			"${SELF}" \
+			'systems:host/mkimage' \
+			"${CURRENT_USER}" \
+			"${CURRENT_GROUP}" \
+		;
+		sudo \
+			-- \
+			schroot \
+			--chroot="${CHROOT_ID}" \
+			-- \
+			"${SELF}" \
+			'systems:build/setup' \
+		;
+		schroot \
+			--chroot="${CHROOT_ID}" \
+			-- \
+			"${SELF}" \
+			'systems:build/repository/setup' \
+			"${_GIT_WORK_TREE}" \
+			"${WEBLATE_SYNC}" \
+		;
+		if ! schroot \
+			--chroot="${CHROOT_ID}" \
+			-- \
+			"${SELF}" \
+			'systems:build/repository/build' \
+			"${_GIT_WORK_TREE}" \
+			"${_FIFO_DIR}" \
+		;
+		then
+			_EXIT_STATUS=1;
+		fi
+		schroot \
+			--chroot="${CHROOT_ID}" \
+			-- \
+			"${SELF}" \
+			'systems:build/repository/build/targets/prepare' \
+			"${_GIT_WORK_TREE}" \
+			"${_GIT_DIVERT_DIR}" \
+			"${_FIFO_DIR}" \
+		;
+	} \
+		1>"${_LOGGER_FILE}" \
+		2>&1 \
+	;
 	return "${_EXIT_STATUS}";
 }
 
