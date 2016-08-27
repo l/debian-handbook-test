@@ -36,28 +36,11 @@
     <para>Når du starter datamaskinen, vises mange meldinger på konsollskjermen at mange automatiske initialiseringer og konfigurasjoner blir utført. Noen ganger kan du ønske å endre litt på hvordan dette stadiet fungerer, noe som betyr at du må forstå det godt. Det er hensikten med denne seksjonen.</para>
 
     
-    <para>First, the BIOS takes control of the computer, detects the disks,
-    loads the <emphasis>Master Boot Record</emphasis>, and executes the
-    bootloader. The bootloader takes over, finds the kernel on the disk,
-    loads and executes it. The kernel is then initialized, and starts to
-    search for and mount the partition containing the root filesystem, and
-    finally executes the first program — <command>init</command>.
-    Frequently, this “root partition” and this <command>init</command>
-    are, in fact, located in a virtual filesystem that only exists in RAM
-    (hence its name, “initramfs”, formerly called “initrd” for
-    “initialization RAM disk”). This filesystem is loaded in memory by
-    the bootloader, often from a file on a hard drive or from the network.
-    It contains the bare minimum required by the kernel to load the
-    “true” root filesystem: this may be driver modules for the hard
-    drive, or other devices without which the system cannot boot, or, more
-    frequently, initialization scripts and modules for assembling RAID
-    arrays, opening encrypted partitions, activating LVM volumes, etc. Once
-    the root partition is mounted, the initramfs hands over control to the
-    real init, and the machine goes back to the standard boot
-    process.</para>
+    <para>Først tar BIOS kontroll over datamaskinen, registrerer diskene, laster
+<emphasis>Master Boot Record</emphasis>, og starter oppstartslasteren. Oppstartslasteren tar over, finner kjernen på disken, laster og kjører den. Kjernen blir så initialisert, og begynner å søke etter og montere partisjonen som  inneholder rotfilsystemet, og til slutt utfører det første programmet - <command>init</command>. Ofte er, faktisk, denne “rotpartisjonen” og denne <command>init</command> ligger i et virtuelt filsystem som bare finnes i RAM (derav navnet, "initramfs", tidligere kalt "initrd" for "initialisering RAM disk"). Dette filsystem er lastet inn i minnet av oppstartslasteren, ofte fra en fil på en harddisk eller fra nettverket. Den inneholder blotte minimum som kreves av kjernen for å laste det "sanne" rotfilsystemet: Dette kan være drivermoduler for harddisken eller andre enheter uten noe som systemet ikke kan starte opp, eller, oftere, initialiseringsskript og moduler for montering av RAID matriser, åpne krypterte partisjoner, aktivere LVM, etc. Når rotpartisjonen er montert, overlater initramfs kontrollen til den virkelige init-en, og maskinen går tilbake til standard oppstartsprosess.</para>
 
     <figure id="figure.boot-process-systemd">
-      <title>Boot sequence of a computer running Linux with systemd</title>
+      <title>Oppstartssekvens med en datamaskin som kjører Linux med systemd</title>
       <mediaobject>
         <imageobject>
           <imagedata fileref="images/startup-systemd.png" scalefit="1" width="80%" />
@@ -65,71 +48,38 @@
       </mediaobject>
     </figure>
 
-    <section id="sect.systemd"><title>The systemd init system</title>
+    <section id="sect.systemd"><title>Systemd init system</title>
 
-    <para>The “real init” is currently provided by <emphasis role="pkg">systemd</emphasis> and this section documents this init
-    system. </para>
+    <para>“real init” blir nå levert av <emphasis role="pkg">systemd</emphasis> og denne seksjonen dokumenter dette init-systemet.</para>
 
     <sidebar>
       <title><emphasis>CULTURE</emphasis> Before <command>systemd</command></title>
 
-      <para><command>systemd</command> is a relatively recent “init
-      system”, and although it was already available, to a certain
-      extent, in <emphasis role="distribution">Wheezy</emphasis>, it
-      has only become the default in Debian <emphasis role="distribution">Jessie</emphasis>.  Previous releases
-      relied, by default, on the “System V init” (in the <emphasis role="pkg">sysv-rc</emphasis> package), a much more traditional
-      system.  We describe the System V init later on.</para>
+      <para><command>systemd</command> er et relativt nytt “init system”, og selv om det allerede er tilgjengelig, til en viss grad, i <emphasis role="distribution">Wheezy</emphasis>, er det bare blitt standard i Debian <emphasis role="distribution">Jessie</emphasis>. Tidligere versjoner bygger, som standard, på “System V init” (in the <emphasis role="pkg">sysv-rc</emphasis>-pakken), et mye mer tradisjonelt system. Vi beskriver System V init senere.</para>
     </sidebar>
 
     <sidebar>
       <title><emphasis>ALTERNATIVE</emphasis> Other boot systems</title>
 
-      <para>This book describes the boot system used by default in
-      Debian <emphasis role="distribution">Jessie</emphasis> (as
-      implemented by the <emphasis role="pkg">systemd</emphasis>
-      package), as well as the previous default, <emphasis role="pkg">sysvinit</emphasis>, which is derived and inherited
-      from <emphasis>System V</emphasis> Unix systems; there are
-      others.</para>
+      <para>Denne boken beskriver oppstartsystemet som brukes som standard i Debian <emphasis role="distribution">Jessie</emphasis> (som implementert av <emphasis role="pkg">systemd</emphasis>-pakken), så vel som den tidligere standarden, <emphasis role="pkg">sysvinit</emphasis>, som er avledet og arvet fra <emphasis>System V</emphasis> Unix systemer; det er andre.</para>
 
-      <para><emphasis role="pkg">file-rc</emphasis> is a boot system
-      with a very simple process. It keeps the principle of runlevels, but
-      replaces the directories and symbolic links with a configuration
-      file, which indicates to <command>init</command> the processes that
-      must be started and their launch order.</para>
+      <para><emphasis role="pkg">file-rc</emphasis> er et oppstartsystem med en veldig enkel prosess. Det holder prinsippet om kjørenivå, men erstatter mapper og symbolske lenker med en konfigurasjonsfil, som viser til <command>init</command> - prosessene som må startes og  lanseringsrekkefølgen deres.</para>
 
-      <para>The <command>upstart</command> system is still not
-      perfectly tested on Debian. It is event based: init scripts are
-      no longer executed in a sequential order but in response to
-      events such as the completion of another script upon which they
-      are dependent. This system, started by Ubuntu, is present in
-      Debian <emphasis role="distribution">Jessie</emphasis>, but is
-      not the default; it comes, in fact, as a replacement for
-      <emphasis role="pkg">sysvinit</emphasis>, and one of the tasks
-      launched by <command>upstart</command> is to launch the scripts
-      written for traditional systems, especially those from the
-      <emphasis role="pkg">sysv-rc</emphasis> package.</para>
+      <para><command>upstart</command>-systemet er fortsatt ikke helt testet ut på Debian. Det er hendelsesbasert: init skripter utføres ikke lenger i en sekvensiell rekkefølge, men som respons til hendelser som for eksempel fullføring av et annet skript som de er avhengige av. Dette systemet, startet av Ubuntu, er med i Debian <emphasis role="distribution">Jessie</emphasis>, men er ikke i standarden. Det kommer faktisk som en erstatning for <emphasis role="pkg">sysvinit</emphasis>, og en av oppgavene kjørt av  <command>upstart</command> er å kjøre de prosedyrer som er skrevet for tradisjonelle systemer, spesielt de fra <emphasis role="pkg">sysv-rc</emphasis>-pakken.</para>
 
-      <para>There are also other systems and other operating modes, such as
-      <command>runit</command> or <command>minit</command>, but they are
-      relatively specialized and not widespread.</para>
+      <para>Det er også andre systemer og andre driftsmodi, for eksempel <command>runit</command> eller <command>minit</command>, men de er relativt spesialiserte og ikke utbredt.</para>
     </sidebar>
 
     <sidebar>
-      <title><emphasis>SPECIFIC CASE</emphasis> Booting from the network</title>
+      <title><emphasis>SPECIFIC CASE</emphasis> Oppstart fra nettverket</title>
 
-      <para>In some configurations, the BIOS may be configured not to
-      execute the MBR, but to seek its equivalent on the network, making it
-      possible to build computers without a hard drive, or which are
-      completely reinstalled on each boot. This option is not available on
-      all hardware and it generally requires an appropriate combination of
-      BIOS and network card.</para>
+      <para>I noen konfigurasjoner, kan BIOS bli konfigurert til ikke å utføre MBR, men å søke dens tilsvarende i nettverket, noe som gjør det mulig å bygge datamaskiner uten en harddisk, eller som blir helt reinstallert ved hver oppstart. Dette alternativet er ikke tilgjengelig for alle maskinvarer og det krever vanligvis en egnet kombinasjon av BIOS og nettverkskort.</para>
 
-      <para>Booting from the network can be used to launch the
-      <command>debian-installer</command> or FAI (see <xref linkend="sect.installation-methods" />).</para>
+      <para>Oppstart fra nettverket kan bli brukt til å kjøre <command>debian-installer</command> eller FAI (se <xref linkend="sect.installation-methods" />).</para>
     </sidebar>
 
     <sidebar>
-      <title><emphasis>BACK TO BASICS</emphasis> The process, a program instance</title>
+      <title><emphasis>BACK TO BASICS</emphasis> Prosessen, et programeksempel</title>
       <indexterm><primary>process</primary></indexterm>
 
       <para>A process is the representation in memory of a running program.
