@@ -82,73 +82,26 @@
       <title><emphasis>BACK TO BASICS</emphasis> Prosessen, et programeksempel</title>
       <indexterm><primary>process</primary></indexterm>
 
-      <para>A process is the representation in memory of a running program.
-      It includes all of the information necessary for the proper execution
-      of the software (the code itself, but also the data that it has in
-      memory, the list of files that it has opened, the network connections
-      it has established, etc.). A single program may be instantiated into
-      several processes, not necessarily running under different user
-      IDs.</para>
+      <para>En prosess er representasjonen av et program som kjører i minnet. Det inkluderer all informasjon som er nødvendig for en forsvarlig kjøring av programvaren (selve koden, men også dataene som den har i minnet, en liste over filer som den har åpnet, nettverksforbindelsene den har etablert, etc.). Et enkelt program kan startes opp i flere prosesser, som ikke nødvendigvis kjører under forskjellige bruker-IDer.</para>
     </sidebar>
 
     <sidebar>
-      <title><emphasis>SECURITY</emphasis> Using a shell as <command>init</command> to gain root rights</title>
+      <title><emphasis>SECURITY</emphasis> Bruke skall som  <command>init</command> for å få rotrettingheter</title>
 
-      <para>By convention, the first process that is booted is the
-      <command>init</command> program (which is a symbolic link to
-      <filename>/lib/systemd/systemd</filename> by default). However,
-      it is possible to pass an <literal>init</literal> option to the
-      kernel indicating a different program.</para>
+      <para>Av tradisjon, den første prosessen som starter er <command>init</command> programmet (som er en symbolsk lenke til  <filename>/lib/systemd/systemd</filename> som standard). Imidlertid er det mulig å sende et <literal>init</literal>-valg til kjernen for å indikere et annet program.</para>
       <indexterm><primary><command>init</command></primary></indexterm>
 
-      <para>Any person who is able to access the computer can press the
-      <keycap>Reset</keycap> button, and thus reboot it. Then, at the
-      bootloader's prompt, it is possible to pass the
-      <literal>init=/bin/sh</literal> option to the kernel to gain root
-      access without knowing the administrator's password.</para>
+      <para>Alle som er i stand til å få tilgang til datamaskinen kan trykke på <keycap>Reset</keycap>-knappen og restarte den. Så, på oppstartslasterens ledetekst, er det mulig å sende <literal>init=/bin/sh</literal>-valget til kjernen for å få rottilgang uten å kjenne administratorens passord.</para>
 
-      <para>To prevent this, you can protect the bootloader itself with a
-      password. You might also think about protecting access to the BIOS (a
-      password protection mechanism is almost always available), without
-      which a malicious intruder could still boot the machine on a
-      removable media containing its own Linux system, which they could
-      then use to access data on the computer's hard drives.</para>
+      <para>For å unngå dette, kan du beskytte oppstartslasteren med et passord. Du kan også tenke på å beskytte tilgang til BIOS (en mekanisme for passordbeskyttelse er nesten alltid tilgjengelig). Uten den kan en en ondsinnet inntrenger fortsatt starte maskinen med et flyttbart medium som har sitt eget Linux-system, som de deretter kan bruke til å få tilgang til data på datamaskinens harddisker.</para>
 
-      <para>Finally, be aware that most BIOS have a generic password
-      available. Initially intended for troubleshooting for those who have
-      forgotten their password, these passwords are now public and
-      available on the Internet (see for yourself by searching for
-      “generic BIOS passwords” in a search engine). All of these
-      protections will thus impede unauthorized access to the machine
-      without being able to completely prevent it. There is no reliable way
-      to protect a computer if the attacker can physically access it; they
-      could dismount the hard drives to connect them to a computer under
-      their own control anyway, or even steal the entire machine, or erase
-      the BIOS memory to reset the password…</para>
+      <para>Til slutt, være klar over at de fleste BIOS-er har en generisk passord tilgjengelig. I utgangspunktet er de tenkt for feilsøking for de som har glemt passordet sitt, disse passordene er nå offentlige og tilgjengelig på Internett (se  selv ved å søke etter "generiske BIOS-passord" i en søkemotor). Alle disse beskyttelsene vil dermed hindre uautorisert tilgang til maskinen, men uten å være i stand til å fullstendig hindre det. Det er ingen pålitelig måte å beskytte en datamaskin på hvis angriperen kan få fysisk fysisk tilgang til den; de kan uansett demontere harddisker for å koble dem til en datamaskin under egen kontroll, eller stjele hele maskinen, eller slette BIOS-minnet for å tilbakestille passordet …</para>
     </sidebar>
 
 
-<para>Systemd executes several processes, in charge of setting up the
-system: keyboard, drivers, filesystems, network, services.  It does
-this while keeping a global view of the system as a whole, and the
-requirements of the components.  Each component is described by a
-“unit file” (sometimes more); the general syntax is derived from the
-widely-used “*.ini files“ syntax, with
-<literal><replaceable>key</replaceable> =
-<replaceable>value</replaceable></literal> pairs grouped between
-<literal>[<replaceable>section</replaceable>]</literal> headers.  Unit
-files are stored under <filename>/lib/systemd/system/</filename> and
-<filename>/etc/systemd/system/</filename>; they come in several
-flavours, but we will focus on “services” and “targets” here.
-</para>
+<para>Systemd utfører flere prosesser, som svarer for å sette opp systemet: tastatur, drivere, filsystemer, nettverk, tjenester. Den gjør dette mens du holder et overordnet syn på systemet som en helhet, og kravene til komponentene. Hver komponent er beskrevet av en "unit file" (noen ganger mer); den generelle syntaksen er avledet fra det mye brukte "* INI filer" syntaks, med <literal><replaceable>key</replaceable> = <replaceable>value</replaceable></literal> par gruppert mellom <literal>[<replaceable>section</replaceable>]</literal> topptekster. "Unit filer" er lagret under <filename>/lib/systemd/system/</filename> og <filename>/etc/systemd/system/</filename>. De kommer i flere varianter, men her vil vi fokusere på "tjenester" og "mål".</para>
 
-<para>A systemd “service file” describes a process managed by systemd.
-It contains roughly the same information as old-style init-scripts,
-but expressed in a declaratory (and much more concise) way.
-Systemd handles the bulk of the repetitive tasks (starting and
-stopping the process, checking its status, logging, dropping
-privileges, and so on), and the service file only needs to fill in the
-specifics of the process.  For instance, here is the service file for SSH:</para>
+<para>En systemd "tjenestefil" beskriver en prosess styrt av systemd. Den inneholder omtrent den samme informasjonen som i et i gammel stil init-skript, men uttrykt på en deklaratorisk (og mye mer konsis) måte. Systemd håndterer mesteparten av de repeterende oppgavene (som starter og stopper prosessen, sjekker statusen, loggingen, dropper privilegier, og så videre), og tjenestefilen trenger bare å fylle ut detaljene i prosessen. For eksempel, her er tjenestefilen for SSH:</para>
 
 <programlisting>[Unit]
 Description=OpenBSD Secure Shell server
@@ -167,10 +120,7 @@ WantedBy=multi-user.target
 Alias=sshd.service
 </programlisting>
 
-<para>As you can see, there is very little code in there, only
-declarations.  Systemd takes care of displaying progress reports,
-keeping track of the processes, and even restarting them when
-needed.</para>
+<para>Som du kan se, er det svært lite kode her, bare deklarasjoner. Systemd tar seg av visning av fremdriftsrapporter, holder orden på prosessene, og starter dem selv når det trengs.</para>
 
 <para>A systemd “target file” describes a state of the system, where a
 set of services are known to be operational.  It can be thought of as
