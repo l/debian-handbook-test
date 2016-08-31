@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">6.5. Sjekking av pakkeautensitet</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="apt, apt-get, apt-cache, aptitude, synaptic, sources.list, apt-cdrom" /><link
+        rel="home"
+        href="index.html"
+        title="Debian-administratorens håndbok" /><link
+        rel="up"
+        href="apt.html"
+        title="Kapittel 6. Vedlikehold og oppdateringer; ATP-verktøyene" /><link
+        rel="prev"
+        href="sect.apt-frontends.html"
+        title="6.4. Frontends: aptitude, synaptic" /><link
+        rel="next"
+        href="sect.dist-upgrade.html"
+        title="6.6. Oppgradering fra en stabil distribusjon til den neste" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.package-authentication.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.apt-frontends.html"><strong>Forrige</strong></a></li><li
+          class="home">Debian-administratorens håndbok</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.dist-upgrade.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.package-authentication"></a>6.5. Sjekking av pakkeautensitet</h2></div></div></div><a
+          id="id-1.9.14.2"
+          class="indexterm"></a><a
+          id="id-1.9.14.3"
+          class="indexterm"></a><a
+          id="id-1.9.14.4"
+          class="indexterm"></a><a
+          id="id-1.9.14.5"
+          class="indexterm"></a><a
+          id="id-1.9.14.6"
+          class="indexterm"></a><div
+          class="para">
+			Sikkerheten er veldig viktig for Falcot Corps administratorer. Følgelig må de sørge for at de bare installere pakker som er garantert å komme fra Debian uten å være tuklet med underveis. En som vil knekke en datamaskin kan prøve å legge ondsinnet kode til en ellers lovlig pakke. En slik pakke, hvis den er installert, kunne gjøre noe knekkeren utviklet det til å gjøre, inkludert for eksempel å avdekke passord eller konfidensiell informasjon. For å omgå denne risikoen, gir Debian nye installasjoner en forsegling som det ikke kan kludres med, for å garantere at en pakke virkelig kommer fra sin offisielle vedlikeholder og ikke er endret av en tredjepart.
+		</div><div
+          class="para">
+			Forseglingen arbeider med en kjede av kryptografiske nøkler og en signatur. Den signerte filen er <code
+            class="filename">Release</code>-filen, som Debian-speilene skaffer. Det inneholder en liste med <code
+            class="filename">Packages</code> filer (også i sine komprimert former, <code
+            class="filename">Packages.gz</code> og <code
+            class="filename">Packages.xz</code>, og oppstigende versjoner), sammen med sine MD5, SHA1 og SHA256 nøkler, som sikrer at filene ikke har blitt tuklet med. Disse <code
+            class="filename">Packages</code>-filene inneholder en liste med de Debian-pakkene som er tilgjengelig på speilet, med tilhørende nøkler, som i sin tur sikrer at heller ikke innholdet i disse pakkene har blitt endret.
+		</div><a
+          id="id-1.9.14.9"
+          class="indexterm"></a><a
+          id="id-1.9.14.10"
+          class="indexterm"></a><a
+          id="id-1.9.14.11"
+          class="indexterm"></a><a
+          id="id-1.9.14.12"
+          class="indexterm"></a><div
+          class="para">
+			Deklarerte nøklene styres med <code
+            class="command">apt-key</code>-kommandoen i <span
+            class="pkg pkg">apt</span>-pakken. Dette programmet vedlikeholder en nøkkelring med GnuPG offentlige nøkler, som brukes til å verifisere signaturer i <code
+            class="filename">Release.gpg</code>-filer tilgjengelig fra speil. Den kan brukes til å legge til nye nøkler manuelt (når ikke-offisielle speil er nødvendig). Vanligvis er det imidlertid bare de offisielle Debian-nøklene som trengs. Disse nøklene holdes automatisk oppdatert ved <span
+            class="pkg pkg">debian-archive-keyring</span>-pakken (som setter de samsvarende nøkkelringene i <code
+            class="filename">/etc/apt/trusted.gpg.d</code>). Men den første installasjonen av denne pakken krever forsiktighet: Selv om pakken er signert som alle andre, kan signaturen ikke bekreftes eksternt. Forsiktige administratorer bør derfor sjekke fingeravtrykkene til importerte nøkler før de stoler på dem for å installere nye pakker:
+		</div><pre
+          class="screen scale"># <strong
+            class="userinput"><code>apt-key fingerprint</code></strong>
+/etc/apt/trusted.gpg.d/debian-archive-jessie-automatic.gpg
+----------------------------------------------------------
+pub   4096R/2B90D010 2014-11-21 [expires: 2022-11-19]
+      Key fingerprint = 126C 0D24 BD8A 2942 CC7D  F8AC 7638 D044 2B90 D010
+uid                  Debian Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-security-automatic.gpg
+-------------------------------------------------------------------
+pub   4096R/C857C906 2014-11-21 [expires: 2022-11-19]
+      Key fingerprint = D211 6914 1CEC D440 F2EB  8DDA 9D6D 8F6B C857 C906
+uid                  Debian Security Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-stable.gpg
+-------------------------------------------------------
+pub   4096R/518E17E1 2013-08-17 [expires: 2021-08-15]
+      Key fingerprint = 75DD C3C4 A499 F1A1 8CB5  F3C8 CBF8 D6FD 518E 17E1
+uid                  Jessie Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-squeeze-automatic.gpg
+-----------------------------------------------------------
+pub   4096R/473041FA 2010-08-27 [expires: 2018-03-05]
+      Key fingerprint = 9FED 2BCB DCD2 9CDF 7626  78CB AED4 B06F 4730 41FA
+uid                  Debian Archive Automatic Signing Key (6.0/squeeze) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-squeeze-stable.gpg
+--------------------------------------------------------
+pub   4096R/B98321F9 2010-08-07 [expires: 2017-08-05]
+      Key fingerprint = 0E4E DE2C 7F3E 1FC0 D033  800E 6448 1591 B983 21F9
+uid                  Squeeze Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-automatic.gpg
+----------------------------------------------------------
+pub   4096R/46925553 2012-04-27 [expires: 2020-04-25]
+      Key fingerprint = A1BD 8E9D 78F7 FE5C 3E65  D8AF 8B48 AD62 4692 5553
+uid                  Debian Archive Automatic Signing Key (7.0/wheezy) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-stable.gpg
+-------------------------------------------------------
+pub   4096R/65FFB764 2012-05-08 [expires: 2019-05-07]
+      Key fingerprint = ED6D 6527 1AAC F0FF 15D1  2303 6FB2 A1C2 65FF B764
+uid                  Wheezy Stable Release Key &lt;debian-release@lists.debian.org&gt;</pre><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>IN PRACTICE</em></span> Å legge til klarerte nøkler</strong></p></div></div></div><a
+            id="id-1.9.14.15.2"
+            class="indexterm"></a><a
+            id="id-1.9.14.15.3"
+            class="indexterm"></a><div
+            class="para">
+			Når en tredjeparts pakke legges til <code
+              class="filename">sources.list</code>filen, må APT bes om å stole på den samsvarende GPG autoriseringsnøkkelen (ellers vil den klage på at den ikke kan sikre ektheten av pakkene som kommer fra dette pakkelageret). Det første trinnet er selvsagt å få den offentlige nøkkelen. Oftere enn ikke, vil nøkkelen bli gitt som en liten tekstfil, som vi vil kalle <code
+              class="filename">key.asc</code> i de følgende eksemplene.
+		</div><div
+            class="para">
+			For å legge til en nøkkel til den klarerte nøkkelringen, kan administtratoren kjøre <code
+              class="command">apt-key add &lt; key.asc</code>. En annen måte er å bruke <code
+              class="command">synaptic</code>s grafiske brukergrensesnitt: Dens “Authentication”-fane i <span
+              class="guimenu"><strong>Settings</strong></span> → <span
+              class="guisubmenu"><strong>Repositories</strong></span>-menyen gir mulighet til å importere en nøkkel fra <code
+              class="filename">key.asc</code>-filen.
+		</div><a
+            id="id-1.9.14.15.6"
+            class="indexterm"></a><div
+            class="para">
+			For folk som ønsker et dedikert program og mer informasjon om klarerte nøkler, er det mulig å bruke <code
+              class="command">gui-apt-key</code> (i pakken med samme navn), et lite grafisk brukergrensesnitt som forvalter den klarert nøkkelringen.
+		</div></div><div
+          class="para">
+			Når de aktuelle nøklene er i en nøkkelring, vil APT sjekke signaturer før en risikabel operasjon, slik at grensesnittet vil vise en advarsel hvis det er bedt om å installere en pakke der autentisiteten ikke kan påvises.
+		</div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.apt-frontends.html"><strong>Forrige</strong>6.4. Frontends: aptitude, synaptic</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.dist-upgrade.html"><strong>Neste</strong>6.6. Oppgradering fra en stabil distribusjon til ...</a></li></ul></body></html>
