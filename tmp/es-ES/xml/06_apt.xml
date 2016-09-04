@@ -1,0 +1,1523 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="apt" lang="es-ES">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>apt</keyword>
+			 <keyword>apt-get</keyword>
+			 <keyword>apt-cache</keyword>
+			 <keyword>aptitude</keyword>
+			 <keyword>synaptic</keyword>
+			 <keyword>sources.list</keyword>
+			 <keyword>apt-cdrom</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Mantenimiento y actualizaciones: las herramientas APT</title>
+	 <highlights> <para>
+		Lo que hace a Debian tan popular entre administradores es lo sencillo que resulta instalar software y lo fácil que se puede actualizar el sistema completo. Esta ventaja única es en gran parte debido al programa <emphasis>APT</emphasis>, que los administradores de Falcot Corp estudiaron con entusiasmo.
+	</para>
+	 </highlights> <para>
+		<indexterm><primary>APT</primary></indexterm> <indexterm><primary>Herramienta avanzda de paquetes</primary></indexterm> APT son las siglas de «herramienta avanzada de paquetes» («Advanced Package Tool»). Lo que hace este programa «avanzado» es su enfoque sobre paquetes. No sólo los evalúa individualmente sino que los considera como un todo y produce la mejor combinación posible de paquetes dependiendo de lo que esté disponible y sea compatible (según dependencias).
+	</para>
+	 <sidebar> <title><emphasis>VOCABULARIO</emphasis> Origen del paquete y paquete fuente</title>
+	 <para>
+		En inglés se utiliza la misma palabra para «origen» y «fuente»: «<emphasis>source</emphasis>». Por lo tanto es sencillo confundir un paquete fuente («source package») que contiene el código fuente de un programa con un «origen de paquetes» («package source»), es decir: un repositorio (sitio web, servidor FTP, CD-ROM, directorio local, etc.) que contiene paquetes.
+	</para>
+	 </sidebar> <para>
+		Se necesita proveerle a APT una «lista de orígenes de paquetes»: el archivo <filename>/etc/apt/sources.list</filename> contendrá una lista de diferentes repositorios («sources») que publican paquetes Debian. APT importará la lista de paquetes publicada por cada una de estos repositorios. Realiza esta operación descargando los archivos <filename>Packages.xz</filename> (en el caso de paquetes binarios) o una variante que utiliza otro método de compresión (como <filename>Packages.gz</filename> o <filename>.bz2</filename>) y archivos <filename>Sources.xz</filename> o una variante (en el caso de un origen de paquetes fuente) y analizando sus contenidos. Cuando ya posee una copia antigua de estos archivos, APT puede actualizarla sólo descargando las diferencias (revise el recuadro <xref linkend="sidebar.apt-pdiff" />).
+	</para>
+	 <indexterm>
+		<primary><filename>Packages.xz</filename></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><filename>Sources.xz</filename></primary>
+	</indexterm>
+	 <sidebar> <title><emphasis>VOLVER A LOS CIMIENTOS</emphasis> Compresión <command>gzip</command>, <command>bzip2</command>, <command>LZMA</command> y <command>XZ</command></title>
+	 <indexterm>
+		<primary><command>gzip</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>bzip2</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>lzma</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>xz</command></primary>
+	</indexterm>
+	 <para>
+		La extensión <filename>.gz</filename> hace referencia a un archivo que ha sido comprimido con la utilidad <command>gzip</command>. <command>gzip</command> es la utilidad tradicional Unix rápida y eficiente para comprimir archivos. La herramientas más modernas alcanzan una mayor proporción de compresión pero precisan de más recursos (tiempo de cálculo y memoria) para comprimir y descomprimir un archivo. Además de éstas, y por orden de aparición, están <command>bzip2</command> (crea archivos con extensión <filename>.bz2</filename>), <command>lzma</command> (crea archivos <filename>.lzma</filename> ) y <command>xz</command> (crea archivos <filename>.xz</filename>).
+	</para>
+	 </sidebar> <section id="sect.apt-sources.list">
+		<title>Contenido del archivo <filename>sources.list</filename></title>
+		 <indexterm>
+			<primary><filename>sources.list</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>origen</primary>
+			<secondary>de un paquete</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>paquete</primary>
+			<secondary>origen</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/apt/sources.list</filename></primary>
+		</indexterm>
+		 <section>
+			<title>Sintaxis</title>
+			 <para>
+				Cada línea del archivo <filename>/etc/apt/sources.list</filename> contiene una descripción de un origen, compuesta por 3 partes separadas por espacios.
+			</para>
+			 <para>
+				El primer campo indica el tipo de origen:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						«<literal>deb</literal>» para paquetes binarios,
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						«<literal>deb-src</literal>» para paquetes fuente.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				El segundo campo provee la URL base para el origen (combinado con los nombres de archivo presentes en los archivos <filename>Packages.gz</filename> debe generar una URL completa y válida): éste puede consistir de una réplica Debian o en cualquier otro compendio de paquetes configurado por un tercero. La URL puede comenzar con <literal>file://</literal> para indicar un origen local instalado en la jerarquía de archivos del sistema, con <literal>http://</literal> para indicar un origen disponible en un servidor web o con <literal>ftp://</literal> para un origen disponible en un servidor FTP. La URL también puede comenzar con <literal>cdrom:</literal> para instalaciones desde CD-ROM/DVD-ROM/Blu-ray, aunque esto es menos frecuente ya que los métodos de instalación desde la red son más y más comunes.
+			</para>
+			 <para>
+				La sintaxis del último campo depende de la estructura del repositorio. En los casos más simples, puede indicar un subdirectorio (con la barra final necesaria) del origen deseado (generalmente suele ser «<filename>./</filename>» que hace referencia a la ausencia de un subdirectorio — los paquetes se encuentran directamente en la URL especificada). Pero en el caso más común, los repositorios tendrán la estructura similar a una réplica Debian, con varias distribuciones y varios componentes en cada una. En estos casos, utilice la distribución elegida (por su «nombre código» — revise la lista en el recuadro <xref linkend="sidebar.bruce-perens" /> — o su «suite» correspondiente — <literal>stable</literal>, <literal>testing</literal>, <literal>unstable</literal>) y luego los componentes (o secciones) que desea activar (en un repositorio Debian típico: <literal>main</literal>, <literal>contrib</literal> y <literal>non-free</literal>).
+			</para>
+			 <sidebar id="sidebar.sections"> <title><emphasis>VOCABULARIO</emphasis> Los compendios <literal>main</literal>, <literal>contrib</literal> y <literal>non-free</literal></title>
+			 <indexterm>
+				<primary>sección</primary>
+				<secondary><literal>main</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>main</literal>, sección</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>sección</primary>
+				<secondary><literal>contrib</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>contrib</literal>, sección</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>sección</primary>
+				<secondary><literal>non-free</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>non-free</literal>, sección</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>componente (de un repositorio)</primary>
+			</indexterm>
+			 <para>
+				Debian utiliza tres secciones para diferenciar los paquetes según las licencias seleccionadas por los autores de cada trabajo. <literal>Main</literal> reúne todos los paquetes que cumplen completamente con las Directrices de software libre de Debian.
+			</para>
+			 <para>
+				El compendio <literal>non-free</literal> es diferente porque contiene software que no sigue (completamente) estos principios pero que aún pueden ser distribuidos sin restricciones. Este compendio, que no es parte de Debian oficialmente, es un servicio para los usuarios que pueden llegar a necesitar algunos de aquellos programas — sin embargo Debian siempre recomienda dar prioridad al software libre. La existencia de esta sección representa un problema considerable para Richard M. Stallman y es la razón por la que la Free Software Foundation no recomienda Debian a los usuarios.
+			</para>
+			 <para>
+				<literal>Contrib</literal> (contribuciones) es un conjunto de software de código abierto que no puede funcionar sin elementos privativos. Estos elementos pueden ser software de la sección <literal>non-free</literal> o archivos privativos como ROMs de juegos, BIOS para consolas, etc. <literal>Contrib</literal> también incluye software libre cuya compilación necesita elementos privativos. Inicialmente este era el caso para la suite de oficina OpenOffice.org que necesitaba un entorno Java privativo.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>SUGERENCIA</emphasis> Archivos <filename>/etc/apt/sources.list.d/*.list</filename></title>
+			 <para>
+				Si se hace referencia a muchos orígenes de paquetes puede ser útil dividirlos en varios archivos. Cada parte se almacena en <filename>/etc/apt/sources.list.d/<replaceable>nombre de archivo</replaceable>.list</filename> (ver recuadro <xref linkend="sidebar.directory.d" />).
+			</para>
+			 </sidebar> <indexterm>
+				<primary><command>apt-cdrom</command></primary>
+			</indexterm>
+			 <para>
+				Los elementos <literal>cdrom</literal> describen los CD/DVD-ROMs que posee. A diferencia de otros elementos, un CD-ROM no siempre está disponible ya que debe encontrarse en el dispositivo y sólo un disco puede leerse en un momento dado. Por estas razones, se gestionan estos elementos de una forma ligeramente diferente y necesitan ser agregados con el programa <command>apt-cdrom</command>, usualmente ejecutado con el parámetro <literal>add</literal>. Este programa solicitará que introduzca el disco en el dispositivo y navegará su contenido en busca de archivos <filename>Packages</filename>. Utilizará dichos achivos para actualizar su base de datos de paquetes disponibles (generalmente realizada cuando ejecuta <command>apt update</command>). Desde ese momento en adelante, APT puede solicitarle introducir el disco si necesita uno de sus paquetes.
+			</para>
+
+		</section>
+		 <section>
+			<title>Repositorios para usuarios de <emphasis role="distribution">Stable</emphasis></title>
+			 <para>
+				Este es un archivo <filename>sources.list</filename> estándar para un sistema que ejecuta la versión <emphasis role="distribution">Stable</emphasis> de Debian:
+			</para>
+			 <example id="example.stable-sources-list">
+				<title>el archivo <filename>/etc/apt/sources.list</filename> para usuarios de Debian «stable»</title>
+				 
+<programlisting># Actualizaciones de seguridad
+deb http://security.debian.org/ jessie/updates main contrib non-free
+deb-src http://security.debian.org/ jessie/updates main contrib non-free
+
+## Réplica debian
+
+# Repositorio base
+deb http://ftp.debian.org/debian jessie main contrib non-free
+deb-src http://ftp.debian.org/debian jessie main contrib non-free
+
+# Actualizaciones de stable
+deb http://ftp.debian.org/debian jessie-updates main contrib non-free
+deb-src http://ftp.debian.org/debian jessie-updates main contrib non-free
+
+# Retroadaptaciones para stable
+deb http://ftp.debian.org/debian jessie-backports main contrib non-free
+deb-src http://ftp.debian.org/debian jessie-backports main contrib non-free</programlisting>
+
+			</example>
+			 <para>
+				Este archivo enumera todos los orígenes de paquetes asociados con la versión <emphasis role="distribution">Jessie</emphasis> de Debian (la versión <emphasis role="distribution">Stable</emphasis> cuando esto fue escrito). Decidimos utilizar «jessie» explícitamente en lugar del alias «stable» correspondiente (<literal>stable</literal>, <literal>stable-updates</literal>, <literal>stable-backports</literal>) ya que no deseamos que se modifique la distribución correspondiente fuera de nuestro control cuando se publique la siguiente versión estable.
+			</para>
+			 <para>
+				La mayoría de los paquetes provendrán del «repositorio base» que contiene todos los paquetes pero rara vez es actualizado (alrededor de una vez cada 2 meses para «versiones menores» — «point release»). Los otros repositorios son parciales (no contienen todos los paquetes) y pueden almacenar actualizaciones (paquetes con versiones más recientes) para que instale APT. Las secciones siguientes explicarán su propósito y las reglas que regulan cada uno de estos repositorios.
+			</para>
+			 <para>
+				Sepa que cuando la versión deseada de un paquete se encuentra disponible en varios repositorios, se utilizará el que se encuentre primero en el archivo <filename>sources.list</filename>. Por esta razón, generalmente se agregan orígenes no oficiales al final del archivo.
+			</para>
+			 <para>
+				Como nota adicional, la mayoría de lo que diga esta sección sobre <emphasis role="distribution">Stable</emphasis> también es aplicable a <emphasis role="distribution">Oldstable</emphasis> ya que esta última es sólo una versión <emphasis role="distribution">Stable</emphasis> más antigua que se mantiene en paralelo.
+			</para>
+			 <section id="sect.security-updates">
+				<title>Actualizaciones de seguridad</title>
+				 <indexterm>
+					<primary><literal>security.debian.org</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>actualizaciones de seguridad</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>seguridad</primary>
+					<secondary>actualizaciones de seguridad</secondary>
+				</indexterm>
+				 <para>
+					Las actualizaciones de seguridad no se encuentran en la red de réplicas de Debian usual sino en <literal>security.debian.org</literal> (en un conjunto pequeño de equipos administrados por los <link linkend="dsa-team">Administradores de sistemas de Debian</link>). Este compendio contiene las actualizaciones de seguridad (preparadas por el equipo de seguridad de Debian, «Debian Security Team», y/o por los encargados de los paquetes) para la distribución <emphasis role="distribution">Stable</emphasis>.
+				</para>
+				 <para>
+					El servidor también puede contener actualizaciones de seguridad para <emphasis role="distribution">Testing</emphasis>, pero esto no sucede frecuentemente ya que dichas actualizaciones suelen llegar a <emphasis role="distribution">Testing</emphasis> a través del flujo normal de actualizaciones provenientes de <emphasis role="distribution">Unstable</emphasis>.
+				</para>
+
+			</section>
+			 <section id="sect.stable-updates">
+				<title>Actualizaciones de Stable</title>
+				 <indexterm>
+					<primary>stable, actualizaciones de</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>stable-updates</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>actualizaciones</primary>
+					<secondary>de stable</secondary>
+				</indexterm>
+				 <para>
+					Las actualizaciones de stable no implican riesgos de seguridad pero son consideradas suficientemente importantes como para ser enviadas a los usuarios antes de la publicación de la siguiente versión menor de stable.
+				</para>
+				 <para>
+					Este repositorio generalmente incluirá correcciones de errores críticos que no pudieron ser actualizados antes de la publicación o que fueron introducidos en actualizaciones posteriores. Dependiendo de la urgencia, también puede contener actualizaciones de paquetes que evolucionaron con el tiempo… como las reglas de detección de spam de <emphasis role="pkg">spamassassin</emphasis>, la base de datos de virus de <emphasis role="pkg">clamav</emphasis> o las reglas de horarios de verano de todos los husos horarios (<emphasis role="pkg">tzdata</emphasis>).
+				</para>
+				 <para>
+					En la práctica, este repositorio es un subconjunto del repositorio <literal>proposed-updates</literal>, seleccionado cuidadosamente por los Gestores de la versión estable («Stable Release Managers»).
+				</para>
+
+			</section>
+			 <section id="sect.proposed-updates">
+				<title>Actualizaciones propuestas</title>
+				 <indexterm>
+					<primary><literal>proposed-updates</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>stable-proposed-updates</literal></primary>
+				</indexterm>
+				 <para>
+					Una vez publicada, la distribución <emphasis role="distribution">Stable</emphasis> se actualiza sólo una vez cada 2 meses. El repositorio <literal>proposed-updates</literal> es donde se preparan las futuras actualizaciones (bajo la supervisión de los Gestores de la versión estable, «Stable Release Managers»).
+				</para>
+				 <para>
+					Las actualizaciones de seguridad y de estable documentadas en las secciones anteriores siempre son parte de este repositorio, pero también habrá otras ya que los encargados de los paquetes también tienen la oportunidad de corregir errores importantes que no justifican que se publique una nueva versión inmediatamente.
+				</para>
+				 <para>
+					Cualquiera puede utilizar este repositorio para probar esas actualizaciones antes de su publicación oficial. El extracto a continuación utiliza el alias <literal>jessie-proposed-updates</literal> que es más explícito y más consistente ya que también existe <literal>wheezy-proposed-updates</literal> (para las actualizaciones de <emphasis role="distribution">Oldstable</emphasis>):
+				</para>
+				 
+<programlisting>deb http://ftp.debian.org/debian jessie-proposed-updates main contrib non-free</programlisting>
+
+			</section>
+			 <section id="sect.backports">
+				<title>Retroadaptaciones para Stable</title>
+				 <indexterm>
+					<primary><literal>stable-backports</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>retroadaptación</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>actualizaciones</primary>
+					<secondary>retroadaptaciones</secondary>
+				</indexterm>
+				 <para>
+					El repositorio <literal>stable-backports</literal> contiene «retroadaptaciones de paquetes». Es término hace referencia a paquetes de software reciente que fue recompilado para una distribución antigua, generalmente para <emphasis role="distribution">Stable</emphasis>.
+				</para>
+				 <para>
+					Cuando la distribución entra en años, muchos proyectos de software habrán publicado nuevas versiones que no están integradas en la versión actual de <emphasis role="distribution">Stable</emphasis> (que sólo es modificada para corregir los problemas más criticos, como los problemas de seguridad). Debido a que las distribuciones <emphasis role="distribution">Testing</emphasis> y <emphasis role="distribution">Unstable</emphasis> son más riesgosas, los encargados de paquetes a veces ofrecen recompilaciones de aplicaciones de software recientes para <emphasis role="distribution">Stable</emphasis> que tienen la ventaja de limitar la potencial inestabilidad a un número pequeño de paquetes seleccionados. <ulink type="block" url="http://backports.debian.org" />
+				</para>
+				 <para>
+					El repositorio <literal>stable-backports</literal> ahora está disponible en las réplicas Debian usuales. Pero las retroadaptaciones para <emphasis role="distribution">Squeeze</emphasis> continúan almacenadas en un servidor dedicado (<literal>backports.debian.org</literal>) y necesitan de la siguiente línea en el archivo <filename>sources.list</filename>:
+				</para>
+				 <indexterm>
+					<primary><literal>backports.debian.org</literal></primary>
+				</indexterm>
+				 
+<programlisting>deb http://backports.debian.org/debian-backports squeeze-backports main contrib non-free</programlisting>
+				 <para>
+					Siempre se crean las retroadaptaciones de <literal>stable-backports</literal> de los paquetes disponibles en <emphasis role="distribution">Testing</emphasis>. Esto asegura que todas las retroadaptaciones instaladas se actualizarán a la versión estable correspondiente cuando se encuentre disponible la siguiente versión estable de Debian.
+				</para>
+				 <para>
+					Aún cuando este repositorio provea versiones de paquetes más nuevas, APT no las instalará a menos que le indique explícitamente que lo haga (o si ya lo hizo con una versión anterior de dicha retroadaptación):
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>sudo apt-get install <replaceable>package</replaceable>/jessie-backports
+</userinput><computeroutput>$ </computeroutput><userinput>sudo apt-get install -t jessie-backports <replaceable>package</replaceable>
+</userinput></screen>
+
+			</section>
+
+		</section>
+		 <section>
+			<title>Repositorios para usuarios de <emphasis role="distribution">Testing</emphasis>/<emphasis role="distribution">Unstable</emphasis></title>
+			 <para>
+				Este es un archivo <filename>sources.list</filename> estándar para un sistema que ejecuta la versión <emphasis role="distribution">Testing</emphasis> o <emphasis role="distribution">Unstable</emphasis> de Debian:
+			</para>
+			 <example id="example.testing-sources-list">
+				<title>Archivo <filename>sources.list</filename> para usuarios de Debian <emphasis role="distribution">Testing</emphasis>/<emphasis role="distribution">Unstable</emphasis></title>
+				 
+<programlisting>
+# Unstable
+deb http://ftp.debian.org/debian unstable main contrib non-free
+deb-src http://ftp.debian.org/debian unstable main contrib non-free
+
+# Testing
+deb http://ftp.debian.org/debian testing main contrib non-free
+deb-src http://ftp.debian.org/debian testing main contrib non-free
+
+# Stable
+deb http://ftp.debian.org/debian stable main contrib non-free
+deb-src http://ftp.debian.org/debian stable main contrib non-free
+
+# Actualizaciones de seguridad
+deb http://security.debian.org/ stable/updates main contrib non-free
+deb http://security.debian.org/ testing/updates main contrib non-free
+deb-src http://security.debian.org/ stable/updates main contrib non-free
+deb-src http://security.debian.org/ testing/updates main contrib non-free</programlisting>
+
+			</example>
+			 <para>
+				Con este archivo <filename>sources.list</filename>, APT instalará paquetes de <emphasis role="distribution">Unstable</emphasis>. Si esto no es lo que desea, utilice la configuración <literal>APT::Default-Release</literal> (revise la <xref linkend="sect.apt-upgrade" />) para indicarle a APT que utilice los paquetes de otra distribución (en este caso probablemente <emphasis role="distribution">Testing</emphasis>).
+			</para>
+			 <para>
+				Existen buenas razones para incluir todos estos repositorios, inclusive cuando sólo uno debería ser suficiente. Los usuarios de <emphasis role="distribution">Testing</emphasis> apreciarán la posibilidad de seleccionar paquetes específicos de <emphasis role="distribution">Unstable</emphasis> cuando la versión en <emphasis role="distribution">Testing</emphasis> posee un error molesto. Por el otro lado, los usuarios de <emphasis role="distribution">Unstable</emphasis> afectados por regresiones inesperadas pueden desactualizar paquetes a la versión de <emphasis role="distribution">Testing</emphasis> (que supuestamente funciona).
+			</para>
+			 <para>
+				El incluir <emphasis role="distribution">Stable</emphasis> es más discutible, pero generalmente proveerá acceso a algunos paquetes que fueron eliminados de las versiones en desarrollo. También asegura que obtendrá las últimas actualizaciones para paquetes que no fueron modificados desde la publicación de la última versión estable.
+			</para>
+			 <section>
+				<title>El repositorio <emphasis role="distribution">Experimental</emphasis></title>
+				 <indexterm>
+					<primary><emphasis role="distribution">Experimental</emphasis></primary>
+				</indexterm>
+				 <para>
+					El compendio de paquetes <emphasis role="distribution">Experimental</emphasis> se encuentra en todas las réplicas Debian y contiene paquetes que no están en <emphasis role="distribution">Unstable</emphasis> aún debido a que su calidad está bajo los estándares normales — generalmente son versiones en desarrollo del software o versiones previas (alpha, beta, candidato de publicación...). Un paquete también puede ser enviado ahí luego de sufrir muchos cambios que pueden generar problemas. El desarrollador luego intentará descubrirlos con la ayuda de usuarios avanzados que pueden manejar problemas importantes. Luego de esta etapa, mueve el paquete a <emphasis role="distribution">Unstable</emphasis>, donde alcanza una audiencia más grande y donde será probado en mucho más detalle.
+				</para>
+				 <para>
+					Los usuarios que usan <emphasis role="distribution">Experimental</emphasis> generalmente no les importa romper su sistema y luego repararlo. Esta distribución les da la posibilidad de importar un paquete que el usuario desea probar o usar según lo necesita. Esto es exactamente el enfoque que toma Debian ya que agregarlo en el archivo <filename>sources.list</filename> de APT no conlleva el uso sistemático de sus paquetes. La línea a agregar es:
+				</para>
+				 <informalexample> 
+<programlisting>deb http://ftp.debian.org/debian experimental main contrib non-free</programlisting>
+				 </informalexample>
+			</section>
+
+		</section>
+		 <section>
+			<title>Recursos no oficiales: <literal>mentors.debian.net</literal></title>
+			 <indexterm>
+				<primary><literal>mentors.debian.net</literal></primary>
+			</indexterm>
+			 <para>
+				Hay multitud de fuentes de paquetes de Debian no oficiales preparadas por usuarios avanzados que recompilan algun software (Ubuntu lo hizo popular con su servicio Archivos de Paquetes Personales, PPA), por programadores que hacen que su creación esté disponible para todos e incluso desarrolladores de Debian que ofrecen versiones previas a sus paquetes online.
+			</para>
+			 <para>
+				El sitio <literal>mentors.debian.net</literal> es interesante ya que reúne los paquetes creados por los candidatos al estado de desarrollador Debian oficial o por voluntarios que desean crear paquetes Debian sin pasar por ese proceso de integración. Los paquetes disponibles aquí no tiene garantías de calidad, asegúrese de revisar su origen e integridad y pruébelos antes de considerar utilizarlos en producción.
+			</para>
+			 <sidebar> <title><emphasis>COMUNIDAD</emphasis> Los sitios <literal>debian.net</literal></title>
+			 <indexterm>
+				<primary><emphasis>debian.net</emphasis></primary>
+			</indexterm>
+			 <para>
+				El dominio <emphasis>debian.net</emphasis> no es un recurso oficial del proyecto Debian. Cada desarrollador Debian puede utilizar este nombre de dominio para uso propio. Estos sitios web pueden contener servicios no oficiales (a veces sitios personales) almacenados en una máquina que no pertenece al proyecto configurada por desarrolladores Debian o inclusive prototipos que serán movidos a <emphasis>debian.org</emphasis>. Dos razones pueden explicar porqué algunos de estos prototipos permanecen en <emphasis>debian.net</emphasis>: o bien nadie realizó el esfuerzo necesario para transformarlo en un servicio oficial (en el dominio <emphasis>debian.org</emphasis> y con cierta garantía de mantenimiento) o el servicio es demasiado controvertido para ser oficializado.
+			</para>
+			 </sidebar> <para>
+				Instalar un paquete significa dar permisos de root a su creador, porque ellos deciden el contenido de los scripts de inicialización que ejecutan bajo esa identidad. Los paquetes oficiales de Debian son creados por voluntarios que fueron cooptados y verificados y que pueden firmar sus paquetes para que se pueda revisar su origen e integridad.
+			</para>
+			 <para>
+				En general, desconfíe de un paquete cuyo origen desconoce y que no es almacenado en uno de los servidores oficiales de Debian: evalúe el grado en el que puede confiar en su creador y revise la integridad del paquete. <ulink type="block" url="http://mentors.debian.net/" />
+			</para>
+			 <sidebar id="sidebar.snapshot.debian.org"> <title><emphasis>YENDO MÁS ALLÁ</emphasis> Versiones antiguas de paquetes: <literal>snapshot.debian.org</literal></title>
+			 <indexterm>
+				<primary><literal>snapshot.debian.org</literal></primary>
+			</indexterm>
+			 <para>
+				El servicio <literal>snapshot.debian.org</literal>, introducido en Abril de 2010, para «volver en el tiempo» y encontrar una versión anterior de un paquete. Puede ser utilizado, por ejemplo, para identificar la versión de un paquete que introdujo una regresión y, más en concreto, volver a la versión anterior mientras espera que corrijan la regresión.
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Proxy caché para paquetes Debian</title>
+			 <indexterm>
+				<primary>caché proxy</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>proxy, caché</primary>
+			</indexterm>
+			 <para>
+				Cuando una red completa de equipos está configurada para utilizar el mismo servidor remoto para descargar los mismo paquetes actualizados, todo administrador sabe que es beneficioso tener un proxy intermedio que funcione como caché para la red local (revise el recuadro <xref linkend="sidebar.cache" />).
+			</para>
+			 <para>
+				Puede configurar APT para que utilice un proxy «estándar» (revise la <xref linkend="sect.apt-config" /> para la configuración de APT y la <xref linkend="sect.http-ftp-proxy" /> para la configuración del proxy), pero el ecosistema Debian ofrece mejores opciones para solucionar este problema. Esta sección presente un software dedicado que es más inteligente que un simple proxy caché porque utiliza la estructura específica de los repositorios APT (por ejemplo, conoce cuándo archivos particulares son obsoletos o no y así modifica el tiempo durante el cual los mantendrá).
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">apt-cacher</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis role="pkg">apt-cacher-ng</emphasis></primary>
+			</indexterm>
+			 <para>
+				<emphasis role="pkg">apt-cacher</emphasis> y <emphasis role="pkg">apt-cacher-ng</emphasis> funcionan como servidores proxy caché usuales. No se modifica el archivo <filename>sources.list</filename>, pero se configura a APT para utilizarlos como proxy para pedidos salientes.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">approx</emphasis></primary>
+			</indexterm>
+			 <para>
+				<emphasis role="pkg">approx</emphasis>, por el otro lado, funciona como un servidor HTTP que «replica» cualquier cantidad de repositorios remotos en su URL más genérica. Se almacena el mapeo entre estos directorios y las URLs remotas de los repositorios en <filename>/etc/approx/approx.conf</filename>:
+			</para>
+			 
+<programlisting>
+# &lt;nombre&gt; &lt;URL base del repositorio&gt;
+debian   http://ftp.debian.org/debian
+security http://security.debian.org</programlisting>
+			 <para>
+				De forma predeterminada, <emphasis role="pkg">approx</emphasis> ejecuta en el puerto 9999 a través de inted (revise la <xref linkend="sect.inetd" />) y necesita que el usuario modifique su archivo <filename>sources.list</filename> para que apunte al servidor approx:
+			</para>
+			 
+<programlisting># Archivo sources.list de ejemplo que apunta a un servidor approx local
+deb http://apt.falcot.com:9999/security jessie/updates main contrib non-free
+deb http://apt.falcot.com:9999/debian jessie main contrib non-free
+</programlisting>
+
+		</section>
+
+	</section>
+	 <section id="sect.apt-get">
+		<title>Los programas <command>aptitude</command>, <command>apt-get</command> y <command>apt</command></title>
+		 <indexterm>
+			<primary><command>apt</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-get</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude</command></primary>
+		</indexterm>
+		 <para>
+			APT es un proyecto gigante y su plan original incluia una interfaz gráfica. Está basado en una biblioteca que contiene la aplicación central y <command>apt-get</command> fue la primera interfaz — basada en la línea de órdenes — desarrollada dentro del proyecto. <command>apt</command> es un segundo frontend de linea de comandos proporcionado por APT el cual soluciona algunos errores de diseño de la orden <command>apt-get</command>.
+		</para>
+		 <para>
+			Varias otras interfaces gráficas aparecieron luego como proyectos externos: <command>synaptic</command>, <command>aptitude</command> (que incluye tanto una interfaz en modo texto como una gráfica — aún cuando no esté completa), <command>wajig</command>, etc. La interfaz más recomendada, <command>apt</command> es la que utilizaremos en los ejemplos de esta sección. Note, sin embargo, que la sintaxis de línea de órdenes de <command>apt-get</command> y de <command>aptitude</command> son muy similares. Detallaremos cuando existan grandes diferencias entre <command>apt</command>, <command>apt-get</command> y <command>aptitude</command>.
+		</para>
+		 <section>
+			<title>Inicialización</title>
+			 <para>
+				Para cualquier trabajo con APT necesita actualizar la lista de paquetes; puede hacer esto simplemente con <command>apt update</command>. Dependiendo de la velocidad de su conexión esta operación puede demorar ya que involucra descargar una cantidad de archivos <filename>Packages</filename>/<filename>Sources</filename>/<filename>Translation-<replaceable>codigo-idioma</replaceable></filename> que han crecido gradualmente a medida que se desarrolló Debian (más de 10 MB de datos para la sección <literal>main</literal>). Por su puesto, instalar desde un CD-ROM no requiere descarga alguna — en ese caso esta operación es muy rápida.
+			</para>
+			 <indexterm>
+				<primary><command>apt update</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get update</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude update</command></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>Instalación y eliminación</title>
+			 <indexterm>
+				<primary>instalación de</primary>
+				<secondary>paquete</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>paquete</primary>
+				<secondary>eliminación</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>instalación</primary>
+				<secondary>de paquetes</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>eliminación de un paquete</primary>
+			</indexterm>
+			 <para>
+				Con APT puede agregar o eliminar paquetes del sistema, con <command>apt install <replaceable>paquete</replaceable></command> y <command>apt remove <replaceable>paquete</replaceable></command> respectivamente. En ambos casos APT automáticamente instalará las dependencias necesarias o eliminará los paquetes que dependen del paquete que está siendo eliminado. La orden <command>ap purge <replaceable>paquete</replaceable></command> realiza una desinstalación completa — se eliminan también los archivos de configuración.
+			</para>
+			 <indexterm>
+				<primary><command>apt install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt purge</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get purge</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude purge</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>SUGERENCIA</emphasis> Instalando la misma selección de paquetes varias veces</title>
+			 <para>
+				Puede ser útil instalar sistemáticamente la misma lista de paquetes en varios equipos. Esto puede realizarse fácilmente.
+			</para>
+			 <para>
+				Primero, obtenga la lista de paquetes en el equipo que servirá como «modelo» a copiar.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>dpkg --get-selections &gt;pkg-list</userinput></screen>
+			 <para>
+				El archivo <filename>pkg-list</filename> contiene ahora la lista de paquetes instalados. Luego, transfiera el archivo <filename>pkg-list</filename> a los equipos que desee actualizar, y utilice los siguientes comandos:
+			</para>
+			 
+<screen>## Actualizar la base de datos de dpkg sobre paquetes conocidos
+# <userinput>avail=`mktemp`</userinput>
+# <userinput>apt-cache dumpavail &gt; "$avail"</userinput>
+# <userinput>dpkg --merge-avail "$avail"</userinput>
+# <userinput>rm -f "$avail"</userinput>
+## Actualizar estado de selección de paquetes de dpkg
+# <userinput>dpkg --set-selections &lt; pkg-list</userinput>
+## Pedirle a apt-get que instale los paquetes seleccionados
+# <userinput>apt-get dselect-upgrade</userinput></screen>
+			 <para>
+				La primera orden graba la lista de paquetes disponibles en la base de datos de dpkg, después <command>dpkg --set-selections</command> restaura el estado de los paquetes seleccionados que desea instalar y la ejecución de <command>apt-get</command> implementa las operaciones requeridas. <command>aptitude</command> no tiene esta orden.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>SUGERENCIA</emphasis> Eliminando e instalando al mismo tiempo</title>
+			 <para>
+				Es posible pedirle a <command>apt</command> (o <command>apt-get</command>, o <command>aptitude</command>) que instale ciertos paquetes y elimine otros en la misma línea de comando agregando un sufijo. Con una orden <command>apt install</command>, agregue «<literal>-</literal>» a los nombres de paquetes que desee eliminar. Con una orden <command>apt remove</command>, agregue «<literal>+</literal>» a los nombres de paquete que desee instalar.
+			</para>
+			 <para>
+				El siguiente ejemplo muetra dos formas distintas de instalar <replaceable>paquete1</replaceable> y eliminar <replaceable>paquete2</replaceable>.
+			</para>
+			 
+<screen># <userinput>apt install <replaceable>paquete1</replaceable> <replaceable>paquete2-</replaceable></userinput>
+[...]
+# <userinput>apt remove <replaceable>paquete1+</replaceable> <replaceable>paquete2</replaceable></userinput>
+[...]</screen>
+			 <para>
+				De esta forma también puede excluir paquetes que se instalarían, por ejemplo debido a una recomendación (<literal>Recommends</literal>). Generalmente, el sistema de resolución de dependencias utilizará esa información como una indicación para encontrar soluciones alternativas.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>SUGERENCIA</emphasis> <command>apt --reinstall</command> y <command>aptitude reinstall</command></title>
+			 <indexterm>
+				<primary>reinstalación</primary>
+			</indexterm>
+			 <para>
+				A veces el sistema puede dañarse después de eliminar o modificar los archivos de un paquete. La forma más sencilla de recuperar estos archivos es reinstalar los paquetes afectados. Desafortunadamente, el sistema de empaquetado encuentra que éste ya está instalado y amablemente rechaza su reinstalación; Para evitarlo, utilice la opción <literal>--reinstall</literal> de los comandos <command>apt</command> y <command>apt-get</command>. La siguiente orden reinstala <emphasis role="pkg">postfix</emphasis> aunque ya esté instalado:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>apt --reinstall install postfix</userinput></screen>
+			 <para>
+				La línea de órdenes para <command>aptitude</command> es ligeramente diferente pero consigue el mismo resultado con <command>aptitude reinstall postfix</command>.
+			</para>
+			 <para>
+				El problema no ocurre con <command>dpkg</command> pero el administrador rara vez lo utiliza directamente.
+			</para>
+			 <para>
+				¡Tenga cuidado! El uso de <command>apt --reinstall</command> para restaurar paquetes modificados durante un ataque no recuperará el sistema tal y como estaba. La <xref linkend="sect.dealing-with-compromised-machine" /> detalla los pasos necesarios para recuperar en un sistema comprometido.
+			</para>
+			 </sidebar> <para>
+				Si el archivo <filename>sources.list</filename> menciona varias distribuciones, es posible indicar la versión del paquete a instalar. Se puede proporionar un número de versión específico con <command>apt install <replaceable>paquete</replaceable>=<replaceable>versión</replaceable></command>, pero generealmente es preferible indicar la distribución de origen (<emphasis role="distribution">Stable</emphasis>, <emphasis role="distribution">Testing</emphasis> o <emphasis role="distribution">Unstable</emphasis>) utilizando <command>apt install <replaceable>paquete</replaceable>/<replaceable>distribución</replaceable></command>. Con esta orden es posible volver a una versión antigua de un paquete (si sabe que funciona bien, por ejemplo), siempre que aún esté disponible en alguno de los orígenes a los que se refiere el archivo <filename>sources.list</filename>. De lo contrario, el archivo <literal>snapshot.debian.org</literal> puede llegar al rescate (revise el recuadro <xref linkend="sidebar.snapshot.debian.org" />).
+			</para>
+			 <example>
+				<title>Instalación de la versión en <emphasis role="distribution">Unstable</emphasis> de <emphasis role="pkg">spamassassin</emphasis></title>
+				 
+<screen><computeroutput># </computeroutput><userinput>apt install spamassassin/unstable</userinput></screen>
+
+			</example>
+			 <sidebar> <title><emphasis>YENDO MÁS ALLÁ</emphasis> El caché de archivos <filename>.deb</filename></title>
+			 <para>
+				APT mantiene una copia de cada archivo <filename>.deb</filename> descargado en el directorio <filename>/var/cache/apt/archives/</filename>. En caso de actualizaciones frecuentes, este directorio puede ocupar rápidamente mucho espacio en disco, con varias versiones de cada paquete; Debería ordenarlos regularmente. Puede utilizar dos órdenes: <command>apt-get clean</command> vacía completamente el directorio y <command>apt-get autoclean</command> sólo elimina los paquetes que ya no pueden ser descargados (porque ya desaparecieron del espejo Debian) y son obviamente inútiles (el parámetro de configuración <literal>APT::Clean-Installed</literal> puede evitar la eliminación de archivos <filename>.deb</filename> que estén instalados actualmente). Fíjese que <command>apt</command> no soporta estos comandos.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.apt-upgrade">
+			<title>Actualización del sistema</title>
+			 <indexterm>
+				<primary>actualización</primary>
+				<secondary>del sistema</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude safe-upgrade</command></primary>
+			</indexterm>
+			 <para>
+				Se recomienda realizar actualizaciones regularmente, ya que incluyen las últimas actualizaciones de seguridad. Para actualizar, utilice <command>apt upgrade</command>, <command>apt-get upgrade</command> o <command>aptitude safe-upgrade</command> (por supuesto, después de <command>apt-get update</command>). Esta orden busca paquetes instalados que pueden ser actualizados sin eliminar ningún paquete. En otras palabras, el objetivo es asegurar la actualización menos intrusiva posible. <command>apt-get</command> es ligeramente más exigente que <command>aptitude</command> o <command>apt</command> ya que se negará a instalar paquetes que no estaban instalados previamente.
+			</para>
+			 <sidebar id="sidebar.apt-pdiff"> <title><emphasis>SUGERENCIA</emphasis> Actualización incremental</title>
+			 <para>
+				Como explicamos anteriormente, el objetivo de la orden <command>ap update</command> es descargar el archivo <filename>Packages</filename> (o <filename>Sources</filename>) de cada origen de paquetes. Sin embargo, aún después de la compresión <command>bzip2</command>, estos archivos pueden seguir siendo relativamente grandes (el archivo <filename>Packages.xz</filename> para la sección <foreignphrase>main</foreignphrase> de <emphasis role="distribution">Jessie</emphasis> ocupa más de 6 MB). Si desea actualizar frecuentemente, estas descargas pueden tardar mucho tiempo.
+			</para>
+			 <para>
+				Para acelerar el proceso APT puede descargar archivos «diff», que contienen los cambios desde la última actualización, en lugar del archivo completo. Para lograr esto, las réplicas oficiales de Debian distribuyen diferentes archivos que listan las diferencias entre una versión del archivo <filename>Packages</filename> y la siguiente. Son generados en cada actualización de los archivos y se mantiene un histórico semanal. Cada uno de estos archivos «diff» sólo ocupa unas pocas docenas de kilobytes para <emphasis role="distribution">Unstable</emphasis>, por lo que la cantidad de datos descargados si se ejecuta semanalmente <command>apt update</command> se divide por 10. Para distribuciones como <emphasis role="distribution">Stable</emphasis> y <emphasis role="distribution">Testing</emphasis>, que cambian menos, la mejora es menos notable.
+			</para>
+			 <para>
+				Sin embargo, a veces puede estar interesado en descargar el archivo <filename>Packages</filename> completo, especialmente cuando la última actualización es muy antigua y cuando el mecanismo de diferencias incrementales no ayudaría demasiado. También puede ser interesante cuando el acceso de red es muy rápido pero el procesador en el equipo a actualizar es relativamente lento ya que el tiempo ahorrado en la descarga es más que el perdido cuando el equipo calcule la nueva versión de los archivos (comenzando con las versiones antiguas y aplicando las diferencias descargadas). Para hacer esto puede utilizar el parámetro de configuración <literal>Acquire::Pdiffs</literal> y configurarlo como <literal>false</literal>.
+			</para>
+			 </sidebar> <para>
+				<command>apt</command> generalmente seleccionará el número de versión más reciente (excepto para paquetes en <emphasis role="distribution">Experimental</emphasis> y <emphasis role="distribution">stable-backports</emphasis>, que son ignorados de forma predeterminada sin importar su número de versión). Si especificó <emphasis role="distribution">Testing</emphasis> o <emphasis role="distribution">Unstable</emphasis> en su archivo <filename>sources.list</filename>, <command>apt upgrade</command> cambiará la mayor parte de su sistema en <emphasis role="distribution">Stable</emphasis> a <emphasis role="distribution">Testing</emphasis> o <emphasis role="distribution">Unstable</emphasis>, lo que podría no ser lo deseado.
+			</para>
+			 <para>
+				Para indicarle a <command>apt</command> que utilice una distribución específica al buscar paquetes a actualizar debe utilizar la opción <literal>-t</literal> o <literal>--target-release</literal>, seguido del nombre de la distribución que desea (por ejemplo: <command>apt -t stable upgrade</command>). Para evitar especificar esta opción cada vez que utilice <command>apt</command> puede agregar <literal>APT::Default-Release "stable";</literal> al archivo <filename>/etc/apt/apt.conf.d/local</filename>.
+			</para>
+			 <indexterm>
+				<primary><command>apt full-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude full-upgrade</command></primary>
+			</indexterm>
+			 <para>
+				Para actualizaciones más importantes, tales como el cambio de una versión mayor de Debian a la siguiente, necesita utilizar <command>apt full-upgrade</command>. Con esta instrucción, <command>apt</command> completará la actualización aún si tiene que eliminar algunos paquetes obsoletos o instalar nuevas dependencias. Esta también es la orden utilizada por los usuarios que trabajan diariamente con la versión <emphasis role="distribution">Unstable</emphasis> de Debian y siguen su evolución día a día. Es tan simple que casi no necesita explicación: la reputación de APT está basada en esta excelente característica.
+			</para>
+			 <para>
+				A diferencia de <command>apt</command> y <command>aptitude</command>, <command>apt-get</command> no sabe cómo hacer <command>full-upgrade</command> command. En su lugar debería usar <command>apt-get dist-upgrade</command> (”distribution upgrade”), la histórica y bien conocida orden que <command>apt</command> y <command>aptitude</command> también aceptan para satisfacer a los usuarios que están acostumbrados a usarla.
+			</para>
+
+		</section>
+		 <section id="sect.apt-config">
+			<title>Opciones de configuración</title>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>configuración</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>apt.conf.d/</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/apt/apt.conf.d/</filename></primary>
+			</indexterm>
+			 <para>
+				Además de los elementos de configuración ya mencionados, es posible configurar ciertos aspectos de APT agregando directivas en un archivo del directorio <filename>/etc/apt/apt.conf.d/</filename>. Recuerde, por ejemplo, que APT puede indicarle a <command>dpkg</command> que ignore errores de conflictos de archivos especificando <literal>DPkg::options { "--force-overwrite"; }</literal>.
+			</para>
+			 <para>
+				Si sólo puede acceder a la web a través de un proxy, agregue una línea como <literal>Acquire::http::proxy "http://<replaceable>su-proxy</replaceable>:3128"</literal>. Para un proxy FTP, utilice <literal>Acquire::ftp::proxy "ftp://<replaceable>su-proxy</replaceable>"</literal>. Para descubrir más opciones de configuración, lea la página de manual <citerefentry><refentrytitle>apt.conf</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry> con la orden <command>man apt.conf</command> (para detalles sobre las páginas de manual, revise la <xref linkend="sect.manual-pages" />).
+			</para>
+			 <sidebar id="sidebar.directory.d"> <title><emphasis>VOLVER A LOS CIMIENTOS</emphasis> Directorios terminados con <filename>.d</filename></title>
+			 <indexterm>
+				<primary><filename>.d</filename></primary>
+			</indexterm>
+			 <para>
+				Cada vez más se utilizan directorios con el sufijo <filename>.d</filename>. Cada directorio representa un archivo de configuración repartido en múltiples archivos. En este sentido, todos los archivos en <filename>/etc/apt/apt.conf.d/</filename> son instrucciones para la configuración de APT. APT los incluye en orden alfabético para que los últimos puedan modificar un elemento de configuración definido en los primeros.
+			</para>
+			 <para>
+				Esta estructura le da cierta flexibilidad al administrador del equipo y a los desarrolladores de paquetes. De hecho, el administrador puede modificar fácilmente la configuración del software agregando un archivo prehecho en el directorio en cuestión sin tener que modificar un archivo existente. Los desarrolladores de paquetes utilizan el mismo enfoque cuando necesitan adaptar la configuración de otro software pare asegurar que pueda coexistir perfectamente con el suyo. La Normativa Debian prohíbe explícitamente modificar los archivos de configuración de otros paquetes — sólo los usuarios pueden hacerlo. Recuerde que durante la actualización de un paquete el usuario puede elegir la versión del archivo de configuración a mantener cuando se detectó una modificación. Cualquier modificación externa de un archivo dispararía dicho pedido, lo que molestaría al administrador que está seguro de no haber modificado nada.
+			</para>
+			 <para>
+				Sin un directorio <filename>.d</filename> es imposible que un paquete externo modifique la configuración de un programa sin modificar su archivo de configuración. En su lugar, debe invitar al usuario a que lo haga por su cuenta y lista las operaciones a realizar en el archivo <filename>/usr/share/doc/<replaceable>paquete</replaceable>/README.Debian</filename>.
+			</para>
+			 <para>
+				Dependiendo de la aplicación, el directorio <filename>.d</filename> puede ser utilizado directamente o administrado por un script externo que concatena todos los archivos para crear el archivo de configuración. Es importante ejecutar este script luego de cualquier cambio en ese directorio para que se tengan en cuenta las modificaciones más recientes. De la misma forma, es importante no trabajar directamente en el archivo de configuración creado automáticamente ya que se perdería todo en la siguiente ejecución del script. El método seleccionado (usar directamente el directorio <filename>.d</filename> o un archivo generado desde dicho directorio) está generalmente definido por limitaciones de implementación, pero en ambos casos las ganancias en cuanto a flexibilidad de la configuración más que compensan las pequeñas complicaciones que significan. El servidor de correo Exim 4 es un ejemplo del método en el que se genera el archivo: puede configurarse mediante varios archivos (<filename>/etc/exim4/conf.d/*</filename>) que son concatenados en <filename>/var/lib/exim4/config.autogenerated</filename> mediante la orden <command>update-exim4.conf</command>.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.apt.priorities">
+			<title>Gestión de prioridades de los paquetes</title>
+			 <para>
+				Uno de los aspectos más importantes en la configuración de APT es la gestión de las prioridades asociadas con cada origen de paquetes. Por ejemplo, podría desear extender una distribución con uno o dos paquetes más recientes de <emphasis role="distribution">Testing</emphasis>, <emphasis role="distribution">Unstable</emphasis> o <emphasis role="distribution">Experimental</emphasis>. Es posible asignar una prioridad a cada paquete disponible (el mismo paquete puede tener varias prioridades según su versión o la distribución que lo provee). Estas prioridades influenciarán el comportamiento de APT: para cada paquete, siempre seleccionará la versión con la prioridad más alta (excepto si esta versión es anterior a la instalada y si su prioridad es menor a 1000).
+			</para>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>anclaje («<foreignphrase>pinning</foreignphrase>»)</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pinning en APT</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>paquete</primary>
+				<secondary>prioridad</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>prioridad</primary>
+				<secondary>de un paquete</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>preferencias</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>preferences</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/apt/preferences</filename></primary>
+			</indexterm>
+			 <para>
+				APT define varias prioridades predeterminadas. Cada versión instalada de un paquete tiene una prioridad de 100. Una versión no instalada tiene una prioridad predeterminada de 500, pero puede saltar a 990 si es parte de la distribución destino (definida con la opción de línea de órdenes <literal>-t</literal> o la directiva de configuración <literal>APT::Default-Release</literal>).
+			</para>
+			 <para>
+				Puede modificar las prioridades agregando elementos en el archivo <filename>/etc/apt/preferences</filename> con los nombres de los paquetes afectados, sus versiones, sus orígenes y sus nuevas prioridades.
+			</para>
+			 <para>
+				APT nunca instalará una versión anterior de un paquete (esto es, un paquete cuyo número de versión sea menor al que está instalado actualmente) excepto si su prioridad es mayor a 1000. APT siempre instalará el paquete con la mayor prioridad que cumpla esta restricción. Si dos paquetes tienen la misma prioridad, APT instalará la más reciente (aquella cuya versión sea mayor). Si dos paquetes de la misma versión tienen la misma prioridad pero tienen diferente contenido, APT instalará la versión que no está instalada (se creó esta regla para cubrir los casos de la actualización de un paquete sin aumentar el número de revisión, que es generalmente necesario).
+			</para>
+			 <para>
+				En términos más concretos, un paquete con prioridad menor a 0 nunca será instalado. Un paquete con una prioridad entre 0 y 100 sólo será instalado si no hay otra versión ya instalada del paquete. Con una prioridad entre 100 y 500, el paquete sólo será instalado si no hay otra versión más reciente instalada o disponible en otra distribución. Un paquete con prioridad entre 501 y 990 será instalado sólo si no hay una versión más nueva instalada o disponible en la distribución de destino. Con una prioridad entre 990 y 1000, el paquete será instalado a menos que la versión instalada sea mayor. Una prioridad mayor a 1000 siempre llevará a la instalación del paquete aún si ésto significa que APT instalará una versión anterior.
+			</para>
+			 <para>
+				Cuando APT revisa <filename>/etc/apt/preferences</filename> primero tiene en cuenta las entradas más específicas (generalmente aquellas que especifiquen el paquete en cuestión), luego las más genéricas (incluyendo, por ejemplo, todos los paquetes de una distribución). Si existen varias entradas genéricas, utiliza la primera coincidencia. El criterio de selección disponible incluye el nombre del paquete y el origen que lo provee. Se identifica cada origen de paquetes por la información contenida en un archivo <filename>Release</filename> y que APT descarga junto con los archivos <filename>Packages</filename>. Especifica el origen (generalmente «Debian» para paquetes de las réplicas oficiales, pero también puede ser el nombre de una persona u organización para repositorios de terceros). También provee el nombre de la distribución (generalmente <emphasis role="distribution">Stable</emphasis>, <emphasis role="distribution">Testing</emphasis>, <emphasis role="distribution">Unstable</emphasis> o <emphasis role="distribution">Experimental</emphasis> para las distribuciones estándar que provee Debian) junto con su versión (por ejemplo, 8 para Debian <emphasis role="distribution">Jessie</emphasis>). Revisemos su sintaxis a través de casos de estudio de este mecanismo más realistas.
+			</para>
+			 <sidebar> <title><emphasis>CASO ESPECÍFICO</emphasis> La prioridad de <emphasis role="distribution">Experimental</emphasis></title>
+			 <indexterm>
+				<primary><emphasis role="distribution">Experimental</emphasis></primary>
+			</indexterm>
+			 <para>
+				Si agregó <emphasis role="distribution">Experimental</emphasis> en su archivo <filename>sources.list</filename>, los paquetes correspondientes casi nunca serán instalados porque su prioridad APT predeterminada es 1. Este es, por supuesto, un caso específico diseñado para evitar que los usuarios instalen paquetes de <emphasis role="distribution">Experimental</emphasis> por error. Los paquetes sólo pueden instalarse ejecutando <command>aptitude install <replaceable>paquete</replaceable>/experimental</command> — solo los usuarios que ingresen esta orden saben los riesgos que están tomando. Es posible (aunque <emphasis>no</emphasis> recomendable) tratar los paquetes de <emphasis role="distribution">Experimental</emphasis> como aquellos de otra distribución otorgándoles una prioridad de 500. Esto se logra con una entrada específica en <filename>/etc/apt/preferences</filename>:
+			</para>
+			 <informalexample> 
+<programlisting>Package: *
+Pin: release a=experimental
+Pin-Priority: 500</programlisting>
+			 </informalexample> </sidebar> <para>
+				Supongamos que sólo desea utilizar paquetes de la versión estable de Debian. Aquellos provistos en otras versiones no serían instalados a menos que sean pedidos explícitamente. Puede escribir las siguientes entradas en el archivo <filename>/etc/apt/preferences</filename>:
+			</para>
+			 <informalexample> 
+<programlisting>Package: *
+Pin: release a=stable
+Pin-Priority: 900
+
+Package: *
+Pin: release o=Debian
+Pin-Priority: -10</programlisting>
+			 </informalexample> <para>
+				<literal>a=stable</literal> define el nombre de la distribución elegida. <literal>o=Debian</literal> limita el alcance a los paquetes cuyo origen es «Debian».
+			</para>
+			 <para>
+				Asumamos ahora que tiene un servidor con varios programas locales que dependen de la versión 5.14 de Perl y que desea asegurarse que las actualizaciones no instalarán otra versión del mismo. Puede utilizar la siguiente entrada:
+			</para>
+			 <informalexample> 
+<programlisting>Package: perl
+Pin: version 5.14*
+Pin-Priority: 1001</programlisting>
+			 </informalexample> <para>
+				La documentación de referencia para este archivo de configuración está disponible en la página de manual <citerefentry><refentrytitle>apt_preferences</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry> que puede ver con <command>man apt_preferences</command>.
+			</para>
+			 <sidebar> <title><emphasis>SUGERENCIA</emphasis> Comentarios en <filename>/etc/apt/preferences</filename></title>
+			 <indexterm>
+				<primary><literal>Explanation</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Pin</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Pin-Priority</literal></primary>
+			</indexterm>
+			 <para>
+				No existe una sintaxis oficial para agregar comentarions en el archivo <filename>/etc/apt/preferences</filename>, pero se pueden proveer algunas descripciones textuales agregando uno o más campos «<literal>Explanation</literal>» al principio de cada entrada:
+			</para>
+			 <informalexample> 
+<programlisting>Explanation: El paquete xserver-xorg-video-intel provisto
+Explanation: en experimental puede usarse de forma segura
+Package: xserver-xorg-video-intel
+Pin: release a=experimental
+Pin-Priority: 500</programlisting>
+			 </informalexample> </sidebar>
+		</section>
+		 <section id="sect.apt-mix-distros">
+			<title>Trabajo con varias distribuciones</title>
+			 <para>
+				Siendo la herramienta maravillosa que <command>apt</command> es, es tentador elegir paquetes de otras distribuciones. Por ejemplo, tras instalar un sistema <emphasis role="distribution">Stable</emphasis> podría desear probar paquetes de software disponibles en <emphasis role="distribution">Testing</emphasis> o <emphasis role="distribution">Unstable</emphasis> sin desviarse demasiado del estado inicial del sistema.
+			</para>
+			 <para>
+				Aún cuando ocasionamente encontrará problemas al mezclar paquetes de diferentes distribuciones <command>apt</command> gestionará muy bien su coexistencia y limitará los riesgos de manera muy efectiva. La mejor manera de proceder es listar todas las distribuciones utilizadas en <filename>/etc/apt/sources.list</filename> (algunas personas siempre agregan las tres distribuciones, pero recuerde que <emphasis role="distribution">Unstable</emphasis> está reservado para usuarios experimentados) y definir su distribución de referencia con el parámetro <literal>APT::Default-Release</literal> (revise la <xref linkend="sect.apt-upgrade" />).
+			</para>
+			 <para>
+				Supongamos que su distribución de referencia es <emphasis role="distribution">Stable</emphasis> pero que <emphasis role="distribution">Testing</emphasis> y <emphasis role="distribution">Unstable</emphasis> también aparecen listados en su archivo <filename>sources.list</filename>. En este caso, puede utilizar <command>apt install <replaceable>paquete</replaceable>/testing</command> para instalar un paquete de <emphasis role="distribution">Testing</emphasis>. Si la instalación falla debido a alguna dependencia insatisfecha, permítale resolver esas dependencias dentro de <emphasis role="distribution">Testing</emphasis> agregando el parámetro <literal>-t testing</literal>. Obviamente, lo mismo aplica a <emphasis role="distribution">Unstable</emphasis>.
+			</para>
+			 <para>
+				En esta situación, las actualizaciones (<command>upgrade</command> y <command>full-upgrade</command>) se realizan dentro de <emphasis role="distribution">Stable</emphasis> a excepción de los paquetes que ya fueron actualizados a otra distribución: éstos seguirán las actualizaciones disponibles en las otras distribuciones. Explicaremos este comportamiento con la ayuda de las prioridades predeterminadas de APT a continuación. No dude en utilizar <command>apt-cache policy</command> (revise el recuadro <xref linkend="sidebar.apt-cache-policy" />) para verificar las prioridades otorgadas.
+			</para>
+			 <para>
+				Todo gira alrededor del hecho de que APT considera sólo paquetes con una versión mayor o igual que la instalada (suponiendo que <filename>/etc/apt/preferences</filename> no ha sido usado para forzar prioridades superiores a 1000 para algunos paquetes).
+			</para>
+			 <sidebar id="sidebar.apt-cache-policy"> <title><emphasis>SUGERENCIA</emphasis> <command>apt-cache policy</command></title>
+			 <para>
+				Para obtener un mejor entendimiento del mecanismo de prioridades, no dude en ejecutar <command>apt-cache policy</command> para mostrar la prioridad predeterminada asociada a cada origen de paquetes. También puede utilizar <command>apt-cache policy <replaceable>paquete</replaceable></command> para mostrar las prioridades de todas las versiones disponibles de un paquete dado.
+			</para>
+			 </sidebar> <para>
+				Asumamos que instaló la versión 1 de un primer paquete de <emphasis role="distribution">Stable</emphasis> y que las versiones 2 y 3 están disponibles en <emphasis role="distribution">Testing</emphasis> y <emphasis role="distribution">Unstable</emphasis> respectivamente. La versión instalada tiene una prioridad de 100, pero la versión disponible en <emphasis role="distribution">Stable</emphasis> (la misma versión) tiene una prioridad de 990 (porque es parte de la versión de destino). Los paquetes en <emphasis role="distribution">Testing</emphasis> y <emphasis role="distribution">Unstable</emphasis> tienen una prioridad de 500 (la prioridad predeterminada para una versión no instalada). El ganador es, por lo tanto, la versión 1 con una prioridad de 990. El paquete «se mantiene en <emphasis role="distribution">Stable</emphasis>».
+			</para>
+			 <para>
+				Tomemos como ejemplo otro paquete cuya versión 2 fue instalada de <emphasis role="distribution">Testing</emphasis>. La versión 1 está disponible en <emphasis role="distribution">Stable</emphasis> y la versión 3 en <emphasis role="distribution">Unstable</emphasis>. La versión 1 (de prioridad 990 — por lo tanto menor a 1000) es descartada porque es menor que la versión instalada. Esto deja sólo las versiones 2 y 3, ambas de prioridad 500. Frente a esta alternativa, APT selecciona la versión más nueva: la de <emphasis role="distribution">Unstable</emphasis>. Si no desea que un paquete de <emphasis role="distribution">Testing</emphasis> actualice su versión a la de <emphasis role="distribution">Unstable</emphasis>, debe asignar una prioridad menor a 500 (490 por ejemplo) a los paquetes que provengan de <emphasis role="distribution">Unstable</emphasis>. Puede modificar <filename>/etc/apt/preferences</filename> de la siguiente forma:
+			</para>
+			 
+<programlisting>Package: *
+Pin: release a=unstable
+Pin-Priority: 490</programlisting>
+
+		</section>
+		 <section id="sect.automatic-tracking">
+			<title>Seguimiento de paquetes instalados automáticamente</title>
+			 <para>
+				Una de las funcionalidades esenciales de <command>apt</command> es el rastreo de aquellos paquetes instalados únicamente debido a dependencias. Estos paquetes son llamados «automáticos», y generalmente incluyen bibliotecas.
+			</para>
+			 <para>
+				Con esta información, cuado se eliminan paquetes, los gestores de paquetes pueden calcular una lista de paquetes automáticos que ya no son necesarios (porque no hay paquetes «instalados manualmente» que dependan de ellos). El comando <command>apt-get autoremove</command> se encargará de dichos paquetes. <command>aptitude</command> y <command>apt</command> no poseen esta orden: el primero porque los elimina automáticamente tan pronto como los identifica y, el último probablemente porque el usuario no debería tener que ejecuar dicho comando. En todo caso, las herramientas muestran un claro mensaje que enumera los paquetes afectados.
+			</para>
+			 <indexterm>
+				<primary><command>apt-mark auto</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-mark manual</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude markauto</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude unmarkauto</command></primary>
+			</indexterm>
+			 <para>
+				Es buen hábito marcar como automático cualquier paquete que no necesite directamente para que sea eliminado automáticamente cuando ya no sea necesario. <command>apt-mark auto <replaceable>paquete</replaceable></command> marcará el paquete dado como automático mientras que <command>apt-mark manual <replaceable>paquete</replaceable></command> realiza lo opuesto. <command>aptitude markauto</command> y <command>aptitude unmarkauto</command> funcionan de la misma forma, pero ofrecen más funcionalidad para marcar varios paquetes simultáneamente (revise la <xref linkend="sect.aptitude" />). La interfaz interactiva para la consola de <command>aptitude</command> también facilita el revisar la «marca automática» en muchos paquetes.
+			</para>
+			 <indexterm>
+				<primary><command>aptitude why</command></primary>
+			</indexterm>
+			 <para>
+				Algunas personas podrían desear saber porqué un paquete instalado automáticamente está presente en el sistema. Para obtener esta información desde la línea de comandos puede utilizar <command>aptitude why <replaceable>paquete</replaceable></command> (<command>apt</command> y <command>apt-get</command> no poseen una funcionalidad similar):
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>aptitude why python-debian
+</userinput><computeroutput>i   aptitude         Recommends apt-xapian-index         
+i A apt-xapian-index Depends    python-debian (&gt;= 0.1.15)
+</computeroutput></screen>
+			 <sidebar> <title><emphasis>ALTERNATIVA</emphasis> <command>deborphan</command> y <command>debfoster</command></title>
+			 <indexterm>
+				<primary><command>deborphan</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>debfoster</command></primary>
+			</indexterm>
+			 <para>
+				Cuando <command>apt</command>, <command>apt-get</command> y <command>aptitude</command> no poseían un seguimiento automático de paquetes, existían dos herramientas que generaban listas de paquetes innecesarios: <command>deborphan</command> y <command>debfoster</command>.
+			</para>
+			 <para>
+				<command>deborphan</command> es la más rudimentaria de ambas. Simplemente escanea las secciones <literal>libs</literal> y <literal>oldlibs</literal> (siempre que no se le indique otra cosa) buscando los paquetes instalados actualmente de los que no depende ningún otro paquete. La lista resultante puede servir luego como una base para eliminar paquetes innecesarios.
+			</para>
+			 <para>
+				<command>debfoster</command> tiene un enfoque más elaborado, muy similar al de APT: mantiene una lista de paquetes que fueron instalados explícitamente y recuerda qué paquetes son realmente necesarios entre cada invocación. Si aparecen nuevos paquetes en el sistema que <command>debfoster</command> no reconoce como paquetes requeridos serán mostrados en pantalla junto a una lista de sus dependencias. El programa luego ofrece la opción de eliminar el paquete (posiblemente junto a los que dependen de él), marcarlo como requerido explícitamente o ignorarlo temporalmente.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.apt-cache">
+		<title>La orden <command>apt-cache</command></title>
+		 <indexterm>
+			<primary><command>apt-cache</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>búsqueda de paquetes</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>visualización de cabeceras</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>búsqueda de paquetes</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>paquete</primary>
+			<secondary>búsqueda</secondary>
+		</indexterm>
+		 <para>
+			La orden <command>apt-cache</command> puede mostrar gran parte de la información almacenada en la base de datos interna de APT. Esta información es una especie de caché, ya que se obtiene de las diferentes fuentes definidas en el archivo <filename>sources.list</filename>. Esto ocurre durante la operación <command>apt update</command>.
+		</para>
+		 <sidebar id="sidebar.cache"> <title><emphasis>VOCABULARIO</emphasis> Caché</title>
+		 <para>
+			Un caché es un sistema de almacenamiento temporal utilizado para acelerar el acceso frecuente a datos cuando el método de acceso usual es costoso (en cuanto a rendimiento). Este concepto puede aplicarse en numerosas situaciones y en diferentes escalas, desde el núcleo de microprocesadores hasta sistemas de almacenamiento de alta gama.
+		</para>
+		 <para>
+			En el caso de APT, los archivos de referencia <filename>Packages</filename> son los ubicados en las réplicas de Debian. Teniendo eso en cuenta, sería muy poco efectivo que cada búsqueda que queramos hacer en la base de datos por paquetes disponible sea a través de la red. Es por esto que APT almacena una copia de estos archivos (en <filename>/var/lib/apt/lists/</filename>) y las búsquedas se realizan dentro de éstos archivos locales. De forma similar, <filename>/var/cache/apt/archives/</filename> contiene el caché de paquetes ya descargados para evitar descargarlos nuevamente si necesita reinstalarlos luego de eliminarlos.
+		</para>
+		 </sidebar> <indexterm>
+			<primary><command>apt show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt search</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache search</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude search</command></primary>
+		</indexterm>
+		 <para>
+			La orden <command>apt-cache</command> puede realizar búsquedas de paquete basándose en palabras clave con <command>apt-cache search <replaceable>palabra_clave</replaceable></command>. También puede mostrar las cabeceras de las versiones disponibles de un paquete con <command>apt-cache show <replaceable>paquete</replaceable></command>. Esta orden provee la descripción de un paquete, sus dependencias, el nombre de su responsable, etc. Note que <command>apt search</command>, <command>apt show</command>, <command>aptitude search</command> y <command>aptitude show</command> funcionan de la misma manera.
+		</para>
+		 <sidebar> <title><emphasis>ALTERNATIVA</emphasis> <command>axi-cache</command></title>
+		 <indexterm>
+			<primary><command>axi-cache</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">apt-xapian-index</emphasis></primary>
+		</indexterm>
+		 <para>
+			<command>apt-cache search</command> es una herramienta muy rudimentaria, básicamente implementa <command>grep</command> sobre la descripción de los paquetes. Generalmente devuelve demasiados resultados o ninguno en absoluto cuando incluye demasiadas palabras clave.
+		</para>
+		 <para>
+			<command>axi-cache search <replaceable>término</replaceable></command>, por el otro lado, provee mejores resultados, ordenados según su relevancia. Utiliza el motor de búsqueda <emphasis>Xapian</emphasis> y es parte del paquete <emphasis role="pkg">apt-xapian-index</emphasis> que indexa toda la información de los paquetes (y más, como los archivos <filename>.desktop</filename> de todos los paquetes Debian). Está al tanto de las etiquetas (revise el recuadro <xref linkend="sidebar.debtags" />) y devuelve resultados en cuestión de milisegundos.
+		</para>
+		 
+<screen>$ <userinput>axi-cache search package use::searching</userinput>
+105 results found.
+Results 1-20:
+100% packagesearch - GUI for searching packages and viewing package information
+98% debtags - Enables support for package tags
+94% debian-goodies - Small toolbox-style utilities 
+93% dpkg-awk - Gawk script to parse /var/lib/dpkg/{status,available} and Packages
+93% goplay - games (and more) package browser using DebTags
+[...]
+87% apt-xapian-index - maintenance and search tools for a Xapian index of Debian packages
+[...]
+More terms: search debian searching strigi debtags bsearch libbsearch
+More tags: suite::debian works-with::software:package role::program interface::commandline implemented-in::c++ admin::package-management use::analysing
+`axi-cache more' will give more results
+</screen>
+		 </sidebar> <indexterm>
+			<primary><command>apt-cache policy</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache dumpavail</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache pkgnames</command></primary>
+		</indexterm>
+		 <para>
+			Algunas funcionalidades son menos utilizadas. Por ejemplo, <command>apt-cache policy</command> muestra las prioridades de los orígenes de paquete así como también las prioridades de paquetes individuales. Otro ejemplo es <command>apt-cache dumpavail</command> que muestra las cabeceras de todas las versiones disponibles de todos los paquetes. <command>apt-cache pkgnames</command> muestra una lista con todos los paquetes que aparecen al menos una vez en el caché.
+		</para>
+
+	</section>
+	 <section id="sect.apt-frontends">
+		<title>Interfaces: <command>aptitude</command>, <command>synaptic</command></title>
+		 <indexterm>
+			<primary><command>aptitude</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>synaptic</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>interfaces</secondary>
+		</indexterm>
+		 <para>
+			APT es un programa en C++ cuyo código está principalmente en la biblioteca compartida <command>libapt-pkg</command>. Utilizar una biblioteca compartida facilita la creación de interfaces de usuario ya que se puede reutilizar fácilmente el código que contiene la biblioteca. Históricamente <command>apt-get</command> fue sólo diseñado como una interfaz de pruebas para <command>libapt-pkg</command>, pero su éxito tiende a esconder este hecho.
+		</para>
+		 <section id="sect.aptitude">
+			<title><command>aptitude</command></title>
+			 <para>
+				<command>aptitude</command> es un programa interactivo que puede utilizar en un modo semigráfico en una consola. Puede navegar la lista de paquetes instalados y disponibles, buscar toda la información disponible y seleccionar paquetes a instalar o eliminar. El programa está diseñado específicamente para que lo utilicen administradores, por lo que sus comportamientos predeterminados son mucho más inteligentes que los de <command>apt-get</command> y su interfaz es mucho más sencilla de entender.
+			</para>
+			 <figure>
+				<title>El gestor de paquetes <command>aptitude</command></title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/aptitude.png" format="PNG" scalefit="1" width="75%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Al iniciar, <command>aptitude</command> muestra una lista de todos los paquetes ordenados por estado (instalado, no instalado o instalado pero no disponible en las réplicas — otras secciones muestran tareas, paquetes virtuales y paquetes nuevos que aparecieron recientemente en las réplicas). Hay otras vistas disponibles para facilitar la navegación temática. En todos los casos, <command>aptitude</command> muestra en la pantalla una lista que combina las categorías y los paquetes. Las categorías están organizadas a través de una estructura de árbol cuyas ramas puede ser desdobladas o cerradas con las teclas <keycombo><keycap>Enter</keycap></keycombo>, <keycombo><keycap>[</keycap></keycombo> y <keycombo><keycap>]</keycap></keycombo>. Puede utilizar <keycombo><keycap>+</keycap></keycombo> para marcar un paquete para instalación, <keycombo><keycap>-</keycap></keycombo> para marcarlo para eliminación y <keycombo><keycap>_</keycap></keycombo> para purgarlo (note que también puede utiliziar estas teclas para categorías, en cuyo caso la acción correspondiente será aplicada a todos los paquetes en dicha categoría). <keycombo><keycap>u</keycap></keycombo> actualiza la lista de paquetes disponibles y <keycombo action="simul"><keycap>Shift</keycap><keycap>u</keycap></keycombo> prepara una actualización global al sistema. <keycombo><keycap>g</keycap></keycombo> cambia la vista a un resumen de los cambios solicitados (y presione <keycombo><keycap>g</keycap></keycombo> nuevamente hará efectivos los cambios), y <keycombo><keycap>q</keycap></keycombo> sale de la vista actual. Si está en la vista inicial, esto cerrará definitivamente <command>aptitude</command>.
+			</para>
+			 <sidebar> <title><emphasis>DOCUMENTACIÓN</emphasis> <command>aptitude</command></title>
+			 <para>
+				Esta sección no cubre los detalles más específicos de utilizar <command>aptitude</command>, en general se dedica a darle un equipo de supervivencia para usarlo. <command>aptitude</command> está bastante bien documentado y recomendamos que utilice su manual completo disponible en el paquete <emphasis role="pkg">aptitude-doc-en</emphasis> (<filename>/usr/share/doc/aptitude/html/en/index.html</filename>).
+			</para>
+			 </sidebar> <para>
+				Para buscar un paquete puede ingresar <keycombo><keycap>/</keycap></keycombo> seguido de un patrón de búsqueda. Este patrón buscará en los nombres de los paquetes pero también puede buscar en la descripción (si está precedido por <literal>~d</literal>), la sección (con <literal>~s</literal>) o a otras características que están detalladas en la documentación. Los mismos patrones pueden utilizarse para filtrar la lista de paquetes mostrados: presione la tecla <keycombo><keycap>l</keycap></keycombo> (como en <foreignphrase>limitar</foreignphrase>) e ingrese el patrón.
+			</para>
+			 <para>
+				Administrar la «marca automática» de los paquetes Debian (revise la <xref linkend="sect.automatic-tracking" />) es muy sencillo con <command>aptitude</command>. Es posible navegar la lista de paquetes instalados y marcar paquetes como automáticos con <keycombo action="simul"><keycap>Shift</keycap> <keycap>m</keycap></keycombo> o eliminar la marca con la tecla <keycombo><keycap>m</keycap></keycombo>. Los «paquetes automáticos» se muestran con una «A» en la lista de paquetes. Esta funcionalidad también ofrece una forma simple de visualizar los paquetes utilizados en un equipo, sin las bibliotecas y dependencias que no le interesan. El patrón relacionado que puede utilizar con <keycombo><keycap>l</keycap></keycombo> (para activar el modo de filtro) es <literal>~i!~M</literal>. Especifica que sólo desea ver paquetes instalados (<literal>~i</literal>) que no están marcados como automáticos (<literal>!~M</literal>).
+			</para>
+			 <sidebar> <title><emphasis>HERRAMIENTA</emphasis> Utilizando <command>aptitude</command> en la línea de órdenes</title>
+			 <para>
+				La mayoría de la funcionalidad de <command>aptitude</command> está disponible tanto a través de la interfaz interactiva como de la línea de órdenes. Esta última le resultará familiar a los usuarios asiduos de <command>apt-get</command> y <command>apt-cache</command>.
+			</para>
+			 <para>
+				Las características avanzadas de <command>aptitude</command> también están disponibles en la línea de órdenes.Puede utilizar los mismos patrones de búsqueda de paquetes que en la versión interactiva. Por ejemplo, si limpiar la lista de paquetes «instalados manualmente» y sabe que ninguno de los paquetes instalados localmente necesitan una biblioteca o módulo Perl particular puede marcar los paquetes correspondientes como automáticos con una sola orden:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>aptitude markauto '~slibs|~sperl'</userinput></screen>
+			 <para>
+				Aquí puede ver claramente el poder del sistema de patrones de búsqueda de <command>aptitude</command>, que permite la selección instantánea de todos los paquetes en las secciones <literal>libs</literal> y <literal>perl</literal>.
+			</para>
+			 <para>
+				Tenga cuidado que si algunos paquetes son marcados como automáticos y ningún otro paquete depende de ellos serán eliminados inmediatamente (luego de un pedido de confirmación).
+			</para>
+			 </sidebar> <section>
+				<title>Administración de recomendaciones, sugerencias y tareas</title>
+				 <para>
+					Otra funcionalidad interesante de <command>aptitude</command> es el hecho de que respeta las recomendaciones entre paquetes al mismo tiempo que provee al usuario la opción de no instalarlas caso por caso. Por ejemplo, el paquete <emphasis role="pkg">gnome</emphasis> recomienda <emphasis role="pkg">gdebi</emphasis> (entre otros). Cuando selecciona para instalar al primero, el último también será seleccionado (y marcado como automático si no estaba instalado en el sistema). Presionar <keycombo><keycap>g</keycap></keycombo> lo hará evidente: <emphasis role="pkg">gdebi</emphasis> aparecerá en la pantalla de resumen de acciones pendientes en la lista de paquetes instalados automáticamente para satisfacer dependencias. Sin embargo, puede decidir no instalarlo quitándolo de la selección de paquetes a instalar antes de confirmar las operaciones.
+				</para>
+				 <para>
+					Note que esta funcionalidad de seguimiento de recomendaciones no funciona con actualizaciones. Por ejemplo, si una nueva versión de <emphasis role="pkg">gnome</emphasis> recomienda un paquete que no estaba recomendado en la versión anterior, éste no será marcado para instalación. Sin embargo será mostrado en la pantalla de actualización para que el administrador pueda seleccionarlo para instalar.
+				</para>
+				 <para>
+					También se tienen en cuenta las sugerencias entre paquetes pero adaptadas a su estado específico. Por ejemplo, ya que <emphasis role="pkg">gnome</emphasis> sugiere <emphasis role="pkg">dia-gnome</emphasis>, este último será mostrado en la pantalla de resumen de acciones pendientes (en la sección de paquetes sugeridos por otros paquetes). De esta forma es visto por el administrador que puede decidir si tomar en cuenta la sugerencia o no. Debido a que es sólo una sugerencia y no una dependencia o recomendación, no se seleccionará automáticamente al paquete — eso requiere intervención manual del usuario (por lo que el paquete no será marcado como automático).
+				</para>
+				 <para>
+					En el mismo espíritu, recuerde que <command>aptitude</command> hace un uso inteligente del concepto de tarea. Como se muestran las tareas como categorías en las pantallas de listas de paquetes puede seleccionar para instalar o eliminar una tarea completa o navegar la lista de los paquetes incluidos en una tarea para seleccionar un subconjunto más pequeño.
+				</para>
+
+			</section>
+			 <section>
+				<title>Mejores algoritmos de resolución</title>
+				 <para>
+					Para concluir esta sección, resaltaremos que <command>aptitude</command> tiene algoritmos más elaborados para resolver situaciones difíciles comparado con <command>apt-get</command>. Cuando se requiere un conjunto de acciones y dicha combinación de acciones resultaría en un sistema incoherente, <command>aptitude</command> evalúa varios escenarios posibles y los presenta de más a menos relevante. Sin embargo, estos algoritmos no están exentos de fallos. Afortunadamente siempre existe la posibilidad de seleccionar manualmente las acciones a realizar. Cuando las acciones seleccionadas lleven a contradicciones, la parte superior de la pantalla mostrará la cantidad de paquetes «rotos» (puede ir directamente a dichos paquetes presionando <keycombo><keycap>b</keycap></keycombo>). Luego podrá construir manualmente una solución a los problemas encontrados. En particular, puede acceder a las diferentes versiones disponibles seleccionando el paquete con <keycombo><keycap>Enter</keycap></keycombo>. Si la selección de una de dichas versiones soluciona el problema, no debe dudar en utilizarla. Cuando reduzca el número de paquetes rotos a cero puede volver a la pantalla de resumen de acciones pendientes para una última revisión antes de aplicar los cambios.
+				</para>
+				 <sidebar> <title><emphasis>NOTA</emphasis> El registro de <command>aptitude</command></title>
+				 <para>
+					De forma similar a <command>dpkg</command>, <command>aptitude</command> mantiene una traza de las acciones ejecutadas en su archivo de registro (<filename>/var/log/aptitude</filename>). Sin embargo, debido a que los programas trabajan en niveles diferentes, no encontrará la misma información en sus archivos de registro. Mientras que <command>dpkg</command> registra todas las operaciones ejecutadas en paquetes individuales paso a paso, <command>aptitude</command> provee una visión más amplia de operaciones de alto nivel como una actualización de todo el sistema.
+				</para>
+				 <para>
+					Tenga en cuenta que este archivo de registro sólo contiene un resumen de las operaciones realizadas por <command>aptitude</command>. Si se utilizan ocasionalmente otras interfaces (o aún <command>dpkg</command> mismo), entonces el registro de <command>aptitude</command> sólo tendrá una vista parcial de las operaciones; por lo que no puede confiar en él para construir una historia confiable del sistema.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section>
+			<title><command>synaptic</command></title>
+			 <para>
+				<command>synapyic</command> es un gestor gráfico de paquetes para Debian que tiene una interfaz gráfica limpia y eficiente basada en GTK+/GNOME. Sus muchos filtros listos para utilizar proveen un acceso rápido a nuevos paquetes disponibles, paquetes instalados, paquetes para actualizar, paquetes obsoletos y más. Si navega por estas listas puede seleccionar las operaciones a realizar en los paquetes (instalar, actualizar, eliminar, purgar); no se realizan inmediatamente estas operaciones sino que se las agrega a una lista de tareas. Un botón luego valida las operaciones y las ejecuta en conjunto.
+			</para>
+			 <figure>
+				<title>gestor de paquetes <command>synaptic</command></title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/synaptic.png" format="PNG" scalefit="1" width="75%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+
+	</section>
+	 <section id="sect.package-authentication">
+		<title>Comprobación de la autenticidad de un paquete</title>
+		 <indexterm>
+			<primary>paquete</primary>
+			<secondary>comprobación de autenticidad</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>paquete</primary>
+			<secondary>sello</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>paquete</primary>
+			<secondary>firma</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>firma</primary>
+			<secondary>de un paquete</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>autenticación</primary>
+			<secondary>de un paquete</secondary>
+		</indexterm>
+		 <para>
+			La seguridad es muy importante para los administradores de Falcot Corp. Por consiguiente, necesitan asegurar que sólo instalen paquetes con garantía de que provienen de Debian sin modificaciones en el camino. Un «cracker» podría intentar agregar código malicioso en un paquete que de otra forma sería legítimo. Si se instala tal paquete, éste podría hacer cualquier cosa para la que dicho «cracker» lo diseño, inclusive revelar contraseñas o información confidencial por ejemplo. Para evitar este riesgo, Debian provee un sello contra modificaciones para garantizar — al momento de instalación — que el paquete realmente proviene de su encargado oficial y no fue modificado por un tercero.
+		</para>
+		 <para>
+			El sello funciona con una firma y una cadena de «hashes» criptográficos. El archivo <filename>Release</filename>, provisto por las réplicas Debian, es el firmado. Contiene una lista de los archivos <filename>Packages</filename> (incluyendo sus formas comprimidas, <filename>Packages.gz</filename> y <filename>Packages.xz</filename>, así como las versiones incrementales), junto con sus «hashes» MD5, SHA1 y SHA256 lo que asegura que los archivos no fueron modificados. Estos archivos <filename>Packages</filename> contienen una lista de los paquetes Debian disponibles en la réplica junto con sus hashes lo que asegura, a su vez, que el contenido de los paquetes mismos tampoco fue modificado.
+		</para>
+		 <indexterm>
+			<primary><command>apt-key</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">debian-archive-keyring</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/apt/trusted.gpg.d/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>Release.gpg</filename></primary>
+		</indexterm>
+		 <para>
+			Las llaves confiables son administradas con el programa <command>apt-key</command> que se encuentra en el paquete <emphasis role="pkg">apt</emphasis>. Este programa mantiene un conjunto de llaves públicas GnuPG que son utilizadas para verificar las firmas disponibles en los archivos <filename>Release.gpg</filename> disponibles en las réplicas. Puede utilizarse para agregar nuevas llaves de forma manual (cuando se necesitan réplicas no oficiales). Generalmente sin embargo, sólo necesitará las llaves oficiales de Debian. Estas llaves se mantienen actualizadas de forma automática por el paquete <emphasis role="pkg">debian-archive-keyring</emphasis> (que crea los conjuntos de llaves correspondientes en <filename>/etc/apt/trusted.gpg.d</filename>). Sin embargo, la primera instalación de este paquete requiere cierto cuidado: aún si el paquete está firmado como cualquier otro, no se puede verificar dicha firma. Los administradores cautelosos deberían, por lo tanto, verificar las huellas de las llaves importadas antes de confiar en ellas para instalar nuevos paquetes:
+		</para>
+		 
+<screen role="scale"># <userinput>apt-key fingerprint</userinput>
+/etc/apt/trusted.gpg.d/debian-archive-jessie-automatic.gpg
+----------------------------------------------------------
+pub   4096R/2B90D010 2014-11-21 [expires: 2022-11-19]
+      Key fingerprint = 126C 0D24 BD8A 2942 CC7D  F8AC 7638 D044 2B90 D010
+uid                  Debian Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-security-automatic.gpg
+-------------------------------------------------------------------
+pub   4096R/C857C906 2014-11-21 [expires: 2022-11-19]
+      Key fingerprint = D211 6914 1CEC D440 F2EB  8DDA 9D6D 8F6B C857 C906
+uid                  Debian Security Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-stable.gpg
+-------------------------------------------------------
+pub   4096R/518E17E1 2013-08-17 [expires: 2021-08-15]
+      Key fingerprint = 75DD C3C4 A499 F1A1 8CB5  F3C8 CBF8 D6FD 518E 17E1
+uid                  Jessie Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-squeeze-automatic.gpg
+-----------------------------------------------------------
+pub   4096R/473041FA 2010-08-27 [expires: 2018-03-05]
+      Key fingerprint = 9FED 2BCB DCD2 9CDF 7626  78CB AED4 B06F 4730 41FA
+uid                  Debian Archive Automatic Signing Key (6.0/squeeze) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-squeeze-stable.gpg
+--------------------------------------------------------
+pub   4096R/B98321F9 2010-08-07 [expires: 2017-08-05]
+      Key fingerprint = 0E4E DE2C 7F3E 1FC0 D033  800E 6448 1591 B983 21F9
+uid                  Squeeze Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-automatic.gpg
+----------------------------------------------------------
+pub   4096R/46925553 2012-04-27 [expires: 2020-04-25]
+      Key fingerprint = A1BD 8E9D 78F7 FE5C 3E65  D8AF 8B48 AD62 4692 5553
+uid                  Debian Archive Automatic Signing Key (7.0/wheezy) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-stable.gpg
+-------------------------------------------------------
+pub   4096R/65FFB764 2012-05-08 [expires: 2019-05-07]
+      Key fingerprint = ED6D 6527 1AAC F0FF 15D1  2303 6FB2 A1C2 65FF B764
+uid                  Wheezy Stable Release Key &lt;debian-release@lists.debian.org&gt;</screen>
+		 <sidebar> <title><emphasis>EN LA PRÁCTICA</emphasis> Agregando llaves confiables</title>
+		 <indexterm>
+			<primary>llave confiable</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>llave</primary>
+			<secondary>de autenticación de APT</secondary>
+		</indexterm>
+		 <para>
+			Cuando se agrega una fuente de paquetes de terceros al archivo <filename>sources.list</filename>, se necesita informar a APT que confíe en las llaves de autenticación GPG correspondientes (de lo contrario continuará quejándose de que no puede asegurar la autenticidad de los paquetes que provengan de dicho repositorio). El primer paso es, obviamente, obtener la llave pública. La mayoría de las veces encontrará dicha llave en un pequeño archivo de texto, que llamaremos <filename>key.asc</filename> en los siguientes ejemplos.
+		</para>
+		 <para>
+			Para agregar la llave al conjunto confiable, el administrador puede ejecutar <command>apt-key add &lt; key.asc</command>. Otra forma es utilizar la interfaz gráfica <command>synaptic</command>: su pestaña «Autenticación» en el menú <menuchoice><guimenu>Configuración</guimenu> <guisubmenu>Repositorios</guisubmenu></menuchoice> provee la capacidad de importar una llave del archivo <filename>key.asc</filename>.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gui-apt-key</emphasis></primary>
+		</indexterm>
+		 <para>
+			Aquellos que prefieren una aplicación dedicada y más detalles sobre las llaves confiables pueden utilizar <command>gui-apt-key</command> (en el paquete con el mismo nombre), una pequeña interfaz gráfica para el usuario que administra el conjunto de llaves confiables.
+		</para>
+		 </sidebar> <para>
+			Una vez que las llaves apropiadas se ecuentran en el conjunto, APT revisará las firmas antes de cualquier operación riesgosa para que las interfaces muestren una advertencia cuando estén instalando un paquete sobre el que no se puede verificar autenticidad.
+		</para>
+
+	</section>
+	 <section id="sect.dist-upgrade">
+		<title>Actualización de una distribución estable a la siguiente</title>
+		 <para>
+			Una de las características más conocidas de Debian es su habilidad de actualizar un sistema instalado de una versión estable a la siguiente: «<foreignphrase>dist-upgrade</foreignphrase>» — una frase muy conocida — contribuyó en gran medida a la reputación del proyecto. Tomando unas pocas precauciones, actualizar un equipo puede tomar tan poco como unos cuantos minutos, o unas docenas de minutos, dependiendo de la velocidad de descarga de los repositorios de paquetes.
+		</para>
+		 <section>
+			<title>Procedimiento recomendado</title>
+			 <para>
+				Dado que Debian tiene bastante tiempo para evolucionar entre versiones estables debería leer las notas de publicación antes de actualizar.
+			</para>
+			 <sidebar> <title><emphasis>VOLVER A LOS CIMIENTOS</emphasis> Notas de publicación</title>
+			 <para>
+				Las notas de publicación para un sistema operativo (y, más generalmente, para cualquier software) son un documento que provee una vista general del software con algunos detalles sobre las particularidades de una versión. Estos documentos son generalmente cortos comparados con la documentación completa y frecuentemente listan las características introducidas desde la versión anterior. También proveen detalles sobre los procedimientos de actualización, advertencias para los usuarios de las versiones anteriores y, a veces, una errata.
+			</para>
+			 <para>
+				Las notas de publicación están disponibles online: las de la versión estable actual tienen una URL dedicada mientras que se pueden encontrar las anteriores según sus nombre clave: <ulink type="block" url="http://www.debian.org/releases/stable/releasenotes" /> <ulink type="block" url="http://www.debian.org/releases/wheeze/releasenotes" />
+			</para>
+			 </sidebar> <para>
+				En esta sección nos centraremos en actualizar un sistema <emphasis role="distribution">Wheezy</emphasis> a <emphasis role="distribution">Jeesie</emphasis>. Esta es una operación de gran envergadura en un sistema; Como tal, nunca está 100% libre de riesgos y no debería intentarse antes de tener copias de respaldo de todos los datos importantes.
+			</para>
+			 <para>
+				Otro buen hábito que haría la actualización más sencilla (y más corta) es ordenar sus paquetes instalados y sólo mantener aquellos que son realmente necesarios. Las herramientas útiles para realizarlo incluyen <command>aptitude</command>, <command>deborphan</command> y <command>debfoster</command> (revise la <xref linkend="sect.automatic-tracking" />). Por ejemplo, puede utilizar la siguiente orden y luego utilizar el modo interactivo de <command>aptitude</command> para revisar y retocar las eliminaciones programadas:
+			</para>
+			 
+<screen># <userinput>deborphan | xargs aptitude --schedule-only remove</userinput></screen>
+			 <para>
+				Ahora la actualización en sí. Primero necesita cambiar el archivo <filename>/etc/apt/sources.list</filename> para indicarle a APT que obtenga sus paquetes de <emphasis role="distribution">Jeesie</emphasis> en lugar de <emphasis role="distribution">Wheezy</emphasis>. Si el archivo sólo contiene referencias a <emphasis role="distribution">Stable</emphasis> en lugar de nombres código explícitos no necesita hacer este cambio ya que <emphasis role="distribution">Stable</emphasis> siempre hace referencia a la última versión de Debian publicada. En ambos casos, necesita actualizar la base de datos de paquetes disponibles (con <command>apt update</command> o el botón de actualización en <command>synaptic</command>).
+			</para>
+			 <para>
+				Una vez que se registraron las nuevas fuentes de paquetes, primero debe realizar una actualización mínima con <command>apt upgrade</command>. El realizar la actualización en dos pasos facilitará el trabajo de las herramientas de gestión de paquetes y generalmente asegurará que tendrá las últimas versiones de las mismas, que pueden haber acumulado correcciones de errores y mejoras necesarias para finalizar la actualización de la distribución completa.
+			</para>
+			 <para>
+				Una vez que se completa la pimera actualización, llega el momento de la actualización en sí. Ya sea con <command>apt full-upgrade</command>, <command>aptitude</command>&gt; o <command>synaptic</command>. Debería verificar cuidadosamente las acciones sugeridas antes de ejecutarlas: podría desear agregar paquetes sugeridos o deseleccionar paquetes que sólo son recomendados y sabe que no serán útiles. En cualquier caso, la interfaz debería proveer un escenario que termine con un sistema <emphasis role="distribution">Jeesie</emphasis> coherente y actualizado. Luego, todo lo que necesita hacer es esperar mientras se descargan los paquetes necesarios, responder las preguntas Debconf y posiblemente aquellas sobre archivos de configuración modificados localmente y sentarse a esperar mientras APT hace su magia.
+			</para>
+
+		</section>
+		 <section>
+			<title>Manejo de problemas tras una actualización</title>
+			 <para>
+				A pesar de los mejores esfuerzos de los encargados de Debian, una actualización general del sistema no es siempre tan fluida como uno desearía. Nuevas versiones de software podrían ser incompatibles con las anteriores (por ejemplo, podrían haber cambiado sus comportamientos predeterminados o sus formatos de datos). También, se pueden haber colado algunos errores a pesar de la fase de pruebas que precede a una publicación de Debian.
+			</para>
+			 <para>
+				Para anticiparse a algunos de estos problemas, puede instalar el paquete <emphasis role="pkg">apt-listchanges</emphasis> que muestra información acerca de posibles problemas al prinicipio de la actualización de un paquete. Los encargados de los paquetes recopilan esta información y la incorporan a los archivos <filename>/usr/share/doc/<replaceable>paquete</replaceable>/NEWS.Debian</filename> para el beneficio de los usuarios. Leer estos archivos (posiblemente a través de <emphasis role="pkg">apt-listchanges</emphasis>) debería ayudarle a evitar sorpresas desagradables.
+			</para>
+			 <para>
+				A veces podría encontrar que la nueva versión de un software no funciona en absoluto. Esto generalmente ocurre si la aplicación no es popular o no fue probada lo suficiente; una actualización de último momento también podría introducir regresiones que se encuentran sólo luego de la publicación estable. En ambos casos, lo primero a hacer es revisar el sistema de seguimiento de errores en <literal>http://bugs.debian.org/<replaceable>paquete</replaceable></literal> y verificar si el problema ya fue reportado. Si no lo fue, debería reportarlo con <command>reportbug</command>. Si ya es conocido, tanto el reporte de error como los mensajes asociados suelen ser exelentes fuentes de información sobre el problema:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						a veces existe un parche y está disponible en el reporte de error, puede recompilar localmente una versión corregida del paquete roto (revise la <xref linkend="sect.rebuilding-package" />);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						en otros casos, los usuarios podrían haber encontrado una forma de evitar el problema y compartido sus experiencias en sus respuestas al reporte;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						en otros casos más, puede que el encargado ya haya preparado y publicado un paquete corregido.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Dependiendo de la severidad del error, se podría llegar a preparar una nueva versión del paquete específicamente para una nueva revisión de la versión estable. Cuando esto sucede, el paquete corregido estará disponible en la sección <literal>proposed-updates</literal> de las réplicas de Debian (revise la <xref linkend="sect.proposed-updates" />). Puede agregar temporalmente la línea correspondiente al archivo <filename>sources.list</filename> e instalar los paquetes actualizados con <command>apt</command> o <command>aptitude</command>.
+			</para>
+			 <para>
+				A veces el paquete corregido no está disponible en esta sección porque está pendiente de validación por parte de los Gestores de versiones estables. Puede verificar si este es el caso en su página web. Los paquetes allí listados aún no están disponibles, pero al menos sabe que el proceso de publicación está en marcha. <ulink type="block" url="http://release.debian.org/proposed-updates/stable.html" />
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.regular-upgrades">
+		<title>Manutención de un sistema actualizado</title>
+		 <para>
+			La distribución Debian es dinámica y cambia continuamente. La mayoría de los cambios tienen lugar en las versiones <emphasis role="distribution">Testing</emphasis> y <emphasis role="distribution">Unstable</emphasis>, pero incluso <emphasis role="distribution">Stable</emphasis> es actualizada de vez en cuando, principalmente para correcciones relacionadas con la seguridad. Independientemente de la versión de Debian que ejecute en el sistema, generalmente es buena idea mantenerlo actualizado para poder beneficiarse de las evoluciones recientes y correcciones de errores.
+		</para>
+		 <para>
+			Si bien es posible ejecutar periódicamente una herramienta para verificar las actualizaciones disponibles y aplicarlas, una tarea tan repetitiva es tediosa, especialmente cuando debe realizarla en varias máquinas. Afortunadamente, como varias tareas repetitivas, puede ser automatizada parcialmente y ya se desarrollaron un conjunto de herramientas a tal efecto.
+		</para>
+		 <para>
+			La primera de estas herramientas es <command>apticron</command> en el paquete del mismo nombre. Su efecto principal es ejecutar diariamente un script (a través de <command>cron</command>). El script actualiza la lista de paquetes y, si algunos paquetes instalados no están en la última versión disponible, envía un email con una lista de estos paquetes junto con los cambios realizados en las nuevas versiones. Obviamente, este paquete está apuntado principalmente a usuarios de Debian <emphasis role="distribution">Stable</emphasis> ya que los emails diarios serían muy extensos para las versiones de Debian con más actualizaciones. Cuando haya actualizaciones disponibles, <command>apticron</command> las descargará automáticamente. No las instalará — el administrador lo hará — pero tener los paquetes ya descargados y disponibles localmente (en el caché de APT) hace más rápido el trabajo.
+		</para>
+		 <para>
+			Los administradores a cargo de varios equipos seguramente apreciarán ser informados de actualizaciones pendientes, pero las actualizaciones en sí aún son tan tediosas como solían serlo. Aquí es donde es útil el script <filename>/etc/cron.daily/apt</filename> (del paquete <emphasis role="pkg">apt</emphasis>). <command>cron</command> también ejecuta este script diariamente (sin interacción del usuario). Para controlar su comportamiento, utilice variables de configuración de APT (que son, por lo tanto, almacenadas bajo <filename>/etc/apt/apt.conf.d/</filename>). Las variables principales son:
+		</para>
+		 <variablelist>
+			<varlistentry>
+				<term><literal>APT::Periodic::Update-Package-Lists</literal></term>
+				 <listitem>
+					<para>
+						Esta opción le permite especificar la frecuencia (en días) con la que se actualizará las listas de paquetes. Los usuarios de <command>apticron</command> pueden hacerlo sin esta variable ya que <command>apticron</command> se encarga de esta tarea.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::Download-Upgradeable-Packages</literal></term>
+				 <listitem>
+					<para>
+						Nuevamente, esta opción indica la frecuencia (en días) pero para descargar los paquetes en sí en este caso. Otra vez, los usuarios de <command>apticron</command> no lo necesitarán.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::AutocleanInterval</literal></term>
+				 <listitem>
+					<para>
+						Esta opción cubre una funcionalidad que <command>apticron</command> no tiene. Controla cuán seguido se eliminan paquetes obsoletos (aquellos a los que ya ninguna distribución hace referencia) del caché de APT. Esto mantiene el caché de APT de un tamaño razonable y significa que no necesitará preocuparse por esa tarea.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::Unattended-Upgrade</literal></term>
+				 <listitem>
+					<indexterm><primary><emphasis role="pkg">unattended-upgrades</emphasis></primary></indexterm> <para>
+						Cuando esta opción está activa, el script diario ejecutará <command>unattended-upgrade</command> (del paquete <emphasis role="pkg">unattended-upgrades</emphasis>) que, como sugiere su nombre, puede automatizar al proceso de actualización para algunos paquetes (de forma predeterminada sólo realiza actualizaciones de seguridad, pero puede personalizarlo en <filename>/etc/apt/apt.conf.d/50unattended-upgrades</filename>). Tenga en cuenta que puede definir esta opción con la ayuda de debconf si ejecuta <command>dpkg-reconfigure -plow unattended-upgrades</command>.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+
+		</variablelist>
+		 <para>
+			Otras opciones le permiten controlar el comportamiento de la limpieza del caché con más precisión. No están listadas aquí pero son descriptas en el script <filename>/etc/cron.daily/apt</filename>.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gnome-packagekit</emphasis></primary>
+		</indexterm>
+		 <para>
+			Estas herramientas funcionan muy bien para servidores, pero los usuarios de máquinas de escritorio generalmente prefieren un sistema más interactivo.Por ese motvo la tarea «Entorno gráfico de escritorio Debian» instala <emphasis role="pkg">gnome-packagekit</emphasis> (al menos, cuando selecciona GNOME como entorno de escritorio). Ésta muestra un ícono en el área de notificación de los entornos de escritorio cuando hay actualizaciones disponibles; pulsar este ícono ejecuta <command>gpk-update-viewer</command>, una interfaz simplificada para realizar actualizaciones. Puede navegar a través de las actualizaciones disponibles, leer la descripción de los paquetes relevantes y sus archivos <filename>changelog</filename> y seleccionar si aplicar la actualización o no caso por caso.
+		</para>
+		 <figure>
+			<title>Actualización con <command>gpk-update-viewer</command></title>
+			 <mediaobject>
+				<imageobject>
+					<imagedata fileref="images/gnome-packagekit.png" format="PNG" scalefit="1" width="70%" />
+				</imageobject>
+
+			</mediaobject>
+
+		</figure>
+
+	</section>
+	 <section id="sect.automatic-upgrades">
+		<title>Actualizaciones automáticas</title>
+		 <indexterm>
+			<primary>actualización</primary>
+			<secondary>automática del sistema</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>automática, actualización</primary>
+		</indexterm>
+		 <para>
+			Dado que Falcot Corp tiene muchas máquinas pero personal limitado, sus administradores intentan hacer las actualizaciones tan automáticas como sea posible. Los programas a cargo de esos procesos deben, por lo tanto, ejecutar sin intervención humana.
+		</para>
+		 <section>
+			<title>Configuración de <command>dpkg</command></title>
+			 <para>
+				Como ya mencionamos (revise el recuadro <xref linkend="sidebar.questions-conffiles" />), se le puede indicar a <command>dpkg</command> que no pida confirmación al reemplazar un archivo de configuración (con las opciones <literal>--force-confdef --force-confold</literal>). Sin embargo, las interacciones pueden tener otros tres orígenes: algunas provienen de APT mismo, algunas son gestionadas por <command>debconf</command> y otras ocurren en la línea de órdenes debido a scripts de configuración de paquetes.
+			</para>
+
+		</section>
+		 <section>
+			<title>Configuración de APT</title>
+			 <para>
+				En el caso de APT es simple: la opción <literal>-y</literal> (o <literal>--asume-yes</literal>) le indica a APT que considere que la respuesta a todas las preguntas será afirmativa («yes»).
+			</para>
+
+		</section>
+		 <section>
+			<title>Configuración de <command>debconf</command></title>
+			 <para>
+				El caso de <command>debconf</command> merece más detalles. El programa fue diseñado, desde su concepción, para controlar la relevancia y volúmen de las preguntas mostradas al usuario así como también la forma en la que se mostrarán. Es por esto que su configuración requiere una prioridad mínima para las preguntas; sólo se mostrarán las preguntas sobre la prioridad mínima. <command>debconf</command> asume la respuesta predeterminada (definida por el encargado del paquete) para las preguntas que decidió evitar.
+			</para>
+			 <para>
+				Los otros elementos de configuración relevantes es la interfaz utilizada. Si selecciona la opción <literal>noninteractive</literal>, se desactivará toda interacción con el usuario. Si un paquete intenta mostrar una nota informativa, ésta será enviada al administrador por email.
+			</para>
+			 <para>
+				Para reconfigurar <command>debconf</command> utilice <command>dpkg-reconfigure</command> del paquete <emphasis role="pkg">debconf</emphasis>; la orden necesaria es <command>dpkg-reconfigure debconf</command>. Es importante saber que, si es necesario, los valores configurados pueden sobreescribirse temporalmente con variables de entorno (por ejemplo <varname>DEBIAN_FRONTEND</varname> controla la interfaz, como está documentado en la página de manual <citerefentry><refentrytitle>debconf</refentrytitle>
+				<manvolnum>7</manvolnum></citerefentry>).
+			</para>
+
+		</section>
+		 <section>
+			<title>Manejo de interacciones de línea de órdenes</title>
+			 <para>
+				La última fuente de interacciones, y la más difícil de la que deshacerse, son los scripts de configuración ejecutados por <command>dpkg</command>. Desafortunadamente no hay solución estándar y ninguna respuesta es mucho mejor que la otra.
+			</para>
+			 <para>
+				El enfoque común es eliminar la entrada estándar redireccionando hacia ella el contenido vacío de <filename>/dev/null</filename> con <command><replaceable>programa</replaceable> &lt;/dev/null</command> o proveerle un flujo interminable de caracteres de nueva línea. Ninguno de estos métodos es 100% fiable, pero generalmente provocan que se utilicen las respuestas predeterminadas, ya que la mayoría de los scripts consideran una falta de respuesta como aceptación del valor predeterminado.
+			</para>
+
+		</section>
+		 <section>
+			<title>La combinación milagrosa</title>
+			 <para>
+				Combinando los elementos anteriores es posible diseñar un script pequeño pero confiable que pueda realizar actualizaciones automáticas.
+			</para>
+			 <example id="example.non-interactive-upgrade">
+				<title>Script de actualización no-interactivo</title>
+				 
+<programlisting>export DEBIAN_FRONTEND=noninteractive
+yes '' | apt-get -y -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" dist-upgrade</programlisting>
+
+			</example>
+			 <sidebar> <title><emphasis>EN LA PRÁCTICA</emphasis> El caso de Falcot Corp</title>
+			 <para>
+				Las máquinas de Falcot son sistemas heterogéneos, con equipos que tienen varias funciones. Los administradores elegirán la solución más relevante para cada uno.
+			</para>
+			 <para>
+				En la práctica, configurarán los servidores ejecutando <emphasis role="distribution">Jeesie</emphasis> con la «combinación milagrosa» anterior y serán actualizados automáticamente. Sólo los servidores más críticos (los firewall, por ejemplo) serán configurados con <command>apticron</command> para que las actualizaciones sólo ocurran bajo la supervisión de un administrador.
+			</para>
+			 <para>
+				Las estaciones de trabajo de oficina en los servicios administrativos también ejecutan <emphasis role="distribution">Jeesie</emphasis>, pero están equipados con <emphasis role="pkg">gnome-packagekit</emphasis> para que los usuarios puedan disparar las actualizaciones por sí mismos. La razón de esta decisión es que si las actualizaciones ocurren sin una acción explítica podría cambiar inesperadamente el comportamiento del equipo causando confusión para sus usuarios principales.
+			</para>
+			 <para>
+				En el laboratorio, las pocas máquinas que utilizan <emphasis role="distribution">Testing</emphasis> — para aprovechar las últimas versiones de software — no se actualizan automáticamente tampoco. Los administradores configuraron APT para que prepare las actualizaciones pero que no las realice; cuando decidan actualizar (manualmente), se evitarán las partes tediosas de actualizar las listas de paquetes y descargar los paquetes y los administradores se pueden concentrar en la parte realmente útil.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.searching-packages">
+		<title>Búsqueda de paquetes</title>
+		 <para>
+			Con la enorme y creciente cantidad de software en Debian surge una paradoja: Debian generalmente tiene una herramienta para la mayoría de las tareas, pero dicha herramienta puede ser difícil de encontrar entre tantos paquetes. La falta de formas apropiadas para buscar (y encontrar) la herramienta correcta es un problema desde hace tiempo. Afortunadamente este problema ha sido solucionado casi completamente.
+		</para>
+		 <para>
+			La búsqueda más trivial posible es buscar el nombre exacto de un paquete. Si <command>apt show <replaceable>paquete</replaceable></command> devuelve un resultado entonces el paquete existe. Desafortunadamante esto necesita saber o adiviar el nombre del paquete, lo que no es siempre posible.
+		</para>
+		 <sidebar> <title><emphasis>TIP</emphasis> Convenciones de nombres de paquetes</title>
+		 <para>
+			Algunas categorías de paquetes tienen esquemas convencionales de nombres; conocer dicho esquema a veces puede permitirle adivinar nombres de paquetes exactos. Por ejemplo, para módulos Perl, la convención dice que un módulo llamado <literal>XML::Handler::Composer</literal> en origen debe ser empaquetado como <emphasis role="pkg">libxml-handler-composer-perl</emphasis>. La biblioteca que permite utilizar el sistema <command>gconf</command> desde Python es empaquetada como <emphasis role="pkg">python-gconf</emphasis>. Lamentablemente no es posible definir un esquema general de nombres para todos los paquetes, aunque generalmente los encargados de paquetes intentan seguir la elección de los autores originales.
+		</para>
+		 </sidebar> <para>
+			Un patrón de búsqueda ligeramente más exitoso es una búsqueda en texto plano de los nombres de los paquetes, pero es aún muy limitada. Generalmente puede encontrar resultados buscando en la descripción de los paquetes: dado que cada paquete tiene una descripción más o menos detallada además de su nombre, una búsqueda de palabras clave en estas descripciones generalmente será útil. <command>apt-cache</command> y <command>axi-cache</command> son las herramientas más utilizadas para este tipo de búsqueda; por ejemplo, <command>apt-cache search video</command> devolverá una lista de todos los paquetes cuyos nombres o descripciones contengan la palabra clave «video».
+		</para>
+		 <para>
+			Para búsquedas más complejas necesita herramientas más poderosas como <command>aptitude</command>. <command>aptitude</command> le permite buscar según expresiones lógicas basadas en los campos de metadatos de los paquetes. Por ejemplo, la siguiente orden busca aquellos paquetes cuyo nombre contenga <literal>kino</literal>, cuya descripción contenga <literal>video</literal> y cuyo nombre de encargado contenga <literal>paul</literal>:
+		</para>
+		 
+<screen>$ <userinput>aptitude search kino~dvideo~mpaul</userinput>
+p   kino  - Non-linear editor for Digital Video data
+$ <userinput>aptitude show kino</userinput>
+Package: kino
+State: not installed
+Version: 1.3.4-2.1+b1
+Priority: extra
+Section: video
+Maintainer: Paul Brossier &lt;piem@debian.org&gt;
+Architecture: amd64
+Uncompressed Size: 8,472 k
+Depends: libasound2 (&gt;= 1.0.16), libatk1.0-0 (&gt;= 1.12.4), libavc1394-0 (&gt;=
+         0.5.3), libavcodec56 (&gt;= 6:11~beta1) | libavcodec-extra-56 (&gt;=
+         6:11~beta1), libavformat56 (&gt;= 6:11~beta1), libavutil54 (&gt;=
+         6:11~beta1), libc6 (&gt;= 2.14), libcairo2 (&gt;= 1.2.4), libdv4,
+         libfontconfig1 (&gt;= 2.11), libfreetype6 (&gt;= 2.2.1), libgcc1 (&gt;=
+         1:4.1.1), libgdk-pixbuf2.0-0 (&gt;= 2.22.0), libglade2-0 (&gt;= 1:2.6.4-2~),
+         libglib2.0-0 (&gt;= 2.12.0), libgtk2.0-0 (&gt;= 2.24.0), libice6 (&gt;=
+         1:1.0.0), libiec61883-0 (&gt;= 1.2.0), libpango-1.0-0 (&gt;= 1.14.0),
+         libpangocairo-1.0-0 (&gt;= 1.14.0), libpangoft2-1.0-0 (&gt;= 1.14.0),
+         libquicktime2 (&gt;= 2:1.2.2), libraw1394-11, libsamplerate0 (&gt;= 0.1.7),
+         libsm6, libstdc++6 (&gt;= 4.9), libswscale3 (&gt;= 6:11~beta1), libx11-6,
+         libxext6, libxml2 (&gt;= 2.7.4), libxv1, zlib1g (&gt;= 1:1.1.4)
+Recommends: ffmpeg, curl
+Suggests: udev | hotplug, vorbis-tools, sox, mjpegtools, lame, ffmpeg2theora
+Conflicts: kino-dvtitler, kino-timfx, kinoplus
+Replaces: kino-dvtitler, kino-timfx, kinoplus
+Provides: kino-dvtitler, kino-timfx, kinoplus
+Description: Non-linear editor for Digital Video data
+ Kino allows you to record, create, edit, and play movies recorded with DV
+ camcorders. This program uses many keyboard commands for fast navigating and
+ editing inside the movie. 
+ 
+ The kino-timfx, kino-dvtitler and kinoplus sets of plugins, formerly
+ distributed as separate packages, are now provided with Kino.
+Homepage: http://www.kinodv.org/
+
+Tags: field::arts, hardware::camera, implemented-in::c, implemented-in::c++,
+      interface::x11, role::program, scope::application, suite::gnome,
+      uitoolkit::gtk, use::editing, use::learning, works-with::video,
+      x11::application</screen>
+		 <para>
+			La búsqueda solo devuelve un paquete, <emphasis role="pkg">kino</emphasis>, que satisface los tres criterios.
+		</para>
+		 <para>
+			Aún estas búsquedas multicritero son complejas, lo que explica porqué no son utilizadas tanto como se podría. Se desarrolló por lo tanto un nuevo sistema de etiquetas que provee un nuevo enfoque de búsqueda. Los paquetes con ciertas etiquetas proveen una clasificación temática según varios ejes, conocido como «clasificación en base a facetas». En el caso anterior con <emphasis role="pkg">kino</emphasis>, las etiquetas del paquete indican que Kino es un software basado en Gnome que trabaja con datos de video y cuyo propósito principal es la edición.
+		</para>
+		 <para>
+			Navegar esta clasificación puede ayudarle a buscar un paquete que se corresponda con necesidades conocidas; aún si devuelve una cantidad (moderada) de elementos, el resto de la búsqueda puede realizarse de forma manual. Para hacerlo, puede utilizar el patrón de búsqueda <literal>~G</literal> en <command>aptitude</command>, pero probablemente sea más sencillo simplemente navegar hacia donde se administran las etiquetas: <ulink type="block" url="http://debtags.alioth.debian.org/cloud/" />
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">debtags</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>etiqueta</primary>
+		</indexterm>
+		 <para>
+			Seleccionar las etiquetas <literal>works-with::video</literal> y <literal>use::editing</literal> sólo devuelve unos pocos paquetes que incluyen los editores de video <emphasis role="pkg">kino</emphasis> y <emphasis role="pkg">pitivi</emphasis>. El sistema de clasificación será utilizado más y más con el paso del tiempo y los encargados de los paquetes gradualmente proveerán interfaces de búsqueda eficientes sobre él.
+		</para>
+		 <para>
+			Resumiendo, la mejor herramienta depende de la complejidad de la búsqueda que desee hacer:
+		</para>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					<command>apt-cache</command> sólo permite buscar en el nombre y la descripción de los paquetes, lo que es muy conveniente cuando busque un paquete particular que coincida con unas pocas palabras clave;
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					cuando el criterio de búsqueda incluya también relaciones entre paquetes u otros metadatos como por ejemplo el nombre del encargado, será más útil <command>synaptic</command>;
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					cuando necesita una búsqueda sobre etiquetas <command>packagesearch</command> es una buena herramienta, una interfaz gráfica dedicada a buscar paquetes disponibles según varios criterios (incluyendo el nombre de los archivos que contiene). Si desea utilizar la línea de órdenes, <command>axi-cache</command> es su mejor opción.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">packagesearch</emphasis></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>axi-cache</command></primary>
+				</indexterm>
+
+			</listitem>
+			 <listitem>
+				<para>
+					finalmente, cuando la búsqueda implique expresiones complejas con operaciones lógicas, la herramienta a elegir será la sintaxis de patrones de búsqueda de <command>aptitude</command> que es bastante potente aunque esté relativamente escondida; se puede utilizar tanto en el modo de línea de órdenes como en el modo interactivo.
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+
+	</section>
+</chapter>
+

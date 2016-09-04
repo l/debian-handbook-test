@@ -1,0 +1,1523 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="apt" lang="nb-NO">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>apt</keyword>
+			 <keyword>apt-get</keyword>
+			 <keyword>apt-cache</keyword>
+			 <keyword>aptitude</keyword>
+			 <keyword>synaptic</keyword>
+			 <keyword>sources.list</keyword>
+			 <keyword>apt-cdrom</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Vedlikehold og oppdateringer; ATP-verktøyene</title>
+	 <highlights> <para>
+		Hva gjør Debian så populært hos administratorer er hvor lett programvaren kan installeres og hvor lett hele systemet kan oppdateres. Denne unike fordelen er hovedsakelig på grunn av <emphasis>APT</emphasis> programmet, som Falcot Corp administratorene studerte med entusiasme.
+	</para>
+	 </highlights> <para>
+		<indexterm><primary>APT</primary></indexterm> <indexterm><primary>Advanced Package Tool</primary></indexterm> APT er forkortelse for Advanced Package Tool. Hva som gjør dette programmet "avanser" er tilnærmingen til pakker. Det betyr ikke bare å vurdere dem hver for seg, men det anser dem som en helhet og gir den best mulige kombinasjon av pakker, avhengig av hva som er tilgjengelig og kompatibelt (ut fra avhengigheter).
+	</para>
+	 <sidebar> <title><emphasis>VOCABULARY</emphasis> Pakkekilde og kildepakke</title>
+	 <para>
+		Ordet <emphasis>source</emphasis> kan være uklart. En kildepakke - en pakke som inneholder kildekoden til et program - må ikke forveksles med en pakkekilde - en pakkebrønn (nettsted, FTP-server, CD-ROM, lokal katalog, etc.) som inneholder pakker.
+	</para>
+	 </sidebar> <para>
+		APT trenger å bli gitt en "liste over pakkekilder": filen <filename>/etc/apt/sources.list</filename> vil liste de ulike pakkebrønner (eller "kilder") som publiserer Debian-pakker. APT vil deretter importere listen over pakker utgitt av hver av disse kildene. Denne operasjon oppnås ved å laste ned <filename>Packages.xz</filename> eller en variant som bruker en annen pakkemetode (slik som <filename>Packages.gz</filename> eller <filename>.bz2</filename>)-filer (i tilfelle fra en kilde med binærpakker) og <filename>Sources.xz</filename> eller en variant (i tilfelle av en kilde med kildepakker), og ved å analysere innholdet. Når en gammel kopi av disse filene er allerede til stede, kan APT oppdatere den ved bare å laste ned forskjellene (se sidestolpe <xref linkend="sidebar.apt-pdiff" />).
+	</para>
+	 <indexterm>
+		<primary><filename>Packages.xz</filename></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><filename>Sources.xz</filename></primary>
+	</indexterm>
+	 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> <command>gzip</command>, <command>bzip2</command>, <command>LZMA</command> and <command>XZ</command> Compression</title>
+	 <indexterm>
+		<primary><command>gzip</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>bzip2</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>lzma</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>xz</command></primary>
+	</indexterm>
+	 <para>
+		En <filename>.gz</filename>-utvidelse refererer til en fil komprimert med <command>gzip</command>-verktøyet. <command>gzip</command> er det raske og effektive, tradisjonelle Unix-verktøyet for å komprimere filer. Nyere verktøy oppnår bedre komprimeringshastigheter, men krever mer ressurser (beregning av tid og minne) for å komprimere og dekomprimere en fil. Blant dem, og rekkefølge etter fremtreden, er det <command>bzip2</command> (som genererer filer med en <filename>.bz2</filename>-utvidelse), <command>lzma</command> (genererer <filename>.lzma</filename> filer) og <command>xz</command> (genererer <filename>.xz</filename> filer).
+	</para>
+	 </sidebar> <section id="sect.apt-sources.list">
+		<title>Å fylle inn <filename>sources.list</filename>-filen</title>
+		 <indexterm>
+			<primary><filename>sources.list</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>kildekode</primary>
+			<secondary>til pakker</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>pakke</primary>
+			<secondary>kildekode til</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/apt/sources.list</filename></primary>
+		</indexterm>
+		 <section>
+			<title>Syntaks</title>
+			 <para>
+				Hver aktiv linje i <filename>/etc/apt/sources.list</filename>-filen inneholder beskrivelsen av en kilde, laget av 3 deler atskilt med mellomrom.
+			</para>
+			 <para>
+				Det første feltet indikerer kildetype:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						“<literal>deb</literal>” for binærpakker,
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						“<literal>deb-src</literal>” for kildepakker.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Det andre feltet gir kildens base-URL (kombinert med filnavnene liggende i <filename>Packages.gz</filename>-filene, må det gi en fullstendig og gyldig URL): Dette kan komme fra et Debian speil eller fra en annen pakkebrønn satt opp av en tredjepart. Nettadressen kan starte med <literal>file://</literal> for å indikere at en lokal kilde er installert i systemets filhierarki, med <literal>http://</literal> for å indikere at en kilde er tilgjengelig fra en netttjener, eller me<literal>ftp://</literal> for en kilde som er tilgjengelig på en FTP-tjener. URL-en kan også starte med <literal>cdrom:</literal> for CD-ROM/DVD-ROM/Blu-ray-baserte installasjoner fra disk, selv om dette er sjeldnere når nett-baserte installasjoner er mer og mer vanlige.
+			</para>
+			 <para>
+				Syntaksen i det siste feltet avhenger av strukturen i kodelageret. I de enkleste tilfellene, kan du bare indikere en undermappe (med en obligatorisk skråstrek) for ønsket kilde (dette er ofte et enkelt “<filename>./</filename>” som refererer til fraværet av en underkatalog - pakkene er så direkte på den angitte URL). Men i de vanligste tilfellene vil kildebrønnene være strukturert som et Debian speil, med flere distribusjoner som hver har flere komponenter. I de tilfellene, gi navnet på den valgte distribusjonen (ved sitt "kodenavn " - se listen i sidefeltet <xref linkend="sidebar.bruce-perens" /> — eller i de “suites” som svarer til — <literal>stable</literal>, <literal>testing</literal>, <literal>unstable</literal>), så komponentene (eller seksjonene) for å aktivere (valgt mellom <literal>main</literal>, <literal>contrib</literal>, og <literal>non-free</literal> i et typisk Debian-speil).
+			</para>
+			 <sidebar id="sidebar.sections"> <title><emphasis>VOCABULARY</emphasis> The <literal>main</literal>, <literal>contrib</literal> and <literal>non-free</literal> archives</title>
+			 <indexterm>
+				<primary>seksjonen</primary>
+				<secondary><literal>main</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>main</literal>, seksjon</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>seksjon</primary>
+				<secondary><literal>contrib</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>contrib</literal>, seksjon</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>seksjon</primary>
+				<secondary><literal>non-free</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>non-free</literal>, seksjon</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>component (of a repository)</primary>
+			</indexterm>
+			 <para>
+				Debian bruker tre seksjoner for å differensiere pakker i henhold til lisensene forfatterne har vagt for hvert arbeid <literal>Main</literal> samler alle pakker som fullt ut oppfyller de Debian Free-retningslinjer for programvare.
+			</para>
+			 <para>
+				<literal>non-free</literal>-arkivet er forskjellig fordi det inneholder programvare som ikke (helt)er i samsvar med disse prinsippene, men som likevel kan distribueres uten restriksjoner. Dette arkivet, som ikke offisielt er en del av Debian, er en tjeneste til brukere som kan trenge noen av disse programmene - men Debian anbefaler alltid å prioritere fri programvare. Eksistensen av denne seksjonen representerer et betydelig problem for Richard M. Stallman og holder Free Software Foundation tilbake fra å anbefale Debian til brukerne.
+			</para>
+			 <para>
+				<literal>Contrib</literal> (bidrag) er et sett programvare med åpen kildekode som ikke kan fungere uten noen ikke-frie elementer. Disse elementene kan være programvare fra <literal>non-free</literal> seksjonen, eller ikke-frie filer slike som i spille-ROMs, konsoll-BIOS, etc. <literal>Contrib</literal> inkluderer også fri programvare der kompileringen krever proprietære elementer. Dette var i utgangspunktet tilfellet for kontorpakken OpenOffice.org, som behøvde et proprietært Java-miljø.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>TIPS</emphasis> <filename>/etc/apt/sources.list.d/*.list</filename> filer</title>
+			 <para>
+				Hvis det er viset til mange pakkekilder, kan det være nyttig å dele dem i flere filer. Hver del blir deretter lagret i <filename>/etc/apt/sources.list.d/<replaceable>filename</replaceable>.list</filename> (se sidefelt <xref linkend="sidebar.directory.d" />).
+			</para>
+			 </sidebar> <indexterm>
+				<primary><command>apt-cdrom</command></primary>
+			</indexterm>
+			 <para>
+				The <literal>cdrom</literal> innganger beskriver den CD/DVD-ROM du har. I motsetning til andre innganger, er en CD-ROM-en ikke alltid tilgjengelig fordi den må settes inn i stasjonen, og fordi bare én disk kan leses om gangen. Av disse grunnene, brukes disse kildene på en litt annen måte, og <command>apt-cdrom</command>-programmet må legges til, vanligvis utløst med <literal>add</literal>-parameteret. Dette siste vil be om at disken settes inn i stasjonen, og vil bla gjennom innholdet på jakt etter <filename>Packages</filename>-filer. Det vil bruke disse filene til å oppdatere sin database med tilgjengelige pakker (denne operasjonen gjøres vanligvis vedt<command>apt update</command>-kommandoen). Fra da av kan APT kreve at disken settes inn om det behov for en av pakker derfra.
+			</para>
+
+		</section>
+		 <section>
+			<title>Repositories for <emphasis role="distribution">Stable</emphasis> Users</title>
+			 <para>
+				Her er et standard <filename>sources.list</filename> for et system som kjører <emphasis role="distribution">Stable</emphasis>.versjonen av Debian:
+			</para>
+			 <example id="example.stable-sources-list">
+				<title><filename>/etc/apt/sources.list</filename>-file for brukere av Debian Stable</title>
+				 
+<programlisting># Security updates
+deb http://security.debian.org/ jessie/updates main contrib non-free
+deb-src http://security.debian.org/ jessie/updates main contrib non-free
+
+## Debian mirror
+
+# Base repository
+deb http://ftp.debian.org/debian jessie main contrib non-free
+deb-src http://ftp.debian.org/debian jessie main contrib non-free
+
+# Stable updates
+deb http://ftp.debian.org/debian jessie-updates main contrib non-free
+deb-src http://ftp.debian.org/debian jessie-updates main contrib non-free
+
+# Stable backports
+deb http://ftp.debian.org/debian jessie-backports main contrib non-free
+deb-src http://ftp.debian.org/debian jessie-backports main contrib non-free</programlisting>
+
+			</example>
+			 <para>
+				Denne filen inneholder alle kilder til pakker assosiert med <emphasis role="distribution">Jessie</emphasis> versjonen av Debian (som i skrivende stund er <emphasis role="distribution">Stable</emphasis> . Vi valgte å nevne “jessie” eksplisitt i steden for å bruke det samsvarende “stable“ aliaset (<literal>stable</literal>, <literal>stable-updates</literal>, <literal>stable-backports</literal>) fordi vi ikke ønsker å ha den underliggende distribusjonen endret uten vår kontroll når den neste stabile utgaven kommer ut.
+			</para>
+			 <para>
+				De fleste pakker vil komme fra "basiskodelageret" som inneholder alle pakkene, men sjelden blir oppdatert (omtrent en gang hver 2 måned for en "point release"). De andre kodelagrene inneholder ikke alle pakkene, og kan være vert for oppdateringer (pakker med en nyere versjon) som APT kan installere. Følgende avsnitt vil forklare hensikten og reglene om hver av disse kodelagrene.
+			</para>
+			 <para>
+				Merk at når den ønskede versjonen av en pakke er tilgjengelig fra flere kodelagre, vil den første oppførte <filename>sources.list</filename>-filen bli benyttet. Av denne grunn blir ikke-offentlige kilder vanligvis lagt til ved slutten av filen.
+			</para>
+			 <para>
+				Som en sidekommmentar, det meste av hva denne seksjonen sier om <emphasis role="distribution">Stable</emphasis> gjelder like megetl <emphasis role="distribution">Oldstable</emphasis> ettersom den siste bare er en eldre <emphasis role="distribution">Stable</emphasis> som er vedlikeholdt parallelt.
+			</para>
+			 <section id="sect.security-updates">
+				<title>Sikkerhetsoppdateringer</title>
+				 <indexterm>
+					<primary><literal>security.debian.org</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>security updates</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>updates</primary>
+					<secondary>security updates</secondary>
+				</indexterm>
+				 <para>
+					Sikkerhetsoppdateringene ligger ikke i det vanlige Debian nettarkivet, men på <literal>security.debian.org</literal> (på et lite sett med maskiner vedlikeholdt av <link linkend="dsa-team">Debian System Administrators</link>). Dette arkivet inneholder sikkerhetsoppdateringer (utarbeidet av Debian Security Team og/eller av pakkevedlikeholdere) for <emphasis role="distribution">Stable</emphasis> distributsjonen.
+				</para>
+				 <para>
+					Serveren kan også ha sikkerhetsoppdateringer for <emphasis role="distribution">Testing</emphasis> men det skjer ikke svært ofte siden disse oppdateringer tenderer til å nå <emphasis role="distribution">Testing</emphasis> via den regulære flyten av oppdateringer fra <emphasis role="distribution">Unstable</emphasis>.
+				</para>
+
+			</section>
+			 <section id="sect.stable-updates">
+				<title>Stabile oppdateringer</title>
+				 <indexterm>
+					<primary>stable updates</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>stable-updates</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>updates</primary>
+					<secondary>stable updates</secondary>
+				</indexterm>
+				 <para>
+					Stabile oppdateringer er ikke sikkerhetssensitive, men anses viktige nok til å leveres til brukere før neste stabile utgivelse.
+				</para>
+				 <para>
+					Dette pakkearkivet vil normalt inneholde feilrettinger for kritiske feil som ikke kunne bli ordnet før utgivelse eller som har blitt lagt inn ved påfølgende oppdateringer. Avhengig av om det haster, kan den også inneholde oppdateringer for pakker som må utvikles over tid ... som <emphasis role="pkg">spamassassin</emphasis>'s deteksjonsregler for spam, <emphasis role="pkg">clamav</emphasis>s virus database, eller sommertidsregler for alle tidssoner (<emphasis role="pkg">tzdata</emphasis>).
+				</para>
+				 <para>
+					I praksis er denne kodebrønnen en undergruppe av <literal>proposed-updates</literal> kodebrønnen, omhyggelig valgt ut av vedlikeholderne av "Stable"-utgivelsen.
+				</para>
+
+			</section>
+			 <section id="sect.proposed-updates">
+				<title>Foreslåtte oppdateringer</title>
+				 <indexterm>
+					<primary><literal>proposed-updates</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>stable-proposed-updates</literal></primary>
+				</indexterm>
+				 <para>
+					Etter utgivelsen blir <emphasis role="distribution">Stable</emphasis>-distributsjonen bare oppdatert en gang hver annen måned. <literal>proposed-updates</literal>-kodelageret er der den forventede oppdateringer forberedes (under tilsyn av "Stable"-utgivelsens vedlikeholdere).
+				</para>
+				 <para>
+					Sikkerheten og stabile oppdateringer som er dokumentert i de foregående avsnittene, er alltid med i dette kodelageret, men det er mer også, fordi pakkens vedlikeholdere har også mulighet til å fikse viktige feil som ikke fortjener å bli gitt ut med en gang.
+				</para>
+				 <para>
+					Alle kan bruke dette kodelageret for å teste disse oppdateringene før den offentlige publiseringen. Utdraget nedenfor bruker <literal>jessie-proposed-updates</literal>-aliaset som både er mer eksplisitt og mer konsekvent, <literal>wheezy-proposed-updates</literal> er også der (for oppdateringene av <emphasis role="distribution">Oldstable</emphasis>):
+				</para>
+				 
+<programlisting>deb http://ftp.debian.org/debian jessie-proposed-updates main contrib non-free</programlisting>
+
+			</section>
+			 <section id="sect.backports">
+				<title>Stabile tilbakeføringer</title>
+				 <indexterm>
+					<primary><literal>stable-backports</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>backport</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>updates</primary>
+					<secondary>backports</secondary>
+				</indexterm>
+				 <para>
+					<literal>stable-backports</literal>kodelager har "pakketilbakeføringer". Begrepet refererer til en pakke med noen nyere programmer som har blitt kompilert for en eldre distribusjon, vanligvis for <emphasis role="distribution">Stable</emphasis>.
+				</para>
+				 <para>
+					Når distribusjonen blir litt utdatert, har mange programvareprosjekter lansert nye versjoner som ikke er integrert i den nåværende <emphasis role="distribution">Stable</emphasis> (som bare er modifisert for å løse de mest kritiske problemer, slik som sikkerhetsproblemer). Ettersom <emphasis role="distribution">Testing</emphasis> og <emphasis role="distribution">Unstable</emphasis>-distribusjoner kan være mer risikable, tilbyr pakkevedlikeholderne noen ganger rekompileringer av nyere programmer for<emphasis role="distribution">Stable</emphasis>, som har fordelen å begrense mulig ustabilitet til et lite antall valgte pakker. <ulink type="block" url="http://backports.debian.org" />
+				</para>
+				 <para>
+					<literal>stable-backports</literal> Kodelageret er nå tilgjengelig fra de vanlige Debian-speilene. Men tilbakeføringer for <emphasis role="distribution">Squeeze</emphasis> ligger fremdeles på en en egen tjener (<literal>backports.debian.org</literal>), og krever den følgende <filename>sources.list</filename> inngangen:
+				</para>
+				 <indexterm>
+					<primary><literal>backports.debian.org</literal></primary>
+				</indexterm>
+				 
+<programlisting>deb http://backports.debian.org/debian-backports squeeze-backports main contrib non-free</programlisting>
+				 <para>
+					Tilbakeføringer fra <literal>stable-backports</literal> er alltid laget fra pakker som er tilgjengelig i <emphasis role="distribution">Testing</emphasis>. Det sikrer at alle installerte tilbakeføringer kan oppgraderes til den samsvarende stabile versjononen så snart den neste stabile utgivelsen av Debian er tilgjengelig.
+				</para>
+				 <para>
+					Selv om dette arkivet gir nyere versjoner av pakker, vil ikke APT installere dem med mindre du gir klare instruksjoner om å gjøre det (eller hvis du ikke allerede har gjort det med en tidligere versjon av den gitte tilbakeføringen):
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>sudo apt-get install <replaceable>package</replaceable>/jessie-backports
+</userinput><computeroutput>$ </computeroutput><userinput>sudo apt-get install -t jessie-backports <replaceable>package</replaceable>
+</userinput></screen>
+
+			</section>
+
+		</section>
+		 <section>
+			<title>Kodelager for <emphasis role="distribution">Testing</emphasis>/<emphasis role="distribution">Unstable</emphasis> brukere</title>
+			 <para>
+				Her er en standard <filename>sources.list</filename> for et system som kjører <emphasis role="distribution">Testing</emphasis> eller <emphasis role="distribution">Unstable</emphasis>-versjonen av Debian:
+			</para>
+			 <example id="example.testing-sources-list">
+				<title><filename>/etc/apt/sources.list</filename>-fil for brukere av Debian <emphasis role="distribution">Testing</emphasis>/<emphasis role="distribution">Unstable</emphasis></title>
+				 
+<programlisting>
+# Unstable
+deb http://ftp.debian.org/debian unstable main contrib non-free
+deb-src http://ftp.debian.org/debian unstable main contrib non-free
+
+# Testing
+deb http://ftp.debian.org/debian testing main contrib non-free
+deb-src http://ftp.debian.org/debian testing main contrib non-free
+
+# Stable
+deb http://ftp.debian.org/debian stable main contrib non-free
+deb-src http://ftp.debian.org/debian stable main contrib non-free
+
+# Security updates
+deb http://security.debian.org/ stable/updates main contrib non-free
+deb http://security.debian.org/ testing/updates main contrib non-free
+deb-src http://security.debian.org/ stable/updates main contrib non-free
+deb-src http://security.debian.org/ testing/updates main contrib non-free</programlisting>
+
+			</example>
+			 <para>
+				Med denne <filename>sources.list</filename> fil vil APT installere pakker fra <emphasis role="distribution">Unstable</emphasis>. Hvis det ikke er ønsket, bruk <literal>APT::Default-Release</literal>-settingen (se <xref linkend="sect.apt-upgrade" />) for å instruere APT til å velge pakker fra en annen distribusjon (mest sannsynlig <emphasis role="distribution">Testing</emphasis> i dette tilfellet).
+			</para>
+			 <para>
+				Det er gode grunner til å inkludere alle disse kodelagrene, selv om en eneste en skulle være nok. <emphasis role="distribution">Testing</emphasis> ville brukere sette pris på muligheten til å velge seg ut en fast pakke fra <emphasis role="distribution">Unstable</emphasis> når versjonen i <emphasis role="distribution">Testing</emphasis> berøres av en irriterende feil. På den andre siden, <emphasis role="distribution">Unstable</emphasis>-brukere som treffer på uventede regresjoner, har muligheten til å nedgradere pakkene til <emphasis role="distribution">Testing</emphasis>-versjonen (som forutsettes å virke).
+			</para>
+			 <para>
+				Å inkludere <emphasis role="distribution">Stable</emphasis> er mer diskutabelt, men det ofte gir tilgang til noen pakker som har blitt fjernet i utviklingsversjoner. Det sikrer også at du får de siste oppdateringene for pakker som ikke har blitt endret siden den siste stabile utgaven.
+			</para>
+			 <section>
+				<title><emphasis role="distribution">Experimental</emphasis> kodelageret</title>
+				 <indexterm>
+					<primary><emphasis role="distribution">Experimental</emphasis></primary>
+				</indexterm>
+				 <para>
+					Arkivet med <emphasis role="distribution">Experimental</emphasis>-pakker er med i alle Debian-speil, og som ikke er med i <emphasis role="distribution">Unstable</emphasis>-versjonen ennå, på grunn av at kvaliteten er dårligere. De er ofte programutviklingsversjoner eller pre-versjoner (alpha, beta, utgivelseskandidater...). En pakke kan også bli sendt dit etter å ha fått endringer som kan generere problemer. Utvikleren prøver deretter å avdekke problemer med hjelp av avanserte brukere som kan håndtere alvorlige problemer. Etter dette første trinnet, blir pakken flyttet til <emphasis role="distribution">Unstable</emphasis>, der den når et mye større publikum, og hvor den vil bli testet i mer detalj.
+				</para>
+				 <para>
+					<emphasis role="distribution">Experimental</emphasis> brukes vanligvis av dem som ikke har noe imot at systemet deres svikter, og deretter må reparere det. Denne distribusjonen gir mulighet til å importere en pakke som en bruker ønsker å prøve eller bruke om behovet oppstår. Det er akkurat Debians tilnærming, når det legges i APTs <filename>sources.list</filename>-fil fører det ikke til den systematiske bruken av akkurat disse pakkene. Linjen som må legges til er:
+				</para>
+				 <informalexample> 
+<programlisting>deb http://ftp.debian.org/debian experimental main contrib non-free</programlisting>
+				 </informalexample>
+			</section>
+
+		</section>
+		 <section>
+			<title>Uoffisielle ressurser: <literal>mentors.debian.net</literal></title>
+			 <indexterm>
+				<primary><literal>mentors.debian.net</literal></primary>
+			</indexterm>
+			 <para>
+				Det er mange ikke-offisielle kilder til Debian-pakker lagt ut av avanserte brukere som har rekompilert noen programmer (Ubuntu gjort dette populært med sin personlige Package Archive), laget av programmerere som gjør det de har laget tilgjengelig for alle. Selv Debians utviklere tilbyr pre-versjoner av pakken sin på nettet.
+			</para>
+			 <para>
+				<literal>mentors.debian.net</literal>-området er interessant (selv om det bare gir kildepakkene), fordi det samler pakker opprettet av kandidater til status som offisielle Debian-utviklere eller av frivillige som ønsker å lage Debian-pakker uten å gå gjennom den integreringsprosessen. Disse pakkene er gjort tilgjengelige uten kvalitetsgaranti. Sørg for at du sjekker opprinnelsen og integriteten deres, og teste dem deretter ut før du vurdere å bruke dem i produksjonen.
+			</para>
+			 <sidebar> <title><emphasis>COMMUNITY</emphasis> The <literal>debian.net</literal> sites</title>
+			 <indexterm>
+				<primary><emphasis>debian.net</emphasis></primary>
+			</indexterm>
+			 <para>
+				<emphasis>debian.net</emphasis>-domentet er ikke en offisiell ressurs i Debian-prosjektet. Hver Debian-utvikler kan bruke dette domenenavnet til eget bruk. Disse nettstedene kan inneholde uoffisielle tjenester (noen ganger personlige nettsteder) som ligger på en maskin som ikke hører til prosjektet og er satt opp av Debians utviklere, eller til og med prototyper som er i ferd med å bli flyttet til <emphasis>debian.org</emphasis>. To grunner kan forklare hvorfor noen av disse prototypene forblir på <emphasis>debian.net</emphasis>: Fordi enten ingen har gjort det nødvendige arbeidet med å gjøre det til en offisiell tjeneste (lagret på <emphasis>debian.org</emphasis>-domenet, og med en viss garanti for vedlikehold), eller tjenesten er for kontroversiell å bli gjort offisiell.
+			</para>
+			 </sidebar> <para>
+				Å installere en pakke betyr å gi rotrettigheter til den som har laget den, fordi de fastsetter innholdet i initialiseringsskriptet som kjøres under denne identiteten. Offisielle Debian-pakker er laget av frivillige som er valgt inn og vurdert, og kan forsegle sine pakker, slik at opprinnelsen og integriteten kan kontrolleres.
+			</para>
+			 <para>
+				Generelt, vær skeptisk til en pakke med en opprinnelse du ikke kjenner og som ikke ligger på et av de offisielle Debian-serverne: vurder i hvilken grad du kan stole på den som har laget den, og sjekk integriteten til pakken. <ulink type="block" url="http://mentors.debian.net/" />
+			</para>
+			 <sidebar id="sidebar.snapshot.debian.org"> <title><emphasis>GOING FURTHER</emphasis> Old package versions: <literal>snapshot.debian.org</literal></title>
+			 <indexterm>
+				<primary><literal>snapshot.debian.org</literal></primary>
+			</indexterm>
+			 <para>
+				The <literal>snapshot.debian.org</literal>-tjenesten, introdusert i april 2010, kan brukes til å "gå bakover i tid", og finne en gammel versjon av en pakke. Den kan for eksempel brukes til å identifisere hvilken versjon av en pakke som innførte en regresjon, og mer konkret å komme tilbake til den tidligere versjonen mens du venter på regresjonfixen.
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Mellomlagringstjener for Debian-pakker</title>
+			 <indexterm>
+				<primary>mellomtjener lager</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>lager, mellomtjener</primary>
+			</indexterm>
+			 <para>
+				Når et helt nettverk av maskiner er konfigurert til å bruke samme eksterne server for å laste ned de samme oppdaterte pakker, vet noen administrator at det vil være fordelaktig å ha en mellomtjener som virker som et nettverks-lokalt hurtiglager (se sidefelt <xref linkend="sidebar.cache" />).
+			</para>
+			 <para>
+				Du kan konfigurere APT til å bruke en "standard" mellomtjener (se <xref linkend="sect.apt-config" /> etter APT siden, og <xref linkend="sect.http-ftp-proxy" /> etter mellomtjener-siden). Debian økosystemet tilbyr imidlertid bedre alternativer for å løse dette problemet. Den egne programvaren som presenteres i dette avsnittet er smartere enn et vanlig mellomtjener hurtiglager fordi de kan stole på den spesifikke strukturen i APTs kodelagre (for eksempel at de vet når enkeltfiler er foreldet eller ikke, og dermed kan justere den tiden de skal beholdes).
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">apt-cacher</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis role="pkg">apt-cacher-ng</emphasis></primary>
+			</indexterm>
+			 <para>
+				<emphasis role="pkg">apt-cacher</emphasis> og <emphasis role="pkg">apt-cacher-ng</emphasis> virker som vanlige mellomlager hurtiglager-tjenere. APTs <filename>sources.list</filename> holdes uendret, mens APT konfigureres til å bruke dem som mellomlager for utgående forespørsler.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">approx</emphasis></primary>
+			</indexterm>
+			 <para>
+				<emphasis role="pkg">approx</emphasis>, på den andre siden, fungerer som en HTTP-tjener som "speiler" et ubegrenset antall eksterne kodelagre i sitt øverste nettadresse-nivå. Tilknytningen mellom disse toppnivå-nettlagrene og de eksterne nettadressene til kodelagrene er lagret i <filename>/etc/approx/approx.conf</filename>:
+			</para>
+			 
+<programlisting>
+# &lt;name&gt; &lt;repository-base-url&gt;
+debian   http://ftp.debian.org/debian
+security http://security.debian.org</programlisting>
+			 <para>
+				<emphasis role="pkg">approx</emphasis> kjører som standard på port 9999 via inetd (se <xref linkend="sect.inetd" />) og krever at brukerne justerer sine <filename>sources.list</filename>-filer til å peke mot approx-tjeneren:
+			</para>
+			 
+<programlisting># Sample sources.list pointing to a local approx server
+deb http://apt.falcot.com:9999/security jessie/updates main contrib non-free
+deb http://apt.falcot.com:9999/debian jessie main contrib non-free
+</programlisting>
+
+		</section>
+
+	</section>
+	 <section id="sect.apt-get">
+		<title><command>aptitude</command>, <command>apt-get</command>, og <command>apt</command> kommandoer</title>
+		 <indexterm>
+			<primary><command>apt</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-get</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude</command></primary>
+		</indexterm>
+		 <para>
+			APTs er et stort prosjekt, der et grafisk grensesnitt inngår i de opprinnelige planene. Det er basert på et bibliotek med kjernen programmet, og <command>apt-get</command> er den første grenseflaten - kommandolinjebasert - som ble utviklet i prosjektet. <command>apt</command> er en andre kommandolinje-basert grenseflate, levert fra APT. overkommer noen designfeil i <command>apt-get</command>.
+		</para>
+		 <para>
+			Tallrike andre grafiske grensesnitt dukket opp som eksterne prosjekter: <command>synaptic</command>, <command>aptitude</command> (som inkluderer både et tekstmodus grensesnitt og et grafisk - selv om det ikke er fullført ennå), <command>wajig</command>, etc. Det mest anbefalte grensesnittet, <command>apt</command>, er det vi vil bruke i eksemplene vi gir i denne seksjonen. Noter gjerne at <command>apt-get</command> og <command>aptitude</command> har en veldig lik kommandolinje-syntaks. Når det er store forskjeller mellom <command>apt</command>, <command>apt-get</command> og <command>aptitude</command>, vil disse forskjellene være detaljerte.
+		</para>
+		 <section>
+			<title>Initialisering</title>
+			 <para>
+				For alt arbeid med APT, må listen over tilgjengelige pakker oppdateres; dette kan gjøres bare med <command>apt update</command>. Avhengig av hastigheten på din tilkobling, kan operasjonen ta en stund siden det innebærer nedlasting et visst antall <filename>Packages</filename>/<filename>Sources</filename>/<filename>Translation-<replaceable>language-code</replaceable></filename>-filer, som etterhvert har blitt større og større etter hvert som Debian har utviklet seg (minst 10 MB med data for <literal>main</literal> seksjonen). Selvfølgelig, installering fra en CD-ROM krever ingen nedlasting - i det tilfellet er operasjonen meget rask.
+			</para>
+			 <indexterm>
+				<primary><command>apt update</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get update</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude update</command></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>Installere og fjerne</title>
+			 <indexterm>
+				<primary>package</primary>
+				<secondary>installation</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>package</primary>
+				<secondary>removal</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>installation</primary>
+				<secondary>package installation</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>removal of a package</primary>
+			</indexterm>
+			 <para>
+				Med APTs, kan pakker legges til eller fjernes fra systemet, med henholdsvis <command>apt install <replaceable>package</replaceable></command> og <command>apt remove <replaceable>package</replaceable></command>. I begge tilfeller, vil APT automatisk installere de nødvendige avhengighetene eller slette pakker som er avhengig av pakken som blir fjernet. <command>apt purge <replaceable>package</replaceable></command>-pakken involverer en komplett avinstallisering - konfigurasjonsfilene slettes også.
+			</para>
+			 <indexterm>
+				<primary><command>apt install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt purge</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get purge</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude purge</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>TIP</emphasis> Installere samme utvalg av pakker flere ganger</title>
+			 <para>
+				Det kan være nyttig å automatisk installere den samme listen med pakker på flere datamaskiner. Dette kan gjøres ganske enkelt.
+			</para>
+			 <para>
+				Først, hent listen over pakker installert på datamaskinen som skal fungere som "modell" for kopiering.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>dpkg --get-selections &gt;pkg-list</userinput></screen>
+			 <para>
+				<filename>pkg-list</filename>-filen inneholder nå listen med installerte pakker. Deretter overføres <filename>pkg-list</filename>-filen på datamaskinene du vil oppdatere, og bruker følgende kommandoer::
+			</para>
+			 
+<screen>## Update dpkg's database of known packages
+# <userinput>avail=`mktemp`</userinput>
+# <userinput>apt-cache dumpavail &gt; "$avail"</userinput>
+# <userinput>dpkg --merge-avail "$avail"</userinput>
+# <userinput>rm -f "$avail"</userinput>
+## Update dpkg's selections
+# <userinput>dpkg --set-selections &lt; pkg-list</userinput>
+## Ask apt-get to install the selected packages
+# <userinput>apt-get dselect-upgrade</userinput></screen>
+			 <para>
+				De første kommandoene registrerer listen over tilgjengelige pakker i dpkg-databasen, deretter gjenoppretter <command>dpkg --set-selections</command> valget av pakker du ønsker å installere, og <command>apt-get</command> kjører de nødvendige operasjonene! <command>aptitude</command> har ikke denne kommandoen.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>TIP</emphasis> Fjerne og installere samtidig</title>
+			 <para>
+				Det er mulig å spørre <command>apt</command> (eller <command>apt-get</command>, eller <command>aptitude</command>) til å installere enkelte pakker og fjerne andre på samme kommandolinje ved å legge til et suffiks. Med en <command>apt install</command>-kommando, legg til “<literal>-</literal>” til navnene på de pakkene du ønsker å fjerne. Med en <command>apt remove</command>-kommando, legg “<literal>+</literal>” til navnene på de pakkene du vil installere.
+			</para>
+			 <para>
+				Det neste eksempelet viser to forskjellige måter å installere <replaceable>package1</replaceable> og for å fjerne <replaceable>package2</replaceable>.
+			</para>
+			 
+<screen># <userinput>apt install <replaceable>package1</replaceable> <replaceable>package2-</replaceable></userinput>
+[...]
+# <userinput>apt remove <replaceable>package1+</replaceable> <replaceable>package2</replaceable></userinput>
+[...]</screen>
+			 <para>
+				Dette kan også brukes til å ekskludere pakker som ellers ville blitt installert, for eksempel på grunn av en <literal>Recommends</literal>. Generelt vil avhengighetsløseren bruke denne informasjonen som et hint for å lete etter alternative løsninger.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>TIP</emphasis> <command>apt --reinstall</command> and <command>aptitude reinstall</command></title>
+			 <indexterm>
+				<primary>reinstallation</primary>
+			</indexterm>
+			 <para>
+				Systemet kan noen ganger bli skadet etter fjerning eller endring av filer i en pakke. Den enkleste måten å hente frem disse filene er å installere den berørte pakken. Dessverre finner pakkesystemet at sistnevnte er allerede installert og høflig nekter å installere det på nytt; for å unngå dette, kan du bruke <literal>--reinstall</literal> option of the <command>apt</command> og <command>apt-get</command>-kommandoer. De følgende kommandoer reinstallerer <emphasis role="pkg">postfix</emphasis> selv om den allerede er tilstede:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>apt --reinstall install postfix</userinput></screen>
+			 <para>
+				<command>aptitude</command>-kommandolinjen er litt ulik, men oppnår det samme resultat med <command>aptitude reinstall postfix</command>.
+			</para>
+			 <para>
+				Problemet oppstår ikke med <command>dpkg</command>, men administratoren bruker den sjelden direkte.
+			</para>
+			 <para>
+				Vær forsiktig. Å bruke <command>apt --reinstall</command> for å gjenopprette pakker modifisert under et angrep, vil sikkert ikke gjenopprette systemet slik det var. <xref linkend="sect.dealing-with-compromised-machine" /> gir detaljene med de nødvendige skritt overfor et kompromittert system.
+			</para>
+			 </sidebar> <para>
+				Hvis filen <filename>sources.list</filename> nevner flere distibusjoner, er det mulig å gi den versjonen av pakken som skal installeres. Et spesifikk versjonsnummer kan hentes med <command>apt install <replaceable>package</replaceable>=<replaceable>version</replaceable></command>, men å indikere distribusjonens opprinnelse (<emphasis role="distribution">Stable</emphasis>, <emphasis role="distribution">Testing</emphasis> or <emphasis role="distribution">Unstable</emphasis>) — with <command>apt install <replaceable>package</replaceable>/<replaceable>distribution</replaceable></command> — er vanligvis foretrukkes. Med denne kommandoen, er det mulig å gå tilbake til en eldre versjon av en pakke (hvis for eksempel du vet at den fungerer godt), forutsatt at den er tilgjengelig i en av kildene refereres til av <filename>sources.list</filename> filen. Ellers kan <literal>snapshot.debian.org</literal>-arkivet komme til hjelp (se sidefelt <xref linkend="sidebar.snapshot.debian.org" />).
+			</para>
+			 <example>
+				<title>Installasjon av <emphasis role="distribution">unstable</emphasis>-versjonen av <emphasis role="pkg">spamassassin</emphasis></title>
+				 
+<screen><computeroutput># </computeroutput><userinput>apt install spamassassin/unstable</userinput></screen>
+
+			</example>
+			 <sidebar> <title><emphasis>GOING FURTHER</emphasis> The cache of <filename>.deb</filename>-filer</title>
+			 <para>
+				APT tar vare på en kopi av hvert nedlastede <filename>.deb</filename>-fil i mappen <filename>/var/cache/apt/archives/</filename>. Ved hyppige oppdateringer, kan denne mappen raskt ta mye diskplass med flere versjoner av hver pakke; Du bør regelmessig ordne dem: To kommandoer kan brukes: <command>apt-get clean</command> tømmer mappen helt; <command>apt-get autoclean</command> fjerner kun pakker som ikke lenger kan lastes ned (fordi de har forsvunnet fra Debian-speilet) og er derfor klart ubrukelig (konfigurasjonsparameteren <literal>APT::Clean-Installed</literal> kan hindre fjerning av <filename>.deb</filename>-filer som nå er installert). Merk at <command>apt</command> ikke støtter disse kommandoene.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.apt-upgrade">
+			<title>Oppgradering av systemet</title>
+			 <indexterm>
+				<primary>upgrade</primary>
+				<secondary>system upgrade</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude safe-upgrade</command></primary>
+			</indexterm>
+			 <para>
+				Regelmessige oppgraderinger anbefales fordi de inneholder de nyeste sikkerhetsoppdateringene. For å oppgradere, bruk <command>apt upgrade</command>, <command>apt-get upgrade</command> eller <command>aptitude safe-upgrade</command> (selvfølgelig etter <command>apt update</command>). Denne kommandoen ser etter installerte pakker som kan oppgraderes uten at pakker fjernes. Med andre ord er målet å sikre den minst mulig påtrengende oppgraderingen. <command>apt-get</command> er litt mer krevende enn <command>aptitude</command> eller <command>apt</command> fordi den vil avslå å installere pakker som ikke var installert på forhånd.
+			</para>
+			 <sidebar id="sidebar.apt-pdiff"> <title><emphasis>TIP</emphasis> Trinnvis oppgradering</title>
+			 <para>
+				Som vi forklarte tidligere er målet med <command>apt update</command>-kommandoen å laste ned den samsvarende <filename>Packages</filename> (eller <filename>Sources</filename>)-filen for hver kildepakke. Imidlertid, selv etter en <command>bzip2</command>-komprimering, kan disse filene forbli ganske store (<filename>Packages.xz</filename> for <foreignphrase>main</foreignphrase>-seksjonen til <emphasis role="distribution">Jessie</emphasis> kreves mer enn 6 MB). Dersom du ønsker å oppgradere regelmessig, kan disse nedlastingene bruke mye tid.
+			</para>
+			 <para>
+				For å fremskynde prosessen kan APT laste ned "diff"-filer med endringene siden forrige oppdatering, og ikke filen i sin helhet. For å oppnå dette, distribuerer offisielle Debian-speil forskjellige filer som lister forskjellene mellom en versjon av <filename>Packages</filename>-filen and den følgende versjonen. De er generert ved hver mappeoppdatering og en ukes historie er lagret. Hver av disse "diff"-filene har bare et par dusin kilobyte for <emphasis role="distribution">Unstable</emphasis>, slik at mengden data som lastes ned ved en ukentlig <command>apt update</command> blir ofte en tiendedel. For distribusjoner som <emphasis role="distribution">Stable</emphasis> og <emphasis role="distribution">Testing</emphasis>, som endrer mindre, er gevinsten enda mer merkbar.
+			</para>
+			 <para>
+				Men det kan noen ganger være av interesse å tvinge nedlasting av hele <filename>Packages</filename> filen, spesielt når den siste oppgraderingen er svært gammel, og når mekanismen med gradvis økende forskjeller ikke bidrar mye. Dette kan også være interessant når nettverkstilgang er veldig rask, men prosessoren på maskinen som skal oppgraderes er ganske treg, slik at tiden spart på nedlasting blir mer enn tapt når datamaskinen beregner de nye versjonene av disse filene (starter med de eldre versjonene og anvender de nedlastede forskjellene). For å gjøre det, kan du bruke konfigurasjonsparameteret <literal>Acquire::Pdiffs</literal> og sette det til <literal>false</literal>.
+			</para>
+			 </sidebar> <para>
+				<command>apt</command> vil vanligvis velge det seneste versjonsnummeret (unntatt for pakker fra <emphasis role="distribution">Experimental</emphasis> og <emphasis role="distribution">stable-backports</emphasis>, som ignoreres uansett versjonsnummer). Hvis du spesifiserer <emphasis role="distribution">Testing</emphasis> eller <emphasis role="distribution">Unstable</emphasis> i din <filename>sources.list</filename>, vil <command>apt upgrade</command> skifte til det meste av ditt <emphasis role="distribution">Stable</emphasis>-system til <emphasis role="distribution">Testing</emphasis> eller <emphasis role="distribution">Unstable</emphasis>, som kanskje ikke var det du ville.
+			</para>
+			 <para>
+				Å be <command>apt</command> om å bruke en bestemt distribusjon når du søker etter oppgraderte pakker, må du bruke <literal>-t</literal> or <literal>--target-release</literal>-valget, etterfulgt av navnet på distribusjonen du ønsker (for eksempel:<command>apt -t stable upgrade</command>). For å slippe å spesifisere dette alternativet hver gang du bruker<command>apt</command>, kan du legge til <literal>APT::Default-Release "stable";</literal> i filen <filename>/etc/apt/apt.conf.d/local</filename>.
+			</para>
+			 <indexterm>
+				<primary><command>apt full-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude full-upgrade</command></primary>
+			</indexterm>
+			 <para>
+				For viktigere oppgraderinger, som for eksempel overgang fra en stor Debian versjon til den neste, må du bruke <command>apt full-upgrade</command>. Med denne instruksjonen vil <command>apt</command> fullføre oppgraderingen selv om den må fjerne noen utdaterte pakker eller installere nye avhengigheter. Dette er også kommandoen som benyttes av brukere som jobber daglig med Debian <emphasis role="distribution">Unstable</emphasis>-utgaven og følger dens utvikling dag for dag. Det er så enkelt at det nesten ikke trenger forklaring: APTs omdømme er basert på denne store funksjonaliten.
+			</para>
+			 <para>
+				Til forskjell fra <command>apt</command> og <command>aptitude</command>, kjenner ikke <command>apt-get</command> til <command>full-upgrade</command>-kommandoen. I stedet skal du bruke <command>apt-get dist-upgrade</command> (”distribution upgrade”), den historiske og velkjente kommandoen <command>apt</command> og <command>aptitude</command> godtas også, til lettelse for de brukerne som ble vant med den.
+			</para>
+
+		</section>
+		 <section id="sect.apt-config">
+			<title>Konfigueringsvalg</title>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>configuration</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>apt.conf.d/</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/apt/apt.conf.d/</filename></primary>
+			</indexterm>
+			 <para>
+				Foruten de konfigurasjonselementer som allerede er nevnt, er det mulig å konfigurere visse egenskaper ved APT ved å legge til direktiver i en fil i <filename>/etc/apt/apt.conf.d/</filename>-mappen. Husk for eksempel at det er mulig for APT å be <command>dpkg</command> om å ignorere filkonfliktfeil ved å spesifisere <literal>DPkg::options { "--force-overwrite"; }</literal>.
+			</para>
+			 <para>
+				Hvis Internettet bare kan nås via en mellomtjener, legg til en linje som <literal>Acquire::http::proxy "http://<replaceable>yourproxy</replaceable>:3128"</literal>. For en FTP-mellomtjenser, skriv <literal>Acquire::ftp::proxy "ftp://<replaceable>yourproxy</replaceable>"</literal>. For å finne flere konfigurasjonsvalg, les <citerefentry><refentrytitle>apt.conf</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry> manuelle side med <command>man apt.conf</command>-kommandoen (for detaljer om manuelle sider, se <xref linkend="sect.manual-pages" />).
+			</para>
+			 <sidebar id="sidebar.directory.d"> <title><emphasis>BACK TO BASICS</emphasis> Directories ending in <filename>.d</filename></title>
+			 <indexterm>
+				<primary><filename>.d</filename></primary>
+			</indexterm>
+			 <para>
+				Mapper med et <filename>.d</filename>-suffiks blir brukt oftere og oftere. Hver mappe representerer en konfigurasjonsfil som er fordelt over flere filer. I denne forstand, er alle filene i <filename>/etc/apt/apt.conf.d/</filename> instruksjoner APT-konfigurering. APT inkluderer dem i alfabetisk rekkefølge, slik at de siste kan endre et konfigurasjonselement definert i en av de første.
+			</para>
+			 <para>
+				Denne strukturen gir en viss fleksibilitet til maskinens administrator og til pakkens vedlikeholdere. Faktisk, kan administratoren enkelt endre konfigurasjonen av programvaren ved å legge til en ferdig fil i katalogen det gjelder uten å måtte endre en eksisterende fil. Pakkevedlikeholdere bruker samme tilnærming når de må tilpasse konfigurasjonen av annen programvare for å sikre at den fullt ut virker sammen med deres. Debians politikk forbyr eksplisitt forbyr endre konfigurasjonsfiler fra andre pakker - bare brukere får lov til å gjøre dette. Husk at under en pakkeoppgradering, får brukeren velge den versjonen av konfigurasjonsfilen som skal beholdes når en endring er påvist. Enhver ekstern endring av filen vil utløse den forespørselen, noe som ville forstyrre administratoren, som er sikker på å ikke ha endret noe.
+			</para>
+			 <para>
+				Uten en <filename>.d</filename>-katalog er det umulig for en ekstern pakke å endre på oppsettet til et program uten å endre programmets oppsettfiler. I stedet må den eksterne pakken spørre brukeren om å gjøre endringen selv og beskrive operasjonene som skal utføres i filen <filename>/usr/share/doc/<replaceable>package</replaceable>/README.Debian</filename>.
+			</para>
+			 <para>
+				Avhengig av programmet, brukes <filename>.d</filename>-mappen direkte eller styrt av et eksternt skript som vil kolble sammen alle filene for å opprette selve konfigurasjonsfilen. Det er viktig å kjøre skriptet etter at alle endringer i denne katalogen, slik at de seneste endringene blir tatt hensyn til. På samme måte, er det viktig å ikke å arbeide direkte i konfigurasjonsfilen som er opprettet automatisk, siden alt ville gå tapt ved neste kjøring av skriptet. Den valgte metoden (<filename>.d</filename>-mappen brukes direkte eller en fil generert fra denne mappen) er vanligvis diktert av implementeringsbegrensninger, men i begge tilfeller kompenserer gevinstene i form av konfigurasjonsfleksibilitet for de små komplikasjonene de medfører. Exim 4-posttjeneren er et eksempel på den genererte filemetoden: Den kan konfigureres gjennom flere filer (<filename>/etc/exim4/conf.d/*</filename>) som er koblet sammen til <filename>/var/lib/exim4/config.autogenerated</filename> av <command>update-exim4.conf</command>-kommandoen.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.apt.priorities">
+			<title>Styring av pakkeprioriteter</title>
+			 <para>
+				En av de viktigste aspektene i konfigurasjonen av APT er behandlingen av prioriteringene knyttet til hver pakke kilde. For eksempel kan du ønske å forlenge en fordeling med en eller to nyere pakker fra <emphasis role="distribution">Testing</emphasis>, <emphasis role="distribution">Unstable</emphasis> eller <emphasis role="distribution">Experimental</emphasis>. Det er mulig å tildele en prioritet til hver tilgjengelig pakke (samme pakke kan ha flere prioriteringer, avhengig av hvilken versjon eller distribusjon den kommer fra). Disse prioriteringene vil påvirke APTs oppførsel: For hver pakke, vil det alltid velge versjonen med høyest prioritet (unntatt hvis denne versjonen er eldre enn den installerte og hvis prioriteten er mindre enn 1000).
+			</para>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary><foreignphrase>pinning</foreignphrase></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pinning, APT pinning</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>pakke</primary>
+				<secondary>prioritet</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>prioritet</primary>
+				<secondary>pakkeprioritet</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>preferences</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>preferences</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/apt/preferences</filename></primary>
+			</indexterm>
+			 <para>
+				APT definerer flere standard prioriteringer. Hver installert pakkeversjonen har en prioritet på 100. En ikke-installerte versjon har en prioritet på 500 som standard, men det kan hoppe til 990 hvis det er en del av målrettet utgivelse (definert med <literal>-t</literal> kommandolinjevalg eller <literal>APT::Default-Release</literal> konfigureringsdirektiv).
+			</para>
+			 <para>
+				Du kan endre prioriteringer ved å legge til oppføringer i <filename>/etc/apt/preferences</filename>-filen med navnene på de berørte pakker, versjonen, opprinnelsen og den nye prioriteten deres.
+			</para>
+			 <para>
+				APT vil aldri installere en eldre distribusjon av en pakke (som er en pakke med et versjonsnummer som er lavere enn det som den allerede installerte pakken har), unntatt hvis prioriteten dens er over 1000. APT vil alltid installere pakken med høyeste prioritet som følger denne begrensningen. Hvis to pakker har samme prioritet, installerer APT den nyeste (hvis versjonsnummer er høyest). Hvis to pakker av samme versjonen har samme prioritet, men varierer i innhold, installerer APT versjonen som ikke er installert (denne regelen har blitt opprettet for å dekke tilfelle av en pakkeoppdatering uten økning av revisjonsnummeret, noe som vanligvis er nødvendig).
+			</para>
+			 <para>
+				Mer konkret, en pakke som har prioritet mindre enn 0 vil aldri bli installert. En pakke med en prioritet som varierer mellom 0 og 100 vil kun installeres hvis ingen annen versjon av pakken allerede er installert. Med en prioritet mellom 100 og 500, vil pakken bare installeres når det ikke finnes noen annen nyere versjon installert eller er tilgjengelige i en annen distribusjon. En pakke med prioritet mellom 501 og 990 vil kun installeres hvis det ikke er noen nyere versjon installert eller tilgjengelig i distribusjonen det gjelder. Med en prioritet mellom 990 og 1000, vil pakken bli installert, bortsett fra hvis den installerte versjonen er nyere. En prioritet høyere enn 1000 vil alltid føre til installasjon av pakken, selv om det tvinger APT til å nedgradere til en eldre versjon.
+			</para>
+			 <para>
+				Når APT sjekker <filename>/etc/apt/preferences</filename>, tar den første hensyn til de bestemte oppføringer (ofte de som spesifiserer den aktuelle pakken), deretter de mer generiske (inkludert for eksempel alle pakkene i en distribusjon). Hvis flere generiske oppføringer finnes, brukes det første treffet. De tilgjengelige utvalgskriteriet inkluderer pakkens navn og kilden den kommer fra. Hver pakke kilde identifiseres av informasjonen i <filename>Release</filename>-filen som APT laster ned sammen med <filename>Packages</filename>-filene. Den angir opprinnelsen (vanligvis "Debian" for pakker fra offisielle speil, men det kan også være en persons eller en organisasjons navn for tredjeparts kodelagre). Den gir også navnet på distribusjonen (vanligvis <emphasis role="distribution">Stable</emphasis>, <emphasis role="distribution">Testing</emphasis>, <emphasis role="distribution">Unstable</emphasis> eller <emphasis role="distribution">Experimental</emphasis> for standard distribusjoner levert av Debian) sammen med versjonen (for eksempel 8 for Debian <emphasis role="distribution">Jessie</emphasis>). La oss se på syntaksen i noen realistiske casestudier med denne mekanismen.
+			</para>
+			 <sidebar> <title><emphasis>SPECIFIC CASE</emphasis> Priority of <emphasis role="distribution">experimental</emphasis></title>
+			 <indexterm>
+				<primary><emphasis role="distribution">Experimental</emphasis></primary>
+			</indexterm>
+			 <para>
+				Hvis du listet <emphasis role="distribution">Experimental</emphasis> i din your <filename>sources.list</filename>-fil, vil de tilsvarende pakker nesten aldri bli installert fordi prioritert standard APT er 1. Dette er selvfølgelig et eget tilfelle, designet for å holde brukerne fra feilaktig å installere <emphasis role="distribution">Experimental</emphasis>-pakker. Pakkene kan bare bli installert ved å skrive <command>aptitude install <replaceable>package</replaceable>/experimental</command> — Brukere som skriver denne kommandoen må bare være klar over risikoene de tar. Det er fremdeles mulig (selv om <emphasis>not</emphasis> er anbefalt) å behandle pakker i <emphasis role="distribution">Experimental</emphasis> på samme måte som de i andre distribusjoner ved å gi dem en prioritering på 500. Dette gjøres med en egen oppføring i <filename>/etc/apt/preferences</filename>:
+			</para>
+			 <informalexample> 
+<programlisting>Package: *
+Pin: release a=experimental
+Pin-Priority: 500</programlisting>
+			 </informalexample> </sidebar> <para>
+				La oss anta at du bare vil bruke pakker fra den stabile versjonen av Debian. De som leveres i andre versjoner bør ikke installeres med mindre det eksplisitt blir bedt om det. Du kan skrive inn følgende i <filename>/etc/apt/preferences</filename>-filen:
+			</para>
+			 <informalexample> 
+<programlisting>Package: *
+Pin: release a=stable
+Pin-Priority: 900
+
+Package: *
+Pin: release o=Debian
+Pin-Priority: -10</programlisting>
+			 </informalexample> <para>
+				<literal>a=stable</literal> definerer navnet på den valgte distribusjonen. <literal>o=Debian</literal> begrenser utvalget til pakker som kommer fra "Debian".
+			</para>
+			 <para>
+				La oss nå anta at du har en tjener med flere lokale programmer som støtter seg på versjon 5.14 av Perl, og at du ønsker å sikre at oppgraderinger ikke vil installere en annen versjon av den. Da kan du skrive inn det følgende:
+			</para>
+			 <informalexample> 
+<programlisting>Package: perl
+Pin: version 5.14*
+Pin-Priority: 1001</programlisting>
+			 </informalexample> <para>
+				Referansedokumentasjonen for denne konfigurasjonsfilen er tilgjengelig på den manuelle siden <citerefentry><refentrytitle>apt_preferences</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>, som du kan vise med <command>man apt_preferences</command>.
+			</para>
+			 <sidebar> <title><emphasis>TIP</emphasis> Kommentarer i <filename>/etc/apt/preferences</filename></title>
+			 <indexterm>
+				<primary><literal>Explanation</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Pin</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Pin-Priority</literal></primary>
+			</indexterm>
+			 <para>
+				Det er ingen offisiell syntaks for å sette kommentarer i <filename>/etc/apt/preferences</filename>-filen, men enkelte tekstbeskrivelser kan ordnes ved å sette en eller flere “<literal>Explanation</literal>”-felter ved starten av hver oppføring:
+			</para>
+			 <informalexample> 
+<programlisting>Explanation: The package xserver-xorg-video-intel provided
+Explanation: in experimental can be used safely
+Package: xserver-xorg-video-intel
+Pin: release a=experimental
+Pin-Priority: 500</programlisting>
+			 </informalexample> </sidebar>
+		</section>
+		 <section id="sect.apt-mix-distros">
+			<title>Å arbeide med flere distribusjoner</title>
+			 <para>
+				Når <command>apt</command> er et så fantastisk verktøy, er det fristende å plukke pakker som kommer fra andre distribusjoner. For eksempel, etter å ha installert et <emphasis role="distribution">Stable</emphasis>-system, ønsker du kanskje å prøve ut en programvarepakke som finnes i <emphasis role="distribution">Testing</emphasis> eller <emphasis role="distribution">Unstable</emphasis> uten å avvike for mye fra systemets opprinnelige tilstand.
+			</para>
+			 <para>
+				Selv om du noen ganger vil støte på problemer mens du mikser pakker fra forskjellige distribusjoner, håndterer <command>apt</command> slik sameksistens veldig godt og begrenser risiko svært effektivt. Den beste måten for å fortsette er å liste opp alle distribusjoner som brukes i <filename>/etc/apt/sources.list</filename> (Noen vil alltid sette de inn de tre distribusjonene, men husk at <emphasis role="distribution">Unstable</emphasis> er reservert for erfarne brukere), og for å definere din referansedistribusjon med <literal>APT::Default-Release</literal>-parameter (se <xref linkend="sect.apt-upgrade" />).
+			</para>
+			 <para>
+				La oss anta at <emphasis role="distribution">Stable</emphasis> er din referansedistribusjon med at <emphasis role="distribution">Testing</emphasis> og <emphasis role="distribution">Unstable</emphasis> også er listet i din <filename>sources.list</filename>-fil. I dette tilfellet kan du bruke <command>apt install <replaceable>package</replaceable>/testing</command> til å installere en pakke fra <emphasis role="distribution">Testing</emphasis>. Hvis installasjonen mislykkes på grunn av noen ikke-tilfredsstilte avhengigheter, la den løse disse avhengighetene innenfor <emphasis role="distribution">Testing</emphasis> ved å legge til <literal>-t testing</literal>-parameteret. Det samme gjelder selvsagt <emphasis role="distribution">Unstable</emphasis>.
+			</para>
+			 <para>
+				I denne situasjonen, blir oppgraderingene (<command>upgrade</command> and <command>full-upgrade</command>) gjort innenfor <emphasis role="distribution">Stable</emphasis>, bortsett fra for pakker som allerede oppgradert til en annen distribusjon: De vil følge oppdateringene som er tilgjengelige i andre distribusjoner. Vi forklarer denne virkemåten ved hjelp av standardprioriteringene satt av APT nedenfor. Ikke nøl med å bruke <command>apt-cache policy</command> (se sidefelt <xref linkend="sidebar.apt-cache-policy" />) for å verifisere de gitte prioriteringene.
+			</para>
+			 <para>
+				Alt sentrer rundt det faktum at APT bare vurderer pakker med høyere eller lik versjon enn den installerte (forutsatt at <filename>/etc/apt/preferences</filename> ikke er brukt til å tvinge prioriteter høyere enn 1000 for noen pakker).
+			</para>
+			 <sidebar id="sidebar.apt-cache-policy"> <title><emphasis>TIP</emphasis> <command>apt-cache policy</command></title>
+			 <para>
+				For å få en bedre forståelse av prioritetsmekanismen, nøl ikke med å kjøre <command>apt-cache policy</command> for å vise standardprioriteten for hver pakkekilde. Du kan også bruke <command>apt-cache policy <replaceable>package</replaceable></command> for å vise prioriteringen for alle tilgjengelige versjoner av en gitt pakke.
+			</para>
+			 </sidebar> <para>
+				La oss anta at du har installert versjon 1 av en første pakke fra <emphasis role="distribution">Stable</emphasis> og at versjon 2 og 3 respektivt er tilgjengelig i <emphasis role="distribution">Testing</emphasis> og <emphasis role="distribution">Unstable</emphasis>. Den installerte versjonen har en prioritet på 100 mens versjonen som ligger i <emphasis role="distribution">Stable</emphasis> (akkurat den samme) har en prioritet på 990 (fordi den er en del av "target release"). Pakker i <emphasis role="distribution">Testing</emphasis> og <emphasis role="distribution">Unstable</emphasis> har en prioritet på 500 (standardprioriteten til en ikke-installert versjon). Vinneren er da versjon 1 med en prioritet på 990. Pakken "står i <emphasis role="distribution">Stable</emphasis>”.
+			</para>
+			 <para>
+				La oss ta et eksempel fra en annen pakke som versjon 2 er installert fra <emphasis role="distribution">Testing</emphasis>. Version 1 er tilgjengelig i <emphasis role="distribution">Stable</emphasis> og versjon 3 i <emphasis role="distribution">Unstable</emphasis>. Versjon 1 (med prioritet 990 — altså lavere enn 1000) forkastes fordi det er lavere enn den installerte versjonen. Bare versjon 2 og 3 står igjen, begge med prioritet 500. Konfrontert med dette alternativet, velger APT den nyeste versjonen, den ene fra <emphasis role="distribution">Unstable</emphasis>. Hvis du ikke ønsker en pakke installert fra <emphasis role="distribution">Testing</emphasis> til å flytte til <emphasis role="distribution">Unstable</emphasis>, må du tildele en prioritet lavere enn 500 (490 for eksempel) til pakker som kommer fra <emphasis role="distribution">Unstable</emphasis>. Du kan endre <filename>/etc/apt/preferences</filename> med denne effekten:
+			</para>
+			 
+<programlisting>Package: *
+Pin: release a=unstable
+Pin-Priority: 490</programlisting>
+
+		</section>
+		 <section id="sect.automatic-tracking">
+			<title>Å finne installerte pakker automatisk</title>
+			 <para>
+				En av de svært viktige funksjonene i <command>apt</command> er sporing av pakker som vare er installert ved avhengigheter. Disse pakkene kalles "automatiske", og inkluderer for eksempel ofte biblioteker.
+			</para>
+			 <para>
+				Med denne informasjonen, når pakker er fjernet, kan de pakkeansvarlige lage en liste over automatiske pakker som ikke lenger trengs (fordi det ikke er noen "manuelt installerte" pakker som er avhengig av dem). <command>apt-get autoremove</command> vil kvitte seg med disse pakkene. <command>aptitude</command> og <command>apt</command> har ikke denne kommandoen: Den første fordi den fjerner dem automatisk så snart de er identifisert, og sistnevnte trolig fordi brukeren ikke skal måtte kjøre en slik kommando manuelt. I alle tilfelle, verktøyene viser en klar melding som lister de berørte pakkene.
+			</para>
+			 <indexterm>
+				<primary><command>apt-mark auto</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-mark manual</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude markauto</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude unmarkauto</command></primary>
+			</indexterm>
+			 <para>
+				Det er en god vane å merke med automatisk pakker som du ikke trenger direkte, slik at de fjernes automatisk når de ikke er nødvendige lenger. <command>apt-mark auto <replaceable>package</replaceable></command> vil merke en gitt pakke som automatisk, mens <command>apt-mark manual <replaceable>package</replaceable></command> gjør det motsatte. <command>aptitude markauto</command> og <command>aptitude unmarkauto</command> virker på samme måte selv om de tilbyr flere funksjoner for merking mange pakker på en gang (se <xref linkend="sect.aptitude" />). Det konsollbaserte brukergrensesnittet til <command>aptitude</command> gjør det også enkelt å gjennomgå det "automatiske flagget" hos mange pakker.
+			</para>
+			 <indexterm>
+				<primary><command>aptitude why</command></primary>
+			</indexterm>
+			 <para>
+				Folk vil kanskje vite hvorfor en automatisk installert pakke er til stede på systemet. For å få denne informasjonen fra kommandolinjen, kan du bruke <command>aptitude why <replaceable>package</replaceable></command> (<command>apt</command> og <command>apt-get</command> har ingen tilsvarende funksjon):
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>aptitude why python-debian
+</userinput><computeroutput>i   aptitude         Recommends apt-xapian-index         
+i A apt-xapian-index Depends    python-debian (&gt;= 0.1.15)
+</computeroutput></screen>
+			 <sidebar> <title><emphasis>ALTERNATIVE</emphasis> <command>deborphan</command> and <command>debfoster</command></title>
+			 <indexterm>
+				<primary><command>deborphan</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>debfoster</command></primary>
+			</indexterm>
+			 <para>
+				Da det ikke var mulig for <command>apt</command>, <command>apt-get</command> og <command>aptitude</command> å spore automatiske pakker, var det to verktøy som produserte lister over unødvendige pakker: <command>deborphan</command> og <command>debfoster</command>.
+			</para>
+			 <para>
+				<command>deborphan</command> er det mest elementære av begge. Den skanner rett og slett <literal>libs</literal> og <literal>oldlibs</literal>-seksjonene (i fravær av tilleggsveiledninger) på jakt etter installerte pakker som ingen andre pakke er avhengig av. Den resulterende listen kan da tjene som grunnlag for å fjerne unødvendige pakker.
+			</para>
+			 <para>
+				<command>debfoster</command> har en mer forseggjort tilnærming, svært lik APTs: Den opprettholder en liste med pakker som helt eksplisitt er installert, og husker hvilke pakker som er virkelig nødvendig mellom hvert kall. Hvis nye pakker vises på systemet, og hvis <command>debfoster</command> ikke kjenner dem som nødvendige pakker, vil de bli vist på skjermen sammen med en liste over avhengighetene sine. Programmet tilbyr deretter et valg: Fjern pakken (eventuelt sammen med dem som er avhengige av den), merk den som eksplisitt nødvendig, eller ignorer den midlertidig.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.apt-cache">
+		<title>The <command>apt-cache</command> Command</title>
+		 <indexterm>
+			<primary><command>apt-cache</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>package search</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>header display</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>search of packages</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>package</primary>
+			<secondary>search</secondary>
+		</indexterm>
+		 <para>
+			<command>apt-cache</command>-kommandoen kan vise mye av den informasjonen som er lagret i APTs interne database. Denne informasjonen er en slags buffer siden den er samlet inn fra ulike kilder oppført i<filename>sources.list</filename> filen. Dette skjer under <command>apt update</command>-operasjonen.
+		</para>
+		 <sidebar id="sidebar.cache"> <title><emphasis>VOCABULARY</emphasis> Cache</title>
+		 <para>
+			En hurtiglager er en midlertidig lagringsplass som brukes til å øke hastigheten ved hyppig datatilgang når den vanlige tilgang metoden er dyr (ytelsesmessig). Dette konseptet kan brukes i en rekke situasjoner og i ulik skala, fra kjernen med mikroprosessorer opp til avanserte lagringssystemer.
+		</para>
+		 <para>
+			I tilfelle med APT er referansefilene <filename>Packages</filename> de som ligger på Debian-speilene. Når det er sagt, det ville være svært ineffektivt å gå gjennom nettverket for hvert søk som vi kanskje ønsker å gjøre i databasen med tilgjengelige pakker. Det er derfor APT lagrer en kopi av disse filene (i <filename>/var/lib/apt/lists/</filename>) og søkene gjøres i disse lokale filene. På samme måte inneholder <filename>/var/cache/apt/archives/</filename> et hurtiglager for allerede nedlastede pakker for å unngå å laste dem ned på nytt, hvis du må installere dem igjen etter en fjerning.
+		</para>
+		 </sidebar> <indexterm>
+			<primary><command>apt show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt search</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache search</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude search</command></primary>
+		</indexterm>
+		 <para>
+			<command>apt-cache</command>-kommandoen kan gjøre søkeordbaserte pakkesøk med <command>apt-cache search <replaceable>keyword</replaceable></command>. Den kan også vise topptekstene til tilgjengelige pakkeversjoner med <command>apt-cache show <replaceable>package</replaceable></command>. Denne kommandoen gir pakkens beskrivelse, avhengigheter, navnet på sin vedlikehold, etc. Merk at <command>apt search</command>, <command>apt show</command>, <command>aptitude search</command>, <command>aptitude show</command> virker på samme måte.
+		</para>
+		 <sidebar> <title><emphasis>ALTERNATIVE</emphasis> <command>axi-cache</command></title>
+		 <indexterm>
+			<primary><command>axi-cache</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">apt-xapian-index</emphasis></primary>
+		</indexterm>
+		 <para>
+			<command>apt-cache search</command> er et meget elementært verktøy, som egentlig implementerer <command>grep</command> til pakkens beskrivelser. Den returnerer ofte for mange resultater eller ingen i det hele tatt når du har for mange søkeord.
+		</para>
+		 <para>
+			<command>axi-cache search <replaceable>term</replaceable></command>, på den annen side, gir bedre resultater, sortert etter relevans. Den bruker <emphasis>Xapian</emphasis> søkemotor og en del av <emphasis role="pkg">apt-xapian-index</emphasis> pakken som indekserer all pakkeinformasjon (og mer, som <filename>.desktop</filename>-filer fra alle Debian pakkene). Den kjenner til tagger (se sidefelt <xref linkend="sidebar.debtags" />) og resultatene kommer på millisekunder.
+		</para>
+		 
+<screen>$ <userinput>axi-cache search package use::searching</userinput>
+105 results found.
+Results 1-20:
+100% packagesearch - GUI for searching packages and viewing package information
+98% debtags - Enables support for package tags
+94% debian-goodies - Small toolbox-style utilities 
+93% dpkg-awk - Gawk script to parse /var/lib/dpkg/{status,available} and Packages
+93% goplay - games (and more) package browser using DebTags
+[...]
+87% apt-xapian-index - maintenance and search tools for a Xapian index of Debian packages
+[...]
+More terms: search debian searching strigi debtags bsearch libbsearch
+More tags: suite::debian works-with::software:package role::program interface::commandline implemented-in::c++ admin::package-management use::analysing
+`axi-cache more' will give more results
+</screen>
+		 </sidebar> <indexterm>
+			<primary><command>apt-cache policy</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache dumpavail</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache pkgnames</command></primary>
+		</indexterm>
+		 <para>
+			Enkelte funksjoner brukes mer sjelden. For eksempel viser <command>apt-cache policy</command> prioriteringene av pakkekilder så vel som de individuelle pakkene. Et annet eksempel er <command>apt-cache dumpavail</command> som viser topptekstene til alle tilgjengelige versjoner av alle pakker. <command>apt-cache pkgnames</command> viser listen over alle de pakkene som vises minst én gang i hurtiglageret.
+		</para>
+
+	</section>
+	 <section id="sect.apt-frontends">
+		<title>Frontends: <command>aptitude</command>, <command>synaptic</command></title>
+		 <indexterm>
+			<primary><command>aptitude</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>synaptic</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>interfaces</secondary>
+		</indexterm>
+		 <para>
+			APT er et C++-program med koden hovedsakelig liggende i det delte <command>libapt-pkg</command> biblioteket. Å bruke et delt bibliotek gjør det mulig å lage brukergrensesnitt (front-end), ettersom koden som finnes i biblioteket kan lett gjenbrukes . Historisk ble <command>apt-get</command> bare laget som en test til et brukergrensesnitt for <command>libapt-pkg</command>, men suksessen tenderer til å overskygge dette faktum.
+		</para>
+		 <section id="sect.aptitude">
+			<title><command>aptitude</command></title>
+			 <para>
+				<command>aptitude</command> er et interaktivt program som kan brukes i semi-grafisk modus i konsollen. Du kan bla gjennom listen over installerte og tilgjengelige pakker, finne all tilgjengelig informasjon, og velg pakker til å installere eller fjerne. Programmet er spesielt utviklet for å brukes av administratorer, slik at standard atferd er mye mer intelligent enn <command>apt-get</command>, og dens grensesnitt mye lettere å forstå.
+			</para>
+			 <figure>
+				<title>The <command>aptitude</command> package manager</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/aptitude.png" format="PNG" scalefit="1" width="75%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Når den starter, viser <command>aptitude</command> en liste over pakker sortert etter status (installert, ikke installert eller installert men ikke tilgjengelig fra speil - andre avsnitt viser oppgaver, virtuelle pakker, og nye pakker som nylig er dukket opp i speil). For å lette tematisk surfing, er andre visninger tilgjengelige. I alle tilfelle viser <command>aptitude</command> en liste som kombinerer kategorier og pakker på skjermen. Kategoriene er organisert gjennom en trestruktur, hvis grener kan henholdsvis foldes ut eller lukkes med<keycombo><keycap>Enter</keycap></keycombo>, <keycombo><keycap>[</keycap></keycombo> and <keycombo><keycap>]</keycap></keycombo> keys. <keycombo><keycap>+</keycap></keycombo> skal brukes til å markere en pakke for installasjon, <keycombo><keycap>-</keycap></keycombo> for å merke for fjerning og <keycombo><keycap>_</keycap></keycombo> for å tvinge den (Merk at disse tastene også kan brukes for kategorier, og i så fall vil tilsvarende handlinger bli brukt på alle pakkene i kategori). <keycombo><keycap>u</keycap></keycombo> oppdaterer lista over tilgjengelige pakker og <keycombo action="simul"><keycap>Shift</keycap><keycap>u</keycap></keycombo> forbereder en fullstendig systemoppgradering. <keycombo><keycap>g</keycap></keycombo> bytter til et sammendrag av de nødvendige endringene (og skrive inn <keycombo><keycap>g</keycap></keycombo> vil igjen anvende endringene), og <keycombo><keycap>q</keycap></keycombo> avslutter den gjeldende visningen. Hvis du er i den første visningen, vil dette effektivt stenge <command>aptitude</command>.
+			</para>
+			 <sidebar> <title><emphasis>DOCUMENTATION</emphasis> <command>aptitude</command></title>
+			 <para>
+				Denne delen dekker ikke de finere detaljene ved å bruke <command>aptitude</command>. Den har heller fokus på å gi deg en ovefrlevelsespakke som bruker. <command>aptitude</command> er ganske godt dokumentert, og vi anbefaler deg å bruke den komplette manualen som ligger i <emphasis role="pkg">aptitude-doc-en</emphasis>-pakken (se <filename>/usr/share/doc/aptitude/html/en/index.html</filename>).
+			</para>
+			 </sidebar> <para>
+				For å søke etter en pakke, kan du skrive <keycombo><keycap>/</keycap></keycombo> etterfulgt av en søkestreng. Denne strengen stemmer med navnet på pakken, men kan også brukes til beskrivelsen (dersom den innledes med <literal>~d</literal>), til seksjonen (med <literal>~s</literal>) eller til andre karakteristika beskrevet i dokumentasjonen. De samme strengene kan filtrere listen over viste pakker: skriv <keycombo><keycap>l</keycap></keycombo>-nøkkelen (som i <foreignphrase>limit</foreignphrase>) og kjør strengen.
+			</para>
+			 <para>
+				Å håndtere "automatiske flagg" i Debian pakker (se <xref linkend="sect.automatic-tracking" />) er en lyst med <command>aptitude</command>. Det er mulig å søke i listen av installerte pakker og merke installerte pakker som automatiske med <keycombo action="simul"><keycap>Shift</keycap> <keycap>m</keycap></keycombo> eller gjerne merket med <keycombo><keycap>m</keycap></keycombo>-nøkkelen. “Automatske pakker" vises med en “A” i listen med pakker. Denne funksjonen gir også en enkel måte å vise pakkene i bruk på en maskin, uten alle bibliotekene og avhengigheter som du ikke egentlig bryr seg om. Den relaterte strengen som kan brukes sammen med <keycombo><keycap>l</keycap></keycombo> (for å aktivere filtermoduset) er <literal>~i!~M</literal>. Det spesifiserer at du bare ønsker å se installerte pakker (<literal>~i</literal>) som ikke er merket som automatiske (<literal>!~M</literal>).
+			</para>
+			 <sidebar> <title><emphasis>TOOL</emphasis> Å bruke <command>aptitude</command> i brukergrensesnittet for kommando-linjer</title>
+			 <para>
+				De fleste av <command>aptitude</command>s funksjoner er tilgjengelige via det interaktive brukergrensesnittet så vel som via kommando-linjer. Disse kommandolinjene er kjente for vanlige brukere av <command>apt-get</command> og <command>apt-cache</command>.
+			</para>
+			 <para>
+				De avanserte funksjonene i <command>aptitude</command> er også tilgjengelige på kommandolinjen. Du kan bruke de samme pakke-søkemønstre som i den interaktiv versjonen. For eksempel, hvis du ønsker å rydde opp listen over "manuelt installerte" pakker, og hvis du vet at ingen av de lokalt installerte programmer krever noen spesielle biblioteker eller Perl-moduler, kan du merke de tilsvarende pakker som automatiske med en enkelt kommando:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>aptitude markauto '~slibs|~sperl'</userinput></screen>
+			 <para>
+				Her kan du tydelig se kraften i søkemønstersystemet til <command>aptitude</command>, som muliggjør det direkte valget av alle pakkene i <literal>libs</literal> and <literal>perl</literal>-seksjonene.
+			</para>
+			 <para>
+				Pass på, hvis noen pakker er merket som automatisk, og hvis ingen andre pakke er avhengig av dem, vil de bli fjernet umiddelbart (etter en bekreftelsesforespørsel).
+			</para>
+			 </sidebar> <section>
+				<title>Håndtere anbefalinger forslag og oppgaver</title>
+				 <para>
+					Et annet interessant trekk ved <command>aptitude</command> er det faktum at det respekterer anbefalinger mellom pakker mens den gir brukerne valget om ikke å installere dem fra sak til sak. For eksempel anbefaler <emphasis role="pkg">gnome</emphasis>-pakken <emphasis role="pkg">gdebi</emphasis> (blant andre). Når du velger den første for installasjon, vil det siste også velges (og markert som automatisk hvis det ikke allerede er installert på systemet). Å taste <keycombo><keycap>g</keycap></keycombo> vil gjøre det klart: <emphasis role="pkg">gdebi</emphasis> vises på sammendragskjermen for ventende handlinger i listen over automatisk installerte pakker som skal imøtekomme avhengigheter. Du kan imidlertid velge å ikke installere den ved å fjerne den før du bekrefter operasjonene.
+				</para>
+				 <para>
+					Merk at denne anbefalte sporingsfunksjonen ikke gjelder for oppgraderinger. For eksempel, hvis en ny versjon av <emphasis role="pkg">gnome</emphasis> anbefaler en pakke som den ikke befalte ikke tidligere, vil pakken ikke merkes for installasjon. Imidlertid vil den bli oppført på oppgraderingsskjermen slik at administrator fortsatt kan velge å installere den.
+				</para>
+				 <para>
+					Forslag til valg mellom pakker blir også tatt hensyn til, men på en måte som er tilpasset deres bestemte status. For eksempel, siden <emphasis role="pkg">gnome</emphasis> foreslår <emphasis role="pkg">dia-gnome</emphasis>, vil sistnevnte bli vist i oppsummeringsvinduet for ventende handlinger (i seksjonen for pakker foreslått av andre pakker). På denne måten blir det synlig og administratoren kan velge å ta hensyn til forslaget eller ikke. Siden det er bare et forslag, og ikke en avhengighet eller en anbefaling, vil pakken ikke velges automatisk - dette valget krever en manuell inngripen fra brukeren (så pakken vil ikke bli merket som automatisk).
+				</para>
+				 <para>
+					I samme retning, husk at <command>aptitude</command> bruker oppgavebegrepet intelligent. Siden oppgaver vises som kategorier på skjermene med pakkelister, kan du velge enten en hel oppgave for installasjon eller fjerning, eller bla gjennom listen med pakker som inngår i oppgaven, og velge en mindre undergruppe.
+				</para>
+
+			</section>
+			 <section>
+				<title>Better Solver Algorithms</title>
+				 <para>
+					For å lukke opp denne seksjonen, la oss være oppmerksomme på at <command>aptitude</command> har er forseggjorte algoritmer sammenlignet med <command>apt-get</command> til å løse vanskelige situasjoner. Når det bes om et sett av handlinger er bedt om, og når disse kombinerte tiltakene vil føre til en usammenhengende system, evaluerern<command>aptitude</command> flere mulige scenarier og presenterer dem med synkende relevans. Men disse algoritmene er ikke feilfrie. Heldigvis er det alltid muligheten å velge å utføre handlinger manuelt. Når valgte handlinger fører til motsigelser, indikerer den øvre delen av skjermen en rekke "ødelagte" pakker (og du kan navigere direkte til disse pakkene ved å trykke <keycombo><keycap>b</keycap></keycombo>). Deretter er det mulig å bygge en løsning manuelt for de problemer som oppstår. Spesielt, kan du få tilgang til de ulike tilgjengelige versjonene ved å velge pakken med <keycombo> <keycap>Enter</keycap></keycombo>. Hvis valget av en av disse versjonene løser problemet, bør du ikke nøle med å bruke funksjonen. Når antall ødelagte pakker kommer ned til null, kan du trygt gå til sammendragsskjermen med ventende handlinger for en siste sjekk før du bruker dem.
+				</para>
+				 <sidebar> <title><emphasis>NOTE</emphasis> <command>aptitude</command>'s log</title>
+				 <para>
+					På samme måte som <command>dpkg</command>, beholder <command>aptitude</command> sporet med utførte handlinger i sin loggfil (<filename>/var/log/aptitude</filename>). Men siden begge kommandoene virker på et helt forskjellig nivå, kan du ikke finne den samme informasjonen i deres respektive loggfiler . Mens <command>dpkg</command> logger alle operasjoner som er utført på enkeltpakker trinnvis, holder <command>aptitude</command> øye med høy-nivå operasjoner som en systemomfattende oppgradering vil være.
+				</para>
+				 <para>
+					Pass på, denne loggfilen inneholder bare en oppsummering av operasjoner utført av <command>aptitude</command>. Hvis andre grenseflater (eller til og med <command>dpkg</command> selv) av og til brukes, så vil <command>aptitude</command>s logg bare delvis inneholde oversikten over operasjonene, så du kan ikke stole på den for å bygge en troverdig historikk til systemet.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section>
+			<title><command>synaptic</command></title>
+			 <para>
+				<command>synaptic</command> er en grafisk pakkebehandler for Debian med et rent og effektivt grafisk grensesnitt basert på GTK +/GNOME. De mange klare til bruk-filtrene gir rask tilgang til nettopp tilgjengelige pakker, installerte pakker, oppgraderbare pakker, avleggse pakker og så videre. Hvis du blar gjennom disse listene, kan du velge operasjonene gjøres med pakkene (installere, oppgradere, fjerne, tvinge). Disse operasjonene utføres ikke umiddelbart, men settes i en oppgaveliste. Et enkelt klikk på en knapp bekrefter det som skal gjøres, og de blir utført i en omgang.
+			</para>
+			 <figure>
+				<title><command>synaptic</command> package manager</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/synaptic.png" format="PNG" scalefit="1" width="75%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+
+	</section>
+	 <section id="sect.package-authentication">
+		<title>Sjekking av pakkeautensitet</title>
+		 <indexterm>
+			<primary>package</primary>
+			<secondary>authenticity check</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>package</primary>
+			<secondary>seal</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>package</primary>
+			<secondary>signature</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>signature</primary>
+			<secondary>package signature</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>authentication</primary>
+			<secondary>package authentication</secondary>
+		</indexterm>
+		 <para>
+			Sikkerheten er veldig viktig for Falcot Corps administratorer. Følgelig må de sørge for at de bare installere pakker som er garantert å komme fra Debian uten å være tuklet med underveis. En som vil knekke en datamaskin kan prøve å legge ondsinnet kode til en ellers lovlig pakke. En slik pakke, hvis den er installert, kunne gjøre noe knekkeren utviklet det til å gjøre, inkludert for eksempel å avdekke passord eller konfidensiell informasjon. For å omgå denne risikoen, gir Debian nye installasjoner en forsegling som det ikke kan kludres med, for å garantere at en pakke virkelig kommer fra sin offisielle vedlikeholder og ikke er endret av en tredjepart.
+		</para>
+		 <para>
+			Forseglingen arbeider med en kjede av kryptografiske nøkler og en signatur. Den signerte filen er <filename>Release</filename>-filen, som Debian-speilene skaffer. Det inneholder en liste med <filename>Packages</filename> filer (også i sine komprimert former, <filename>Packages.gz</filename> og <filename>Packages.xz</filename>, og oppstigende versjoner), sammen med sine MD5, SHA1 og SHA256 nøkler, som sikrer at filene ikke har blitt tuklet med. Disse <filename>Packages</filename>-filene inneholder en liste med de Debian-pakkene som er tilgjengelig på speilet, med tilhørende nøkler, som i sin tur sikrer at heller ikke innholdet i disse pakkene har blitt endret.
+		</para>
+		 <indexterm>
+			<primary><command>apt-key</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">debian-archive-keyring</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/apt/trusted.gpg.d/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>Release.gpg</filename></primary>
+		</indexterm>
+		 <para>
+			Deklarerte nøklene styres med <command>apt-key</command>-kommandoen i <emphasis role="pkg">apt</emphasis>-pakken. Dette programmet vedlikeholder en nøkkelring med GnuPG offentlige nøkler, som brukes til å verifisere signaturer i <filename>Release.gpg</filename>-filer tilgjengelig fra speil. Den kan brukes til å legge til nye nøkler manuelt (når ikke-offisielle speil er nødvendig). Vanligvis er det imidlertid bare de offisielle Debian-nøklene som trengs. Disse nøklene holdes automatisk oppdatert ved <emphasis role="pkg">debian-archive-keyring</emphasis>-pakken (som setter de samsvarende nøkkelringene i <filename>/etc/apt/trusted.gpg.d</filename>). Men den første installasjonen av denne pakken krever forsiktighet: Selv om pakken er signert som alle andre, kan signaturen ikke bekreftes eksternt. Forsiktige administratorer bør derfor sjekke fingeravtrykkene til importerte nøkler før de stoler på dem for å installere nye pakker:
+		</para>
+		 
+<screen role="scale"># <userinput>apt-key fingerprint</userinput>
+/etc/apt/trusted.gpg.d/debian-archive-jessie-automatic.gpg
+----------------------------------------------------------
+pub   4096R/2B90D010 2014-11-21 [expires: 2022-11-19]
+      Key fingerprint = 126C 0D24 BD8A 2942 CC7D  F8AC 7638 D044 2B90 D010
+uid                  Debian Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-security-automatic.gpg
+-------------------------------------------------------------------
+pub   4096R/C857C906 2014-11-21 [expires: 2022-11-19]
+      Key fingerprint = D211 6914 1CEC D440 F2EB  8DDA 9D6D 8F6B C857 C906
+uid                  Debian Security Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-stable.gpg
+-------------------------------------------------------
+pub   4096R/518E17E1 2013-08-17 [expires: 2021-08-15]
+      Key fingerprint = 75DD C3C4 A499 F1A1 8CB5  F3C8 CBF8 D6FD 518E 17E1
+uid                  Jessie Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-squeeze-automatic.gpg
+-----------------------------------------------------------
+pub   4096R/473041FA 2010-08-27 [expires: 2018-03-05]
+      Key fingerprint = 9FED 2BCB DCD2 9CDF 7626  78CB AED4 B06F 4730 41FA
+uid                  Debian Archive Automatic Signing Key (6.0/squeeze) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-squeeze-stable.gpg
+--------------------------------------------------------
+pub   4096R/B98321F9 2010-08-07 [expires: 2017-08-05]
+      Key fingerprint = 0E4E DE2C 7F3E 1FC0 D033  800E 6448 1591 B983 21F9
+uid                  Squeeze Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-automatic.gpg
+----------------------------------------------------------
+pub   4096R/46925553 2012-04-27 [expires: 2020-04-25]
+      Key fingerprint = A1BD 8E9D 78F7 FE5C 3E65  D8AF 8B48 AD62 4692 5553
+uid                  Debian Archive Automatic Signing Key (7.0/wheezy) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-stable.gpg
+-------------------------------------------------------
+pub   4096R/65FFB764 2012-05-08 [expires: 2019-05-07]
+      Key fingerprint = ED6D 6527 1AAC F0FF 15D1  2303 6FB2 A1C2 65FF B764
+uid                  Wheezy Stable Release Key &lt;debian-release@lists.debian.org&gt;</screen>
+		 <sidebar> <title><emphasis>IN PRACTICE</emphasis> Å legge til klarerte nøkler</title>
+		 <indexterm>
+			<primary>trusted key</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>key</primary>
+			<secondary>APT's authentication keys</secondary>
+		</indexterm>
+		 <para>
+			Når en tredjeparts pakke legges til <filename>sources.list</filename>filen, må APT bes om å stole på den samsvarende GPG autoriseringsnøkkelen (ellers vil den klage på at den ikke kan sikre ektheten av pakkene som kommer fra dette pakkelageret). Det første trinnet er selvsagt å få den offentlige nøkkelen. Oftere enn ikke, vil nøkkelen bli gitt som en liten tekstfil, som vi vil kalle <filename>key.asc</filename> i de følgende eksemplene.
+		</para>
+		 <para>
+			For å legge til en nøkkel til den klarerte nøkkelringen, kan administtratoren kjøre <command>apt-key add &lt; key.asc</command>. En annen måte er å bruke <command>synaptic</command>s grafiske brukergrensesnitt: Dens “Authentication”-fane i <menuchoice><guimenu>Settings</guimenu> <guisubmenu>Repositories</guisubmenu></menuchoice>-menyen gir mulighet til å importere en nøkkel fra <filename>key.asc</filename>-filen.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gui-apt-key</emphasis></primary>
+		</indexterm>
+		 <para>
+			For folk som ønsker et dedikert program og mer informasjon om klarerte nøkler, er det mulig å bruke <command>gui-apt-key</command> (i pakken med samme navn), et lite grafisk brukergrensesnitt som forvalter den klarert nøkkelringen.
+		</para>
+		 </sidebar> <para>
+			Når de aktuelle nøklene er i en nøkkelring, vil APT sjekke signaturer før en risikabel operasjon, slik at grensesnittet vil vise en advarsel hvis det er bedt om å installere en pakke der autentisiteten ikke kan påvises.
+		</para>
+
+	</section>
+	 <section id="sect.dist-upgrade">
+		<title>Oppgradering fra en stabil distribusjon til den neste</title>
+		 <para>
+			En av de mest kjente funksjonene i Debian er evnen til å oppgradere et installert system fra en stabil utgave til den neste: <foreignphrase>dist-upgrade</foreignphrase> - en velkjent frase - har i stor grad bidratt til prosjektets omdømme. Med noen forholdsregler, kan å oppgradere en datamaskin ta så lite som et par minutter, eller noen få dusin minutter, avhengig av nedlastingshastigheten til pakkebrønnene.
+		</para>
+		 <section>
+			<title>Anbefalt prosedyre</title>
+			 <para>
+				Siden Debian har litt tid for å utvikle seg i perioden mellom stabile versjoner, bør du lese produktmerknadene før du oppgraderer.
+			</para>
+			 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> Release notes</title>
+			 <para>
+				Versjonsmerknadene til et operativsystem (og, mer generelt, for all programvare) er et dokument som gir en oversikt over programvaren, med noen detaljer angående særegenhetene til én versjon. Disse dokumentene er vanligvis korte sammenlignet med den komplette dokumentasjonen, og de lister vanligvis opp funksjoner som er blitt introdusert siden forrige versjon. De gir også detaljer om oppgraderingsprosedyrer, advarsler for brukere av tidligere versjoner, og noen ganger rettelser.
+			</para>
+			 <para>
+				Versjonsmerknadene er tilgjengelig på nettet: Versjonsmerknadene for den nåværende stabile utgaven har en egen URL, mens eldre versjonsmerknadene finnes med sine kodenavn: <ulink type="block" url="http://www.debian.org/releases/stable/releasenotes" /> <ulink type="block" url="http://www.debian.org/releases/wheezy/releasenotes" />
+			</para>
+			 </sidebar> <para>
+				I denne seksjonen vil vi fokusere på å oppgradere et <emphasis role="distribution">Wheezy</emphasis>-system til <emphasis role="distribution">Jessie</emphasis>. Dette er en stor operasjon på et system; Og som sådan, er det aldri 100 % risikofritt, og bør ikke forsøkes før alle viktige data er sikkerhetskopiert .
+			</para>
+			 <para>
+				En annen god vane som gjør oppgradering enklere (og kortere) er å rydde dine installerte pakker og bare beholde dem som virkelig er nødvendige. Nyttige verktøy for å gjøre dette inkluderer <command>aptitude</command>, <command>deborphan</command> og <command>debfoster</command> (se <xref linkend="sect.automatic-tracking" />). For eksempel kan du bruke følgende kommando, og så bruke <command>aptitude</command>s interaktivmodus for å dobbeltsjekke og fininnstille de planlagte fjerningene:
+			</para>
+			 
+<screen># <userinput>deborphan | xargs aptitude --schedule-only remove</userinput></screen>
+			 <para>
+				Nå for oppgraderingen selv. Først må du endre <filename>/etc/apt/sources.list</filename>-filen for å fortelle APT om å få sine pakker fra <emphasis role="distribution">Jessie</emphasis> i stedet for fra <emphasis role="distribution">Wheezy</emphasis>. Hvis filen bare inneholder referanser til <emphasis role="distribution">Stable</emphasis> snarere enn til eksplisitte kodenavn, er endringen ikke engang nødvendig, siden <emphasis role="distribution">Stable</emphasis> alltid refererer til den nyeste versjonen av Debian. I begge tilfeller må databasen med tilgjengelige pakker friskes opp med <command>apt update</command>-kommandoen eller med frisk opp-knappen i <command>synaptic</command>).
+			</para>
+			 <para>
+				Straks disse nye pakkekildene er registrert, bør du først gjøre en liten oppgradering med <command>apt upgrade</command>. Ved å gjøre oppgraderingen i to trinn, lettes jobben for pakkens styringsverktøy og ofte sikrer at vi har de nyeste versjonene av disse, som kanskje har akkumulert feilrettinger og forbedringer som kreves for å fullføre hele distribusjonsoppgraderingen.
+			</para>
+			 <para>
+				Straks disse nye pakkekildene er registrert, bør du først gjøre en liten oppgradering med <command>apt full-upgrade</command>, <command>aptitude</command>, eller <command>synaptic</command>. Du bør nøye kontrollere de foreslåtte tiltakene før du bruker dem: Du kan ønske å legg til foreslåtte pakker eller velge bort pakker som kun er anbefalt og kjente for ikke være nyttige. I alle fall skal brukergrensesnittet komme opp med et scenario som ender i et sammenhengende og up-to-date <emphasis role="distribution">Jessie</emphasis> system. Deretter er alt du trenger å gjøre å vente mens de nødvendige pakkene er lastet ned, svare på Debconf spørsmål og muligens om lokale endringer i konfigurasjonsfiler, og lene deg tilbake mens APT utfører sin magi.
+			</para>
+
+		</section>
+		 <section>
+			<title>Å håndtere problemer etter en oppgradering</title>
+			 <para>
+				Til tross for Debian vedlikeholderes beste innsats, er en større oppgradering ikke alltid så glatt som du kan ønske deg. Nye programvareversjoner kan være uforenlig med de foregående (for eksempel kan standardopptredene eller dataformatet deres ha endret seg). Dessuten kan noen bug slippe gjennom nåløyet til tross for testfasen som alltid går foran en Debian utgivelse.
+			</para>
+			 <para>
+				For å foregripe noen av disse problemene, kan du installere <emphasis role="pkg">apt-listchanges</emphasis>-pakken, som viser informasjon om mulige problemer ved begynnelsen av en pakkeoppgradering. Denne informasjonen er utarbeidet av pakkens vedlikeholder og satt i <filename>/usr/share/doc/<replaceable>package</replaceable>/NEWS.Debian</filename>-filer for å gjøre det enklere brukerne. Å lese disse filene (eventuelt i <emphasis role="pkg">apt-listchanges</emphasis>) bør hjelpe deg å unngå uønskede overraskelser.
+			</para>
+			 <para>
+				Du kan noen ganger finne at den nye versjonen av en programvare ikke fungerer i det hele tatt. Dette skjer vanligvis hvis programmet er ikke spesielt populært, og har ikke blitt testet nok; En siste liten oppdatering kan også innføre regresjoner som bare finnes etter den "stable" utgivelsen. I begge tilfeller er det første å gjøre er å se på feilrapportsystemet på <literal>https://bugs.debian.org/<replaceable>package</replaceable></literal>, og sjekke om problemet allerede er blitt rapportert. Hvis det ikke er, bør du rapportere det selv med <command>reportbug</command>. Hvis det allerede er kjent, er feilrapporten og de tilhørende meldingene vanligvis en utmerket kilde til informasjon om feilen:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						Noen ganger finnes en patch allerede, og den er tilgjengelig på feilrapporten; kan du så lokalt rekompilere en forbedret versjon av den ødelagte pakken (se <xref linkend="sect.rebuilding-package" />);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						i andre tilfeller kan brukere ha funnet en løsning på problemet og delt sin innsikt om det i sine svar til rapporteringen;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						i andre tilfeller kan brukere har funnet en løsning på problemet og delt sin innsikt om det i sine svar i rapporteringen.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Avhengig av hvor alvorlig feilen er, kan en ny versjon av pakken bli forberedt spesielt til en ny revisjon av "stable"-utgivelsen. Når dette skjer, blir den forbedrede pakken gjort tilgjengelig i <literal>proposed-updates</literal>-seksjonen i Debian-speilene (se <xref linkend="sect.proposed-updates" />). Den tilsvarende oppføring kan da midlertidig legges til <filename>sources.list</filename>-filen, og oppdaterte pakker kan installeres med <command>apt</command> eller <command>aptitude</command>.
+			</para>
+			 <para>
+				Noen ganger er den forbedrede pakken ikke tilgjengelig i denne delen ennå, i påvente av en validering av Stable Release Managers. Du kan kontrollere om det er tilfelle på deres nettside. Pakker oppført der er ikke tilgjengelige ennå, men da vet du i det minste at publikasjonsprosessen pågår. <ulink type="block" url="https://release.debian.org/proposed-updates/stable.html" />
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.regular-upgrades">
+		<title>Å holde systemet oppdatert</title>
+		 <para>
+			Debian-distribusjonen er dynamisk og endrer seg kontinuerlig. Mesteparten av endringene er i<emphasis role="distribution">Testing</emphasis> og <emphasis role="distribution">Unstable</emphasis>-versjonene, men selv <emphasis role="distribution">Stable</emphasis> oppdateres fra tid til annen, for det meste med sikkerhetsrelaterte løsninger. Uansett hvilken versjon av Debian som kjører systemet, er det vanligvis en god idé å holde det oppdatert, slik at du får nytte av nyere videreutviklinger og feilrettinger .
+		</para>
+		 <para>
+			Det er selvfølgelig mulig å kjøre et verktøy jevnlig for å se etter tilgjengelige oppdateringer og kjøre oppgraderinger. Slike repeterende oppgaver er kjedelige, spesielt når det må utføres på flere maskiner. Heldigvis, som for mange repeterende oppgaver, kan de delvis automatiseres. Et sett med verktøy er allerede utviklet til til formålet.
+		</para>
+		 <para>
+			Det første av disse verktøyene er <command>apticron</command>, i pakken med samme navn. Den kjører et skript daglig <command>cron</command>). Skriptet oppdaterer listen over tilgjengelige pakker, og hvis noen installerte pakker ikke er i den nyeste versjonen, sender den en e-post med en liste over disse pakkene sammen med de endringene som er gjort i de nye versjonene. Selvfølgelig er denne pakken hovedsakelig rettet mot brukere av Debian <emphasis role="distribution">Stable</emphasis>, siden de daglige e-postene ville være svært lange for de versjoner av Debian som har et raskere tempo. Når oppdateringer er tilgjengelige, laster <command>apticron</command> dem ned automatisk. De blir ikke installert - for det må administrator fortsatt gjøre - men å ha pakkene allerede nedlastet og tilgjengelig lokalt (i APTs hurtiglager) blir jobben raskere.
+		</para>
+		 <para>
+			Administratorer med ansvaret for flere datamaskiner vil uten tvil sette pris på å bli informert om ventende oppgraderinger, men oppgraderingene selv er fortsatt like kjedelige som de pleide å være. Her kommer <filename>/etc/cron.daily/apt</filename>-skriptet (i <emphasis role="pkg">apt</emphasis> pakken) inn hendig. Dette skriptet kjøres også daglig (og ikke-interaktivt) av <command>cron</command>. For sin egen kontroll, bruker APT konfigurasjonsvariabler (som derfor lagret i en fil under <filename>/etc/apt/apt.conf.d/</filename>). De viktigste variablene er:
+		</para>
+		 <variablelist>
+			<varlistentry>
+				<term><literal>APT::Periodic::Update-Package-Lists</literal></term>
+				 <listitem>
+					<para>
+						Dette alternativet lar deg angi frekvensen (i dager) for hvor ofte pakkelistene blir oppdatert. <command>apticron</command>- brukere kan klare seg uten denne variabelen, ettersom <command>apticron</command> allerede utfører denne oppgaven.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::Download-Upgradeable-Packages</literal></term>
+				 <listitem>
+					<para>
+						Igjen, indikerer dette alternativet en frekvens (i dager), denne gangen for nedlastingen av selve pakkene. En gang til, <command>apticron</command>-brukere vil ikke trenge dem.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::AutocleanInterval</literal></term>
+				 <listitem>
+					<para>
+						Dette alternativet omfatter en funksjon som <command>apticron</command> ikke har. Den styrer hvor ofte avlegsne pakker (de som ikke er referert til av noen distribusjoner lenger) blir fjernet fra APTs hurtiglager. Dette holder APT hurtiglager på en rimelig størrelse og betyr at du ikke trenger å bekymre deg for den oppgaven.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::Unattended-Upgrade</literal></term>
+				 <listitem>
+					<indexterm><primary><emphasis role="pkg">unattended-upgrades</emphasis></primary></indexterm> <para>
+						Med dette valget aktivert, vil det daglige skriptet kjøre <command>unattended-upgrade</command> (fra <emphasis role="pkg">unattended-upgrades</emphasis>-pakken) som - som navnet antyder - kan automatisere oppgraderingsprosessen for noen pakker (som standard det tar bare vare på sikkerhetsoppdateringer, men dette kan tilpasses i <filename>/etc/apt/apt.conf.d/50unattended-upgrades</filename>). Merk at dette valget kan settes ved hjelp av debconf ved å kjøre <command>dpkg-reconfigure -plow unattended-upgrades</command>.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+
+		</variablelist>
+		 <para>
+			Andre alternativer kan tillate deg å kontrollere hurtiglagerets oppryddingatferd med mer presisjon. De er ikke listet her, men er beskrevet i <filename>/etc/cron.daily/apt</filename>-skriptet.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gnome-packagekit</emphasis></primary>
+		</indexterm>
+		 <para>
+			Disse verktøyene fungerer veldig bra på tjenere, men skrivebordsbrukere foretrekker generelt et mer interaktivt system. Det er derfor "Debian desktop environement"s oppgave å installere <emphasis role="pkg">gnome-packagekit</emphasis> (I hvert fall når du velger GNOME som skrivebordsmiljø). Det gir et ikon i varslingsområdet for skrivebordsmiljøer når oppdateringer er tilgjengelige; å klikke på dette ikonet kjører så <command>gpk-update-viewer</command>, et forenklet grensesnitt for å utføre oppdateringer. Du kan bla gjennom tilgjengelige oppdateringer, lese den korte beskrivelsen av de aktuelle pakkene og det overensstemmende <filename>changelog</filename> oppsettet, og fra sak til sak velge om du vil bruke oppdateringen eller ikke.
+		</para>
+		 <figure>
+			<title>Oppgradering med <command>gpk-update-viewer</command></title>
+			 <mediaobject>
+				<imageobject>
+					<imagedata fileref="images/gnome-packagekit.png" format="PNG" scalefit="1" width="70%" />
+				</imageobject>
+
+			</mediaobject>
+
+		</figure>
+
+	</section>
+	 <section id="sect.automatic-upgrades">
+		<title>Automatiske oppgraderinger</title>
+		 <indexterm>
+			<primary>upgrade</primary>
+			<secondary>automatic system upgrade</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>automatic upgrade</primary>
+		</indexterm>
+		 <para>
+			Siden Falcot Corp har mange datamaskiner, men bare begrenset arbeidskraft, prøver administratorene der å gjøre oppgraderinger så automatiske som mulig. Programmene som er ansvarlige for disse prosessene må derfor kjøres uten menneskelig inngripen.
+		</para>
+		 <section>
+			<title>Configuring <command>dpkg</command></title>
+			 <para>
+				Som vi allerede har nevnt kan (se sidefelt <xref linkend="sidebar.questions-conffiles" />), <command>dpkg</command> bli instruert om å ikke be om bekreftelse når du skifter ut en konfigurasjonsfil (med <literal>--force-confdef --force-confold</literal>-valgene). Interaksjoner kan imidlertid komme fra tre andre kilder: Noen fra APT selv, noen er håndtert av <command>debconf</command>, og noen skjer på kommandolinjen som følge av pakkekonfigurasjonsskripter.
+			</para>
+
+		</section>
+		 <section>
+			<title>Å konfigurere APT</title>
+			 <para>
+				For APT er enkel: <literal>-y</literal>-valget (eller <literal>--assume-yes</literal>) ber APT å anse svaret på alle dens spørsmål for "yes".
+			</para>
+
+		</section>
+		 <section>
+			<title>Å konfigurere <command>debconf</command></title>
+			 <para>
+				Oppgaven <command>debconf</command> fortjener flere detaljer. Dette programmet var, fra begynnelsen av, designet for å styre relevans og antall spørsmål som vises til brukeren, samt måten de vises på. Det er derfor konfigurasjonen knytter liten oppmerksomhet til spørsmål; bare spørsmål med mer enn minimal prioritet blir vist. <command>debconf</command> forutsetter standard svar (definert av pakkeutvikleren ) for spørsmål det er besluttet å hoppe over.
+			</para>
+			 <para>
+				Det andre relevante konfigurasjonselementet er grensesnittet som brukes av grenseflaten. Hvis du velger <literal>noninteractive</literal> blant valgene, er all brukerinteraksjon deaktivert. Hvis en pakke prøver å vise en informativ merknad, vil den bli sendt til administratoren via e-post.
+			</para>
+			 <para>
+				For å refigurere <command>debconf</command>, bruk <command>dpkg-reconfigure</command>-verktøyet fra <emphasis role="pkg">debconf</emphasis>-pakken; den relevante kommandoen er <command>dpkg-reconfigure debconf</command>. Legg merke til at de konfigurerte verdiene midlertidig kan overstyres av miljøvariabler ved behov (for eksempel <varname>DEBIAN_FRONTEND</varname> kontrollerer brukergrensesnittet, som dokumentert i den manuelle siden <citerefentry><refentrytitle>debconf</refentrytitle>
+				<manvolnum>7</manvolnum></citerefentry>).
+			</para>
+
+		</section>
+		 <section>
+			<title>Å håndtere kommandolinjesamhandling</title>
+			 <para>
+				Den siste kilden til samhandling, og den vanskeligste å bli kvitt, er konfigurasjonsskriptet som drives av <command>dpkg</command>. Det er dessverre ingen standard løsning, og ingen svar er overveiende bedre enn en annet.
+			</para>
+			 <para>
+				Den vanligste metoden er å undertrykke standard inndata ved å omdirigere det tomme innholdet i <filename>/dev/null</filename> til den med <command><replaceable>command</replaceable> &lt;/dev/null</command>, eller å mate den med en endeløs strøm av linjeskift. Ingen av disse metodene er 100 % pålitelige, men de fører vanligvis til at standard svarene blir brukt, siden de fleste skript vurderer en mangel på svar som å akseptere standardverdien.
+			</para>
+
+		</section>
+		 <section>
+			<title>Mirakelkombinasjonen</title>
+			 <para>
+				Ved å kombinere de foregående elementene, er det mulig å utforme et lite, men temmelig pålitelig skript som kan håndtere automatiske oppgraderinger.
+			</para>
+			 <example id="example.non-interactive-upgrade">
+				<title>Ikke-interaktive oppgraderingsskript</title>
+				 
+<programlisting>export DEBIAN_FRONTEND=noninteractive
+yes '' | apt-get -y -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" dist-upgrade</programlisting>
+
+			</example>
+			 <sidebar> <title><emphasis>IN PRACTICE</emphasis> The Falcot Corp case</title>
+			 <para>
+				Falcon datamaskiner er et heterogent system, med maskiner med ulike funksjoner. Administratorer vil derfor velge ut den mest relevante løsningen for hver datamaskin.
+			</para>
+			 <para>
+				I praksis kjører tjenerne <emphasis role="distribution">Jessie</emphasis> er konfigurert med "mirakel kombinasjonen" ovenfor, og holdes oppdatert automatisk. Bare de mest kritiske tjenere (brannmurene for eksempel) er satt opp med<command>apticron</command>, slik at oppgraderinger alltid skjer under oppsyn av en administrator.
+			</para>
+			 <para>
+				Kontorets arbeidsstasjoner for de administrative tjenestene kjører også <emphasis role="distribution">Jessie</emphasis>, men de er utstyrt med <emphasis role="pkg">gnome-packagekit</emphasis>, slik at brukerne utløser oppgraderinger selv. Begrunnelsen for denne beslutningen er at hvis oppgraderinger skjer uten en eksplisitt handling, kan oppførselen til datamaskinen endres uventet, noe som kan føre til forvirring for de viktigste brukerne.
+			</para>
+			 <para>
+				I labben, der de få datamaskinene som bruker <emphasis role="distribution">Testing</emphasis> — kan få fordelen med de siste programvareversjonene - og er heller ikke oppgradert automatisk. Administratorer konfigurerer bare APT til å forberede oppgraderinger, ikke til å implementere dem. Når de bestemmer seg for å oppgradere (manuelt), vil de kjedelige delene med å oppdaterte pakkelister og med nedlasting pakker unngås, og administratorer kan fokusere på den virkelig nyttig delen.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.searching-packages">
+		<title>Søke etter pakker</title>
+		 <para>
+			Med den store og stadig voksende mengden av programvare i Debian, fremkommer det et paradoks: Debian har vanligvis et verktøy for de fleste oppgaver, men at verktøyet kan være svært vanskelig å finne blant de utallige andre pakkene. Mangelen på egnede måter å søke etter (og finne) riktig verktøy har lenge vært et problem. Heldigvis er dette problemet har nesten helt blitt løst.
+		</para>
+		 <para>
+			Den mest trivielle søke mulig ser opp en eksakt pakkenavn. Hvis <command>apt show <replaceable>package</replaceable></command> returnerer et resultat, da pakken eksisterer. Dessverre, dette krever å kunne eller gjette navnet på pakken, noe som ikke alltid er mulig.
+		</para>
+		 <sidebar> <title><emphasis>TIP</emphasis> Konvensjoner for navning av pakker</title>
+		 <para>
+			Noen kategorier av pakker navngis i henhold til et konvensjonelt navneordning; i det vi vet at ordningen noen ganger kan tillate deg å gjette nøyaktige pakkenavn. For eksempel, for Perl-moduler, sier konvensjonen at en modul kalt <literal>XML::Handler::Composer</literal> oppstrøms skulle bli pakket som <emphasis role="pkg">libxml-handler-composer-perl</emphasis>. Biblioteket som gjør bruken av <command>gconf</command>-systemet fra Python mulig er pakket som <emphasis role="pkg">python-gconf</emphasis>. Det er dessverre ikke mulig å definere et helt generell ordning for navning av alle pakkene, selv om pakkevedlikeholdere vanligvis prøver å følge oppstrømsvalget til utviklerne.
+		</para>
+		 </sidebar> <para>
+			En litt mer vellykket søk mønster er et søk klartekst i pakkenavn , men det er fortsatt svært begrenset. Du kan vanligvis finne resultater ved å søke i pakken beskrivelser: siden hver pakke har en mer eller mindre detaljert beskrivelse i tillegg til pakkenavnet, vil et søkeord i disse beskrivelsene ofte være nyttig <command>apt-cache</command> og <command>axi-cache</command> er de valgte verktøyene for denne type søk; for eksempel vil <command>apt-cache search video</command> gi en liste med alle pakker hvis navn eller beskrivelse inneholder nøkkelordet “video”.
+		</para>
+		 <para>
+			For mer komplekse søk, kreves et kraftigere verktøy, som <command>aptitude</command>. <command>aptitude</command> lar deg søke etter en logisk uttrykk basert på pakkemetadatafelt . For eksempel vil følgende kommando søke etter pakker med navn som inneholder <literal>kino</literal>, der beskrivelsen inneholder <literal>video</literal> og der vedlikeholderens navn inneholder <literal>paul</literal>:
+		</para>
+		 
+<screen>$ <userinput>aptitude search kino~dvideo~mpaul</userinput>
+p   kino  - Non-linear editor for Digital Video data
+$ <userinput>aptitude show kino</userinput>
+Package: kino
+State: not installed
+Version: 1.3.4-2.1+b1
+Priority: extra
+Section: video
+Maintainer: Paul Brossier &lt;piem@debian.org&gt;
+Architecture: amd64
+Uncompressed Size: 8,472 k
+Depends: libasound2 (&gt;= 1.0.16), libatk1.0-0 (&gt;= 1.12.4), libavc1394-0 (&gt;=
+         0.5.3), libavcodec56 (&gt;= 6:11~beta1) | libavcodec-extra-56 (&gt;=
+         6:11~beta1), libavformat56 (&gt;= 6:11~beta1), libavutil54 (&gt;=
+         6:11~beta1), libc6 (&gt;= 2.14), libcairo2 (&gt;= 1.2.4), libdv4,
+         libfontconfig1 (&gt;= 2.11), libfreetype6 (&gt;= 2.2.1), libgcc1 (&gt;=
+         1:4.1.1), libgdk-pixbuf2.0-0 (&gt;= 2.22.0), libglade2-0 (&gt;= 1:2.6.4-2~),
+         libglib2.0-0 (&gt;= 2.12.0), libgtk2.0-0 (&gt;= 2.24.0), libice6 (&gt;=
+         1:1.0.0), libiec61883-0 (&gt;= 1.2.0), libpango-1.0-0 (&gt;= 1.14.0),
+         libpangocairo-1.0-0 (&gt;= 1.14.0), libpangoft2-1.0-0 (&gt;= 1.14.0),
+         libquicktime2 (&gt;= 2:1.2.2), libraw1394-11, libsamplerate0 (&gt;= 0.1.7),
+         libsm6, libstdc++6 (&gt;= 4.9), libswscale3 (&gt;= 6:11~beta1), libx11-6,
+         libxext6, libxml2 (&gt;= 2.7.4), libxv1, zlib1g (&gt;= 1:1.1.4)
+Recommends: ffmpeg, curl
+Suggests: udev | hotplug, vorbis-tools, sox, mjpegtools, lame, ffmpeg2theora
+Conflicts: kino-dvtitler, kino-timfx, kinoplus
+Replaces: kino-dvtitler, kino-timfx, kinoplus
+Provides: kino-dvtitler, kino-timfx, kinoplus
+Description: Non-linear editor for Digital Video data
+ Kino allows you to record, create, edit, and play movies recorded with DV
+ camcorders. This program uses many keyboard commands for fast navigating and
+ editing inside the movie. 
+ 
+ The kino-timfx, kino-dvtitler and kinoplus sets of plugins, formerly
+ distributed as separate packages, are now provided with Kino.
+Homepage: http://www.kinodv.org/
+
+Tags: field::arts, hardware::camera, implemented-in::c, implemented-in::c++,
+      interface::x11, role::program, scope::application, suite::gnome,
+      uitoolkit::gtk, use::editing, use::learning, works-with::video,
+      x11::application</screen>
+		 <para>
+			Søket returnerer bare en pakke, <emphasis role="pkg">kino</emphasis>, som tilfredsstiller de tre kriteriene.
+		</para>
+		 <para>
+			Selv disse multi-kriteriesøkene er ganske uhåndterlige, noe som forklarer hvorfor de ikke brukes så mye som de kunne. Et nytt merkesystem har derfor blitt utviklet, og det gir en ny tilnærming til det å søke. Pakker er gitt koder som gir en tematisk klassifisering langs flere tråder, kjent som en "fasettbasert klassifikasjon". Når det gjelder <emphasis role="pkg">kino</emphasis> ovenfor, tyder pakkenes koder på at Kino er en Gnome-basert programvare, som fungerer på videodata, og har som hovedformål å redigere.
+		</para>
+		 <para>
+			Å søke etter denne klassifiseringen kan hjelpe deg å finne en pakke som tilsvarer kjente behov;. Selv om det gir et (moderat) antall treff, kan resten av søket gjøres manuelt. For å gjøre det, kan du bruke <literal>~G</literal> søkestreng i <command>aptitude</command>, men det er nok trolig lettere å navigere på nettstedet der taggene styres fra: <ulink type="block" url="http://debtags.alioth.debian.org/cloud/" />
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">debtags</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>tag</primary>
+		</indexterm>
+		 <para>
+			Å velge <literal>works-with::video</literal> og <literal>use::editing</literal> tagger gir en håndfull pakker, inkludert <emphasis role="pkg">kino</emphasis> og <emphasis role="pkg">pitivi</emphasis> videoredigerere. Dette klassifiseringgssystemet er bare bundet til å bli brukt mer og mer som tiden går, og pakkehåndterere vil gradvis levere effektive søkegrensesnitt basert på det.
+		</para>
+		 <para>
+			For å oppsummere, det beste verktøyet for jobben avhenger av hvor komplekse søk som du ønsker å gjøre:
+		</para>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					<command>apt-cache</command> tillater bare søking i pakkenavn og beskrivelser, noe som er veldig praktisk når vi leter etter en bestemt pakke som stemmer med noen få målrettede søkeord;
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					når søkekriteriene også omfatter forhold mellom pakker eller andre meta-data, for eksempel navnet på vedlikeholderen,vil <command>synaptic</command> være nyttigere;
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					når en taggbasert søk er nødvendig, er <command>packagesearch</command> et godt verktøy, - et grafisk grensesnitt laget for å søke i tilgjengelige pakker med flere kriterier (inkludert navnene på filene som de inneholder). For bruk på kommandolinjen, vil <command>axi-cache</command> dekke regningen.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">packagesearch</emphasis></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>axi-cache</command></primary>
+				</indexterm>
+
+			</listitem>
+			 <listitem>
+				<para>
+					til slutt, når søkene har komplekse uttrykk med logiske operasjoner, vil det valgte verktøyet være <command>aptitude</command>s søkemønstersyntaks, som er ganske kraftig til tross for at den er noe uklar; det virker i både kommandolinjen og i interaktiv modus.
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+
+	</section>
+</chapter>
+

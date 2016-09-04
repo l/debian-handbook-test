@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">B.5. Lo Spazio Utente</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-it-IT-1.0-1" /><meta
+        name="keywords"
+        content="BIOS, Kernel, Unix, Processo, Gerarchia, Comandi Base" /><link
+        rel="home"
+        href="index.html"
+        title="Il Manuale dell'Amministratore Debian" /><link
+        rel="up"
+        href="short-remedial-course.html"
+        title="Appendice B. Breve Corso di Recupero" /><link
+        rel="prev"
+        href="sect.kernel-role-and-tasks.html"
+        title="B.4. Alcuni Compiti di cui si occupa il Kernel" /><link
+        rel="next"
+        href="backcover.html"
+        title="Appendice C. Il Manuale dell'Amministratore Debian" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/it-IT/stable/sect.user-space.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.kernel-role-and-tasks.html"><strong>Indietro</strong></a></li><li
+          class="home">Il Manuale dell'Amministratore Debian</li><li
+          class="next"><a
+            accesskey="n"
+            href="backcover.html"><strong>Avanti</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.user-space"></a>B.5. Lo Spazio Utente</h2></div></div></div><a
+          id="id-1.21.8.2"
+          class="indexterm"></a><a
+          id="id-1.21.8.3"
+          class="indexterm"></a><div
+          class="para">
+			"Spazio utente" si riferisce l'ambiente di runtime di normali (al contrario di kernel) processi. Questo non significa necessariamente che questi processi siano effettivamente avviati dagli utenti perchè normalmente un sistema standard ha diversi processi "demoni" (o in background) in esecuzione prima che l'utente apri anche una sessione. I processi demoni sono considerati processi user-space.
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.process-basics"></a>B.5.1. Processo</h3></div></div></div><a
+            id="id-1.21.8.5.2"
+            class="indexterm"></a><div
+            class="para">
+				Qunado il kernel ternima la sua fase di inizializzazione, avvia il primo processo, <code
+              class="command">init</code>. Il processo #1 da solo è molto raramente utile di per sé, ed i sistemi Unix-like vengono eseguiti con molti processi aggiuntivi.
+			</div><a
+            id="id-1.21.8.5.4"
+            class="indexterm"></a><div
+            class="para">
+				Prima di tutto, un processo può clonare se stesso (questo è noto come <span
+              class="emphasis"><em>fork</em></span>). Il kermel alloca un nuovo (ma identico) spazio di memoria per il processo, ed un'altro processo per usarlo. In questo momento, l'unica differenza tra questi due processi è il loro <span
+              class="emphasis"><em>pid</em></span>. Il nuovo processo è chiamato di solito processo figlio, ed il processo originale il cui <span
+              class="emphasis"><em>pid</em></span> non cambia, è chiamato processo padre.
+			</div><div
+            class="para">
+				A volte, il processo figlio continua a condurre la sua propria vita indipendentemente dal suo genitore, con i propri dati copiati dal processo genitore. In molti casi, però, questo processo figlio esegue un altro programma. Con poche eccezioni, la memoria viene semplicemente sostituita da quella del nuovo programma, e l'esecuzione di questo nuovo programma inizia. Questo è il meccanismo utilizzato dal processo init (con il processo numero 1) per avviare servizi aggiuntivi ed eseguire l'intera sequenza di avvio. Ad un certo punto, un processo tra i processi figli di <code
+              class="command">init</code> avvia un'interfaccia grafica per gli utenti che devono fare il login (la sequenza reale degli eventi è descritta in dettaglio in <a
+              class="xref"
+              href="unix-services.html#sect.system-boot">Sezione 9.1, «Avvio del sistema»</a>).
+			</div><div
+            class="para">
+				Quando un processo completa il compito per cui è stato avviato, termina. Il kernel poi recupera la memoria assegnata a questo processo, e smette di assegnarli porzioni di tempo per l'esecuzione. Al processo genitore viene detto che il proprio processo figlio è terminato, questo permette ad un processo di attendere il completamento del compito delegato ad un processo figlio. Questo comportamento è chiaramente visibile negli interpreti a riga di comando (conosciuti come <span
+              class="emphasis"><em>shell</em></span>). Quando viene digitato un comando in una shell, il prompt ritorna disponibile solo quando l'esecuzione del comando è completata. La maggior parte delle shell consentono l'esecuzione di comandi in background, si tratta solo di aggiungere un <strong
+              class="userinput"><code>&amp;</code></strong> alla fine del comando. Il prompt viene subito visualizzato di nuovo, e ciò può causare problemi se il comando ha bisogno di visualizzare i propri dati.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.daemons"></a>B.5.2. Demoni</h3></div></div></div><a
+            id="id-1.21.8.6.2"
+            class="indexterm"></a><a
+            id="id-1.21.8.6.3"
+            class="indexterm"></a><div
+            class="para">
+				Un "demone" è un processo avviato automaticamente dalla sequenza di avvio. Continua a funzionare (in background) per eseguire operazioni di manutenzione o per fornire servizi ad altri processi. Questa "attività in background" è in realtà arbitraria, e non corrisponde a niente di particolare dal punto di vista del sistema. Sono semplicemente processi, molto simili ad altri processi, che a loro volta si avviano quando arriva il loro intervallo di tempo. La distinzione è solo nel linguaggio umano: un processo che viene eseguito senza interazione con l'utente (in particolare, senza alcuna interfaccia grafica) è detto essere in esecuzione "in background" o "come demone".
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>VOCABOLARIO</em></span> Daemon, demone, un termine dispregiativo?</strong></p></div></div></div><div
+              class="para">
+				Anche se il termine <span
+                class="emphasis"><em>daemon</em></span> condivide la sua etimologia greca con <span
+                class="emphasis"><em>demon</em></span>, il primo non implica il male diabolico, invece, dovrebbe essere inteso come una sorta di spirito aiutante. Questa distinzione è abbastanza sottile in inglese; è anche peggio in altre lingue in cui la stessa parola è usata per entrambi i significati.
+			</div></div><div
+            class="para">
+				Molti di questi demoni sono descritti in dettaglio nella <a
+              class="xref"
+              href="unix-services.html">Capitolo 9, <em>Servizi Unix</em></a>.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.ipc"></a>B.5.3. Comunicazioni tra Processi</h3></div></div></div><a
+            id="id-1.21.8.7.2"
+            class="indexterm"></a><a
+            id="id-1.21.8.7.3"
+            class="indexterm"></a><div
+            class="para">
+				Un processo isolato, sia esso un demone o un'applicazione interattiva, raramente è utile di per sé, ed è per questo ci sono diversi metodi che consentono ai processi separati di comunicare tra loro, sia per lo scambio di dati che per controllarsi l'un l'altro. Il termine generico che si riferisce a questo è <span
+              class="emphasis"><em>comunicazione tra processi</em></span>, o IPC in breve.
+			</div><div
+            class="para">
+				Il più semplice sistema di IPC è quello di utilizzare i file. Il processo che desidera inviare dati scrive in un file (con un nome noto in anticipo), mentre il destinatario deve solo aprire il file e leggere i contenuti.
+			</div><a
+            id="id-1.21.8.7.6"
+            class="indexterm"></a><div
+            class="para">
+				Nel caso in cui non si desideri memorizzare i dati su disco, è possibile utilizzare una <span
+              class="emphasis"><em>pipe</em></span>, che è semplicemente un oggetto con due estremità; i byte scritti in una delle estremità sono leggibili dall'altra. Se le estremità sono controllate da processi separati, questo porta ad un canale di comunicazione tra processi semplice e conveniente. Le pipe possono essere classificate in due categorie: pipe con nome, e pipe anonime. Una pipe con nome è rappresentata da una sola voce sul filesystem (anche se i dati trasmessi non sono memorizzati lì), quindi entrambi i processi possono aprirla indipendentemente se la posizione della pipe con nome è nota in anticipo. Nel caso in cui sono collegati processi comunicanti (per esempio, un processo genitore ed un processo figlio), il processo padre può anche creare una pipe anonima prima di fare il fork, ed il processo figlio la eredita. Entrambi i processi saranno quindi in grado di scambiare dati attraverso la pipe senza bisogno del filesystem.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>IN PRATICA</em></span> Un'esempio concreto</strong></p></div></div></div><div
+              class="para">
+				Descriviamo in dettaglio ciò che accade quando un comando complesso (una <span
+                class="emphasis"><em>pipeline</em></span>) viene eseguita da una shell. Supponiamo di avere un processo <code
+                class="command">bash</code> (la shell utente standard su Debian), con <span
+                class="emphasis"><em>pid</em></span> 4374; in questa shell, digitiamo il comando: <code
+                class="command">ls | sort</code> .
+			</div><div
+              class="para">
+				La shell prima interpreta il comando digitato. Nel nostro caso, si capisce che ci sono due programmi (<code
+                class="command">ls</code> e <code
+                class="command">sort</code>), con un flusso di dati che scorre da uno all'altro (indicato dal carattere <strong
+                class="userinput"><code>|</code></strong>, noto come <span
+                class="emphasis"><em>pipe</em></span>). <code
+                class="command">bash</code> crea innanzitutto una pipe senza nome (che inizialmente esiste solo all'interno del processo <code
+                class="command">bash</code> stesso).
+			</div><div
+              class="para">
+				Poi la shell clona se stessa; questo porta ad un nuovo processo <code
+                class="command">bash</code>, con <span
+                class="emphasis"><em>pid</em></span> #4521 (i <span
+                class="emphasis"><em>pid</em></span> sono numeri astratti, ed in genere non hanno un significato particolare). Il processo #4521 eredita la pipe, che significa che è in grado di scrivere nel suo lato di "input"; la <code
+                class="command">bash</code> reindirizza il suo flusso di output standard verso l'ingresso di questa pipe. Poi esegue (e si sostituisce ad esso) il programma <code
+                class="command">ls</code>, che elenca il contenuto della directory corrente. Dal momento che <code
+                class="command">ls</code> scrive sul suo output standard, e questo output è stato precedentemente reindirizzato, i risultati sono inviati effettivamente nella pipe.
+			</div><div
+              class="para">
+				Un'operazione simile avviene per il secondo comando: <code
+                class="command">bash</code> si clona ancora, portando ad un nuovo processo <code
+                class="command">bash</code> con pid # 4522. Dal momento che è anche un processo figlio di # 4374, eredita anche la pipe; <code
+                class="command">bash</code> poi connette il suo input standard all'uscita della pipe, poi esegue (e si sostituisce ad esso) il comando <code
+                class="command">sort</code>, che ordina il suo input e visualizza i risultati.
+			</div><div
+              class="para">
+				Tutti i pezzi del puzzle sono ora impostati: <code
+                class="command">ls</code> legge la directory corrente e scrive l'elenco dei file nella pipe; <code
+                class="command">sort</code> legge questa lista, la ordine in ordine alfabetico, e visualizza i risultati. Processi numero #4521 e #4522 poi terminano, e #4374 (che li aspettava durante l'operazione), riprende il controllo e visualizza il prompt per consentire all'utente di digitare un nuovo comando.
+			</div></div><div
+            class="para">
+				Comunque, non tutte le comunicazioni tra processi sono usate per sposteare dati in giro. In molte situazioni, l'unica informazione che deve essere trasmessa sono i messaggi di controllo come "metti in pausa l'esecuzione" oppure "riprendi l'esecuzione". Unix (e Linux) forniscono un meccanismo noto come <span
+              class="emphasis"><em>signals</em></span>, attraverso il quale un processo può semplicemente inviare un segnale specifico (scelto da un'elenco predefinito di segnali) ad un'altro processo. L'unico requisito è quello di conoscere il <span
+              class="emphasis"><em>pid</em></span> del bersaglio.
+			</div><div
+            class="para">
+				Per le comunicazioni più complesse, ci sono anche meccanismi che consentono ad un processo di aprire l'accesso, o condividere, parte della sua memoria con altri processi. La memoria ora condivisa tra di essi può essere utilizzata per spostare i dati tra i processi.
+			</div><div
+            class="para">
+				Infine, le connessioni di rete possono anche aiutare i processi a comunicare; questi processi possono anche essere in esecuzione su computer diversi, forse anche a migliaia di chilometri di distanza.
+			</div><div
+            class="para">
+				E 'abbastanza normale per un tipico sistema Unix-like fare uso di tutti questi meccanismi a vari gradi.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.libraries"></a>B.5.4. Librerie</h3></div></div></div><a
+            id="id-1.21.8.8.2"
+            class="indexterm"></a><div
+            class="para">
+				Le librerie di funzioni svolgono un ruolo cruciale in un sistema operativo Unix-like. Esse non sono programmi veri e propri, poiché non possono essere eseguiti da soli, ma raccolte di frammenti di codice che possono essere utilizzate da programmi standard. Tra le librerie comuni, potete trovare:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						la libreria standard C (<span
+                    class="emphasis"><em>glibc</em></span>), che contiene le funzioni di base come quelle per aprire i file o le connessioni di rete, ed altre che facilitano le interazioni con il kernel;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						i toolkit grafici, come Gtk e Qt, consentono a molti programmi di riutilizzare gli oggetti grafici che forniscono;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						la libreria <span
+                    class="emphasis"><em>libpng</em></span>, che consente il caricamento, l'interpretazione ed il salvataggio delle immagini in formato PNG.
+					</div></li></ul></div><div
+            class="para">
+				Grazie a queste librerie, le applicazioni possono riutilizzare il codice esistente. Lo sviluppo delle applicazioni è semplificato dal momento che molte applicazioni possono riutilizzare le stesse funzioni. Con librerie spesso sviluppate da persone diverse, lo sviluppo globale del sistema è più vicino alla filosofia storica di Unix.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>CULTURA</em></span> Il Modo Unix: una cosa alla volta</strong></p></div></div></div><div
+              class="para">
+				Uno dei concetti fondamentali che sta alla base della famiglia di sistemi operativi Unix è che ogni strumento deve fare solo una cosa, e farla bene; le applicazioni possono poi riutilizzare questi strumenti per costruire logica più avanzata. Questa filosofia può essere visto in molte incarnazioni. Gli script shell possono essere il miglior esempio: sono formati da sequenze complesse di comandi molto semplici (come <code
+                class="command">grep</code>, <code
+                class="command">wc</code>, <code
+                class="command">sort</code>, <code
+                class="command">uniq</code> e così via). Un'altra applicazione di questa filosofia può essere vista nelle librerie di codice: la libreria <span
+                class="emphasis"><em>libpng</em></span> permette la lettura e la scrittura di immagini PNG, ma fa solo questo, non include nessuna funzione che permette la visualizzazione o la modifica delle immagini.
+			</div></div><div
+            class="para">
+				Inoltre, queste librerie sono spesso indicate come "librerie condivise", dato che il kernel è in grado di caricarle in memoria solo una volta, anche se più processi utilizzano la stessa libreria allo stesso tempo. Ciò permette risparmio di memoria, se confrontato con la situazione (ipotetica) contraria in cui il codice per una libreria sarebbe caricato tante volte quanti sono i processi che la utilizzano.
+			</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.kernel-role-and-tasks.html"><strong>Indietro</strong>B.4. Alcuni Compiti di cui si occupa il Kernel</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Risali</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Partenza</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="backcover.html"><strong>Avanti</strong>Appendice C. Il Manuale dell'Amministratore Debian</a></li></ul></body></html>
