@@ -1266,7 +1266,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
 					把重要的日誌檔置於另個機器 (或許專供此用途的機器) 是個好主意，這種方式足以防止入侵者抺除其㾗跡 (當然，除非同時入侵日誌檔機器)。尤有甚者，發生問題時 (如核心損壞)，在另部機器還有日誌檔可用，增加檢視發生損壞的機會。
 				</para>
 				 <para>
-					To accept log messages sent by other machines, you must reconfigure <emphasis>rsyslog</emphasis>: in practice, it is sufficient to activate the ready-for-use entries in <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad imudp</literal> and <literal>$UDPServerRun 514</literal>).
+					為了把日誌檔訊息置於另部機器，必須組態 <emphasis>rsyslog</emphasis>：實務上，祗需啟用 <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad imudp</literal> 與 <literal>$UDPServerRun 514</literal>) 內現有的項目就夠了。
 				</para>
 				 </sidebar>
 			</section>
@@ -1275,89 +1275,88 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
 
 	</section>
 	 <section id="sect.inetd">
-		<title>The <command>inetd</command> Super-Server</title>
+		<title>The <command>inetd</command> 超級伺服器</title>
 		 <para>
-			Inetd (often called “Internet super-server”) is a server of servers. It executes rarely used servers on demand, so that they do not have to run continuously.
+			Inetd (又稱為 “Internet 超級伺服器”) 是伺服器中的伺服器。依需要啟用甚少用到的伺服器，因此不需持續地執行它。
 		</para>
 		 <indexterm>
 			<primary><command>inetd</command></primary>
 		</indexterm>
 		 <indexterm>
-			<primary>super-server</primary>
+			<primary>超級伺服器</primary>
 		</indexterm>
 		 <para>
-			The <filename>/etc/inetd.conf</filename> file lists these servers and their usual ports. The <command>inetd</command> command listens to all of them; when it detects a connection to any such port, it executes the corresponding server program.
+			<filename>/etc/inetd.conf</filename> 檔案列出伺服器及其通用的埠號。<command>inetd</command> 命令偵測它們；若發現任何埠號已被連結，則執行對應的程式。
 		</para>
-		 <sidebar> <title><emphasis>DEBIAN POLICY</emphasis> Register a server in <filename>inetd.conf</filename></title>
+		 <sidebar> <title><emphasis>DEBIAN 政策</emphasis> 在 <filename>inetd.conf</filename> 登錄伺服器</title>
 		 <para>
-			Packages frequently want to register a new server in the <filename>/etc/inetd.conf</filename> file, but Debian Policy prohibits any package from modifying a configuration file that it doesn't own. This is why the <command>update-inetd</command> script (in the package with the same name) was created: It manages the configuration file, and other packages can thus use it to register a new server to the super-server's configuration.
+			套件經常需要在 <filename>/etc/inetd.conf</filename> 檔案登錄新的伺服器，但 Debian 政策禁止任何套件不屬於自身的組態檔。所以有 <command>update-inetd</command> 腳本 (在同名套件內)：管理組態檔案以及其他套件，使其在超級伺服器的組態中登錄新的伺服器。
 		</para>
 		 </sidebar> <para>
-			Each significant line of the <filename>/etc/inetd.conf</filename> file describes a server through seven fields (separated by spaces):
+			<filename>/etc/inetd.conf</filename> 檔案中的每列款目以 7 個欄位 (以空格區分) 描述伺服器：
 		</para>
 		 <itemizedlist>
 			<listitem>
 				<para>
-					The TCP or UDP port number, or the service name (which is mapped to a standard port number with the information contained in the <filename>/etc/services</filename> file).
+					TCP 或 UDP 埠號，或服務名稱 (以 <filename>/etc/services</filename> 檔案內的資訊對應至標準埠號)。
 				</para>
 
 			</listitem>
 			 <listitem>
 				<para>
-					The socket type: <literal>stream</literal> for a TCP connection, <literal>dgram</literal> for UDP datagrams.
+					接口類型：<literal>stream</literal> 供 TCP 連結之用，<literal>dgram</literal> 供 UDP 資料包連結之用。
 				</para>
 
 			</listitem>
 			 <listitem>
 				<para>
-					The protocol: <literal>tcp</literal> or <literal>udp</literal>.
+					通信協定：<literal>tcp</literal> 或 <literal>udp</literal>.
 				</para>
 
 			</listitem>
 			 <listitem>
 				<para>
-					The options: two possible values: <literal>wait</literal> or <literal>nowait</literal>, to tell <command>inetd</command> whether it should wait or not for the end of the launched process before accepting another connection. For TCP connections, easily multiplexable, you can usually use <literal>nowait</literal>. For programs responding over UDP, you should use <literal>nowait</literal> only if the server is capable of managing several connections in parallel. You can suffix this field with a period, followed by the maximum number of connections authorized per minute (the default limit is 256).
+					選項：兩個可能值：<literal>wait</literal> 或 <literal>nowait</literal>，告訴 <command>inetd</command> 在接受另個連結時，是否該等待或終止已啟用的程序。對 TCP 連結而言，可使用 <literal>nowait</literal>，進入多工。對回應 UDP 的程式而言，祗在伺服器可平行管理多個連結時，才使用 <literal>nowait</literal>。可在這個欄位前加上圓點，以及每分鐘可以開啟的最大連結量 (預設為 256)。
 				</para>
 
 			</listitem>
 			 <listitem>
 				<para>
-					The user name of the user under whose identity the server will run.
+					將執行被伺服器認證的使用者名稱。
 				</para>
 
 			</listitem>
 			 <listitem>
 				<para>
-					The full path to the server program to execute.
+					執行伺服器程式的完整路徑。
 				</para>
 
 			</listitem>
 			 <listitem>
 				<para>
-					The arguments: this is a complete list of the program's arguments, including its own name (<literal>argv[0]</literal> in C).
+					參數：程式參數的完整清單，包括自身的名稱 (在 C 語言裡是 <literal>argv[0]</literal>)。
 				</para>
 
 			</listitem>
 
 		</itemizedlist>
 		 <para>
-			The following example illustrates the most common cases:
+			以下的範例說明最常用的例子：
 		</para>
 		 <example id="example.inetd-conf">
-			<title>Excerpt from <filename>/etc/inetd.conf</filename></title>
+			<title>取自 <filename>/etc/inetd.conf</filename></title>
 			 
 <programlisting>talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
 finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
-ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i
-</programlisting>
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlisting>
 
 		</example>
 		 <indexterm>
 			<primary><command>tcpd</command></primary>
 		</indexterm>
 		 <para>
-			The <command>tcpd</command> program is frequently used in the <filename>/etc/inetd.conf</filename> file. It allows limiting incoming connections by applying access control rules, documented in the <citerefentry><refentrytitle>hosts_access</refentrytitle>
-			<manvolnum>5</manvolnum></citerefentry> manual page, and which are configured in the <filename>/etc/hosts.allow</filename> and <filename>/etc/hosts.deny</filename> files. Once it has been determined that the connection is authorized, <command>tcpd</command> executes the real server (like <command>in.fingerd</command> in our example). It is worth noting that <command>tcpd</command> relies on the name under which it was invoked (that is the first argument, <literal>argv[0]</literal>) to identify the real program to run. So you should not start the arguments list with <literal>tcpd</literal> but with the program that must be wrapped.
+			<command>tcpd</command> 程式常用於 <filename>/etc/inetd.conf</filename> 檔案中。以近用控制規則的方式限制送來的連結數，相關文件在 <citerefentry><refentrytitle>hosts_access</refentrytitle>
+			<manvolnum>5</manvolnum></citerefentry> 手冊頁面，並在 <filename>/etc/hosts.allow</filename> 與 <filename>/etc/hosts.deny</filename> 檔案中組態。授權連結後，<command>tcpd</command> 執行真實的伺服器 (在此例中是 <command>in.fingerd</command>)。值得注意的是 <command>tcpd</command> 依靠啟用的名稱 (即第一個參數，<literal>argv[0]</literal>) 辨識真實執行的程式。所以不該啟用 <literal>tcpd</literal> 內的參數清單，應先與程式包裝在一起。
 		</para>
 		 <sidebar> <title><emphasis>COMMUNITY</emphasis> Wietse Venema</title>
 		 <indexterm>
