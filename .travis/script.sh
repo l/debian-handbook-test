@@ -1278,7 +1278,7 @@ travis_signal_trap () {
 
 travis () {
 	travis_pre;
-	travis_build_limitation&
+	# travis_build_limitation&
 	local _EXIT_STATUS=0;
 	{
 		travis_signal_trap;
@@ -1332,8 +1332,9 @@ travis () {
 			"${_FIFO_DIR}" \
 		;
 	} \
-		1>"${_LOGGER_FILE}" \
 		2>&1 \
+	| tee \
+		"${_LOGGER_FILE}" \
 	;
 	return "${_EXIT_STATUS}";
 }

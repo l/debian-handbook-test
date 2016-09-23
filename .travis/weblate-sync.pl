@@ -96,6 +96,10 @@ our $table = {
             file    => 'tr-TR',
             weblate => 'tr',
         },
+        {    # Vietnamese
+            file    => 'vi-VN',
+            weblate => 'vi',
+        },
     ],
 };
 
