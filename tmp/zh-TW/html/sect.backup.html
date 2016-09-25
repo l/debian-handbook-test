@@ -61,18 +61,18 @@
                   xmlns=""
                   id="sect.backup"></a>9.10. 備份</h2></div></div></div><div
           class="para">
-			Making backups is one of the main responsibilities of any administrator, but it is a complex subject, involving powerful tools which are often difficult to master.
+			備份是管理員的主要責任之一，它是個複雜的主題，涉及難以掌握的強大工具。
 		</div><a
           id="id-1.12.13.3"
           class="indexterm"></a><a
           id="id-1.12.13.4"
           class="indexterm"></a><div
           class="para">
-			Many programs exist, such as <code
-            class="command">amanda</code>, <code
-            class="command">bacula</code>, <code
-            class="command">BackupPC</code>. Those are client/server system featuring many options, whose configuration is rather difficult. Some of them provide user-friendly web interfaces to mitigate this. But Debian contains dozens of other backup software covering all possible use cases, as you can easily confirm with <code
-            class="command">apt-cache search backup</code>.
+			很多程式係供備份之用，如 <code
+            class="command">amanda</code>、<code
+            class="command">bacula</code>、<code
+            class="command">BackupPC</code>。主從架構程式有很多選項，其組態相當困難。部份有親和力強的網頁介面減輕其負擔。但 Debian 還有十多種備份軟體可用，以 <code
+            class="command">apt-cache search backup</code> 命令可搜尋它們。
 		</div><a
           id="id-1.12.13.6"
           class="indexterm"></a><a
@@ -81,48 +81,48 @@
           id="id-1.12.13.8"
           class="indexterm"></a><div
           class="para">
-			Rather than detailing some of them, this section will present the thoughts of the Falcot Corp administrators when they defined their backup strategy.
+			與其逐一介紹它們，本章將經由 Falcot 公司管理者的角度，設定備份的策略。
 		</div><div
           class="para">
-			At Falcot Corp, backups have two goals: recovering erroneously deleted files, and quickly restoring any computer (server or desktop) whose hard drive has failed.
+			Falcot 公司的備份有兩個目標：無誤地復原被刪除的檔案，以及快速地復原硬碟毀損的電腦 (伺服器或桌面)。
 		</div><div
           class="section"><div
             class="titlepage"><div><div><h3
                   class="title"><a
                     xmlns=""
-                    id="id-1.12.13.11"></a>9.10.1. Backing Up with <code
-                    class="command">rsync</code></h3></div></div></div><div
+                    id="id-1.12.13.11"></a>9.10.1. 使用 <code
+                    class="command">rsync</code> 備份</h3></div></div></div><div
             class="para">
-				Backups on tape having been deemed too slow and costly, data will be backed up on hard drives on a dedicated server, on which the use of software RAID (see <a
+				以磁帶備份太慢且太貴，現在採用備份在專屬伺服器的硬碟策略，以 RAID (見 <a
               class="xref"
-              href="advanced-administration.html#sect.raid-soft">節 12.1.1, “軟 RAID”</a>) will protect the data from hard drive failure. Desktop computers are not backed up individually, but users are advised that their personal account on their department's file server will be backed up. The <code
-              class="command">rsync</code> command (from the package of the same name) is used daily to back up these different servers.
+              href="advanced-administration.html#sect.raid-soft">節 12.1.1, “軟 RAID”</a>) 軟體保護資料在硬碟毀損時不致遺失。桌面電腦沒有個別備份的策略，使用者應在部份的檔案伺服器備份其資料。<code
+              class="command">rsync</code> 命令 (取自同名的套件) 用於逐日備份這些伺服器。
 			</div><a
             id="id-1.12.13.11.3"
             class="indexterm"></a><div
             class="sidebar"><div
               class="titlepage"><div><div><p
                     class="title"><strong><span
-                        class="emphasis"><em>BACK TO BASICS</em></span> The hard link, a second name for the file</strong></p></div></div></div><a
+                        class="emphasis"><em>回到基礎</em></span> 硬連結，檔案的第二個名稱</strong></p></div></div></div><a
               id="id-1.12.13.11.4.2"
               class="indexterm"></a><a
               id="id-1.12.13.11.4.3"
               class="indexterm"></a><div
               class="para">
-				A hard link, as opposed to a symbolic link, cannot be differentiated from the linked file. Creating a hard link is essentially the same as giving an existing file a second name. This is why the deletion of a hard link only removes one of the names associated with the file. As long as another name is still assigned to the file, the data therein remain present on the filesystem. It is interesting to note that, unlike a copy, the hard link does not take up additional space on the hard drive.
+				相對於符號連結，硬連結不能自外於被連結檔案。新增的硬連結等於給檔案另個名稱。刪除硬連結等於刪除該檔案的另個名稱。祗要還有另個名稱指定給檔案，則資料仍在檔案系統內。不同於複製，硬連結並未在硬碟裡複製另個空間。
 			</div><div
               class="para">
-				A hard link is created with the <code
+				以 <code
                 class="command">ln <em
                   class="replaceable">target</em> <em
-                  class="replaceable">link</em></code> command. The <em
-                class="replaceable">link</em> file is then a new name for the <em
-                class="replaceable">target</em> file. Hard links can only be created on the same filesystem, while symbolic links are not subject to this limitation.
+                  class="replaceable">link</em></code> 命令新增硬連結。<em
+                class="replaceable">link</em> 檔案是 <em
+                class="replaceable">target</em> 檔案的新名稱。硬連結祗能應用於同個檔案系統，符號連結則不受此限。
 			</div></div><div
             class="para">
-				The available hard drive space prohibits implementation of a complete daily backup. As such, the <code
-              class="command">rsync</code> command is preceded by a duplication of the content of the previous backup with hard links, which prevents usage of too much hard drive space. The <code
-              class="command">rsync</code> process then only replaces files that have been modified since the last backup. With this mechanism a great number of backups can be kept in a small amount of space. Since all backups are immediately available and accessible (for example, in different directories of a given share on the network), you can quickly make comparisons between two given dates.
+				受限於可用的硬碟空間，無法執行完整的逐日備份。所以，<code
+              class="command">rsync</code> 命令優先於以硬連結複製內容，避免使用太多的硬碟空間。<code
+              class="command">rsync</code> 祗處理上次備份後，再被修改的檔案。以這個機制可使用較小的空間備份。因為所有的備份已經立即可得與可用 (例如，在同個網路的不同資料夾共享)，可快速地比對兩個指定日期。
 			</div><a
             id="id-1.12.13.11.6"
             class="indexterm"></a><a
@@ -131,21 +131,21 @@
             id="id-1.12.13.11.8"
             class="indexterm"></a><div
             class="para">
-				This backup mechanism is easily implemented with the <code
-              class="command">dirvish</code> program. It uses a backup storage space (“bank” in its vocabulary) in which it places timestamped copies of sets of backup files (these sets are called “vaults” in the dirvish documentation).
+				這種備份機制可以輕易地經由 <code
+              class="command">dirvish</code> 程式執行。使用備份的儲存空間 (“空” 的)，放置含時間戳記的備份檔案 (在 dirvish 文件中，這些檔案被稱為 “vaults”)。
 			</div><div
             class="para">
-				The main configuration is in the <code
-              class="filename">/etc/dirvish/master.conf</code> file. It defines the location of the backup storage space, the list of “vaults” to manage, and default values for expiration of the backups. The rest of the configuration is located in the <code
+				主要的組態在 <code
+              class="filename">/etc/dirvish/master.conf</code> 檔案內。設定備份儲存空間的位置，管理 “vaults” 清單，以及備份到期的預設值。其他的組態位在 <code
               class="filename"><em
                 class="replaceable">bank</em>/<em
-                class="replaceable">vault</em>/dirvish/default.conf</code> files and contains the specific configuration for the corresponding set of files.
+                class="replaceable">vault</em>/dirvish/default.conf</code> 檔案內，包括對應檔案集的特殊組態。
 			</div><div
             class="example"><a
               xmlns=""
               id="example.dirvish-master"></a><p
-              class="title"><strong>範例 9.3. The <code
-                  class="filename">/etc/dirvish/master.conf</code> file</strong></p><div
+              class="title"><strong>範例 9.3. <code
+                  class="filename">/etc/dirvish/master.conf</code> 檔案</strong></p><div
               class="example-contents"><pre
                 class="programlisting">bank:
     /backup
@@ -160,8 +160,7 @@ expire-rule:
 #   MIN HR    DOM MON       DOW  STRFTIME_FMT
     *   *     *   *         1    +3 months
     *   *     1-7 *         1    +1 year
-    *   *     1-7 1,4,7,10  1
-</pre></div></div><div
+    *   *     1-7 1,4,7,10  1</pre></div></div><div
             class="para">
 				The <code
               class="literal">bank</code> setting indicates the directory in which the backups are stored. The <code
