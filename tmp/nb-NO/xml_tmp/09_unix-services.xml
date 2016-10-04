@@ -1289,24 +1289,13 @@ exclude:
     </section>
   </section>
   <section id="sect.hotplug">
-    <title>Vekselminne: <emphasis>hotplug</emphasis></title>
+    <title>Varm tilkobling: <emphasis>hotplug</emphasis></title>
     <section>
-      <title>Introduction</title>
+      <title>Introduksjon</title>
 
-      <para>The <emphasis>hotplug</emphasis> kernel subsystem dynamically
-      handles the addition and removal of devices, by loading the appropriate
-      drivers and by creating the corresponding device files (with the
-      help of <command>udevd</command>). With modern hardware and virtualization,
-      almost everything can be hotplugged: from the usual USB/PCMCIA/IEEE 1394
-      peripherals to SATA hard drives, but also the CPU and the memory.</para>
+      <para><emphasis>hotplug</emphasis>-kjerne-delsystemet håndterer å legge til og fjerne enheter ved å laste de riktige driverne og ved å lage passende enhets-filer (med hjelp av <command>udevd</command>). Med moderne maskinvare og visualisering, kan nesten alt bli varmtilkoblet: fra den vanlige USB/PCMCIA/IEEE 1394 enheter til SATA-harddisker, men også CPU-en og minnet.</para>
 
-      <para>The kernel has a database that associates each device ID
-      with the required driver. This database is used during boot to load
-      all the drivers for the peripheral devices detected on the different
-      buses, but also when an additional hotplug device is
-      connected. Once the device is ready for use, a message is sent to
-      <command>udevd</command> so it will be able to create the
-      corresponding entry in <filename>/dev/</filename>.</para>
+      <para>Kjernen har en database som knytter hver enhets-ID med den nødvendige driveren. Denne databasen brukes under oppstart for å laste alle driverne til eksterne enheter som oppdages på forskjellige busser, men også når en ekstra varmtilkoblings-enhet blir koblet til. Når enheten er klar til bruk, sendes en melding til  <command>udevd</command> slik at den kan lage den tilsvarende oppføringen i <filename>/dev/</filename>.</para>
 
       <indexterm><primary><emphasis>hotplug</emphasis></primary></indexterm>
       <indexterm><primary>hotplug</primary></indexterm>
@@ -1316,67 +1305,27 @@ exclude:
       <indexterm><primary>SATA</primary></indexterm>
     </section>
     <section>
-      <title>The Naming Problem</title>
+      <title>Navneproblemet</title>
 
-      <para>Before the appearance of hotplug connections, it was easy to
-      assign a fixed name to a device. It was based simply on the position
-      of the devices on their respective bus. But this is not possible when
-      such devices can come and go on the bus. The typical case is the use
-      of a digital camera and a USB key, both of which appear to the
-      computer as disk drives. The first one connected may be
-      <filename>/dev/sdb</filename> and the second
-      <filename>/dev/sdc</filename> (with <filename>/dev/sda</filename>
-      representing the computer's own hard drive). The device name is not
-      fixed; it depends on the order in which devices are connected.</para>
+      <para>Før varm-tilkoblingene, var det enkelt å tilordne et fast navn til en enhet. Det var enkelt basert på enhetenes posisjonen på sine respektive busser. Men dette er ikke mulig når slike enheter kan komme og gå på bussen. Det typiske tilfellet er bruk av et digitalt kamera og en USB-minnepenn, som begge for datamaskinen ser ut som harddisker . Den første tilkoblede kan være <filename>/dev/sdb</filename> og den andre <filename>/dev/sdc</filename> (med <filename>/dev/sda</filename> som representerer datamaskinens egen harddisk). Enhetsnavnet er ikke fast; det er avhengig av rekkefølge enheter er koblet til.</para>
 
-      <para>Additionally, more and more drivers use dynamic values for
-      devices' major/minor numbers, which makes it impossible to have
-      static entries for the given devices, since these essential
-      characteristics may vary after a reboot.</para>
+      <para>I tillegg bruker flere og flere drivere dynamiske verdier for enhetens store/små nummer, noe som gjør det umulig å ha statiske oppføringer for de gitte enhetene, siden deres grunnleggende egenskapene kan variere etter en omstart.</para>
 
-      <para><emphasis>udev</emphasis> was created precisely to solve this
-      problem.</para>
+      <para><emphasis>udev</emphasis> ble laget nettopp for å løse dette problemet.</para>
 
       <sidebar>
-        <title><emphasis>IN PRACTICE</emphasis> Network card management</title>
+        <title><emphasis>IN PRACTICE</emphasis> Håndtering av nettverkskort</title>
 
-	<para>Many computers have multiple network cards (sometimes
-	two wired interfaces and a wifi interface), and with
-	<emphasis>hotplug</emphasis> support on most bus types, the Linux kernel
-	does not guarantee fixed naming of
-	network interfaces. But users who want to configure their
-	network in <filename>/etc/network/interfaces</filename> need
-	a fixed name!</para>
+	<para>Mange datamaskiner har flere nettverkskort (noen ganger to kablede grensesnitt og et wifi-grensesnitt), og med <emphasis>hotplug</emphasis>-støtte til de fleste busstyper, Linux-kjernen garanterer ikke fast navngiving av nettverksgrensesnitt . Men brukere som ønsker å konfigurere sine nettverk i  <filename>/etc/network/interfaces</filename> trenger et fast navn!</para>
 
-	<para>It would be difficult to ask every user to create their own
-	<emphasis>udev</emphasis> rules to address this problem. This is
-	why <emphasis>udev</emphasis> was configured in a rather peculiar
-	manner; on first boot (and, more generally, each time that a new
-	network card appears) it uses the name of the network interface and
-	its MAC address to create new rules that will reassign the same
-	name on subsequent boots. These rules are stored in
-	<filename>/etc/udev/rules.d/70-persistent-net.rules</filename>.</para>
+	<para>Det ville være vanskelig å be hver bruker for å lage sine egne <emphasis>udev</emphasis>-regler for å løse dette problemet. Dette er grunnen til at <emphasis>udev</emphasis> ble konfigurert på en heller spesiell måte. Ved første oppstart (og, mer generelt, hver gang et nytt nettverkskortet vises) bruker den navnet på nettverksgrensesnittet og dets MAC-adresse for å lage nye regler som vil tilordne samme navn på de påfølgende oppstartene. Disse reglene er lagret i <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>.</para>
 
         
-	<para>This mechanism has some side effects that you should know
-	about. Let's consider the case of a computer that has only one PCI
-	network card. The network interface is named
-	<literal>eth0</literal>, logically. Now say the card breaks down,
-	and the administrator replaces it; the new card will have a new MAC
-	address. Since the old card was assigned the name,
-	<literal>eth0</literal>, the new one will be assigned
-	<literal>eth1</literal>, even though the <literal>eth0</literal>
-	card is gone for good (and the network will not be functional
-	because <filename>/etc/network/interfaces</filename> likely
-	configures an <literal>eth0</literal> interface). In this case, it
-	is enough to simply delete the
-	<filename>/etc/udev/rules.d/70-persistent-net.rules</filename> file
-	before rebooting the computer. The new card will then be given the
-	expected <literal>eth0</literal> name.</para>
+	<para>Denne mekanismen har noen sidevirkninger som du bør vite om. La oss vurdere hvordan på en datamaskin som bare har ett PCI nettverkskort. Nettverkets grensesnitt heter <literal>eth0</literal>, logisk. Nå, si at kortet bryter sammen, og administratoren erstatter det; vil det nye kortet ha en ny MAC-adresse. Siden det gamle kortet ble gitt navnet, <literal>eth0</literal>, vil det nye bli tildelt <literal>eth1</literal>, selv om <literal>eth0</literal>-kortet er borte for godt (og nettverket vil ikke være funksjonelt fordi <filename>/etc/network/interfaces</filename> sannsynligvis konfigurerer et <literal>eth0</literal>-grensesnitt). I dette tilfellet er det nok å bare slette <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>-filen før maskinen restartes. Det nye kortet vil da bli gitt det forventede <literal>eth0</literal>-navnet.</para>
       </sidebar>
     </section>
     <section>
-      <title>How <emphasis>udev</emphasis> Works</title>
+      <title>Hvordan <emphasis>udev</emphasis> virker.</title>
 
       <para>When <emphasis>udev</emphasis> is notified by the kernel of the
       appearance of a new device, it collects various information on the
