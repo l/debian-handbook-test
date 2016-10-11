@@ -297,76 +297,27 @@ Tjenerens sertifikat er bare installert på tjeneren (<filename>keys/vpn.falcot.
 
 	<para>Som standard, forsøker OpenVPN-initialiseringskript å starte alle virtuelle private nettverk som er definert i <filename>/etc/openvpn/*.conf</filename>. Å sette opp en VPN-tjener er derfor et spørsmål om å lagre en tilsvarende konfigurasjonsfil i denne katalogen. Et godt utgangspunkt er <filename>/usr/share/doc/openvpn/examples/sample-config-files/server.conf.gz</filename>, som leder til en temmelig standard tjener. Selvfølgelig, må noen parametere tilpasses: <literal>ca</literal>, <literal>cert</literal>, <literal>key</literal> og <literal>dh</literal> må  beskrive de valgte stedene (henholdsvis <literal>/etc/ssl/certs/Falcot_CA.crt</literal>, <literal>/etc/ssl/vpn.falcot.com.crt</literal>, <literal>/etc/ssl/private/vpn.falcot.com.key</literal> and <literal>/etc/openvpn/dh2048.pem</literal>). <literal>server 10.8.0.0 255.255.255.0</literal>-direktivet definerer subnettet som skal brukes av VPN; tjeneren bruker den første IP-adressen i dette området (<literal>10.8.0.1</literal>) og resten av adressene er reservert for klienter.</para>
 
-	<para>With this configuration, starting OpenVPN creates the virtual
-	network interface, usually under the <literal>tun0</literal> name.
-	However, firewalls are often configured at the same time as the
-	real network interfaces, which happens before OpenVPN starts. Good
-	practice therefore recommends creating a persistent virtual network
-	interface, and configuring OpenVPN to use this pre-existing
-	interface. This further allows choosing the name for this
-	interface. To this end, <command>openvpn --mktun --dev vpn
-	--dev-type tun</command> creates a virtual network interface named
-	<literal>vpn</literal> with type <literal>tun</literal>; this
-	command can easily be integrated in the firewall configuration
-	script, or in an <literal>up</literal> directive of the
-	<filename>/etc/network/interfaces</filename> file. The OpenVPN
-	configuration file must also be updated accordingly, with the
-	<literal>dev vpn</literal> and <literal>dev-type tun</literal>
-	directives.</para>
+	<para>Med denne konfigurasjonen, lager oppstarten av OpenVPN det virtuelle nettverksgrensesnittet, vanligvis med <literal>tun0</literal>-navnet. 
+Imidlertid er brannmurer ofte konfigurert på samme tid som det virkelige nettverksgrensesnittet, og skjer før OpenVPN starter. En god praksis er  derfor å lage et varig virtuelt nettverksgrensesnitt, og konfigurere OpenVPN til å bruke dette varige grensesnittet. Dette tillater videre å velge navnet til dette grensesnittet. For dette formål lager <command>openvpn --mktun --dev vpn --dev-type tun</command> et virtuelt nettverkbrukergrensesnitt med navnet <literal>vpn</literal> med type <literal>tun</literal>; denne kommandoen kan enkelt legges inn i brannmur-konfigurasjonens skript eller i et <literal>up</literal>-direktiv i  <filename>/etc/network/interfaces</filename>-filen. OpenVPN-konfigurasjonsfilen må også oppdateres tilsvarende, med <literal>dev vpn</literal> og <literal>dev-type tun</literal>-direktiver.</para>
 
-	<para>Barring further action, VPN clients can only access the VPN
-	server itself by way of the <literal>10.8.0.1</literal> address.
-	Granting the clients access to the local network (192.168.0.0/24),
-	requires adding a <literal>push route 192.168.0.0
-	255.255.255.0</literal> directive to the OpenVPN configuration so
-	that VPN clients automatically get a network route telling them
-	that this network is reachable by way of the VPN. Furthermore,
-	machines on the local network also need to be informed that the
-	route to the VPN goes through the VPN server (this automatically
-	works when the VPN server is installed on the gateway).
-	Alternatively, the VPN server can be configured to perform IP
-	masquerading so that connections coming from VPN clients appear as
-	if they are coming from the VPN server instead (see <xref linkend="sect.gateway" />).</para>
+	<para>For å sperre ytterligere virksomhet, kan VPN-klienter kun få tilgang til selve VPN-tjeneren ved hjelp av <literal>10.8.0.1</literal>adressen. Å gi klientene tilgang til det lokale nettverket (192.168.0.0/24), krever at en legger til et <literal>push route 192.168.0.0 255.255.255.0</literal>-direktiv til OpenVPN konfigurasjonen slik at VPN-klienter automatisk får en nettverkrute som forteller dem at dette nettverket kan nås ved hjelp av VPN. Videre, maskiner på det lokale nettverket må også informeres om at ruten til VPN går gjennom VPN-tjeneren (dette fungerer automatisk når VPN-serveren er installert i porten). Alternativt kan VPN-serveren konfigureres til å utføre IP-maskering, slik at tilkoblinger fra VPN-klienter ser ut som om de kommer fra VPN-tjeneren i stedet (se <xref linkend="sect.gateway" />).</para>
       </section>
       <section>
-        <title>Configuring the OpenVPN Client</title>
+        <title>Å konfigurere OpenVPN-klienten</title>
 
-	<para>Setting up an OpenVPN client also requires creating a
-	configuration file in <filename>/etc/openvpn/</filename>. A
-	standard configuration can be obtained by using
-	<filename>/usr/share/doc/openvpn/examples/sample-config-files/client.conf</filename>
-	as a starting point. The <literal>remote vpn.falcot.com
-	1194</literal> directive describes the address and port of the
-	OpenVPN server; the <literal>ca</literal>, <literal>cert</literal>
-	and <literal>key</literal> also need to be adapted to describe the
-	locations of the key files.</para>
+	<para>Å sette opp en OpenVPN klient krever også at en lager en konfigurasjonsfil <filename>/etc/openvpn/</filename>. En standardkonfigurasjon kan fås ved å bruke <filename>/usr/share/doc/openvpn/examples/sample-config-files/client.conf</filename> som et startpunkt. <literal>remote vpn.falcot.com 1194</literal>-direktivet beskriver adressen og porten til OpenVPN-tjeneren; <literal>ca</literal>, <literal>cert</literal> og <literal>key</literal> må også tilpasses til å beskrive plasseringen av de viktigste filene.</para>
 
-	<para>If the VPN should not be started automatically on boot, set
-	the <literal>AUTOSTART</literal> directive to
-	<literal>none</literal> in the
-	<filename>/etc/default/openvpn</filename> file. Starting or
-	stopping a given VPN connection is always possible with the
-        commands <command>service openvpn@<replaceable>name</replaceable> start</command> and
-        <command>service openvpn@<replaceable>name</replaceable> stop</command> (where the connection
-	<replaceable>name</replaceable> matches the one defined in
-	<filename>/etc/openvpn/<replaceable>name</replaceable>.conf</filename>).</para>
+	<para>Hvis VPN ikke skal startes automatisk ved oppstart, sett <literal>AUTOSTART</literal>-direktivet til <literal>none</literal> i <filename>/etc/default/openvpn</filename>-filen. Å sstarte eller stoppe en gitt VPN-forbindelse er alltid mulig med kommandoene <command>service openvpn@<replaceable>name</replaceable> start</command> og <command>service openvpn@<replaceable>name</replaceable> stop</command> (der forbindelsen <replaceable>name</replaceable> sammenfaller med en som er definert i <filename>/etc/openvpn/<replaceable>name</replaceable>.conf</filename>).</para>
 
-	<para>The <emphasis role="pkg">network-manager-openvpn-gnome</emphasis> package
-	contains an extension to Network Manager (see <xref linkend="sect.roaming-network-config" />) that allows managing
-	OpenVPN virtual private networks. This allows every user to
-	configure OpenVPN connections graphically and to control them from
-	the network management icon. <indexterm><primary><emphasis role="pkg">network-manager-openvpn-gnome</emphasis></primary></indexterm></para>
+	<para><emphasis role="pkg">network-manager-openvpn-gnome</emphasis>-pakken inneholder en forlengelse til Network Manager (se <xref linkend="sect.roaming-network-config" />) som tillater håndtering av  OpenVPN virtueller private nettverk. Det tillater hver bruker å sette opp  OpenVPN-tilkoblinger grafisk og styre dem fra nettverksadministrasjons-ikonet. <indexterm><primary><emphasis role="pkg">network-manager-openvpn-gnome</emphasis></primary></indexterm></para>
       </section>
     </section>
     <section id="sect.ssh-vpn">
-      <title>Virtual Private Network with SSH</title>
+      <title>Virtuelt privat nettverk med SSH</title>
       <indexterm><primary>SSH</primary></indexterm>
       <indexterm><primary>PPP</primary></indexterm>
 
-      <para>There are actually two ways of creating a virtual private
-      network with SSH. The historic one involves establishing a PPP layer
-      over the SSH link. This method is described in a HOWTO document:
-      <ulink type="block" url="http://www.tldp.org/HOWTO/ppp-ssh/" /></para>
+      <para>Det er faktisk to måter å lage et virtuelt privat nettverk ved hjelp av SSH. Den historiske innebærer å etablere et PPP-lag over SSH-linken. Denne metoden er beskrevet i et HOWTO-dokument: <ulink type="block" url="http://www.tldp.org/HOWTO/ppp-ssh/" /></para>
 
       <para>The second method is more recent, and was introduced with
       OpenSSH 4.3; it is now possible for OpenSSH to create virtual
