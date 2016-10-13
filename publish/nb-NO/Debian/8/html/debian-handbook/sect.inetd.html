@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.6. The inetd Super-Server</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="Systemoppstart, Initskript, SSH, Telnet, Rettigheter, Tillatelser, Overvåking, Inetd, Cron, Sikkerhetskopiering, Hot-plugging, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Debian-administratorens håndbok" /><link
+        rel="up"
+        href="unix-services.html"
+        title="Kapittel 9. Unix tjenester" /><link
+        rel="prev"
+        href="sect.syslog.html"
+        title="9.5. syslog Systemhendelser" /><link
+        rel="next"
+        href="sect.task-scheduling-cron-atd.html"
+        title="9.7. Tidfeste oppgaver med cron og atd" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.inetd.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.syslog.html"><strong>Forrige</strong></a></li><li
+          class="home">Debian-administratorens håndbok</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.task-scheduling-cron-atd.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.inetd"></a>9.6. The <code
+                  class="command">inetd</code> Super-Server</h2></div></div></div><div
+          class="para">
+			Inetd (ofte kalt "Internet super-tjener") er en tjener for tjenere. Den kjører sjelden brukte tjenere etter behov, slik at de slipper å kjøre kontinuerlig.
+		</div><a
+          id="id-1.12.9.3"
+          class="indexterm"></a><a
+          id="id-1.12.9.4"
+          class="indexterm"></a><div
+          class="para">
+			<code
+            class="filename">/etc/inetd.conf</code>-filen lister disse tjenerne og deres vanlige porter. <code
+            class="command">inetd</code>kommandoen lytter til dem alle; Når den oppdager en forbindelse til en slik port, kjører den det tjenesteprogrammet som hører til.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>DEBIAN POLICY</em></span> Å registrere en tjener i <code
+                      class="filename">inetd.conf</code></strong></p></div></div></div><div
+            class="para">
+			Pakker ønsker ofte å registrere en ny tjener i <code
+              class="filename">/etc/inetd.conf</code> filen, men Debian Policy forhindrer alle pakker fra å modifisere en konfigurasjonsfil som den ikke eier. Dette er grunnen til at <code
+              class="command">update-inetd</code> skriptet (i pakken med samme navn) ble opprettet: Den håndterer konfigurasjonsfilen, og andre pakker kan dermed bruke den til å registrere en ny tjener i super-tjenerens konfigurasjon.
+		</div></div><div
+          class="para">
+			Hver viktige linje i <code
+            class="filename">/etc/inetd.conf</code>filen beskriver en tjener med syv felt (atskilt med mellomrom):
+		</div><div
+          xmlns:d="http://docbook.org/ns/docbook"
+          class="itemizedlist"><ul><li
+              class="listitem"><div
+                class="para">
+					TCP eller UDP portnummer, eller tjenestenavnet (som er koblet til et standard portnummer med den informasjonen som finnes i <code
+                  class="filename">/etc/services</code> file).
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Type socket: <code
+                  class="literal">stream</code> for en TCP-forbindelse, <code
+                  class="literal">dgram</code> for UDP datagrammer.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Protokollen: <code
+                  class="literal">tcp</code> eller <code
+                  class="literal">udp</code>.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Valgene: To mulige verdier: <code
+                  class="literal">wait</code> eller <code
+                  class="literal">nowait</code>, for å formidle til <code
+                  class="command">inetd</code> om det skal vente eller ikke til slutten av den startede prosessen før du godtar en annen forbindelse. For TCP-forbindelser, enkelt multiplexbare, kan du vanligvis bruke <code
+                  class="literal">nowait</code>. For programmer som svarer over UDP, skal du bruke <code
+                  class="literal">nowait</code> bare hvis tjeneren kan håndtere flere tilkoblinger i parallell. Du kan ende dette feltet med et punktum, fulgt av det maksimale antall forbindelser autorisert per minutt (standardgrensen er 256).
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Brukernavnet til brukeren under hvilken identitet tjeneren vil kjøre.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Den fullstendige banen til det tjenerprogrammet som skal kjøres.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Argumentene: Dette er en oversikt over programmets argumenter, inkludert dets egne navn (<code
+                  class="literal">argv[0]</code> in C).
+				</div></li></ul></div><div
+          class="para">
+			Følgende eksempel illustrerer de mest vanlige tilfellene:
+		</div><div
+          class="example"><a
+            xmlns=""
+            id="example.inetd-conf"></a><p
+            class="title"><strong>Eksempel 9.1. Utdrag fra <code
+                class="filename">/etc/inetd.conf</code></strong></p><div
+            class="example-contents"><pre
+              class="programlisting">talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
+finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i
+</pre></div></div><a
+          id="id-1.12.9.11"
+          class="indexterm"></a><div
+          class="para">
+			<code
+            class="command">tcpd</code>-programmet er ofte brukt i <code
+            class="filename">/etc/inetd.conf</code>-filen. Det lar deg begrense innkommende tilkoblinger ved å bruke regler for adgangskontroll, dokumentert på manualsiden <span
+            class="citerefentry"><span
+              class="refentrytitle">hosts_access</span>(5)</span>, og som er konfigurert i <code
+            class="filename">/etc/hosts.allow</code> og <code
+            class="filename">/etc/hosts.deny</code>-filene. Når det er fastslått at tilkoblingen er autorisert,<code
+            class="command">tcpd</code> kjøres den virkelige tjeneren (som <code
+            class="command">in.fingerd</code> i vårt eksempel). Det er ikke verd noe at <code
+            class="command">tcpd</code> støtter seg til det navnet det ble aktivert med (som er det første argumentet, <code
+            class="literal">argv[0]</code>) for å identifisere det virkelige programmet skal kjøres. Så du bør ikke starte arguments liste med <code
+            class="literal">tcpd</code> men med det omgivende programmet.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>COMMUNITY</em></span> Wietse Venema</strong></p></div></div></div><a
+            id="id-1.12.9.13.2"
+            class="indexterm"></a><a
+            id="id-1.12.9.13.3"
+            class="indexterm"></a><div
+            class="para">
+			Wietse Venema, hvis ekspertise innen sikkerhet har gjort ham til en kjent programmerer, er forfatter av <code
+              class="command">tcpd</code> programmet. Han er også den viktigste skaperen av Postfix, den modulære e-post (SMTP, Simple Mail Transfer Protocol), designet for å være tryggere og mer pålitelig enn <code
+              class="command">sendmail</code>, som har en lang historie med sikkerhetsproblemer.
+		</div></div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>ALTERNATIVE</em></span> Other <code
+                      class="command">inetd</code>-kommandoer</strong></p></div></div></div><div
+            class="para">
+			Mens Debian installerer <span
+              class="pkg pkg">openbsd-inetd</span> ved oppstart, mangler det ikke alternativer. Vi kan nevne <span
+              class="pkg pkg">inetutils-inetd</span>, <span
+              class="pkg pkg">micro-inetd</span>, <span
+              class="pkg pkg">rlinetd</span> og <span
+              class="pkg pkg">xinetd</span>.
+		</div><div
+            class="para">
+			Denne siste utgaven av en super-tjener tilbyr svært interessante muligheter. Først og fremst kan konfigurasjonen deles opp i flere filer (lagret, selvfølgelig, i <code
+              class="filename">/etc/xinetd.d/</code>-mappen), noe som kan gjøre en administrators liv lettere.
+		</div><div
+            class="para">
+			Sist men ikke minst, er det også mulig å etterligne <code
+              class="command">inetd</code>s virke med <code
+              class="command">systemd</code>s socket-akiveringsmekanisme (se <a
+              class="xref"
+              href="unix-services.html#sect.systemd">Seksjon 9.1.1, «Systemd init system»</a>).
+		</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.syslog.html"><strong>Forrige</strong>9.5. syslog Systemhendelser</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.task-scheduling-cron-atd.html"><strong>Neste</strong>9.7. Tidfeste oppgaver med cron og atd</a></li></ul></body></html>
