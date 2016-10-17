@@ -254,27 +254,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
       <indexterm><primary><emphasis role="pkg">kmod</emphasis></primary></indexterm>
     </sidebar>
 
-    <para>After this stage, <command>init</command> takes over and starts
-    the programs enabled in the default runlevel (which is usually runlevel
-    2). It executes <command>/etc/init.d/rc 2</command>, a script that
-    starts all services which are listed in
-    <filename>/etc/rc2.d/</filename> and whose names start with the “S”
-    letter. The two-figures number that follows had historically been used
-    to define the order in which services had to be started, but nowadays
-    the default boot system uses <command>insserv</command>, which schedules
-    everything automatically
-    based on the scripts' dependencies. Each boot script thus declares the
-    conditions that must be met to start or stop the service (for example,
-    if it must start before or after another service);
-    <command>init</command> then launches them in the order that meets
-    these conditions. The static numbering of scripts is therefore no
-    longer taken into consideration (but they must always have a name
-    beginning with “S” followed by two digits and the actual name
-    of the script used for the dependencies). Generally, base services
-    (such as logging with <command>rsyslog</command>, or port assignment
-    with <command>portmap</command>) are started first, followed by
-    standard services and the graphical interface
-    (<command>gdm3</command>).</para>
+    <para>Следом, <command>init</command> запускает программы уровня запуска по умолчанию (обычно runlevel 2). Запускается сценарий <command>/etc/init.d/rc 2</command>, который, в свою очередь, запускает сервисы, перечисленные в <filename>/etc/rc2.d/</filename>. Названия файлов в каталоге начинаются с буквы «S», за которой идут две цифры, что определяет очерёдность запуска. В настоящее время, загрузочная система по умолчанию использует программу <command>insserv</command>, которая автоматически всё организовывает, основываясь на зависимостях сценариев. Каждый сценарий объявляет условия, необходимые для его запуска и остановки (например, очерёдность по отношению к другим сценариям), <command>init</command> запускает сценарии в соответствующей последовательности для удовлетворения зависимостей. Поэтому наименование сценариев больше не учитывается (хотя они всё еще должны начинаться с «S» и далее продолжаться двумя цифрами и названием сервиса, которое и используется для организации зависимостей). В общем, основные сервисы (как журналирование с <command>rsyslog</command> или назначение портов с <command>portmap</command>) запускаются в первую очередь, затем следуют стандартные сервисы и графический интерфейс (<command>gdm3</command>).</para>
 
     <para>Такая основанная на зависимостях система загрузки делает возможной автоматизацию смены нумерации, которая была бы весьма утомительной, если бы её приходилось выполнять вручную, и снижает риск человеческой ошибки, поскольку планирование выполняется в соответствии с формальными параметрами. Другим преимуществом является возможность параллельного запуска сервисов, независимых друг от друга, что может ускорить процесс загрузки.</para>
 
@@ -320,20 +300,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
       <indexterm><primary>сервис</primary><secondary>перезапуск</secondary></indexterm>
       <indexterm><primary>перезапуск сервисов</primary></indexterm>
 
-      <para>The maintainer scripts for Debian packages will sometimes
-      restart certain services to ensure their availability or get them to
-      take certain options into account. The command that controls a
-      service — <command>service <replaceable>service</replaceable>
-      <replaceable>operation</replaceable></command> — doesn't take
-      runlevel into consideration, assumes (wrongly) that the service is
-      currently being used, and may thus initiate incorrect operations
-      (starting a service that was deliberately stopped, or stopping a
-      service that is already stopped, etc.). Debian therefore introduced
-      the <command>invoke-rc.d</command> program: this program must be used
-      by maintainer scripts to run services initialization scripts and it
-      will only execute the necessary commands. Note that, contrary to
-      common usage, the <filename>.d</filename> suffix is used here in a
-      program name, and not in a directory.</para>
+      <para>Сценарии сопровождающего пакет Debian иногда перезапускают сервисы для того, чтобы убедиться в их доступности или для применения изменений. Команда для контроля за сервисами <command>service <replaceable>service</replaceable> <replaceable>operation</replaceable></command> не учитывает уровень запуска, подразумевает (ошибочно) что сервис уже используется и может выполнить неправильные операции (запуск сервиса, намеренно остановленного или остановку сервиса, который уже остановлен и т. п.). Поэтому Debian представляет программу <command>invoke-rc.d</command>, которая должна использоваться сопровождающим для запуска сценариев, в свою очередь, предназначенных для запуска сервисов. Она будет запускать только необходимые команды. Заметьте что здесь, по сравнению с традиционным использованием суффикса <filename>.d</filename>, он используется как часть названия программы, а не каталога.</para>
     </sidebar>
 
     <para>Наконец, <command>init</command> запускает программу управления виртуальными консолями (<command>getty</command>). Она выводит приглашение, ожидает ввода имени пользователя, а затем выполняет <command>login <replaceable>пользователь</replaceable></command>, чтобы начать сессию.</para>
@@ -431,23 +398,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
 
 	  <para>В частности, когда OpenSSL использовалась для генерации ключа, она всегда создавала ключ из известного набора нескольких сотен тысяч ключей (32.000, помноженные на небольшое число длин ключей). Это затронуло ключи SSH и SSL, а также сертификаты X.509, используемые многочисленными приложениями, такими как OpenVPN. Взломщику оставалось только перепробовать все ключи, чтобы получить неавторизованный доступ. Чтобы уменьшить последствия этой проблемы, демон SSH был модифицирован таким образом, чтобы отклонять проблемные ключи, перечисленные в пакетах <emphasis role="pkg">openssh-blacklist</emphasis> и <emphasis role="pkg">openssh-blacklist-extra</emphasis>. Кроме того, команда <command>ssh-vulnkey</command> позволяет обнаружить возможно скомпроментированные ключи в системе.</para>
 
-	  <para>A more thorough analysis of this incident brings to
-	  light that it is the result of multiple (small) problems,
-	  both within the OpenSSL project and with the Debian package
-	  maintainer. A widely used library like OpenSSL should —
-	  without modifications — not generate warnings when tested by
-	  <command>valgrind</command>. Furthermore, the code
-	  (especially the parts as sensitive as the RNG) should be
-	  better commented to prevent such errors. On Debian's side,
-	  the maintainer wanted to validate the modifications with the
-	  OpenSSL developers, but simply explained the modifications
-	  without providing the corresponding patch to review and
-	  failed to mention his role within Debian. Finally, the
-	  maintenance choices were sub-optimal: the changes made to
-	  the original code were not clearly documented; all the
-	  modifications were effectively stored in a Subversion
-	  repository, but they ended up all lumped into one single
-	  patch during creation of the source package.</para>
+	  <para>Более детальный анализ выявил, что это результат нескольких (небольших) проблем и в проекте OpenSSL и у сопровождающего пакет Debian. Такие широко используемые библиотеки как OpenSSL должны без изменений проходить тест <command>valgrind</command> без предупреждений. Более того, код (особенно чувствительные части, как RNG) должен быть лучше сопровождён комментариями для предотвращения таких ошибок. Сопровождающий пакета Debian хотел согласовать изменения вместе с разработчиками OpenSSL, но просто объяснил их, не предоставив соответствующий патч для проверки и не уведомил о своей роли в Debian. Наконец, его выбор не был оптимальным: изменения в исходном коде не были отчётливо сопровождены комментариями. Они были сохранены в репозитории Subversion, затем свалены в один патч во время создания пакета с исходным кодом.</para>
 
 	  <para>It is difficult under such conditions to find the
 	  corrective measures to prevent such incidents from recurring. The
