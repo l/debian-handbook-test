@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">10.6. Domain Name Servers (DNS)</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="Nettverk, Innfallsport (gateway), TCP/IP, IPv6, DNS, Bind, DHCP, QoS" /><link
+        rel="home"
+        href="index.html"
+        title="Debian-administratorens håndbok" /><link
+        rel="up"
+        href="network-infrastructure.html"
+        title="Kapittel 10. Nettverksinfrastruktur" /><link
+        rel="prev"
+        href="sect.ipv6.html"
+        title="10.5. IPv6" /><link
+        rel="next"
+        href="sect.dhcp.html"
+        title="10.7. DHCP" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.domain-name-servers.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.ipv6.html"><strong>Forrige</strong></a></li><li
+          class="home">Debian-administratorens håndbok</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.dhcp.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.domain-name-servers"></a>10.6. Domain Name Servers (DNS)</h2></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.dns-principe"></a>10.6.1. Prinsipp og mekanisme</h3></div></div></div><a
+            id="id-1.13.9.2.2"
+            class="indexterm"></a><a
+            id="id-1.13.9.2.3"
+            class="indexterm"></a><div
+            class="para">
+				<span
+              class="emphasis"><em>Domain Name Service</em></span> (DNS) er en fundamental del av Internettet: den kartlegger vertsnavn til IP-adresser (og vice-versa), som tillater bruk av <code
+              class="literal">www.debian.org</code> i stedete for <code
+              class="literal">5.153.231.4</code> eller <code
+              class="literal">2001:41c8:1000:21::21:4</code>.
+			</div><div
+            class="para">
+				DNS oppføringer er organisert i soner; Hver sone svarer enten til et domene (eller et underdomene), eller et IP-adresseområde (siden IP-adresser generelt tildeles fortløpende i rekkefølge). En primærtjener er autoritativ når det gjelder innholdet i en sone; Sekundære tjenere, som vanligvis ligger på separate maskiner, gir jevnlig oppdaterte kopier av primærsonen.
+			</div><a
+            id="id-1.13.9.2.6"
+            class="indexterm"></a><a
+            id="id-1.13.9.2.7"
+            class="indexterm"></a><div
+            class="para">
+				Hver sone kan inneholde registreringer av ulike slag (<span
+              class="emphasis"><em>Resource Records</em></span>):
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">A</code>: IPv4 address. <a
+                    id="id-1.13.9.2.9.1.1.2"
+                    class="indexterm"></a>
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">CNAME</code>: alias (<span
+                    class="emphasis"><em>canonical name</em></span>). <a
+                    id="id-1.13.9.2.9.2.1.3"
+                    class="indexterm"></a>
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">MX</code>: <span
+                    class="emphasis"><em>mail exchange</em></span>, en e-post tjener. Denne informasjonen blir brukt av andre e-posttjenere for å finne hvor e-poster adressert til en gitt adresse skal sendes. Hver MX-posten har en prioritet. Tjeneren med høyeste prioritet (med lavest nummer) blir prøvd først (se sidefelt <a
+                    class="xref"
+                    href="network-services.html#sidebar.smtp"><span
+                      class="emphasis"><em>BACK TO BASICS</em></span> SMTP</a>); Andre tjenere blir kontaktet etter synkende prioritet hvis den første ikke svarer. <a
+                    id="id-1.13.9.2.9.3.1.4"
+                    class="indexterm"></a>
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">PTR</code>: Kartlegging av en IP-adresse for et navn. En slik post blir lagret i en "reversert DNS"-sone oppkalt etter IP-adresseområdet. For eksempel er <code
+                    class="literal">1.168.192.in-addr.arpa</code> sonen med den reverserte kartleggingen av alle adresser i <code
+                    class="literal">192.168.1.0/24</code> -rekkefølgen. <a
+                    id="id-1.13.9.2.9.4.1.4"
+                    class="indexterm"></a>
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">AAAA</code>: IPv6 address. <a
+                    id="id-1.13.9.2.9.5.1.2"
+                    class="indexterm"></a>
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">NS</code>: kartlegger et navn til en navnetjener. Hvert domene må ha minst et NS-opptak. Disse opptakene peker på en DNS-tjener som kan svare på spørsmål om dette domenet; De peker vanligvis på de primære og sekundære tjenere for domenet. Disse opptakene tillater også DNS delegasjon; for eksempel kan <code
+                    class="literal">falcot.com</code>-sonen inkludere et NS-opptak for <code
+                    class="literal">internal.falcot.com</code>, som betyr at <code
+                    class="literal">internal.falcot.com</code>-sonen håndteres av annen tjener. Selvfølgelig må denne tjeneren melde en <code
+                    class="literal">internal.falcot.com</code>-sone. <a
+                    id="id-1.13.9.2.9.6.1.6"
+                    class="indexterm"></a>
+					</div></li></ul></div><a
+            id="id-1.13.9.2.10"
+            class="indexterm"></a><a
+            id="id-1.13.9.2.11"
+            class="indexterm"></a><div
+            class="para">
+				Referansenavnetjeneren, Bind, ble utviklet og vedlikeholdt av ISC (<span
+              class="emphasis"><em>Internet Software Consortium</em></span>). I Debian er den tilgjengelig i <span
+              class="pkg pkg">bind9</span>-pakken. Versjon 9 bringer to store endringer i forhold til tidligere versjoner. Først, nå kan DNS-tjeneren kjøre under en ikke-privilegert bruker, slik at et sikkerhetsproblem i tjeneren ikke gir rot-tilgang til angriperen (som forekom gjentatte ganger med versjoner 8.x).
+			</div><div
+            class="para">
+				Videre støtter Bind DNSSEC-standarden for signering (og dermed autentisering) av DNS-opptak, som tillater blokkering av all forfalskning av data under man-in-the-middle angrep.
+			</div><a
+            id="id-1.13.9.2.14"
+            class="indexterm"></a><a
+            id="id-1.13.9.2.15"
+            class="indexterm"></a><a
+            id="id-1.13.9.2.16"
+            class="indexterm"></a><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>CULTURE</em></span> DNSSEC</strong></p></div></div></div><a
+              id="id-1.13.9.2.17.2"
+              class="indexterm"></a><div
+              class="para">
+				DNSSEC-normen er ganske komplisert; Det forklarer hvorfor den ikke er i utbredt bruk ennå (selv om den sameksisterer helt perfekt med DNS-tjenere som ikke er oppmerksomme på DNSSEC). For å forstå alle inn og ut, bør du sjekke følgende artikkel: <div
+                xmlns=""
+                class="url">→ <a
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  href="http://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions">http://en.wikipedia.org/wiki/Domain_Name_System_Security_Extensions</a></div>
+			</div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.dns-config"></a>10.6.2. Konfigurering</h3></div></div></div><div
+            class="para">
+				Konfigureringsfiler for <code
+              class="command">bind</code>, uavhengig av versjon, har den samme strukturen.
+			</div><div
+            class="para">
+				Falcots administratorer opprettet en primær <code
+              class="literal">falcot.com</code>-sone for å lagre informasjon relatert til dette domene, og en <code
+              class="literal">168.192.in-addr.arpa</code>-sone for reversert kartlegging av IP addresser i de lokale nettverkene.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>CAUTION</em></span> Navn på reversete soner</strong></p></div></div></div><a
+              id="id-1.13.9.3.4.2"
+              class="indexterm"></a><a
+              id="id-1.13.9.3.4.3"
+              class="indexterm"></a><a
+              id="id-1.13.9.3.4.4"
+              class="indexterm"></a><a
+              id="id-1.13.9.3.4.5"
+              class="indexterm"></a><a
+              id="id-1.13.9.3.4.6"
+              class="indexterm"></a><div
+              class="para">
+				Reverserte soner har har et bestemt navn. Sonen som omfatter <code
+                class="literal">192.168.0.0/16</code>-nettet trenger å bli navngitt <code
+                class="literal">168.192.in-addr.arpa</code>: Komponentene til IP-adressen er reversert, og etterfulgt av <code
+                class="literal">in-addr.arpa</code>-suffikset.
+			</div><div
+              class="para">
+				For IPv6-nettverk, er suffikset <code
+                class="literal">ip6.arpa</code> og IP-adressen komponenter som er reversert, er hvert tegn i full heksadesimal presentasjon av IP-adressen. Som sådan vil <code
+                class="literal">2001:0bc8:31a0::/48</code>-nettverket bruke en sone med navnet <code
+                class="literal">0.a.1.3.8.c.b.0.1.0.0.2.ip6.arpa</code>.
+			</div></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>TIP</em></span> Å testet DNS tjeneren</strong></p></div></div></div><div
+              class="para">
+				<code
+                class="command">host</code>-kommandoen (i <span
+                class="pkg pkg">bind9-host</span> pakken) forespør en DNS-tjener, og kan bli brukt til å teste tjener-konfigurasjon. For eksempel, sjekker <code
+                class="command">host machine.falcot.com localhost</code> den lokale tjenerens svar på <code
+                class="literal">machine.falcot.com</code> forespørsel. <code
+                class="command">host <em
+                  class="replaceable">ipaddress</em> localhost</code> tester den reverserte løsningen.
+			</div><a
+              id="id-1.13.9.3.5.3"
+              class="indexterm"></a></div><div
+            class="para">
+				Det følgende konfigurasjons-utdrag, hentet hentet fra Falcot-filene, kan tjene som utgangspunkt for å sette opp en DNS-server:
+			</div><a
+            id="id-1.13.9.3.7"
+            class="indexterm"></a><a
+            id="id-1.13.9.3.8"
+            class="indexterm"></a><div
+            class="example"><a
+              xmlns=""
+              id="example.bind-named.conf.local"></a><p
+              class="title"><strong>Eksempel 10.12. Excerpt of <code
+                  class="filename">/etc/bind/named.conf.local</code></strong></p><div
+              class="example-contents"><pre
+                class="programlisting">
+zone "falcot.com" {
+        type master;
+        file "/etc/bind/db.falcot.com";
+        allow-query { any; };
+        allow-transfer {
+                195.20.105.149/32 ; // ns0.xname.org
+                193.23.158.13/32 ; // ns1.xname.org
+        };
+};
+
+zone "internal.falcot.com" {
+        type master;
+        file "/etc/bind/db.internal.falcot.com";
+        allow-query { 192.168.0.0/16; };
+};
+
+zone "168.192.in-addr.arpa" {
+        type master;
+        file "/etc/bind/db.192.168";
+        allow-query { 192.168.0.0/16; };
+};
+</pre></div></div><div
+            class="example"><a
+              xmlns=""
+              id="example.bind-db.falcot.com"></a><p
+              class="title"><strong>Eksempel 10.13. Excerpt of <code
+                  class="filename">/etc/bind/db.falcot.com</code></strong></p><div
+              class="example-contents"><pre
+                class="programlisting">; falcot.com Zone 
+; admin.falcot.com. =&gt; zone contact: admin@falcot.com
+$TTL    604800
+@       IN      SOA     falcot.com. admin.falcot.com. (
+                        20040121        ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+;
+; The @ refers to the zone name ("falcot.com" here)
+; or to $ORIGIN if that directive has been used
+;
+@       IN      NS      ns
+@       IN      NS      ns0.xname.org.
+
+internal IN      NS      192.168.0.2
+
+@       IN      A       212.94.201.10
+@       IN      MX      5 mail
+@       IN      MX      10 mail2
+
+ns      IN      A       212.94.201.10
+mail    IN      A       212.94.201.10
+mail2   IN      A       212.94.201.11
+www     IN      A       212.94.201.11
+
+dns     IN      CNAME   ns
+</pre></div></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>CAUTION</em></span> Navnsyntaks</strong></p></div></div></div><div
+              class="para">
+				Syntaksen til maskinnavnene følger strikte regler. For eksempel, <code
+                class="literal">machine</code> impliserer <code
+                class="literal">machine.<em
+                  class="replaceable">domain</em></code>. Hvis domenenavnet ikke skal tilføyes et navn, må navnet skrives som <code
+                class="literal">machine.</code> (med et punktum som suffiks). Å indikerer et DNS-navn utenfor det gjeldende domene krever derfor en syntaks som <code
+                class="literal">machine.otherdomain.com.</code> (med et avsluttende punktum). (OBS: Sjekk 3. setningn mot tysk...).
+			</div></div><div
+            class="example"><a
+              xmlns=""
+              id="example.bind-db.192.168"></a><p
+              class="title"><strong>Eksempel 10.14. Utdrag fra <code
+                  class="filename">/etc/bind/db.192.168</code></strong></p><div
+              class="example-contents"><pre
+                class="programlisting">; Reverse zone for 192.168.0.0/16
+; admin.falcot.com. =&gt; zone contact: admin@falcot.com
+$TTL    604800
+@       IN      SOA     ns.internal.falcot.com. admin.falcot.com. (
+                        20040121        ; Serial
+                         604800         ; Refresh
+                          86400         ; Retry
+                        2419200         ; Expire
+                         604800 )       ; Negative Cache TTL
+
+        IN      NS      ns.internal.falcot.com.
+
+; 192.168.0.1 -&gt; arrakis
+1.0     IN      PTR     arrakis.internal.falcot.com.
+; 192.168.0.2 -&gt; neptune
+2.0     IN      PTR     neptune.internal.falcot.com.
+
+; 192.168.3.1 -&gt; pau
+1.3     IN      PTR     pau.internal.falcot.com.
+</pre></div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.ipv6.html"><strong>Forrige</strong>10.5. IPv6</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.dhcp.html"><strong>Neste</strong>10.7. DHCP</a></li></ul></body></html>
