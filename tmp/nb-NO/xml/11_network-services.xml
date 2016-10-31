@@ -590,31 +590,31 @@ smtpd_recipient_restrictions = permit_mynetworks,
 			</para>
 			 <sidebar> <title><emphasis>IN PRACTICE</emphasis> Shortcomings of greylisting</title>
 			 <para>
-				Theoretically, greylisting should only delay the first mail from a given sender to a given recipient, and the typical delay is in the order of minutes. Reality, however, can differ slightly. Some large ISPs use clusters of SMTP servers, and when a message is initially rejected, the server that retries the transmission may not be the same as the initial one. When that happens, the second server gets a temporary error message due to greylisting too, and so on; it may take several hours until transmission is attempted by a server that has already been involved, since SMTP servers usually increase the delay between retries at each failure.
+				Teoretisk bør grålisting bare forsinke den første posten fra en gitt sender til en gitt mottaker, og den typiske forsinkelsen er i størrelsesorden minutter. Virkeligheten kan, imidlertid, avvike noe. Noen store ISP-er bruker klynger av SMTP-tjenere, og når en melding innledningsvis er avslått, er kanskje den tjeneren som prøver å gjenoppta overføringen, ikke den samme som den opprinnelige. Når det skjer, får den andre tjeneren også en midlertidig feilmelding på grunn av grålisting, og så videre. Det kan ta flere timer før overføringen er forsøkt av en tjener som allerede har vært involvert, ettersom SMTP-tjenere ved hver feil vanligvis øke forsinkelsen.
 			</para>
 			 <para>
-				As a consequence, the incoming IP address may vary in time even for a single sender. But it goes further: even the sender address can change. For instance, many mailing-list servers encode extra information in the sender address so as to be able to handle error messages (known as <emphasis>bounces</emphasis>). Each new message sent to a mailing-list may then need to go through greylisting, which means it has to be stored (temporarily) on the sender's server. For very large mailing-lists (with tens of thousands of subscribers), this can soon become a problem.
+				Som en konsekvens kan den innkommende IP-adressen variere i tid, selv for en enkelt sender. Men det går videre: Selv avsenderadressen kan endres. For eksempel, mange postliste-tjenere koder inn ekstra informasjon i avsenderadressen, for å være i stand til å håndtere feilmeldinger (kjent som <emphasis>bounces</emphasis>). Hver ny melding sendt til en adresseliste kan så trenge å gå gjennom grålisting, noe som betyr at den må lagres (midlertidig) på senderens tjener. For svært store e-postlister (med titusenvis av abonnenter), kan dette fort bli et problem.
 			</para>
 			 <para>
-				To mitigate these drawbacks, Postgrey manages a whitelist of such sites, and messages emanating from them are immediately accepted without going through greylisting. This list can easily be adapted to local needs, since it is stored in the <filename>/etc/postgrey/whitelist_clients</filename> file.
+				For å redusere disse ulempene, administrerer Postgrey en hviteliste med slike steder, og meldinger som kommer fra dem, blir umiddelbart akseptert uten å gå gjennom grålisting. Denne listen kan lett tilpasses de lokale behov, ettersom det er lagret i <filename>/etc/postgrey/whitelist_clients</filename>-filen.
 			</para>
-			 </sidebar> <sidebar> <title><emphasis>GOING FURTHER</emphasis> Selective greylisting with <emphasis role="pkg">milter-greylist</emphasis></title>
+			 </sidebar> <sidebar> <title><emphasis>GOING FURTHER</emphasis> Selektiv grålisting med <emphasis role="pkg">milter-greylist</emphasis></title>
 			 <para>
-				The drawbacks of greylisting can be mitigated by only using greylisting on the subset of clients that are already considered as probable sources of spam (because they are listed in a DNS blacklist). This is not possible with <emphasis role="pkg">postgrey</emphasis> but <emphasis role="pkg">milter-greylist</emphasis> can be used in such a way.
-			</para>
-			 <para>
-				In that scenario, since DNS blacklists never triggers a definitive rejection, it becomes reasonable to use aggressive blacklists, including those listing all dynamic IP addresses from ISP clients (such as <literal>pbl.spamhaus.org</literal> or <literal>dul.dnsbl.sorbs.net</literal>).
+				Ulempene med grålisting kan reduseres ved å bruke grålisting bare på undergruppen av klienter som allerede regnes som sannsynlige kilder til spam (fordi de er oppført i en DNS svarteliste). Dette er ikke mulig med <emphasis role="pkg">postgrey</emphasis> men <emphasis role="pkg">milter-greylist</emphasis> kan anvendes på en slik måte.
 			</para>
 			 <para>
-				Since milter-greylist uses Sendmail's milter interface, the postfix side of its configuration is limited to “<literal>smtpd_milters = unix:/var/run/milter-greylist/milter-greylist.sock</literal>”. The <citerefentry><refentrytitle>greylist.conf</refentrytitle>
-				<manvolnum>5</manvolnum></citerefentry> manual page documents <filename>/etc/milter-greylist/greylist.conf</filename> and the numerous ways to configure milter-greylist. You will also have to edit <filename>/etc/default/milter-greylist</filename> to actually enable the service.
+				I dette scenariet, ettersom DNS svartelister aldri utløser en endelig avvisning, blir det naturlig å bruke aggressive svartelister, medregnet de som viser alle dynamiske IP-adresser fra ISP klienter (for eksempel<literal>pbl.spamhaus.org</literal> eller <literal>dul.dnsbl.sorbs.net</literal>).
+			</para>
+			 <para>
+				Siden milter-grålisting bruker Sendmails milter grensesnitt, er postfix siden av konfigurasjonen begrenset til “<literal>smtpd_milters = unix:/var/run/milter-greylist/milter-greylist.sock</literal>”. <citerefentry><refentrytitle>greylist.conf</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>-manualside dokumenterer <filename>/etc/milter-greylist/greylist.conf</filename> og de utallige måter å konfigurere milter-grålisting på. Du vil også måtte redigere <filename>/etc/default/milter-greylist</filename> for faktisk å aktivere tjenesten.
 			</para>
 			 </sidebar>
 		</section>
 		 <section>
-			<title>Customizing Filters Based On the Recipient</title>
+			<title>Å tilpasse filtre basert på mottakeren</title>
 			 <para>
-				<xref linkend="sect.restrictions-for-receiving-and-sending" /> and <xref linkend="sect.setting-up-greylisting" /> reviewed many of the possible restrictions. They all have their use in limiting the amount of received spam, but they also all have their drawbacks. It is therefore more and more common to customize the set of filters depending on the recipient. At Falcot Corp, greylisting is interesting for most users, but it hinders the work of some users who need low latency in their emails (such as the technical support service). Similarly, the commercial service sometimes has problems receiving emails from some Asian providers who may be listed in blacklists; this service asked for a non-filtered address so as to be able to correspond.
+				<xref linkend="sect.restrictions-for-receiving-and-sending" /> og <xref linkend="sect.setting-up-greylisting" /> gjennomgikk mange av de mulige restriksjonene. De har alle sin nytte ved å begrense mengden mottatt spam, men har alle også sine ulemper. Det er derfor mer og mer vanlig å tilpasse filtrene til mottakeren. På Falcot Corp, er grålisting interessant for de fleste brukere, men det hindrer arbeidet til noen brukere som har behov for korte forsinkelser på sine e-poster (som for eksempel teknisk support-tjenesten). Tilsvarende, den kommersielle tjenesten har noen ganger problemer med å motta e-post fra noen asiatiske leverandører som kan være oppført i svartelister; trenger denne tjenesten en ikke-filtrert adresse for å kunne utveksle e-poster.
 			</para>
 			 <para>
 				Postfix provides such a customization of filters with a “restriction class” concept. The classes are declared in the <literal>smtpd_restriction_classes</literal> parameter, and defined the same way as <literal>smtpd_recipient_restrictions</literal>. The <literal>check_recipient_access</literal> directive then defines a table mapping a given recipient to the appropriate set of restrictions.
