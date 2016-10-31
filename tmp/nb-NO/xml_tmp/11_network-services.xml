@@ -567,75 +567,35 @@ falcot.com             greylisting
 smtpd_milters = inet:[127.0.0.1]:10002
 </programlisting>
 
-      <para>If the antivirus causes problems, this line can be commented
-      out, and <command>service postfix reload</command> should be run
-      so that this change is taken into account.</para>
+      <para>Hvis antivirus skaper problemer, kan denne linjen kommenteres ut, og <command>service postfix reload</command> skal kjøres slik at denne endringen er tatt hensyn til.</para>
 
       <sidebar>
-        <title><emphasis>IN PRACTICE</emphasis> Testing the antivirus</title>
+        <title><emphasis>IN PRACTICE</emphasis> Testing antivirus</title>
 
-	<para>Once the antivirus is set up, its correct behavior should be
-	tested. The simplest way to do that is to send a test email with an
-	attachment containing the <filename>eicar.com</filename> (or
-	<filename>eicar.com.zip</filename>) file, which can be downloaded
-	online: <ulink type="block" url="http://www.eicar.org/86-0-Intended-use.html" /></para>
+	<para>Når antivirus er satt opp, skal det testes om oppførselen er korrekt. Den enkleste måten å gjøre det på, er å sende en test e-post med et vedlegg som inneholder <filename>eicar.com</filename> (eller <filename>eicar.com.zip</filename>)-filen, som kan lastes ned fra nettet: <ulink type="block" url="http://www.eicar.org/86-0-Intended-use.html" /></para>
 
-	<para>This file is not a true virus, but a test file that all
-	antivirus software on the market diagnose as a virus to allow
-	checking installations.</para>
+	<para>Denne filen er ikke en ekte virus, men en test-fil som all antivirusprogramvare på markedet diagnostiserer som et virus, for å tillate sjekking av installasjoner.</para>
       </sidebar>
 
-      <para>All messages handled by Postfix now go through the antivirus
-      filter.</para>
+      <para>Alle meldinger som Postfix håndterer, går nå igjennom antivirusfilteret.</para>
     </section>
     <section id="sect.authenticated-smtp">
-      <title>Authenticated SMTP</title>
+      <title>Godkjent SMTP</title>
 
-      <para>Being able to send emails requires an SMTP server to be
-      reachable; it also requires said SMTP server to send emails through
-      it. For roaming users, this may need regularly changing the
-      configuration of the SMTP client, since Falcot's SMTP server rejects
-      messages coming from IP addresses apparently not belonging to the
-      company. Two solutions exist: either the roaming user installs an
-      SMTP server on their computer, or they still use the company server
-      with some means of authenticating as an employee. The former solution
-      is not recommended since the computer won't be permanently connected,
-      and it won't be able to retry sending messages in case of problems;
-      we will focus on the latter solution.</para>
+      <para>Å kunne sende e-poster krever tilgang på en SMTP-tjener; Det krever også nevnte SMTP-tjener for å sende e-post igjennom den. For flyttbare enheter, kan det trenges jevnlig endring av konfigurasjonen til SMTP-klienten, ettersom Falcots SMTP-tjener avviser meldinger som kommer fra IP-adresser som tilsynelatende ikke tilhører selskapet. To løsninger finnes: Enten installerer brukeren en SMTP-tjener på datamaskinen sin, eller de fortsetter å bruke selskapets tjener med noen metoder for å autentisere seg som en ansatt. Den første løsningen er ikke anbefalt siden maskinen ikke vil være permanent tilkoblet, og ikke være i stand til igjen å prøve å sende meldinger i tilfelle problemer. Vi vil fokusere på sistnevnte løsning.</para>
 
-      <para>SMTP authentication in Postfix relies on SASL (<emphasis>Simple
-      Authentication and Security Layer</emphasis>). It requires installing
-      the <emphasis role="pkg">libsasl2-modules</emphasis> and <emphasis role="pkg">sasl2-bin</emphasis> packages, then registering a password
-      in the SASL database for each user that needs authenticating on the
-      SMTP server. This is done with the <command>saslpasswd2</command>
-      command, which takes several parameters. The <literal>-u</literal>
-      option defines the authentication domain, which must match the
-      <literal>smtpd_sasl_local_domain</literal> parameter in the Postfix
-      configuration. The <literal>-c</literal> option allows creating a
-      user, and <literal>-f</literal> allows specifying the file to use if
-      the SASL database needs to be stored at a different location than the
-      default (<filename>/etc/sasldb2</filename>).</para>
+      <para>SMTP-autentisering i Postfix hviler på SASL (<emphasis>Simple Authentication and Security Layer</emphasis>). Det krever installasjon av   <emphasis role="pkg">libsasl2-modules</emphasis> og <emphasis role="pkg">sasl2-bin</emphasis>-pakker, deretter å registrere et passord i SASL-databasen for hver bruker som trenger autentisering på SMTP-tjeneren. Dette gjøres med <command>saslpasswd2</command>-kommandoen, som krever flere parametre. <literal>-u</literal>-valget  definerer godkjenningsdomenet, som må samsvare med <literal>smtpd_sasl_local_domain</literal>-parameteret i Postfix-oppsettet. <literal>-c</literal>-valget tillater å lage en bruker, og <literal>-f</literal> kan spesifisere filen som skal brukes hvis SASL-databasen må lagres på et annet sted enn opprinnelig (<filename>/etc/sasldb2</filename>).</para>
 
       <screen role="scale">
 <computeroutput># </computeroutput><userinput>saslpasswd2 -u `postconf -h myhostname` -f /var/spool/postfix/etc/sasldb2 -c jean</userinput>
 <computeroutput>[... type jean's password twice ...]</computeroutput></screen>
 
-      <para>Note that the SASL database was created in Postfix's directory.
-      In order to ensure consistency, we also turn
-      <filename>/etc/sasldb2</filename> into a symbolic link pointing at
-      the database used by Postfix, with the <command>ln -sf
-      /var/spool/postfix/etc/sasldb2 /etc/sasldb2</command> command.</para>
+      <para>Merk at SASL-databasen ble opprettet i Postfix katalogen. For å sikre sammenhengen, omgjør vi også <filename>/etc/sasldb2</filename> til en  symbolsk lenke som peker på databasen som brukes av Postfix, med <command>ln -sf /var/spool/postfix/etc/sasldb2 /etc/sasldb2</command>-kommandoen.</para>
 
-      <para>Now we need to configure Postfix to use SASL. First the
-      <literal>postfix</literal> user needs to be added to the
-      <literal>sasl</literal> group, so that it can access the SASL account
-      database. A few new parameters are also needed to enable SASL, and
-      the <literal>smtpd_recipient_restrictions</literal> parameter needs
-      to be configured to allow SASL-authenticated clients to send emails
-      freely.</para>
+      <para>Nå trenger vi å sette opp Postfix til å bruke SASL. Flrst, må  <literal>postfix</literal>-brukeren legges til <literal>sasl</literal>-gruppen, slik at den kan få tilgang til SASL-kontoens database. Et par nye parametere må også til for å aktivere SASL, og <literal>smtpd_recipient_restrictions</literal>-parameteret må konfigureres til å tillate at SASL-godkjente klienter fritt kan sende e-post.</para>
 
       <example>
-        <title>Enabling SASL in <filename>/etc/postfix/main.cf</filename></title>
+        <title>Å sette opp SASL i <filename>/etc/postfix/main.cf</filename></title>
 
         <programlisting>
 # Enable SASL authentication
@@ -653,16 +613,9 @@ smtpd_recipient_restrictions = permit_mynetworks,
       </example>
 
       <sidebar>
-        <title><emphasis>EXTRA</emphasis> Authenticated SMTP client</title>
+        <title><emphasis>EXTRA</emphasis> Autentisert SMTP-klient</title>
 
-	<para>Most email clients are able to authenticate to an SMTP server
-	before sending outgoing messages, and using that feature is a
-	simple matter of configuring the appropriate parameters. If the
-	client in use does not provide that feature, the workaround is to
-	use a local Postfix server and configure it to relay email via the
-	remote SMTP server. In this case, the local Postfix itself will be
-	the client that authenticates with SASL. Here are the required
-	parameters:</para>
+	<para>De fleste e-postklienter er i stand til å autentisere til en SMTP-tjener før den sender utgående meldinger, og ved hjelp av denne funksjonen er en enkel sak å konfigurere de riktige parameterne. Dersom klienten som brukes ikke leverer den funksjonen, er den midlertidige løsningen å bruke en lokal Postfix-tjener og konfigurere den til å videresende e-post via den eksterne SMTP-tjeneren. I dette tilfelle, vil den lokale Postfixen selv være klienten som autentiserer med SASL. Her er de nødvendige parameterne:</para>
 
         <programlisting>
 smtp_sasl_auth_enable = yes
