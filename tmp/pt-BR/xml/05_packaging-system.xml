@@ -1,0 +1,1296 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="packaging-system" lang="pt-BR">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>Pacote Binário</keyword>
+			 <keyword>Pacote fonte</keyword>
+			 <keyword>dpkg</keyword>
+			 <keyword>dependências</keyword>
+			 <keyword>conflitos</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Sistema de Pacotes: Ferramentas e Princípios Fundamentais</title>
+	 <highlights> <para>
+		Como um administrador de sistemas Debian, você rotineiramente manipula pacotes <filename>.deb</filename>, já que eles contêm unidades funcionais consistentes (aplicações, documentação, etc.), cujas instalação e manutenção eles facilitam. Logo é uma boa ideia saber exatamente o que são e como usá-los.
+	</para>
+	 </highlights> <para>
+		Este capítulo descreve a estrutura e conteúdo dos pacotes "binários" e "fontes". Os primeiros são arquivos <filename>.deb</filename>, diretamente usáveis pelo <command>dpkg</command>, enquanto os segundos contém o código fonte, assim como as instruções para construir os pacotes binários.
+	</para>
+	 <section id="sect.binary-package-structure">
+		<title>Estrutura de um Pacote Binário</title>
+		 <indexterm>
+			<primary>pacote</primary>
+			<secondary>pacote binário</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>ar</command></primary>
+		</indexterm>
+		 <para>
+			O formato do pacote Debian foi projetado para que seu conteúdo possa ser extraído em qualquer sistema Unix que contenha os clássicos comandos <command>ar</command>, <command>tar</command>, e <command>gzip</command> (e às vezes <command>xz</command> ou <command>bzip2</command>). Esta característica aparentemente trivial é importante para a portabilidade e recuperação de desastres.
+		</para>
+		 <para>
+			Imagine, por exemplo, que você apagou acidentalmente o programa <command>dpkg</command>, e que portanto você não pode mais instalar pacotes Debian. O <command>dpkg</command> sendo um pacote Debian em si, ao que parece seu sistema seria feito por... Felizmente, você conhece o formato de um pacote e pode então baixar o arquivo <filename>.deb</filename> do pacote <emphasis role="pkg">dpkg</emphasis> e instalar ele manualmente (veja a barra lateral sidebar <xref linkend="sidebar.dpkg-apt-ar" />) . Se por algum infortúnio um ou mais dos programas <command>ar</command>, <command>tar</command> ou <command>gzip</command>/<command>xz</command>/<command>bzip2</command> tenham sumido, você só precisa copiar o programa faltoso de outro sistema (já que qualquer um destes opera de modo totalmente autônomo, sem dependências, uma simples cópia será suficiente). Se o seu sistema sofreu um desfortunio ainda mais ultrajante, e mesmo esses não funcionam (talvez o sistema de bibliotecas mais profundo esteja faltando?), você deve tentar a versão estática do <command>busybox</command> (fornecido pelo pacote <emphasis role="pkg">busybox-static</emphasis>) , a qual é ainda mais autosuficiente, e provê sub comandos tais como <command>busybox ar</command>, <command>busybox tar</command> e <command>busybox gunzip</command>.
+		</para>
+		 <sidebar id="sidebar.dpkg-apt-ar"> <title><emphasis>FERRAMENTAS</emphasis> <command>dpkg</command>, <command>APT</command> e <command>ar</command></title>
+		 <indexterm>
+			<primary><command>dpkg</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>ar</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+		</indexterm>
+		 <para>
+			<command>dpkg</command> é um programa que manipula arquivos <filename>.deb</filename>, notavelmente extraindo, analisando, e desempacotando os mesmos.
+		</para>
+		 <para>
+			<command>APT</command> é um conjunto de programas que permite a execução alto nível de modificações no sistema: instalando ou removendo pacotes (enquanto satisfaz dependências), atualizando o sistema, listando pacotes disponíveis, etc.
+		</para>
+		 <indexterm>
+			<primary><command>ar</command></primary>
+		</indexterm>
+		 <para>
+			Assim como o programa <command>ar</command>, ele permite manipular arquivos do mesmo nome: <command>ar t <replaceable>arquivamento</replaceable></command> mostra a lista de arquivos contidos no arquivamento, <command>ar x <replaceable>arquivmento</replaceable></command> extrai os arquivos do arquivamento para a pasta de trabalho atual, <command>ar d <replaceable>arquivamento</replaceable> <replaceable>arquivo</replaceable></command> apaga um arquivo do arquivamento, etc. Sua página man (<citerefentry><refentrytitle>ar</refentrytitle>
+			<manvolnum>1</manvolnum></citerefentry>) documenta todas as demais funcionalidades. <command>ar</command> é uma ferramenta muito rudimentar que um administrador Unix usará muito pouco, mas os admins usarão com frequencia o <command>tar</command>, um programa de gerencia de arquivos e arquivamentos. É por isso que é fácil recuperar o <command>dpkg</command> no caso de uma remoção errada. Você terá apenas que baixar o pacote Debian e extrair o conteúdo do arquivamento <filename>data.tar.gz</filename> na raiz do sistema (<filename>/</filename>):
+		</para>
+		 
+<screen>
+<computeroutput># </computeroutput><userinput>ar x dpkg_1.17.23_amd64.deb</userinput>
+<computeroutput># </computeroutput><userinput>tar -C / -p -xzf data.tar.gz</userinput></screen>
+		 </sidebar> <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Notação de páginas de manual</title>
+		 <para>
+			Pode ser confuso para iniciantes encontrar referências ao “<citerefentry><refentrytitle>ar</refentrytitle>
+			<manvolnum>1</manvolnum></citerefentry>” na literatura. Isto é geralmente uma forma conveniente de se referir à página man intitulada <literal>ar</literal> na seção 1.
+		</para>
+		 <para>
+			Algumas vezes esta notação é também usada para remover ambiguidades, por exemplo para distinguir entre o comando <command>printf</command> que pode ser indicado por <citerefentry><refentrytitle>printf</refentrytitle>
+			<manvolnum>1</manvolnum></citerefentry> e a função <function>printf</function> da linguagem de programação C, que pode ser indicada por <citerefentry><refentrytitle>printf</refentrytitle>
+			<manvolnum>3</manvolnum></citerefentry>.
+		</para>
+		 <para>
+			<xref linkend="solving-problems" /> discute as páginas de manual em muito mais detalhes (veja em <xref linkend="sect.manual-pages" />).
+		</para>
+		 </sidebar> <para>
+			Dê uma olhada no conteúdo de um arquivo <filename>.deb</filename>:
+		</para>
+		 
+<screen><computeroutput>$ </computeroutput><userinput>ar t dpkg_1.17.23_amd64.deb</userinput>
+<computeroutput>debian-binary
+control.tar.gz
+data.tar.gz
+$ </computeroutput><userinput>ar x dpkg_1.17.23_amd64.deb</userinput>
+<computeroutput>$ </computeroutput><userinput>ls</userinput>
+<computeroutput>control.tar.gz  data.tar.gz  debian-binary  dpkg_1.17.23_amd64.deb
+$ </computeroutput><userinput>tar tzf data.tar.gz | head -n 15</userinput>
+<computeroutput>./
+./var/
+./var/lib/
+./var/lib/dpkg/
+./var/lib/dpkg/parts/
+./var/lib/dpkg/info/
+./var/lib/dpkg/alternatives/
+./var/lib/dpkg/updates/
+./etc/
+./etc/logrotate.d/
+./etc/logrotate.d/dpkg
+./etc/dpkg/
+./etc/dpkg/dpkg.cfg.d/
+./etc/dpkg/dpkg.cfg
+./etc/alternatives/
+$ </computeroutput><userinput>tar tzf control.tar.gz</userinput>
+<computeroutput>./
+./conffiles
+./postinst
+./md5sums
+./prerm
+./preinst
+./control
+./postrm
+$ </computeroutput><userinput>cat debian-binary</userinput>
+<computeroutput>2.0</computeroutput></screen>
+		 <para>
+			Como você pode ver, o arquivo <command>ar</command> de um pacote Debian é composto de três arquivos:
+		</para>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					<filename>debian-binary</filename>. Este é um arquivo texto que simplesmente indica a versão do arquivo <filename>.deb</filename> usado (em 2015: version 2.0).
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					<filename>control.tar.gz</filename>. Este arquivamento contém todas as meta-informações disponíveis, como o nome e a versão do pacote. Algumas destas meta-informações servem para que as ferramentas de gestão de pacotes determinarem se é possível instalar e desinstalar o pacote, por exemplo, de acordo com a lista de pacotes já instalados na máquina.
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					<filename>data.tar.gz</filename>. Este arquivamento contém todos os arquivos para serem extraídos do pacote; é onde os arquivos executáveis, documentação, etc, estão todos estocados. Alguns pacotes podem usar outros formatos de compressão, e neste caso o arquivo terá um nome diferente (<filename>data.tar.bz2</filename> para bzip2, <filename>data.tar.xz</filename> para XZ).
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+
+	</section>
+	 <section id="sect.package-meta-information">
+		<title>Metainformação do Pacote</title>
+		 <indexterm>
+			<primary>metainformação do pacote</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>pacote</primary>
+			<secondary>metainformação</secondary>
+		</indexterm>
+		 <para>
+			O pacote Debian não é apenas um arquivamento de arquivos prontos para serem instalados. Ele é parte de um todo, e descreve sua relação com outros pacotes Debian (dependências, conflitos, sugestões). Ele também fornece scripts que habilitam a execução de comandos em diferentes estágios do ciclo de vida do pacote (instalação, remoção, atualizações). Estes dados são usados pelas ferramentas de gerencia de pacotes mas não são parte do programa empacotado, eles são, junto com o pacote, o que chamamos de sua “meta-informação” (informação sobre outras informações).
+		</para>
+		 <section id="sect.control">
+			<title>Descrição: O arquivo <filename>control</filename></title>
+			 <indexterm>
+				<primary>metainformação do pacote</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>metainformação</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>control</filename></primary>
+			</indexterm>
+			 <para>
+				Este arquivo usa uma estrutura similar a cabeçalhos de email (como foi definido pela RFC 2822). Por exemplo, para <emphasis role="pkg">apt</emphasis>, o arquivo <filename>control</filename> parece com algo como:
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>apt-cache show apt</userinput>
+<computeroutput>Package: apt
+Version: 1.0.9.6
+Installed-Size: 3788
+Maintainer: APT Development Team &lt;deity@lists.debian.org&gt;
+Architecture: amd64
+Replaces: manpages-it (&lt;&lt; 2.80-4~), manpages-pl (&lt;&lt; 20060617-3~), openjdk-6-jdk (&lt;&lt; 6b24-1.11-0ubuntu1~), sun-java5-jdk (&gt;&gt; 0), sun-java6-jdk (&gt;&gt; 0)
+Depends: libapt-pkg4.12 (&gt;= 1.0.9.6), libc6 (&gt;= 2.15), libgcc1 (&gt;= 1:4.1.1), libstdc++6 (&gt;= 4.9), debian-archive-keyring, gnupg
+Suggests: aptitude | synaptic | wajig, dpkg-dev (&gt;= 1.17.2), apt-doc, python-apt
+Conflicts: python-apt (&lt;&lt; 0.7.93.2~)
+Breaks: manpages-it (&lt;&lt; 2.80-4~), manpages-pl (&lt;&lt; 20060617-3~), openjdk-6-jdk (&lt;&lt; 6b24-1.11-0ubuntu1~), sun-java5-jdk (&gt;&gt; 0), sun-java6-jdk (&gt;&gt; 0)
+Description-pt_BR: gerenciador de pacotes em linha de comando
+ Este pacote fornece ferramentas em linha de comando para busca e
+ gerenciamento assim como consultas de informações sobre pacotes como um
+ acesso de baixo nível a todas as funcionalidades da biblioteca libapt-pkg.
+ .
+ Inclui:
+  * apt-get para obter pacotes e informações sobre os mesmos de fontes
+    autenticadas e para instalação, atualização e remoção de pacotes e
+    dependências
+  * apt-cache para consultar informações disponíveis sobre pacotes
+    instalados e instaláveis
+  * apt-cdrom para usar mídias removíveis como fontes de pacotes
+  * apt-config como uma interface para as configurações
+  * apt-key para uma interface para as chaves de autenticação
+Description-md5: 9fb97a88cb7383934ef963352b53b4a7
+Tag: admin::package-management, devel::lang:ruby, hardware::storage,
+ hardware::storage:cd, implemented-in::c++, implemented-in::perl,
+ implemented-in::ruby, interface::commandline, network::client,
+ protocol::ftp, protocol::http, protocol::ipv6, role::program,
+ role::shared-lib, scope::application, scope::utility, sound::player,
+ suite::debian, use::downloading, use::organizing, use::searching,
+ works-with::audio, works-with::software:package, works-with::text
+Section: admin
+Priority: important
+Filename: pool/main/a/apt/apt_1.0.9.6_amd64.deb
+Size: 1107560
+MD5sum: a325ccb14e69fef2c50da54e035a4df4
+SHA1: 635d09fcb600ec12810e3136d51e696bcfa636a6
+SHA256: 371a559ce741394b59dbc6460470a9399be5245356a9183bbeea0f89ecaabb03</computeroutput></screen>
+			 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> RFC — Padrões da Internet</title>
+			 <indexterm>
+				<primary>RFC</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Pedido de Comentários</primary>
+			</indexterm>
+			 <para>
+				RFC é a sigla de “Request For Comments” (requisitando comentários). Um RFC é geralmente um documento técnico que descreve o que se tornará um padrão de Internet. Antes de se padronizar e congelar, estes padrões são submetidos para revisão pública (por isto o nome). O IETF (Internet Engineering Task Force - Força-tarefa de Engenharia da Internet) decide sobre a evolução do status destes documentos (proposed standard - padrão proposto, draft standard - padrão rascunho ou standard - padrão).
+			</para>
+			 <para>
+				RFC 2026 define o processo de padronização dos protocolos de Internet. <ulink type="block" url="http://www.faqs.org/rfcs/rfc2026.html" />
+			</para>
+			 </sidebar> <section>
+				<title>Dependências: o campo <literal>Depends</literal> (depende de)</title>
+				 <indexterm>
+					<primary>dependência</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>Depends</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>pacote</primary>
+					<secondary>dependência de</secondary>
+				</indexterm>
+				 <para>
+					As dependências são definidas no campo <literal>Depends</literal> no cabeçalho do pacote. Este campo é uma lista de condições a serem satisfeitas para o pacote funcionar corretamente — Esta informação é usada por ferramentas como o <command>apt</command> para instalar as biblitecas necessárias, nas versões corretas, preenchendo as dependências do pacote a ser instalado. Para cada dependência é possível restringir o intervalo de versões que satisfazem esta condição. Em outras palavras, é possível expressar o fato de que nós precisamos do pacote <emphasis role="pkg">libc6</emphasis> em uma versão igual ou superior a “2.15” (escreve-se “<command>libc6 (&gt;= 2.15)</command>”). Operadores de comparação de versão são os seguintes:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<command>&lt;&lt;</command>: menor que;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<command>&lt;=</command>: menor ou igual que;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<command>=</command>: igual a (obs, este “<literal>2.6.1</literal>” não é igual a “<literal>2.6.1-1</literal>”);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<command>&gt;=</command>: maior ou igual que;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<command>&gt;&gt;</command>: maior que.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Numa lista de condições para serem satisfeitas, a vírgula serve como um separador. Ela deve ser interpretada como um "e" lógico. Em condicionais, a barra vertical ("|") expressa um "ou" lógico (é um "ou" inclusivo, não um "ou isto ou aquilo"). Tem prioridade sobre o "e", pode ser usado tanto quanto necessário. Portanto, a dependência "(A ou B) e C" é escrita como <command>A | B, C</command>. Por outro lado, a expressão "A ou (B e C)" deve ser escrita como "(A ou B) e (A ou C)", uma vez que o campo <literal>Depends</literal> não aceita parêntesis que mudem a ordem de prioridades entre os operadores lógicos "ou" e "e". Ele poderia ser escrito, portanto, como <command>A | B, A | C</command>. <ulink type="block" url="http://www.debian.org/doc/debian-policy/ch-relationships.html" />
+				</para>
+				 <indexterm>
+					<primary>meta-pacote</primary>
+				</indexterm>
+				 <para>
+					O sistema de dependências é um bom mecanismo para garantir a operação de um programa, mas ele tem outro uso com os "meta-pacotes". Estes são pacotes vazios que apenas descrevem dependências. Eles facilitam a instalação de um grupo consistente de programas pré-selecionados pelo mantenedor do meta-pacote; assim, <command>apt install <replaceable>meta-package</replaceable></command> vai instalar automaticamente todos os programas nas dependências do meta-pacote. Os pacotes <emphasis role="pkg">gnome</emphasis>, <emphasis role="pkg">kde-full</emphasis> e <emphasis role="pkg">linux-image-amd64</emphasis> são exemplos de meta-pacotes.
+				</para>
+				 <sidebar> <title><emphasis>DEBIAN POLICY</emphasis> <literal>Pre-Depends</literal>, um <literal>Depends</literal> mais exigente</title>
+				 <indexterm>
+					<primary><literal>Pre-Depends</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>pré-dependência</primary>
+				</indexterm>
+				 <para>
+					“Pré-dependências”, que são listadas no campo “<literal>Pre-Depends</literal>” nos cabeçalhos dos pacotes, completam as dependências normais; suas sintaxes são idênticas. Uma dependência normal indica que o pacote em questão deve ser desempacotado antes do pacote que declarou dependência. Uma pré-dependência estipula que o pacote em questão deve ser desempacotado e configurado antes da execução do script de pré-instalação do pacote declarando dependência, que é antes da sua instalação.
+				</para>
+				 <para>
+					Uma pré-dependência é muito pesada para o <command>apt</command>, por que ela adiciona uma restrição estrita na ordem dos pacotes a instalar. Desta forma, pré-dependências são desencorajadas a menos que absolutamente necessárias. É até mesmo recomendado consultar outros desenvolvedores no <email>debian-devel@lists.debian.org</email> antes de adicionar uma pré-dependência. Geralmente é possível encontrar outra solução que resolva o problema.
+				</para>
+				 </sidebar> <sidebar> <title>Os campos <emphasis>DEBIAN POLICY</emphasis>, <literal>Recommends</literal>, <literal>Suggests</literal> e <literal>Enhances</literal></title>
+				 <indexterm>
+					<primary><literal>Recommends</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>Suggests</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <para>
+					Os campos <literal>Recommends</literal> e <literal>Suggests</literal> descrevem dependências que não são compulsórias. As dependências "recomendadas" (recommended), as mais importantes, melhoram consideravelmente a funcionalidade oferecida pelo pacote mas não são indispensáveis para seu funcionamento. As dependências "sugeridas" (suggested), de importância secundária, indicam que certos pacotes podem complementar e melhorar suas funcionalidades, mas é perfeitamente normal instalar o pacotes sem estas "sugestões".
+				</para>
+				 <para>
+					você deve sempre instalar os pacotes “recomendados”, a menos que você saiba exatamente por que você não precisa deles. Por outro lado, não é necessário instalar pacotes “sugeridos” a menos que você saiba por que precisa deles.
+				</para>
+				 <indexterm>
+					<primary><literal>Enhances</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <para>
+					O campo <literal>Enhances</literal> também descreve uma sugestão, mas num contexto diferente. Ele é, na verdade, localizado no pacote sugerido, e não no pacote que se beneficia da sugestão. Seu interesse reside no fato de ser possível adicionar uma sugestão sem ter que modificar o pacote beneficiado. Assim, todos os extras, plugins e outras extensões de um programa podem, então, aparecer na lista de sugestões relativas ao software. Embora exista a vários anos, este último campo ainda é bastante ignorado por vários programas como o <command>apt</command> ou o <command>synaptic</command>. O objetivo é que uma sugestão feita pelo campo <literal>Enhances</literal> apareça para o usuário junto com as sugestões adicionais — encontradas no campo <literal>Suggests</literal>.
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Conflicts: o campo <literal>Conflicts</literal></title>
+				 <indexterm>
+					<primary>conflicts</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>Conflicts</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>pacote</primary>
+					<secondary>conflito de</secondary>
+				</indexterm>
+				 <para>
+					O campo <literal>Conflicts</literal> indica quando um pacote não pode ser instalado simultaneamente com outro. As razões mais comuns para isto é que ambos os pacotes incluem um arquivo de mesmo nome, ou fornecem o mesmo serviço na mesma porta TCP, ou vão atrapalhar a operação um do outro.
+				</para>
+				 <para>
+					O <command>dpkg</command> vai se recusar a instalar um pacote se ele iniciar um conflito com um pacote já instalado, a menos que o novo pacote especifique que ele "substitui" o pacote instalado, e neste caso o <command>dpkg</command> vai escolher substituir o pacote antigo pelo novo. O <command>apt</command> sempre vai seguir suas instruções: se você escolher instalar um novo pacote, ele vai automaticamente se oferecer para desinstalar o pacote que apresentar um problema.
+				</para>
+
+			</section>
+			 <section>
+				<title>Incompatibilidades: o campo <literal>Breaks</literal></title>
+				 <indexterm>
+					<primary>incompatibilidades</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>Breaks</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>pacote</primary>
+					<secondary>incompatibilidade de</secondary>
+				</indexterm>
+				 <para>
+					O campo <literal>Breaks</literal> tem um efeito similar ao do campo <literal>Conflicts</literal>, mas com um significado especial. Ele assinala que a instalação de um pacote vai "quebrar" outro pacote (ou versões específicas dele). Em geral, esta incompatibilidade entre dois pacotes é transitória, e a relação <literal>Breaks</literal> se refere especificamente a estas versões incompatíveis.
+				</para>
+				 <para>
+					O <command>dpkg</command> vai se recusar a instalar um pacote que quebra um pacote já instalado, e o <command>apt</command> vai tentar resolver o problema atualizando o pacote que vai ser quebrado para uma nova versão (que se espera que tenha sido corrigida, logo, voltou a ser compatível).
+				</para>
+				 <para>
+					Este tipo de situação pode ocorrer no caso de atualizações sem retrocompatibilidade: este é o caso se a nova versão não funciona mais com a versão antiga, e causa um mal funcionamento em outro programa sem fazer "provisões especiais". O campo <literal>Breaks</literal> evita que o usuário se ponha nestes tipos de problemas.
+				</para>
+
+			</section>
+			 <section>
+				<title>Itens fornecidos: o campo <literal>Provides</literal></title>
+				 <indexterm>
+					<primary><literal>Provides</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <para>
+					Este campo introduz o interessante conceito de "pacote virtual". Ele tem muitos papéis, mas dois são de especial importância. O primeiro consiste em usar um pacote virtual para associar um serviço genérico com ele (o pacote "fornece" o serviço). O segundo indica que um pacote substitui completamente o outro, e que para este propósito ele também pode satisfazer as dependências que o outro satisfaz. É também possível criar um pacote de substituição sem ter que usar o mesmo nome de pacote.
+				</para>
+				 <sidebar> <title><emphasis>VOCABULARY</emphasis> Meta-pacote e pacote virtual</title>
+				 <indexterm>
+					<primary>meta-pacote</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>pacote</primary>
+					<secondary>pacote virtual</secondary>
+				</indexterm>
+				 <indexterm>
+					<primary>pacote virtual</primary>
+				</indexterm>
+				 <para>
+					É essencial distinguir claramente meta-pacotes de pacotes virtuais. Os primeiros são pacotes reais (incluindo arquivos <filename>.deb</filename> reais), cujo único propósito é expressar dependências.
+				</para>
+				 <para>
+					Pacotes virtuais, por outro lado, não existem fisicamente; eles são simplesmente um meio de identificar pacotes reais basedo em critérios lógicos, comuns (serviço fornecido, compatibilidade com um programa padrão ou um pacote pré-existente, etc.).
+				</para>
+				 </sidebar> <section>
+					<title>Fornecendo um “Serviço”</title>
+					 <para>
+						Vamos discutir o primeiro caso em maiores detalhes com um exemplo: Dizemos que todos os servidores de e-mail, como o <emphasis role="pkg">postfix</emphasis> ou o <emphasis role="pkg">sendmail</emphasis> "fornecem" o pacote virtual <emphasis role="pkg">mail-transport-agent</emphasis>. Então, qualquer pacote que precise deste serviço para ser funcional (e.g. um gerenciador de lista de e-mail, como o <emphasis role="pkg">smartlist</emphasis> ou o <emphasis role="pkg">sympa</emphasis>) simplesmente afirma nas suas dependências que ele precisa de um <emphasis role="pkg">mail-transport-agent</emphasis> ao invés de especificar uma grande porém incompleta lista de possíveis soluções (e.g. <command>postfix | sendmail | exim4 | …</command>). Além disso, é inútil instalar dois servidores de e-mail na mesma máquina, sendo por isso que cada um destes pacotes declara um conflito com o pacote virtual <emphasis role="pkg">mail-transport-agent</emphasis>. Um conflito entre um pacote e ele próprio é ignorado pelo sistema, mas esta técnica irá proibir a instalação de dois servidores de e-mail lado a lado.
+					</para>
+					 <sidebar> <title><emphasis>DEBIAN POLICY</emphasis> Lista de pacotes virtuais</title>
+					 <indexterm>
+						<primary>pacote</primary>
+						<secondary>pacote virtual</secondary>
+					</indexterm>
+					 <para>
+						Para que pacotes virtuais sejam úteis, todos têm que concordar com seus nomes. É por isto que eles são padronizados na Política Debian. A lista inclui entre outros <emphasis role="pkg">mail-transport-agent</emphasis> para servidores de e-mail, <emphasis role="pkg">c-compiler</emphasis> para compiladores de linguagem C, <emphasis role="pkg">www-browser</emphasis> para navegadores web, <emphasis role="pkg">httpd</emphasis> para servidores web, <emphasis role="pkg">ftp-server</emphasis> para servidores FTP, <emphasis role="pkg">x-terminal-emulator</emphasis> para emuladores de terminal em modo gráfico (<command>xterm</command>) e <emphasis role="pkg">x-window-manager</emphasis> para gerenciadores de janelas.
+					</para>
+					 <para>
+						A lista completa pode ser encontrada na rede. <ulink type="block" url="http://www.debian.org/doc/packaging-manuals/virtual-package-names-list.txt" />
+					</para>
+					 </sidebar>
+				</section>
+				 <section>
+					<title>"Interchangeability" com outro pacote</title>
+					 <para>
+						O campo <literal>Provides</literal> é também interessante quando o conteúdo de um pacote é incluído em um pacote maior. Por exemplo, o módulo Perl <emphasis role="pkg">libdigest-md5-perl</emphasis> era um módulo opcional no Perl 5.6, e foi integrado como padrão no Perl 5.8 (e versões posteriores, como a 5.20 presente no <emphasis role="distribution">Jessie</emphasis>). Desta forma, o pacote <emphasis role="pkg">perl</emphasis> tem, desde a versão 5.8, declarado <literal>Provides: libdigest-md5-perl</literal> de forma que as dependências neste pacote são satisfeitas se o usuário tem o Perl 5.8 (ou mais recentes). O pacote <emphasis role="pkg">libdigest-md5-perl</emphasis> será eventualmente removido, uma vez que ele não terá utilidade quando versões antigas do Perl forem removidas.
+					</para>
+					 <figure>
+						<title>Uso de um campo <literal>Provides</literal> para não quebrar dependências</title>
+						 <mediaobject>
+							<imageobject>
+								<imagedata fileref="images/virtual-package.png" format="PNG" width="50%" />
+							</imageobject>
+
+						</mediaobject>
+
+					</figure>
+					 <para>
+						Esta funcionalidade é muito útil, já que nunca é possível antecipar os caprichos do desenvolvimento, e é preciso poder se renomear, e fazer outras substituições automáticas, de software obsoleto.
+					</para>
+					 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> Perl, uma linguagem de programação</title>
+					 <indexterm>
+						<primary>Perl</primary>
+					</indexterm>
+					 <indexterm>
+						<primary>CPAN</primary>
+					</indexterm>
+					 <para>
+						Perl (Practical Extraction and Report Language) é uma linguagem de programação muito popular. Ela tem muitos módulos prontos-para-usar que cobrem um vasto espectro de aplicações e que são distribuídas pelos servidores CPAN (Comprehensive Perl Archive Network), uma ampla rede de pacotes Perl. <ulink type="block" url="http://www.perl.org/" /> <ulink type="block" url="http://www.cpan.org/" />
+					</para>
+					 <para>
+						Como é uma linguagem interpretada, um programa escrito em Perl não precisa de compilação antes da execução. É por isto que são chamados "scripts Perl".
+					</para>
+					 </sidebar>
+				</section>
+				 <section>
+					<title>Limitações Antigas</title>
+					 <para>
+						Pacotes virtuais costumavam sofrer de algumas limitações, sendo que a mais significante era a ausência de número de versão. Voltando ao exemplo anterior, uma dependência como <literal>Depends: libdigest-md5-perl (&gt;= 1.6)</literal>, independente da presença do Perl 5.10, nunca vai ser considerada como satisfeita pelo sistema de empacotamento — embora provavelmente esteja satisfeita. Sem perceber isto, o sistema de empacotamento escolhe a opção menos arriscada, assumindo que as versões não combinam.
+					</para>
+					 <para>
+						Essa limitação foi superada no <emphasis role="pkg">dpkg</emphasis> 1.17.11, e não é mais relevante na Jessie. Os pacotes podem atribuir uma versão aos pacotes virtuais que eles fornecem com uma dependência tal como <literal>Provides: libdigest-md5-perl (= 1.8)</literal>.
+					</para>
+
+				</section>
+
+			</section>
+			 <section>
+				<title>Substituindo arquivos: o campo <literal>Replaces</literal></title>
+				 <indexterm>
+					<primary>substituição</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>Replaces</literal>, campo de cabeçalho</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>pacote</primary>
+					<secondary>substituição de</secondary>
+				</indexterm>
+				 <para>
+					O campo <literal>Replaces</literal> indica que o pacote contém arquivos que também estão presentes em outros pacotes, mas que o pacote foi designado legitimamente para substituí-los. Sem esta especificação, o <command>dpkg</command> falha, dizendo que não pode sobreescrever arquivos de outro pacote (tecnicamente, é possível força-lo a tal com a opção <literal>--force-overwrite</literal>, mas isso não é considerado uma operação padrão). Isto permite a identificação de problemas potenciais e requer que o mantenedor estude o assunto antes de escolher se adiciona tal campo.
+				</para>
+				 <para>
+					O uso deste campo é justificado quando os nomes dos pacotes mudam ou quando um pacote é incluído em outro. Também acontece quando o mantenedor decide distribuir arquivos diferentes entre vários pacotes binários produzidos a partir do mesmo fonte: um arquivo substituído não pertence mais ao pacote antigo, mas apenas ao novo.
+				</para>
+				 <para>
+					Se todos os arquivos num pacote instalado foram substituídos, o pacote é considerado "a ser removido". Finalmente, este campo também encoraja o <command>dpkg</command> a remover o pacote substituido onde existir conflito.
+				</para>
+				 <sidebar id="sidebar.debtags"> <title><emphasis>INDO ALÉM</emphasis> O campo <literal>Tag</literal></title>
+				 <para>
+					No exemplo do <emphasis role="pkg">apt</emphasis> acima, vimos um campo que ainda não descrevemos, O campo <literal>Tag</literal> ("etiqueta"). Este campo não descreve uma relação entre pacotes, é simplesmente uma forma de categorizar um pacote numa taxonomia temática. Esta classificação de pacote de acordo com vários critérios (tipo de interface, linguagem de programação, domínio de aplicação, etc) está disponível a muito tempo. Apesar disto, nem todos os pacotes têm etiquetas precisas e estas ainda não estão integradas em todas as ferramentas Debian; o <command>aptitude</command> mostra estas etiquetas, e permite que elas sejam usadas como critério de busca. Para os que fogem dos critérios de busca do <command>aptitude</command>, os seguintes sítios permitem navegação no banco de dados de etiquetas: <ulink type="block" url="http://debtags.alioth.debian.org/" />
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.configuration-scripts">
+			<title>Scripts de Configuração</title>
+			 <indexterm>
+				<primary><filename>postinst</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>preinst</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>postrm</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>prerm</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>control.tar.gz</filename></primary>
+			</indexterm>
+			 <para>
+				Além do arquivo <filename>control</filename>, o arquivamento <filename>control.tar.gz</filename> para cada pacote Debian pode conter vários scripts, chamados pelo <command>dpkg</command> em diferentes estágios do processamento de um pacote. A política Debian descreve os possíveis casos em detalhes, especificando os scripts e os argumentos que eles recebem. Estas sequências podem se complicadas, já que se um dos scripts falha, o <command>dpkg</command> vai tentar retornar a um estado satisfatório cancelando a instalação ou a remoção em andamento (na medida do possível).
+			</para>
+			 <sidebar> <title><emphasis>INDO ALÉM</emphasis> banco de dados do <command>dpkg</command></title>
+			 <indexterm>
+				<primary><filename>/var/lib/dpkg/</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>dpkg</primary>
+				<secondary>banco de dados</secondary>
+			</indexterm>
+			 <para>
+				Todos os scripts de configuração para pacotes instalados são armazenados no diretório <filename>/var/lib/dpkg/info/</filename>, na forma de um arquivo prefixado com o nome do pacote. Este diretório também inclui um arquivo com a extensão <filename>.list</filename> para cada pacote, contendo a lista de arquivos que pertencem a este pacote.
+			</para>
+			 <para>
+				O arquivo <filename>/var/lib/dpkg/status</filename> contém uma série de blocos de dados (no formato dos famosos mail headers, RFC 2822) descrevendo o status de cada pacote. A informação do arquivo <filename>control</filename> dos pacotes instalados é duplicada aqui.
+			</para>
+			 </sidebar> <para>
+				Em geral, o script <filename>preinst</filename> é executado antes da instalação do pacote, enquanto que o <filename>postinst</filename> é logo depois. Da mesma forma, o <filename>prerm</filename> é chamado antes da remoção de um pacote e o <filename>postrm</filename> depois. Uma atualização de um pacote é equivalente à remoção da versão anterior e a instalação do novo. Não é possível descrever em detalhes todos os cenários possíveis aqui, mas vamos discutir os dois mais comuns: uma instalação/atualização e uma remoção.
+			</para>
+			 <sidebar> <title><emphasis>ATENÇÃO</emphasis> nomes simbólicos dos scripts</title>
+			 <para>
+				As sequências descritas nesta seção chamam scripts de configuração por nomes específicos, como <command>old-prerm</command> ou <command>new-postinst</command>. Eles são, respectivamente, o script <command>prerm</command> contido na versão antiga do pacote (instalado antes da atualização) e o script <command>postinst</command> contido na nova versão (instalado pela atualização).
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>DICA</emphasis> Diagramas de estado</title>
+			 <para>
+				Manoj Srivastava fez estes diagramas explicando como os scripts de configuração são chamados pelo <command>dpkg</command>. Diagramas similares também foram desenvolvidos pelo Projeto Debian Women; Eles são um pouco mais simples de entender, mas menos completos. <ulink type="block" url="https://people.debian.org/~srivasta/MaintainerScripts.html" /> <ulink type="block" url="https://wiki.debian.org/MaintainerScripts" />
+			</para>
+			 </sidebar> <section>
+				<title>Instalação e upgrade (atualização)</title>
+				 <indexterm>
+					<primary><command>dpkg</command></primary>
+					<secondary>operação interna</secondary>
+				</indexterm>
+				 <para>
+					Aqui está o que acontece durante uma instalação (ou uma atualização):
+				</para>
+				 <orderedlist>
+					<listitem>
+						<para>
+							Para uma atualização ("update"), o <command>dpkg</command> chama o <command>old-prerm upgrade <replaceable>new-version</replaceable></command>.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							Ainda para uma atualização, o <command>dpkg</command> então executa <command>new-preinst upgrade <replaceable>old-version</replaceable></command>; para uma primeira instalação, ele executa <command>new-preinst install</command>. Ele pode adicionar a versão antiga no último parâmetro, se o pacote já foi instalado e removido "since" (mas não "purged", os arquivos de configuração foram "retained").
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							Os arquivos do novo pacote são então desempacotados, se algum arquivo já existe, ele é substituído, mas uma cópia de backup é temporariamente feita.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							Para uma atualização, o <command>dpkg</command> executa <command>old-postrm upgrade <replaceable>new-version</replaceable></command>.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<command>dpkg</command> atualiza todos os dados internos (lista de arquivos, scripts de configuração, etc.) e remove os backups dos arquivos substituídos. Este é o ponto sem volta: o <command>dpkg</command> não tem mais acesso a todos os elementos necessários para retornar ao estado anterior.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							O <command>dpkg</command> vai atualizar os arquivos de configuração, pedindo ao usuário para decidir se ele não for capaz de decidir tudo sozinho. Os detalhes deste procedimento são discutidos em <xref linkend="sect.conffiles" />.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							Finalmente, o <command>dpkg</command> configura o pacote executando <command>new-postinst configure <replaceable>last-version-configured</replaceable></command>.
+						</para>
+
+					</listitem>
+
+				</orderedlist>
+
+			</section>
+			 <section>
+				<title>Remoção de pacote</title>
+				 <para>
+					Aqui temos o que acontece durante uma remoção de pacote:
+				</para>
+				 <orderedlist>
+					<listitem>
+						<para>
+							o <command>dpkg</command> chama <command>prerm remove</command>.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							O <command>dpkg</command> remove todos os arquivos do pacote, exceto os arquivos de configuração e os scripts de configuração.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							O <command>dpkg</command> executa <command>postrm remove</command>. Todos os scripts de configuração, exceto <filename>postrm</filename>, são removidos. Se o usuário não usou a opção “purge", os processos param aqui.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							Para um purge completo do pacote (comando lançado com <command>dpkg --purge</command> ou <command>dpkg -P</command>), os arquivos de configuração são também apagados, assim como uma certa quantidade de cópias (<filename>*.dpkg-tmp</filename>, <filename>*.dpkg-old</filename>, <filename>*.dpkg-new</filename>) e arquivos temporários; então o <command>dpkg</command> executa um <command>postrm purge</command>.
+						</para>
+
+					</listitem>
+
+				</orderedlist>
+				 <sidebar> <title><emphasis>VOCABULARY</emphasis> Purge, remoção completa</title>
+				 <indexterm>
+					<primary>"purge" de um pacote</primary>
+				</indexterm>
+				 <para>
+					Quando um pacote Debian é removido, os arquivos de configuração são mantidos para facilitar uma possível reinstalação. Do mesmo modo, dados gerados por um serviço (como o conteúdo de um servidor de diretórios LDAP ou o banco de dados de um servidor SQL) são normalmente mantidos.
+				</para>
+				 <para>
+					Para remover todos os dados associados a um pacote, é necessário fazer “purge” no pacote com o comando, <command>dpkg -P <replaceable>pacote</replaceable></command>, <command>apt-get remove --purge <replaceable>pacote</replaceable></command> ou <command>aptitude purge <replaceable>pacote</replaceable></command>.
+				</para>
+				 <para>
+					Dada a natureza definitiva de tais remoções de dados, um 'purge' não deve ser tratado de forma leviana.
+				</para>
+				 </sidebar> <indexterm>
+					<primary><filename>config</filename>, script <command>debconf</command></primary>
+				</indexterm>
+				 <para>
+					Os quatro scripts detalhados acima são complementados por um script <filename>config</filename>, fornecido por pacotes usando <command>debconf</command> para adquirir informações do usuário para a configuração. Durante a instalação, este script define em detalhes as perguntas feitas pelo <command>debconf</command>. As respostas são gravadas no banco de dados do <command>debconf</command> para futura referência. O script é geralmente executado pelo <command>apt</command> antes de instalar pacotes, um a um para agrupar todas as perguntas e fazê-las todas ao usuário no começo do processo. Os scripts de pre- e pos-instalação podem então usar esta informação para operar de acordo com o que o usuário espera.
+				</para>
+				 <sidebar> <title><emphasis>FERRAMENTA</emphasis> <command>debconf</command></title>
+				 <indexterm>
+					<primary><command>debconf</command></primary>
+				</indexterm>
+				 <para>
+					O <command>debconf</command> foi criado para resolver um problema recorrente no Debian. Todos os pacotes Debian que não funcionavam sem um mínimo de configuração costumavam fazer perguntas através de chamadas aos comandos <command>echo</command> e <command>read</command> em scripts shell <filename>postinst</filename> (e outros scripts similares). Mas acontecia que durante uma grande instalação ou atualização, o usuário tinha que ficar junto ao computador para responder a várias perguntas que apareciam a qualquer momento. Estas interações manuais agora foram quase que completamente dispensadas, graças à ferramenta <command>debconf</command>.
+				</para>
+				 <para>
+					O <command>debconf</command> tem muitas funcionalidades interessantes: ele pede que o desenvolvedor especifique a interação com o usuário; Ele permite localização de todas as strings de caracteres mostradas para o usuário (todas as traduções são guardadas no arquivo <filename>templates</filename> descrevendo as interações); tem modelos de visualização diferentes para apresentar as perguntas ao usuário (modo texto, modo gráfico, não-interativo); e permite a criação de um banco de dados central de respostas para compartilhar a mesma configuração com vários computadores... mas o mais importante é que agora é possível apresentar todas as perguntas de uma vez para o usuário antes de começar uma longa instalação ou atualização. O usuário pode fazer outras coisas enquanto o sistema cuida da instalação sozinho, sem ter que ficar olhando para um tela a espera da próxima pergunta.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.conffiles">
+			<title>Checksums, Lista de arquivos de configuração</title>
+			 <indexterm>
+				<primary><filename>md5sums</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>conffiles</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>somas de verificação (checksum)</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>files</primary>
+				<secondary>arquivos de configuração</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>configuração</primary>
+				<secondary>arquivos de</secondary>
+			</indexterm>
+			 <para>
+				além dos scripts de mantenedor e dados de controle mencionados nas seções anteriores, o arquivo <filename>control.tar.gz</filename> de um pacote Debian pode conter outros arquivos interessantes. O primeiro, <filename>md5sums</filename>, contém as verificações (checksums) MD5 de todos os arquivos do pacote. Sua principal vantagem é que permite que o <command>dpkg --verify</command> (que vamos estudar em <xref linkend="sect.dpkg-verify" />) verifique se estes arquivos foram modificados desde a instalação deles. Repare que quando este arquivo não existe, o <command>dpkg</command> vai gerar ele dinamicamente em tempo de instalação (e armazenar ele num banco de dados do dpkg assim como os outros arquivos de controle).
+			</para>
+			 <para>
+				<filename>conffiles</filename> lista arquivos do pacote que devem ser manipulados como arquivos de configuração. Arquivos de configuração podem ser modificados pelo administrador, e o <command>dpkg</command> tentará preservar estas mudanças durante uma atualização de pacote.
+			</para>
+			 <para>
+				Com efeito, nesta situação, o <command>dpkg</command> se comporta o mais inteligente possível: se o arquivo de configuração padrão não mudou entre duas versões, ele não faz nada. Se, entretanto, o arquivo mudou, ele vai tentar atualizar o arquivo. Dos casos são possíveis: ou o administrador não tocou neste arquivo de configuração, e neste caso o <command>dpkg</command> automaticamente instala a nova versão; ou o arquivo foi modificado, e neste caso o <command>dpkg</command> pergunta ao administrador qual versão ele quer usar (a antiga com modificações ou a nova que o pacote fornece). Para auxiliar nesta decisão, o <command>dpkg</command> se oferece para mostrar um “<command>diff</command>” que mostra a diferença entre as duas versões. Se o usuário escolhe manter a versão antiga, a nova vai ser armazenada na mesma localização em um arquivo com o sufixo <filename>.dpkg-dist</filename>. Se o usuário escolhe a nova versão, a antiga é mentida num arquivo com o sufixo <filename>.dpkg-old</filename>. Outra ação disponível consiste em interromper momentaneamente o <command>dpkg</command> para editar o arquivo e tentar reinstalar as modificações relevantes (previamente identificadas com o <command>diff</command>).
+			</para>
+			 <sidebar id="sidebar.questions-conffiles"> <title><emphasis>INDO ALÉM</emphasis> Evitando as perguntas do arquivo de configuração</title>
+			 <para>
+				O <command>dpkg</command> cuida de atualizações de arquivos de configuração, mas enquanto faz isto, regularmente interrompe seu trabalho para pedir uma entrada do administrador. Isto não é agradável para aqueles que desejam executar atualizações de uma forma não-iterativa. É por isto que este programa oferece opções para o sistema responder automaticamente de acordo com a mesma lógica: <command>--force-confold</command> retém a versão antiga do arquivo; <command>--force-confnew</command> vai usar a nova versão do arquivo (estas escolhas são respeitadas, mesmo se o arquivo não tiver sido mudado pelo administrador, o que apenas raramente tem o efeito desejado). Adicionando a opção <command>--force-confdef</command> diz ao <command>dpkg</command> para decidir por si só quando uma escolha é apresentada (em outras palavras, quando o arquivo de configuração original não foi alterado), e apenas usa <command>--force-confnew</command> ou <command>--force-confold</command> para outros casos.
+			</para>
+			 <para>
+				Estas opções se aplicam ao <command>dpkg</command>, mas na maioria das vezes o administrador vai trabalhar diretamente com os programas <command>aptitude</command> ou <command>apt-get</command>. É, então, necessário saber a sintaxe usada para indicar as opções passadas ao comando <command>dpkg</command> (suas interfaces em linha de comando são muito similares).
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>apt -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" full-upgrade</userinput></screen>
+			 <para>
+				Estas opções podem ser armazenadas diretamente na configuração do <command>apt</command>. Para isto, simplesmente escreva a linha seguinte no arquivo <filename>/etc/apt/apt.conf.d/local</filename>:
+			</para>
+			 <informalexample> 
+<programlisting>
+DPkg::options { "--force-confdef"; "--force-confold"; }</programlisting>
+			 </informalexample> <para>
+				Ao incluir esta opção no arquivo de configuração faz com que ela possa ser usada também numa interface gráfica, como o <command>aptitude</command>.
+			</para>
+			 </sidebar> <sidebar id="sidebar.questions-conffiles-bis"> <title><emphasis>INDO ALÉM</emphasis> Forçar o dpkg a perguntar sobre arquivos de configuração</title>
+			 <para>
+				A opção <command>--force-confask</command> pede ao <command>dpkg</command> para mostrar as perguntas sobre os arquivos de configuração, mesmo nos casos onde eles normalmente não são necessários. Portanto, quando estiver resinstalando um pacote com esta opção, o <command>dpkg</command> vai refazer as perguntas para todos os arquivos de configuração modificados pelo administrador. Isto é bastante conveniente, especialmente para reinstalar o arquivo de configuração original se este foi apagado e nenhuma outra cópia estiver disponível: uma re-instalação normal não vai funcionar, já que o <command>dpkg</command> considera a remoção uma forma de modificação legítima, e, portanto, não instala o arquivo de configuração desejado.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.source-package-structure">
+		<title>Estrutura de um Pacote Fonte</title>
+		 <indexterm>
+			<primary>pacote</primary>
+			<secondary>pacote fonte</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>fonte</primary>
+			<secondary>pacote fonte</secondary>
+		</indexterm>
+		 <section>
+			<title>Formato</title>
+			 <indexterm>
+				<primary>arquivo DSC</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>arquivo <filename>diff.gz</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>arquivo <filename>debian.tar.gz</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>arquivo <filename>diff.gz</filename></primary>
+			</indexterm>
+			 <para>
+				Um pacote fonte é normalmente composto de três arquivos, um <filename>.dsc</filename>, um <filename>.orig.tar.gz</filename> e um <filename>.debian.tar.gz</filename> (ou <filename>.diff.gz</filename>). Eles permitem a criação de pacotes binários (arquivos <filename>.deb</filename> descritos acima) dos arquivos de código fonte do programa, que são escritos em uma linguagem de programação.
+			</para>
+			 <para>
+				O arquivo <filename>.dsc</filename> (Debian Source Control) é um arquivo com um texto curto contendo um cabeçalho RFC 2822 (assim como o arquivo <filename>control</filename> estudado no <xref linkend="sect.control" />) que descreve o pacote fonte e indica quais outros arquivos são partes "thereof". É assinado pelo mantenedor, que garante autenticidade. Veja <xref linkend="sect.package-authentication" /> para mais detalhes sobre o assunto.
+			</para>
+			 <example>
+				<title>Um arquivo <filename>.dsc</filename></title>
+				 
+<programlisting>
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA256
+
+Format: 3.0 (quilt)
+Source: zim
+Binary: zim
+Architecture: all
+Version: 0.62-3
+Maintainer: Emfox Zhou &lt;emfox@debian.org&gt;
+Uploaders: Raphaël Hertzog &lt;hertzog@debian.org&gt;
+Homepage: http://zim-wiki.org
+Standards-Version: 3.9.6
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/zim.git
+Vcs-Git: git://anonscm.debian.org/collab-maint/zim.git
+Build-Depends: debhelper (&gt;= 9), xdg-utils, python (&gt;= 2.6.6-3~), libgtk2.0-0 (&gt;= 2.6), python-gtk2, python-xdg
+Package-List:
+ zim deb x11 optional arch=all
+Checksums-Sha1:
+ ad8de170826682323c10195b65b9f1243fd75637 1772246 zim_0.62.orig.tar.gz
+ a4f70d6f7fb404022c9cc4870a4e62ea3ca08388 14768 zim_0.62-3.debian.tar.xz
+Checksums-Sha256:
+ 19d62aebd2c1a92d84d80720c6c1dcdb779c39a2120468fed01b7f252511bdc2 1772246 zim_0.62.orig.tar.gz
+ fc2e827e83897d5e33f152f124802c46c3c01c5158b75a8275a27833f1f6f1de 14768 zim_0.62-3.debian.tar.xz
+Files:
+ 43419efba07f7086168442e3d698287a 1772246 zim_0.62.orig.tar.gz
+ 725a69663a6c2961f07673ae541298e4 14768 zim_0.62-3.debian.tar.xz
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+Comment: Signed by Raphael Hertzog
+
+iQEcBAEBCAAGBQJUR2jqAAoJEAOIHavrwpq5WFcH/RsdzCHc1oXXxHitU23hEqMj
+T6ok29M1UFDJDowMXW75jQ1nT4WPUtvEGygkCHeoO/PvjEvB0sjU8GQlX+N9ddSB
+aHfqfAYmVhADNGxrXQT5inZXUa8qGeeq2Sqf6YcWtsnuD56lDbvxkyf/XYopoIEl
+oltfl05z/AI+vYsW482YrCz0fxNAKAvkyuPhDebYI8jnKWeAANoqmKpsNc/HYyvT
++ZiA5o57OiGdOKT6XGy3/FiF3dkHiRY8lXW7xdr1BbIgulwl9UmiUNwuxwOYbQO7
+edtjiTJqOaFUA0x1zB/XGv5tHr1MjP8naT+kfVoVHTOox51CDbeu5D3DZY4imcY=
+=Wtoa
+-----END PGP SIGNATURE-----</programlisting>
+
+			</example>
+			 <indexterm>
+				<primary><literal>Build-Depends</literal>, campo de cabeçalho</primary>
+			</indexterm>
+			 <para>
+				Observe que o pacote fonte também tem dependências (<literal>Build-Depends</literal>) completamente diferentes dos pacotes fonte, já que ele indicam ferramentas necessárias para a compilação do programa em questão e da construção do pacote binário.
+			</para>
+			 <sidebar> <title><emphasis>ATENÇÃO</emphasis> espaço de nomes distinto</title>
+			 <para>
+				É importante notar aqui que não existe correspondência obrigatória entre o nome do pacote fonte e o do(s) pacote(s) binário(s) que ele gera. Isto é fácil de perceber se você sabe que cada pacote fonte pode gerar vários pacotes binários. É por isso que o arquivo <filename>.dsc</filename> tem os campos <literal>Source</literal> e <literal>Binary</literal> para explicitamente nomear o pacote fonte e armazenar a lista de pacotes binários que ele gera.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>CULTURA</emphasis> Por que dividir entre vários pacotes</title>
+			 <para>
+				Com frequência, um pacote fonte (para um certo programa) pode gerar vários pacotes binários. As separação é justificada pela possibilidade de usar o software (ou partes dele) em diferentes contextos. Considere uma biblioteca compartilhada, ela pode ser instalada para fazer uma aplicação funcionar (por exemplo, <emphasis role="pkg">libc6</emphasis>), ou ela pode ser instalada para desenvolver um novo programa (neste caso a <emphasis role="pkg">libc6-dev</emphasis> é o pacote correto). Encontramos a mesma lógica para serviços cliente/servidor onde queremos instalar a parte do servidos em uma máquina e a parte cliente em outras (este é o caso, por exemplo, do <emphasis role="pkg">openssh-server</emphasis> e do <emphasis role="pkg">openssh-client</emphasis>).
+			</para>
+			 <para>
+				Com a mesma frequência, a documentação é fornecida num pacote dedicado: o usuário pode instalar ela independente do software, e pode, a qualquer momento removê-la para economizar espaço em disco. Adicionalmente, isto também economiza espaço em disco em espelhos Debian, já que o pacote de documentação será compartilhado entre todas as arquiteturas (ao invés de ter a documentação duplicada nos pacotes para cada arquitetura).
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>PERSPECTIVA</emphasis> Formatos de pacotes fonte diferentes</title>
+			 <para>
+				Originalmente existia apenas um formato de pacote fonte. Este é o formato <literal>1.0</literal>, que associa um arquivamento <filename>.orig.tar.gz</filename> a um patch de "debianização" <filename>.diff.gz</filename> (também existe uma variante, que consiste de um arquivamento único <filename>.tar.gz</filename>, que é usada automaticamente se nenhum <filename>.orig.tar.gz</filename> estiver disponível).
+			</para>
+			 <para>
+				Desde o Debian <emphasis role="distribution">Squeeze</emphasis>, os Desenvolvedores Debian têm a opção de usar novos formatos que corrigem muitos problemas do formato histórico. O Formato <literal>3.0 (quilt)</literal> pode combinar vários arquivamentos do upstream num mesmo pacote fonte: adicionalmente ao usual <filename>.orig.tar.gz</filename>, arquivamentos suplementares <filename>.orig-<replaceable>componente</replaceable>.tar.gz</filename> podem ser incluídos. Isto é útil com software que é distribuído em vários componentes mas para o qual se deseja um único pacote fonte. Estes arquivamentos podem também ser comprimidos com o <command>bzip2</command> ou o <command>xz</command> ao invés do <command>gzip</command>, o que economiza espaço em disco e recursos de rede. Finalmente, o patch monolítico, <filename>.diff.gz</filename> é substituído por um arquivamento <filename>.debian.tar.gz</filename> contendo as instruções de compilação e um conjunto de patches do upstream fornecido pelo mantenedor do pacote. Estes últimos são gravados num formato compatível com o <command>quilt</command> — uma ferramenta que facilita o gerenciamento de séries de patches.
+			</para>
+			 </sidebar> <para>
+				O arquivo <filename>.orig.tar.gz</filename> é um arquivo que contém o código fonte como fornecido pelo desenvolvedor oficial. Pede-se que mantenedores de pacotes Debian não modifiquem este arquivo para que possa ser fácil verificar a origem e a integridade do arquivo (simplesmente comparando com o checksum) e para respeitar o desejo de alguns autores.
+			</para>
+			 <para>
+				O <filename>.debian.tar.gz</filename> contém todas as modificações feitas pelo mantenedor Debian, especialmente a adição de um diretório <filename>debian</filename> contendo as instruções a executar para construir um pacote Debian.
+			</para>
+			 <sidebar> <title><emphasis>FERRAMENTA</emphasis> Descompactando um pacote fonte</title>
+			 <indexterm>
+				<primary><command>dpkg-source</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>descompactando, pacote fonte</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>descomprimindo, pacote fonte</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>desempacotando</primary>
+				<secondary>pacote fonte</secondary>
+			</indexterm>
+			 <para>
+				Se você tem um pacote fonte, pode usar o comando <command>dpkg-source</command> (do pacote <emphasis role="pkg">dpkg-dev</emphasis>) para descomprimi-lo:
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>dpkg-source -x package_0.7-1.dsc</userinput></screen>
+			 <para>
+				Você também pode usar o <command>apt-get</command> para baixar um pacote fonte e descompactá-lo imediatamente. Isto requer, entretanto, que as linhas <literal>deb-src</literal> apropriadas estejam presentes no arquivo <filename>/etc/apt/sources.list</filename> (para mais detalhes, veja <xref linkend="sect.apt-sources.list" />). Estas servem para lista os "fontes" dos pacotes fonte (ou seja, os servidores nos quais um grupo de pacotes fonte estão hospedados).
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>apt-get source <replaceable>pacote</replaceable></userinput></screen>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Uso no Debian</title>
+			 <para>
+				O pacote fonte é o fundamento de tudo no Debian. Todos os pacotes Debian vêm de um pacote fonte, e cada modificação num pacote Debian é consequência de uma modificação feita no pacote fonte. Os mantenedores Debian trabalham com pacotes fonte, mas sabem das consequencias dos seus atos nos pacotes binários. Os frutos de seus trabalhos são, portanto, encontrados nos pacotes fonte do Debian: você pode facilmente retroceder a eles e tudo pode decorrer a partir deles.
+			</para>
+			 <para>
+				Quando uma nova versão de um pacote (pacote fonte e um ou mais pacotes binários) chega no servidor Debian, o pacote fonte é o mais importante. Na verdade, ele vai agora ser usado por uma rede de máquinas de diferentes arquiteturas para compilação sobre as várias arquiteturas suportadas pelo Debian. O fato de que o desenvolvedor também manda um ou mais pacotes binários para uma dada arquitetura é relativamente desimportante, já que estes podem ser simplesmente gerados de forma automática.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.manipulating-packages-with-dpkg">
+		<title>Manipulando Pacotes com o <command>dpkg</command></title>
+		 <indexterm>
+			<primary><command>dpkg</command></primary>
+		</indexterm>
+		 <para>
+			O <command>dpkg</command> é o comando básico para lidar com pacotes Debian no sistema. Se você tem pacotes <filename>.deb</filename>, é com o <command>dpkg</command> que você instala ou analisa seu conteúdo. Mas este programa tem apenas uma visão parcial do universo Debian: ele sabe o que está instalado no sistema, e o que for dado na linha de comando, mas não sabe nada dos outros pacotes disponíveis. Assim, ele vai falhar se uma dependência não for satisfeita. Ferramentas como o <command>apt</command>, ao contrário, criará uma lista de dependências para instalar tudo o mais automaticamente possível.
+		</para>
+		 <sidebar> <title><emphasis>NOTE</emphasis> <command>dpkg</command> ou <command>apt</command>?</title>
+		 <para>
+			<command>dpkg</command> deve ser vista como uma ferramenta de sistema (nos bastidores), e <command>apt</command> como uma ferramenta mais próxima do usuário, que supera as limitações das antigas. Estas ferramentas trabalham juntas, cada uma com suas particularidades, adequedas para tarefas específicas.
+		</para>
+		 </sidebar> <section>
+			<title>Instalando pacotes</title>
+			 <indexterm>
+				<primary>instalação</primary>
+				<secondary>instalação do pacote</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>instalação</secondary>
+			</indexterm>
+			 <para>
+				<command>dpkg</command> é, principalmente, a ferramenta para instalar um pacote Debian já disponível (já que ele não baixa nada). Para isto, usamos sua opção <literal>-i</literal> ou <literal>--install</literal>.
+			</para>
+			 <example>
+				<title>Instalação de um pacote com <command>dpkg</command></title>
+				 
+<screen role="scale">
+<computeroutput># </computeroutput><userinput>dpkg -i man-db_2.7.0.2-5_amd64.deb</userinput>
+<computeroutput>(Lendo banco de dados ... 86425 ficheiros e directórios actualmente instalados.)
+A preparar para desempacotar man-db_2.7.0.2-5_amd64.deb ...
+A descompactar man-db (2.7.0.2-5) sobre (2.7.0.2-4) ...
+Configurando man-db (2.7.0.2-5) ...
+Updating database of manual pages ...
+A processar 'triggers' para mime-support (3.58) ...</computeroutput></screen>
+
+			</example>
+			 <para>
+				Podemos ver os diferentes passos realizados pelo <command>dpkg</command>; sabemos, portanto, em qual ponto um erro ocorreu. A instalação pode também ser realizada em dois estágios: primeiro desempacotar, depois configurar. O <command>apt-get</command> usa isto, limitando o número de chamadas para o <command>dpkg</command> (já que cada chamada é custosa, devido à carga do banco de dados em memória, principalmente da lista de arquivos já instalados).
+			</para>
+			 <example>
+				<title>Desempacotando e configurando separadamente</title>
+				 
+<screen role="scale">
+<computeroutput># </computeroutput><userinput>dpkg --unpack man-db_2.7.0.2-5_amd64.deb</userinput>
+<computeroutput>(Reading database ... 86425 files and directories currently installed.)
+Preparing to unpack man-db_2.7.0.2-5_amd64.deb ...
+Unpacking man-db (2.7.0.2-5) over (2.7.0.2-5) ...
+Processing triggers for mime-support (3.58) ...
+# </computeroutput><userinput>dpkg --configure man-db</userinput>
+<computeroutput>Setting up man-db (2.7.0.2-5) ...
+Updating database of manual pages ...
+</computeroutput></screen>
+
+			</example>
+			 <indexterm>
+				<primary>pacotes</primary>
+				<secondary>desempacotando</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>desempacotando</primary>
+				<secondary>pacote binario</secondary>
+			</indexterm>
+			 <para>
+				Algumas vezes, o <command>dpkg</command> vai falhar ao instalar um pacote e retornar um erro; se o usuário ordenar que ele ignore isto, ele vai mostrar apenas um aviso; é por esta razão que temos as diferentes opções <literal>--force-*</literal>. O comando <command>dpkg --force-help</command>, ou a documentação deste comando, vai dar uma lista completa destas opções. O erro mais frequente, que você vai encontrar, cedo ou tarde, é colisão de arquivos. Quando um pacote contém um arquivo que já está instalado por outro pacote, o <command>dpkg</command> se recusará a instalá-lo. As seguintes mensagens vão aparecer:
+			</para>
+			 
+<screen>
+<computeroutput>Desempacotando libgdm (from .../libgdm_3.8.3-2_amd64.deb) ...
+dpkg: erro processando /var/cache/apt/archives/libgdm_3.8.3-2_amd64.deb (--unpack):
+ tentando sobrescrever '/usr/bin/gdmflexiserver', que também está no pacote gdm3 3.4.1-9</computeroutput></screen>
+			 <para>
+				Neste caso, se você pensa que se você acha que substituir este arquivo não é um risco significante à estabilidade de seu sistema (o que normalmente é o caso), você pode usar a opção <literal>--force-overwrite</literal>, que diz ao <command>dpkg</command> para ignorar este erro e sobreescrever o arquivo.
+			</para>
+			 <para>
+				Mesmo que existam muitas opções <literal>--force-*</literal> disponíveis, apenas <literal>--force-overwrite</literal> costuma ser usada normalmente. Estas opções existem apenas para situações excepcionais, e é melhor evitar usá-las o máximo possível para respeitar as regras impostas pelo mecanismo de empacotamento. Não esqueça, estas regras garantem a consistência e estabilidade de seu sistema.
+			</para>
+			 <sidebar> <title><emphasis>ATENÇÃO</emphasis> Uso efetivo do <literal>--force-*</literal></title>
+			 <indexterm>
+				<primary>dependência quebrada</primary>
+			</indexterm>
+			 <para>
+				Se você não for cuidadoso, o uso de uma opção <literal>--force-*</literal> pode levar a um sistema onde a família APT de comandos vai re recusar a funcionar. Em efeito, algumas destas opções permitem a instalação de um pacote quando uma dependência não é atingida, ou quando existe um conflito. O resultado é um sistema incosistente do ponto de vista de dependências, e os comandos APT vão se recusar a executar quaisquer ações exceto aquelas que trarão o sistema de volta a um estado consistente (isto frequentemente consiste da instalação de dependências faltando ou da remoção de um pacote problemático). Isto às vezes resulta numa mensagem como esta, obtida depois de instalar uma nova versão do <emphasis role="pkg">rdesktop</emphasis> enquanto ignora suas dependências de uma versão mais nova do <emphasis role="pkg">libc6</emphasis>:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>apt full-upgrade
+</userinput><computeroutput>[...]
+You might want to run 'apt-get -f install' to correct these.
+The following packages have unmet dependencies:
+  rdesktop: Depends: libc6 (&gt;= 2.5) but 2.3.6.ds1-13etch7 is installed
+E: Unmet dependencies. Try using -f.</computeroutput></screen>
+			 <para>
+				Um administrador corajoso que tem certeza da corretude da sua análise pode escolher ignorar uma dependência ou conflito e usar a respectiva opção <literal>--force-*</literal>. Neste caso, se ele quiser ser capaz de continuar a usar o <command>apt</command> ou o <command>aptitude</command>, ele deve editar o <filename>/var/lib/dpkg/status</filename> para apagar ou modificar a dependência, ou conflito, que ele escolher passar por cima.
+			</para>
+			 <para>
+				Esta manipulação é um truuque feio, e nunca deve ser feito, exceto na mais extrema necessidade. Muito frequentemente, uma solução mais adequada é recompilar o pacote que está causando o problema (veja em <xref linkend="sect.rebuilding-package" />) ou use uma versão nova (provavelmente corrigida) de um repositório como o <literal>table-backports</literal> (veja em <xref linkend="sect.backports" />).
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Remoção de pacote</title>
+			 <indexterm>
+				<primary>removendo um pacote</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>limpando um pacote</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>remoção</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>expurgo</secondary>
+			</indexterm>
+			 <para>
+				Invocando o <command>dpkg</command> com a opção <literal>-r</literal> ou <literal>--remove</literal>, seguida pelo nome de um pacote, remove o pacote. Esta remoção é, entretanto, incompleta: todos os arquivos de configuração, scripts do mantenedor, arquivos de log (logs de sistema) e outros dados do usuário manipulados pelo pacote permanecem. Dessa forma, a desativação do programa é feita facilmente desinstalando-o, e ainda é possível reinstalá-lo rapidamente com a mesma configuração Para remover completamente tudo associado a um pacote, use a opção <literal>-P</literal> ou <literal>--purge</literal>, seguida do nome do pacote.
+			</para>
+			 <example>
+				<title>Remoção e expurgo do pacote <emphasis role="pkg">debian-cd</emphasis></title>
+				 
+<screen><computeroutput># </computeroutput><userinput>dpkg -r debian-cd</userinput>
+<computeroutput>(Reading database ... 97747 files and directories currently installed.)
+Removing debian-cd (3.1.17) ...
+# </computeroutput><userinput>dpkg -P debian-cd</userinput>
+<computeroutput>(Reading database ... 97401 files and directories currently installed.)
+Removing debian-cd (3.1.17) ...
+Purging configuration files for debian-cd (3.1.17) ...</computeroutput></screen>
+
+			</example>
+
+		</section>
+		 <section>
+			<title>Consultando o banco de dados do <command>dpkg</command> e inspecionando os arquivos <filename>.deb</filename></title>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>status</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>lista de arquivos</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pacote</primary>
+				<secondary>inspeção de conteúdo</secondary>
+			</indexterm>
+			 <sidebar> <title><emphasis>DE VOLTA AO BÁSICO</emphasis> sintaxe das opções</title>
+			 <para>
+				A maioria das opções estão disponíveis em uma versão "longa" (uma ou mais palavras relevantes, precedidas de traço duplo) e uma versão "curta" (uma única letra, geralmente a inicial de uma palavra da versão longa, e precedida de um traço). Esta convenção é tão comum que é um padrão do POSIX.
+			</para>
+			 </sidebar> <para>
+				Antes de concluir esta seção, estudaremos as opções do <command>dpkg</command> que consultam o banco de dados interno para obter informações. Mostrando primeiro as opções longas e depois as curtas correspondentes (que recebem, evidentemente, os mesmos argumentos) citamos <literal>--listfiles <replaceable>pacote</replaceable></literal> (ou <literal>-L</literal>), que lista os arquivos instalados por este pacote; <literal>--search <replaceable>arquivo</replaceable></literal> (ou <literal>-S</literal>), que procura o pacote contndo o arquivo; <literal>--status <replaceable>pacote</replaceable></literal> (ou <literal>-s</literal>), que mostra os cabeçalhos de um pacote instalado; <literal>--list</literal> (ou <literal>-l</literal>), que mostra a lista de pacotes que o sistema conhece e seus estados de instalação; <literal>--contents <replaceable>arquivo.deb</replaceable></literal> (ou <literal>-c</literal>), que lista os arquivos no pacote debian especificado; <literal>--info<replaceable> arquivo.deb </replaceable></literal> (ou <literal>-I</literal>), que mostra os cabeçalhos de seu pacote Debian.
+			</para>
+			 <example>
+				<title>Várias consultas com o <command>dpkg</command></title>
+				 
+<screen role="scale" width="80">
+<computeroutput>$ </computeroutput><userinput>dpkg -L base-passwd</userinput>
+<computeroutput>/.
+/usr
+/usr/sbin
+/usr/sbin/update-passwd
+/usr/share
+/usr/share/lintian
+/usr/share/lintian/overrides
+/usr/share/lintian/overrides/base-passwd
+/usr/share/doc-base
+/usr/share/doc-base/users-and-groups
+/usr/share/base-passwd
+/usr/share/base-passwd/group.master
+/usr/share/base-passwd/passwd.master
+/usr/share/man
+/usr/share/man/pl
+/usr/share/man/pl/man8
+/usr/share/man/pl/man8/update-passwd.8.gz
+/usr/share/man/ru
+/usr/share/man/ru/man8
+/usr/share/man/ru/man8/update-passwd.8.gz
+/usr/share/man/ja
+/usr/share/man/ja/man8
+/usr/share/man/ja/man8/update-passwd.8.gz
+/usr/share/man/fr
+/usr/share/man/fr/man8
+/usr/share/man/fr/man8/update-passwd.8.gz
+/usr/share/man/es
+/usr/share/man/es/man8
+/usr/share/man/es/man8/update-passwd.8.gz
+/usr/share/man/de
+/usr/share/man/de/man8
+/usr/share/man/de/man8/update-passwd.8.gz
+/usr/share/man/man8
+/usr/share/man/man8/update-passwd.8.gz
+/usr/share/doc
+/usr/share/doc/base-passwd
+/usr/share/doc/base-passwd/users-and-groups.txt.gz
+/usr/share/doc/base-passwd/changelog.gz
+/usr/share/doc/base-passwd/copyright
+/usr/share/doc/base-passwd/README
+/usr/share/doc/base-passwd/users-and-groups.html
+$ </computeroutput><userinput>dpkg -S /bin/date</userinput>
+<computeroutput>coreutils: /bin/date
+$ </computeroutput><userinput>dpkg -s coreutils</userinput>
+<computeroutput>Package: coreutils
+Essential: yes
+Status: install ok installed
+Priority: required
+Section: utils
+Installed-Size: 13855
+Maintainer: Michael Stone &lt;mstone@debian.org&gt;
+Architecture: amd64
+Multi-Arch: foreign
+Version: 8.23-3
+Replaces: mktemp, realpath, timeout
+Pre-Depends: libacl1 (&gt;= 2.2.51-8), libattr1 (&gt;= 1:2.4.46-8), libc6 (&gt;= 2.17), libselinux1 (&gt;= 2.1.13)
+Conflicts: timeout
+Description: GNU core utilities
+ This package contains the basic file, shell and text manipulation
+ utilities which are expected to exist on every operating system.
+ .
+ Specifically, this package includes:
+ arch base64 basename cat chcon chgrp chmod chown chroot cksum comm cp
+ csplit cut date dd df dir dircolors dirname du echo env expand expr
+ factor false flock fmt fold groups head hostid id install join link ln
+ logname ls md5sum mkdir mkfifo mknod mktemp mv nice nl nohup nproc numfmt
+ od paste pathchk pinky pr printenv printf ptx pwd readlink realpath rm
+ rmdir runcon sha*sum seq shred sleep sort split stat stty sum sync tac
+ tail tee test timeout touch tr true truncate tsort tty uname unexpand
+ uniq unlink users vdir wc who whoami yes
+Homepage: http://gnu.org/software/coreutils
+$ </computeroutput><userinput>dpkg -l 'b*'</userinput>
+<computeroutput>Desired=Unknown/Install/Remove/Purge/Hold
+| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                    Version          Architecture     Description
++++-=======================-================-================-====================================================
+un  backupninja             &lt;none&gt;           &lt;none&gt;           (no description available)
+ii  backuppc                3.3.0-2          amd64            high-performance, enterprise-grade system for backin
+un  base                    &lt;none&gt;           &lt;none&gt;           (no description available)
+un  base-config             &lt;none&gt;           &lt;none&gt;           (no description available)
+ii  base-files              8                amd64            Debian base system miscellaneous files
+ii  base-passwd             3.5.37           amd64            Debian base system master password and group files
+[...]
+$ </computeroutput><userinput>dpkg -c /var/cache/apt/archives/gnupg_1.4.18-6_amd64.deb</userinput>
+<computeroutput>drwxr-xr-x root/root         0 2014-12-04 23:03 ./
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./lib/
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./lib/udev/
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./lib/udev/rules.d/
+-rw-r--r-- root/root      2711 2014-12-04 23:03 ./lib/udev/rules.d/60-gnupg.rules
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./usr/
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./usr/lib/
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./usr/lib/gnupg/
+-rwxr-xr-x root/root     39328 2014-12-04 23:03 ./usr/lib/gnupg/gpgkeys_ldap
+-rwxr-xr-x root/root     92872 2014-12-04 23:03 ./usr/lib/gnupg/gpgkeys_hkp
+-rwxr-xr-x root/root     47576 2014-12-04 23:03 ./usr/lib/gnupg/gpgkeys_finger
+-rwxr-xr-x root/root     84648 2014-12-04 23:03 ./usr/lib/gnupg/gpgkeys_curl
+-rwxr-xr-x root/root      3499 2014-12-04 23:03 ./usr/lib/gnupg/gpgkeys_mailto
+drwxr-xr-x root/root         0 2014-12-04 23:03 ./usr/bin/
+-rwxr-xr-x root/root     60128 2014-12-04 23:03 ./usr/bin/gpgsplit
+-rwxr-xr-x root/root   1012688 2014-12-04 23:03 ./usr/bin/gpg
+[...]
+$ </computeroutput><userinput>dpkg -I /var/cache/apt/archives/gnupg_1.4.18-6_amd64.deb</userinput>
+<computeroutput> new debian package, version 2.0.
+ size 1148362 bytes: control archive=3422 bytes.
+    1264 bytes,    26 lines      control              
+    4521 bytes,    65 lines      md5sums              
+     479 bytes,    13 lines   *  postinst             #!/bin/sh
+     473 bytes,    13 lines   *  preinst              #!/bin/sh
+ Package: gnupg
+ Version: 1.4.18-6
+ Architecture: amd64
+ Maintainer: Debian GnuPG-Maintainers &lt;pkg-gnupg-maint@lists.alioth.debian.org&gt;
+ Installed-Size: 4888
+ Depends: gpgv, libbz2-1.0, libc6 (&gt;= 2.15), libreadline6 (&gt;= 6.0), libusb-0.1-4 (&gt;= 2:0.1.12), zlib1g (&gt;= 1:1.1.4)
+ Recommends: gnupg-curl, libldap-2.4-2 (&gt;= 2.4.7)
+ Suggests: gnupg-doc, libpcsclite1, parcimonie, xloadimage | imagemagick | eog
+ Section: utils
+ Priority: important
+ Multi-Arch: foreign
+ Homepage: http://www.gnupg.org
+ Description: GNU privacy guard - a free PGP replacement
+  GnuPG is GNU's tool for secure communication and data storage.
+  It can be used to encrypt data and to create digital signatures.
+  It includes an advanced key management facility and is compliant
+  with the proposed OpenPGP Internet standard as described in RFC 4880.
+[...]</computeroutput></screen>
+
+			</example>
+			 <sidebar> <title><emphasis>INDO ALÉM</emphasis> Comparação de versões</title>
+			 <indexterm>
+				<primary>versão, comparação de</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>comparação de versões</primary>
+			</indexterm>
+			 <para>
+				Como o <command>dpkg</command> é o programa para manipular pacotes Debian, ele também é a implementação de referência da lógica de comparar números de versão. É por isto que ele tem uma opção <literal>--compare-versions</literal>, usada por programas externos (principalmente scripts de configuração executados pelo próprio <command>dpkg</command>). Esta opção precisa de três parâmetros: um número de versão, um operador de comparação e um segundo número de versão. Os operadores são <literal>lt</literal> (menor que "lower than"), <literal>le</literal> (menor ou igual "less than or equal to"), <literal>eq</literal> (igual "equal"), <literal>ne</literal> (diferente "not equal"), <literal>ge</literal> (maior ou igual "greater than or equal to") e <literal>gt</literal> (maior que "strictly greater than"). Se a comparação der correta, o <command>dpkg</command> retorna 0 (sucesso); senão, retorna um valor não-zero (indicando falha).
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>dpkg --compare-versions 1.2-3 gt 1.1-4</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>0
+$ </computeroutput><userinput>dpkg --compare-versions 1.2-3 lt 1.1-4</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>1
+$ </computeroutput><userinput>dpkg --compare-versions 2.6.0pre3-1 lt 2.6.0-1</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>1</computeroutput></screen>
+			 <para>
+				Observe a falha inesperada da última comparação: para o <command>dpkg</command>, <literal>pre</literal> normalmente significa uma pre-release ("pré-lançamento") e não tem um significado especial, e este programa compara as letras da mesma forma que os números (a &lt;b &lt; c ...), em ordem alfabética. É por isto que ele considera “<literal>0pre3</literal>” como sendo maior que “<literal>0</literal>”. Quando nós queremos um número de versão de pacote para indicar que é um pré-lançamento, usamos o til, “<literal>~</literal>”:
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>dpkg --compare-versions 2.6.0~pre3-1 lt 2.6.0-1</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>0</computeroutput></screen>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Arquivo de log do <command>dpkg</command></title>
+			 <para>
+				<command>dpkg</command> mantém um log de todas as suas ações em <filename>/var/log/dpkg.log</filename>. Este log é extremamente detalhado, pois detalha todos os passos da manipulação de pacotes pelo <command>dpkg</command>. Adicionalmente oferece uma forma de rastrear o comportamento do dpkg, ele ajuda, sobretudo, a manter um histórico do desenvolvimento do sistema: pode-se encontrar o exato momento em que cada pacote foi instalado ou atualizado, e esta informação pode ser extremamente útil para entender uma mudança de comportamento recente. Adicionalmente, com todas as versões sendo registradas, é fácil cruzar os dados com a informação em <filename>changelog.Debian.gz</filename> para o pacote em questão, ou mesmo com o relatorio de defeitos on line (bug reports online).
+			</para>
+
+		</section>
+		 <section id="sect.multi-arch">
+			<title>Suporte Multi-Arqu</title>
+			 <indexterm>
+				<primary>Multi-Arqu</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Arquitetura</primary>
+				<secondary>suporte multi-arqu</secondary>
+			</indexterm>
+			 <para>
+				Todos os pacotes Debian tem um campo <literal>Arquitetura</literal> na informação de controle dele. Este campo pode conter também “<literal>Todos</literal>” (para aqueles pacotes que são de todas as arquiteturas independentemente) ou o nome da arquitetura que ele aponta (como “amd64”, “armhf”, …). Neste último caso, por padrão, <command>dpkg</command> apenas aceitará instalar o pacote, se a sua arquitectura combinar com a arquitetura do host como retornado pelo <command>dpkg --print-arquitetura</command>.
+			</para>
+			 <para>
+				Esta restrição garante que os usuários não acabam com os binários compilados para uma arquitetura incorreta. Tudo seria perfeito, exceto que (alguns) computadores podem executar binários para várias arquiteturas, quer nativamente (um sistema de "amd64" pode rodar binários "i386") ou através de emuladores.
+			</para>
+			 <section>
+				<title>Habilitando Multi-Arqu</title>
+				 <para>
+					suporte multi-arquitetura do <command>dpkg</command> permite aos usuários definir arquiteturas “estrangeiras” que podem ser instaladas no sistema atual. Isto é simplesmente feito com <command>dpkg --add-architecture</command> como no exemplo abaixo. Há um correspondente <command>dpkg --remove-architecture</command> para remover o suporte de uma arquitetura externa, mas ele só pode ser usado quando nenhum pacote desta arquitetura permanece.
+				</para>
+				 
+<screen>
+<computeroutput># </computeroutput><userinput>dpkg --print-architecture</userinput>
+<computeroutput>amd64
+# </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput># </computeroutput><userinput>dpkg -i gcc-4.9-base_4.9.1-19_armhf.deb</userinput>
+<computeroutput>dpkg: error processing archive gcc-4.9-base_4.9.1-19_armhf.deb (--install):
+ package architecture (armhf) does not match system (amd64)
+Errors were encountered while processing:
+ gcc-4.9-base_4.9.1-19_armhf.deb
+# </computeroutput><userinput>dpkg --add-architecture armhf</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --add-architecture armel</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput>armhf
+armel
+# </computeroutput><userinput>dpkg -i gcc-4.9-base_4.9.1-19_armhf.deb</userinput>
+<computeroutput>Selecting previously unselected package gcc-4.9-base:armhf.
+(Reading database ... 86425 files and directories currently installed.)
+Preparing to unpack gcc-4.9-base_4.9.1-19_armhf.deb ...
+Unpacking gcc-4.9-base:armhf (4.9.1-19) ...
+Setting up gcc-4.9-base:armhf (4.9.1-19) ...
+# </computeroutput><userinput>dpkg --remove-architecture armhf</userinput>
+<computeroutput>dpkg: error: cannot remove architecture 'armhf' currently in use by the database
+# </computeroutput><userinput>dpkg --remove-architecture armel</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput>armhf</computeroutput></screen>
+				 <sidebar> <title><emphasis>OBS</emphasis> suporte APT multi-arqu</title>
+				 <para>
+					APT irá detectar automaticamente quando dpkg foi configurado para suportar arquiteturas estrangeiras e vai começar a fazer o download dos <filename>pacotes</filename> correspondentes durante seu processo de atualização.
+				</para>
+				 <para>
+					Pacotes estranhos podem em seguida ser instalados com <command>apt install <replaceable>pacote</replaceable>:<replaceable>arquitetura</replaceable></command>.
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>NA PRÁTICA</emphasis> Usando binários de propriedade do i386 no amd64</title>
+				 <para>
+					Existem vários casos de uso para multi-arqu, mas o mais popular é a possibilidade de executar binários 32 bits (i386) em sistemas de 64 bits (AMD64), em particular, uma vez que vários aplicativos populares proprietários (como o Skype) são fornecidos apenas em versões 32 bit.
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Alterações relativas ao Multi-Arqu</title>
+				 <para>
+					Para fazer multi-arqu realmente útil e utilizável, as bibliotecas tiveram de ser reembaladas e movidas para um diretório de uma arquitetura específica, de modo que várias cópias (segmentações de diferentes arquiteturas) podem ser instaladas ao lado. Tais pacotes atualizados contem o campo de cabeçalho “<literal>Multi-Arqu: same</literal>” para dizer ao sistema de embalagem que as várias arquiteturas do pacote podem ser seguramente co-instaladas (e que os pacotes só podem satisfazer as dependências de pacotes da mesma arquitectura). Desde que o multi-arqu fez sua estréia no Debian <emphasis role="distribution">Wheezy</emphasis>, nem todas as bibliotecas foram convertidas ainda.
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>dpkg -s gcc-4.9-base
+</userinput><computeroutput>dpkg-query: error: --status needs a valid package name but 'gcc-4.9-base' is not: ambiguous package name 'gcc-4.9-base' with more than one installed instance
+
+Use --help for help about querying packages.
+$ </computeroutput><userinput>dpkg -s gcc-4.9-base:amd64 gcc-4.9-base:armhf | grep ^Multi
+</userinput><computeroutput>Multi-Arch: same
+Multi-Arch: same
+$ </computeroutput><userinput>dpkg -L libgcc1:amd64 |grep .so
+</userinput><computeroutput>/lib/x86_64-linux-gnu/libgcc_s.so.1
+$ </computeroutput><userinput>dpkg -S /usr/share/doc/gcc-4.9-base/copyright
+</userinput><computeroutput>gcc-4.9-base:amd64, gcc-4.9-base:armhf: /usr/share/doc/gcc-4.9-base/copyright
+</computeroutput></screen>
+				 <para>
+					Vale a pena notar que o pacote <literal>Multi-Arqu: same</literal> devem ter seus nomes qualificados com sua arquitetura para ser inequivocamente identificável. Eles também têm a possibilidade de compartilhar arquivos com outras instâncias do mesmo pacote; <command>dpkg</command> garante que todos os pacotes têm arquivos bit-por-bit idênticos quando eles são compartilhados. Por último, mas não menos importante, todas as instâncias de um pacote devem ter a mesma versão. Devem, portanto, ser atualizados em conjunto.
+				</para>
+				 <para>
+					Suporte Multi-Arch também traz alguns desafios interessantes na forma como são tratadas as dependências. Satisfazer uma dependência requer um pacote marcado “<literal>Multi-Arqu: foreign</literal>” ou um pacote cuja arquitetura corresponde ao do pacote declarando a dependência (no processo de resolução de dependência, pacotes independentes de arquitetura são assumidos ser da mesma arquitetura que o host). A dependência também pode ser enfraquecida para permitir que qualquer arquitetura de cumpri-la, com a sintaxe <literal><replaceable>pacote</replaceable>:any</literal>, mas pacotes estrangeiros só podem satisfazer uma tal dependência, se eles são marcados “<literal>Multi-Arch: allowed</literal>”.
+				</para>
+
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.coexistence-with-other-packaging-systems">
+		<title>Coexistencia com outros sistemas de pacotes</title>
+		 <indexterm>
+			<primary>RPM</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Red Hat Package Manager</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>alien</command></primary>
+		</indexterm>
+		 <para>
+			Pacotes Debian não são os únicos pacotes de software usados no mundo do software livre. O principal concorrente é o formato RPM do Red Hat Linux e seus muitos derivados. Red Hat é uma distribuição comercial muito popular. Assim, é comum para software fornecido por terceiros ser oferecido como pacotes RPM ao invés de pacotes Debian.
+		</para>
+		 <para>
+			Neste caso, saiba que o programa <command>rpm</command>, que manipula pacotes RPM, está disponível como um pacote Debian, portanto é possível usar este formato de pacote no Debian. Deve-se tomar cuidado, entretanto, para limitar estas manipulações ao extrair a informação de um pacote ou verificar sua integridade. É, na verdade, sem sentido usar o <command>rpm</command> para instalar RPMs em sistemas Debian; O RPM usa seu próprio banco de dados, separado do software nativo (como o <command>dpkg</command>). É por isto que não é possível garantir uma coexistência estável dos dois sistemas de pacotes.
+		</para>
+		 <para>
+			Por outro lado, o utilitário <emphasis role="pkg">alien</emphasis> pode converter pacotes RPM em pacotes Debian, e vice-versa.
+		</para>
+		 <sidebar> <title><emphasis>COMUNIDADE</emphasis> Encorajando a adoção de <filename>.deb</filename></title>
+		 <para>
+			Se você usa regularmente o programa <command>alien</command> para instalar pacotes RPM dos seus fornecedores, não hesite em escrever para eles e amigavelmente expressar sua forte preferência pelo formato <filename>.deb</filename>. Observe que o formato do pacote não é tudo: um pacote <filename>.deb</filename> construído com o <command>alien</command> ou preparado para uma versão do Debian diferente da que você usa, ou mesmo sendo uma derivada como o ubuntu, provavelmente não vai oferecer o mesmo nível de qualidade e integração que um pacote feito especificamente para o Debian <emphasis role="distribution">Jessie</emphasis>.
+		</para>
+		 </sidebar> 
+<screen>
+<computeroutput>$ </computeroutput><userinput>fakeroot alien --to-deb phpMyAdmin-2.0.5-2.noarch.rpm</userinput> 
+<computeroutput>phpmyadmin_2.0.5-2_all.deb generated
+$ </computeroutput><userinput>ls -s phpmyadmin_2.0.5-2_all.deb</userinput>
+<computeroutput>  64 phpmyadmin_2.0.5-2_all.deb</computeroutput></screen>
+		 <para>
+			Você vai perceber que este processo é extremamente simples. Você deve saber, entretanto, que o pacote gerado não vai ter quaisquer informações de dependências, já que as dependências nos dois formatos de empacotamento não têm uma correspondências sistemática. O administrador deve assim garantir manualmente que o pacote convertido funcionará corretamente, e é por isto que os pacotes Debian assim gerados devem ser evitados o tanto quanto possível. Felizmente, o Debian tem a maior coleção de pacotes de todas as distribuições, e é provavel que o que você procura já está lá.
+		</para>
+		 <para>
+			Procurando na página man do comando <command>alien</command>, você vai notar também que este programa manipula outros formatos de pacote, especialmente o usado pela distribuição Slackware (é feito por um simples arquivo <filename>tar.gz</filename>).
+		</para>
+		 <para>
+			A estabilidade do programa publicado usando a ferramenta <command>dpkg</command> contribui para a fama do Debian. O conjunto de ferramentas APT, descrito no capítulo seguinte, preserva esta vantagem, enquanto libera o administrador de gerir o status dos pacotes, uma tarefa difícil, porém necessária.
+		</para>
+
+	</section>
+</chapter>
+
