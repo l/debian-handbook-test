@@ -682,71 +682,71 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 				</div><div
                 class="para">
 					Et antall PV-er kan samles i en VG (<span
-                  class="emphasis"><em>Volume Group</em></span>), som kan sammenlignes med både virtuelle og utvidbare disker. VG er abstrakte, og vises ikke i en enhet fil i<code
-                  class="filename">/dev</code> hierarchy, so there's no risk of using them directly.
+                  class="emphasis"><em>Volume Group</em></span>), som kan sammenlignes med både virtuelle og utvidbare disker. VG er abstrakte, og vises ikke i en enhetsfil i <code
+                  class="filename">/dev</code>-hierarkiet, så det er ingen risk for å bruke dem direkte.
 				</div><div
                 class="para">
-					The third kind of object is the LV (<span
-                  class="emphasis"><em>Logical Volume</em></span>), which is a chunk of a VG; if we keep the VG-as-disk analogy, the LV compares to a partition. The LV appears as a block device with an entry in <code
-                  class="filename">/dev</code>, and it can be used as any other physical partition can be (most commonly, to host a filesystem or swap space).
+					Den tredje typen objekt er LV (<span
+                  class="emphasis"><em>Logical Volume</em></span>), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <code
+                  class="filename">/dev</code>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, for å være vert for et filsystem eller et vekselminne).
 				</div><div
                 class="para">
-					The important thing is that the splitting of a VG into LVs is entirely independent of its physical components (the PVs). A VG with only a single physical component (a disk for instance) can be split into a dozen logical volumes; similarly, a VG can use several physical disks and appear as a single large logical volume. The only constraint, obviously, is that the total size allocated to LVs can't be bigger than the total capacity of the PVs in the volume group.
+					Det viktige er at splittingen av en VG til LVS-er er helt uavhengig av dens fysiske komponenter (PVS-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; På samme måte kan en VG bruke flere fysiske disker og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen allokert til LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.
 				</div><div
                 class="para">
-					It often makes sense, however, to have some kind of homogeneity among the physical components of a VG, and to split the VG into logical volumes that will have similar usage patterns. For instance, if the available hardware includes fast disks and slower disks, the fast ones could be clustered into one VG and the slower ones into another; chunks of the first one can then be assigned to applications requiring fast data access, while the second one will be kept for less demanding tasks.
+					Det er imildertid ofte fornuftig, å ha noen form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, de raske de kan bli gruppert i en VG og tregere seg i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.
 				</div><div
                 class="para">
-					In any case, keep in mind that an LV isn't particularly attached to any one PV. It is possible to influence where the data from an LV are physically stored, but this possibility isn't required for day-to-day use. On the contrary: when the set of physical components of a VG evolves, the physical storage locations corresponding to a particular LV can be migrated across disks (while staying within the PVs assigned to the VG, of course).
+					I alle fall, husk at en LV ikke er spesielt knyttet til en bestemt PV. Det er mulig å påvirke hvor data fra en LV fysisk er lagret, men å bruk denne muligheten på daglig basis er ikke nødvendig. Tvert imot: Ettersom settet med fysiske komponenter i en VG utvikler seg, kan de fysiske lagringsstedene som tilsvarer en bestemt LV, migreres over disker (mens den selvfølgelig blir værende innenfor PV-er tildelt VG-en).
 				</div></div><div
               class="section"><div
                 class="titlepage"><div><div><h4
                       class="title"><a
                         xmlns=""
-                        id="sect.lvm-setup"></a>12.1.2.2. Setting up LVM</h4></div></div></div><div
+                        id="sect.lvm-setup"></a>12.1.2.2. Å sette opp LVM</h4></div></div></div><div
                 class="para">
-					Let us now follow, step by step, the process of setting up LVM for a typical use case: we want to simplify a complex storage situation. Such a situation usually happens after some long and convoluted history of accumulated temporary measures. For the purposes of illustration, we'll consider a server where the storage needs have changed over time, ending up in a maze of available partitions split over several partially used disks. In more concrete terms, the following partitions are available:
+					La oss nå følge, trinn for trinn, prosessen med å sette opp LVM for et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon skjer vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål, vil vi vurdere en tjener der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:
 				</div><div
                 xmlns:d="http://docbook.org/ns/docbook"
                 class="itemizedlist"><ul><li
                     class="listitem"><div
                       class="para">
-							on the <code
-                        class="filename">sdb</code> disk, a <code
-                        class="filename">sdb2</code> partition, 4 GB;
+							på <code
+                        class="filename">sdb</code>-disken, en <code
+                        class="filename">sdb2</code>-partisjon, 4 GB;
 						</div></li><li
                     class="listitem"><div
                       class="para">
-							on the <code
-                        class="filename">sdc</code> disk, a <code
-                        class="filename">sdc3</code> partition, 3 GB;
+							på <code
+                        class="filename">sdc</code>-disken, en <code
+                        class="filename">sdc3</code>-partisjon, 3 GB;
 						</div></li><li
                     class="listitem"><div
                       class="para">
-							the <code
-                        class="filename">sdd</code> disk, 4 GB, is fully available;
+							<code
+                        class="filename">sdd</code>-disken, 4 GB, fullt tilgjengelig;
 						</div></li><li
                     class="listitem"><div
                       class="para">
-							on the <code
-                        class="filename">sdf</code> disk, a <code
-                        class="filename">sdf1</code> partition, 4 GB; and a <code
-                        class="filename">sdf2</code> partition, 5 GB.
+							På <code
+                        class="filename">sdf</code>-disken, en <code
+                        class="filename">sdf1</code>-partisjon, 4 GB; og en <code
+                        class="filename">sdf2</code>-partisjon, 5 GB.
 						</div></li></ul></div><div
                 class="para">
-					In addition, let's assume that disks <code
-                  class="filename">sdb</code> and <code
-                  class="filename">sdf</code> are faster than the other two.
+					I tillegg, la oss anta at diskene <code
+                  class="filename">sdb</code> og <code
+                  class="filename">sdf</code> er raskere enn de andre to.
 				</div><div
                 class="para">
-					Our goal is to set up three logical volumes for three different applications: a file server requiring 5 GB of storage space, a database (1 GB) and some space for back-ups (12 GB). The first two need good performance, but back-ups are less critical in terms of access speed. All these constraints prevent the use of partitions on their own; using LVM can abstract the physical size of the devices, so the only limit is the total available space.
+					Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB) De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhinder bruk av partisjoner på egen hånd; Å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
 				</div><div
                 class="para">
-					The required tools are in the <span
-                  class="pkg pkg">lvm2</span> package and its dependencies. When they're installed, setting up LVM takes three steps, matching the three levels of concepts.
+					De verktøy som kreves er i <span
+                  class="pkg pkg">lvm2</span>-pakken og det den krever. Når de er installert, skal det det tre trinn til for å sette opp LVM som svarer til de tre konsept-nivåene.
 				</div><div
                 class="para">
-					First, we prepare the physical volumes using <code
+					Først forbereder vi de fysiske volumene ved å bruke <code
                   class="command">pvcreate</code>:
 				</div><a
                 xmlns=""
