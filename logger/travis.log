@@ -9,7 +9,7 @@
 +df --human-readable --all --print-type
 +sort --key=7,7d
 /dev/sda1      ext4          30G  4.1G   25G  15% /
-udev           devtmpfs     3.7G  8.0K  3.7G   1% /dev
+udev           devtmpfs     3.7G   12K  3.7G   1% /dev
 devpts         devpts          0     0     0    - /dev/pts
 Filesystem     Type         Size  Used Avail Use% Mounted on
 proc           proc            0     0     0    - /proc
@@ -31,6 +31,7 @@ cgroup         cgroup          0     0     0    - /sys/fs/cgroup/memory
 cgroup         cgroup          0     0     0    - /sys/fs/cgroup/net_cls
 cgroup         cgroup          0     0     0    - /sys/fs/cgroup/net_prio
 cgroup         cgroup          0     0     0    - /sys/fs/cgroup/perf_event
+cgroup         cgroup          0     0     0    - /sys/fs/cgroup/pids
 systemd        cgroup          0     0     0    - /sys/fs/cgroup/systemd
 none           fusectl         0     0     0    - /sys/fs/fuse/connections
 none           pstore          0     0     0    - /sys/fs/pstore
@@ -118,7 +119,7 @@ none           tmpfs        768M     0  768M   0% /var/ramfs
 + id --group --name root
 + readonly CURRENT_GROUP=root
 + hostname
-+ readonly CURRENT_HOST=testing-gce-56acc1dc-99a2-419c-a18b-c4d8dd94ce64
++ readonly CURRENT_HOST=testing-gce-eb26249e-ba7f-4772-b056-cc55527cee93
 + return 0
 + return 0
 + test root != root
@@ -136,6 +137,7 @@ none           tmpfs        768M     0  768M   0% /var/ramfs
  [ + ]  docker
  [ + ]  friendly-recovery
  [ - ]  grub-common
+ [ + ]  haveged
  [ ? ]  irqbalance
  [ ? ]  killprocs
  [ ? ]  kmod
@@ -144,7 +146,7 @@ none           tmpfs        768M     0  768M   0% /var/ramfs
  [ + ]  ntp
  [ ? ]  ondemand
  [ ? ]  open-vm-tools
- [ + ]  procps
+ [ - ]  procps
  [ ? ]  rc.local
  [ + ]  resolvconf
  [ - ]  rsync
@@ -180,12 +182,12 @@ cat
 	1>&2 \
 ;
 + chmod a+x /usr/sbin/policy-rc.d
-+ + cattee
- /etc/apt/apt.conf.d/01norecommend
++ cat
++ tee /etc/apt/apt.conf.d/01norecommend
 APT::Install-Recommends "0";
 APT::Install-Suggests "0";
-+ cat
 + tee /etc/apt/apt.conf.d/02force-conf
++ cat
 DPkg::options { "--force-confdef"; "--force-confnew"; }
 + apt_get_install debian-keyring debian-archive-keyring debootstrap schroot
 + apt_get_install_pre
@@ -198,6 +200,8 @@ APT::Install-Suggests "0";
 DPkg::options "";
 DPkg::options:: "--force-confdef";
 DPkg::options:: "--force-confnew";
+DPkg::options:: "--force-confdef";
+DPkg::options:: "--force-confold";
 + apt-cache policy
 Package files:
  100 /var/lib/dpkg/status
@@ -212,6 +216,9 @@ Package files:
  500 http://toolbelt.heroku.com/ubuntu/ ./ Packages
      release o=Heroku, Inc.,a=stable,c=
      origin toolbelt.heroku.com
+ 500 https://packagecloud.io/github/git-lfs/ubuntu/ trusty/main amd64 Packages
+     release v=1,o=https://packagecloud.io/github/git-lfs,a=trusty,n=trusty,l=git-lfs,c=main
+     origin packagecloud.io
  500 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main Translation-en
  500 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main amd64 Packages
      release v=14.04,o=LP-PPA-git-core,a=trusty,n=trusty,l=Git stable releases,c=main
@@ -310,6 +317,10 @@ uid                  Launchpad PPA for pollinate
 pub   1024R/E1DF1F24 2009-01-22
 uid                  Launchpad PPA for Ubuntu Git Maintainers
 
+pub   4096R/D59097AB 2014-01-13 [expires: 2019-01-12]
+uid                  packagecloud ops (production key) <ops@packagecloud.io>
+sub   4096R/7AD95B3F 2014-01-13 [expires: 2019-01-12]
+
 pub   1024R/828AB726 2010-08-02
 uid                  Launchpad George Edison's PPA
 
@@ -334,6 +345,7 @@ Hit http://us-central1.gce.archive.ubuntu.com trusty-updates InRelease
 Hit http://us-central1.gce.archive.ubuntu.com trusty-backports InRelease
 Hit http://us-central1.gce.archive.ubuntu.com trusty Release.gpg
 Hit http://us-central1.gce.archive.ubuntu.com trusty Release
+Hit http://apt.postgresql.org trusty-pgdg InRelease
 Hit http://us-central1.gce.archive.ubuntu.com trusty-updates/main Sources
 Hit http://us-central1.gce.archive.ubuntu.com trusty-updates/restricted Sources
 Hit http://us-central1.gce.archive.ubuntu.com trusty-updates/universe Sources
@@ -363,316 +375,158 @@ Hit http://us-central1.gce.archive.ubuntu.com trusty/restricted Sources
 Hit http://us-central1.gce.archive.ubuntu.com trusty/universe Sources
 Hit http://us-central1.gce.archive.ubuntu.com trusty/multiverse Sources
 Hit http://us-central1.gce.archive.ubuntu.com trusty/main amd64 Packages
-Ign http://toolbelt.heroku.com ./ InRelease
+Hit http://apt.postgresql.org trusty-pgdg/main amd64 Packages
 Hit http://us-central1.gce.archive.ubuntu.com trusty/restricted amd64 Packages
 Hit http://us-central1.gce.archive.ubuntu.com trusty/universe amd64 Packages
 Hit http://us-central1.gce.archive.ubuntu.com trusty/multiverse amd64 Packages
 Hit http://us-central1.gce.archive.ubuntu.com trusty/main Translation-en
+Hit http://security.ubuntu.com trusty-security InRelease
 Hit http://us-central1.gce.archive.ubuntu.com trusty/multiverse Translation-en
 Hit http://us-central1.gce.archive.ubuntu.com trusty/restricted Translation-en
+Hit http://ppa.launchpad.net trusty InRelease
 Hit http://us-central1.gce.archive.ubuntu.com trusty/universe Translation-en
-Hit http://ppa.launchpad.net trusty InRelease
-Hit http://security.ubuntu.com trusty-security InRelease
-Hit http://toolbelt.heroku.com ./ Release.gpg
-Hit https://apt.dockerproject.org ubuntu-trusty InRelease
-Hit http://apt.postgresql.org trusty-pgdg InRelease
-Hit http://ppa.launchpad.net trusty InRelease
-Hit http://toolbelt.heroku.com ./ Release
-Hit https://apt.dockerproject.org ubuntu-trusty/main amd64 Packages
-Get:1 https://apt.dockerproject.org ubuntu-trusty/main Translation-en
+Ign http://toolbelt.heroku.com ./ InRelease
 Hit http://security.ubuntu.com trusty-security/main Sources
-Hit http://toolbelt.heroku.com ./ Packages
-Ign https://apt.dockerproject.org ubuntu-trusty/main Translation-en
-Hit http://ppa.launchpad.net trusty InRelease
 Hit http://security.ubuntu.com trusty-security/restricted Sources
-Hit http://ppa.launchpad.net trusty/main amd64 Packages
+Ign http://apt.postgresql.org trusty-pgdg/main Translation-en
+Hit http://ppa.launchpad.net trusty InRelease
+Hit http://toolbelt.heroku.com ./ Release.gpg
 Hit http://security.ubuntu.com trusty-security/universe Sources
-Hit http://apt.postgresql.org trusty-pgdg/main amd64 Packages
-Hit http://ppa.launchpad.net trusty/main Translation-en
 Hit http://security.ubuntu.com trusty-security/multiverse Sources
-Hit http://ppa.launchpad.net trusty/main amd64 Packages
+Hit http://toolbelt.heroku.com ./ Release
 Hit http://security.ubuntu.com trusty-security/main amd64 Packages
-Hit http://ppa.launchpad.net trusty/main Translation-en
+Hit http://ppa.launchpad.net trusty InRelease
 Hit http://security.ubuntu.com trusty-security/restricted amd64 Packages
-Hit http://ppa.launchpad.net trusty/main amd64 Packages
-Ign http://toolbelt.heroku.com ./ Translation-en
+Hit http://toolbelt.heroku.com ./ Packages
 Hit http://security.ubuntu.com trusty-security/universe amd64 Packages
-Hit http://ppa.launchpad.net trusty/main Translation-en
 Hit http://security.ubuntu.com trusty-security/multiverse amd64 Packages
+Hit https://apt.dockerproject.org ubuntu-trusty InRelease
+Hit http://ppa.launchpad.net trusty/main amd64 Packages
 Hit http://security.ubuntu.com trusty-security/main Translation-en
 Hit http://security.ubuntu.com trusty-security/multiverse Translation-en
+Hit https://apt.dockerproject.org ubuntu-trusty/main amd64 Packages
+Get:1 https://apt.dockerproject.org ubuntu-trusty/main Translation-en
 Hit http://security.ubuntu.com trusty-security/restricted Translation-en
-Ign http://apt.postgresql.org trusty-pgdg/main Translation-en
+Hit http://ppa.launchpad.net trusty/main Translation-en
 Hit http://security.ubuntu.com trusty-security/universe Translation-en
+Ign https://apt.dockerproject.org ubuntu-trusty/main Translation-en
+Hit http://ppa.launchpad.net trusty/main amd64 Packages
+Ign http://toolbelt.heroku.com ./ Translation-en
+Hit http://ppa.launchpad.net trusty/main Translation-en
+Hit http://ppa.launchpad.net trusty/main amd64 Packages
+Hit http://ppa.launchpad.net trusty/main Translation-en
+Hit https://packagecloud.io trusty InRelease
+Hit https://packagecloud.io trusty/main Sources
+Hit https://packagecloud.io trusty/main amd64 Packages
+Get:2 https://packagecloud.io trusty/main Translation-en
+Ign https://packagecloud.io trusty/main Translation-en
 Reading package lists...
 + apt-get --assume-yes upgrade
 Reading package lists...
 Building dependency tree...
 Reading state information...
 The following packages have been kept back:
-  linux-image-generic-lts-vivid postgresql-client postgresql-client-common
+  linux-image-generic-lts-xenial postgresql-client postgresql-client-common
 The following packages will be upgraded:
-  accountsservice apt apt-transport-https apt-utils base-files bind9-host
-  cloud-init curl dbus debootstrap distro-info-data dnsutils docker-engine
-  gir1.2-gdkpixbuf-2.0 git git-core git-man gnupg gpgv grub-common grub-pc
-  grub-pc-bin grub2-common heroku heroku-toolbelt imagemagick
-  imagemagick-common initramfs-tools initramfs-tools-bin isc-dhcp-client
-  isc-dhcp-common klibc-utils libaccountsservice0 libapt-inst1.5
-  libapt-pkg4.12 libbind9-90 libcurl3 libcurl3-gnutls libcurl4-gnutls-dev
-  libdbd-mysql-perl libdbus-1-3 libdns100 libgd3 libgdk-pixbuf2.0-0
-  libgdk-pixbuf2.0-common libgdk-pixbuf2.0-dev libgstreamer1.0-0 libharfbuzz0b
-  libidn11 libidn11-dev libisc95 libisccc90 libisccfg90 libklibc liblwres90
-  liblxc1 libmagickcore-dev libmagickcore5 libmagickcore5-extra
-  libmagickwand-dev libmagickwand5 libmysqlclient-dev libmysqlclient18
-  libnl-3-200 libnl-genl-3-200 libpq-dev libpq5 libpython2.7
-  libpython2.7-minimal libpython2.7-stdlib libpython3.4-minimal
-  libpython3.4-stdlib libssl-dev libssl-doc libssl1.0.0 linux-libc-dev
-  lsb-base lsb-release lxc lxc-templates mysql-client mysql-client-5.5
-  mysql-client-core-5.5 mysql-common ntp ntpdate openssh-client openssh-server
-  openssh-sftp-server openssl pollinate postgresql-client-9.3 python2.7
-  python2.7-minimal python3-lxc python3-update-manager python3.4
-  python3.4-minimal qemu-utils sudo tar tzdata update-manager-core
-  update-notifier-common vim vim-common vim-runtime vim-tiny
-108 upgraded, 0 newly installed, 0 to remove and 3 not upgraded.
-Need to get 69.1 MB of archives.
-After this operation, 8997 kB of additional disk space will be used.
-Get:1 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main base-files amd64 7.2ubuntu5.5 [67.5 kB]
-Get:2 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main tar amd64 1.27.1-1ubuntu0.1 [196 kB]
-Get:3 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libapt-pkg4.12 amd64 1.0.1ubuntu2.15 [638 kB]
-Get:4 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main gpgv amd64 1.4.16-1ubuntu2.4 [161 kB]
-Get:5 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main gnupg amd64 1.4.16-1ubuntu2.4 [611 kB]
-Get:6 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main apt amd64 1.0.1ubuntu2.15 [953 kB]
-Get:7 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libapt-inst1.5 amd64 1.0.1ubuntu2.15 [58.7 kB]
-Get:8 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python3.4 amd64 3.4.3-1ubuntu1~14.04.5 [178 kB]
-Get:9 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python3.4-minimal amd64 3.4.3-1ubuntu1~14.04.5 [1220 kB]
-Get:10 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython3.4-stdlib amd64 3.4.3-1ubuntu1~14.04.5 [1985 kB]
-Get:11 http://toolbelt.heroku.com/ubuntu/ ./ heroku-toolbelt 3.43.14 [666 B]
-Get:12 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libssl-doc all 1.0.1f-1ubuntu2.21 [971 kB]
-Get:13 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main git amd64 1:2.10.2-3~ppa1~ubuntu14.04.1 [4364 kB]
-Get:14 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libssl-dev amd64 1.0.1f-1ubuntu2.21 [1074 kB]
-Get:15 http://toolbelt.heroku.com/ubuntu/ ./ heroku 3.43.14 [1836 kB]
-Get:16 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libssl1.0.0 amd64 1.0.1f-1ubuntu2.21 [830 kB]
-Get:17 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython3.4-minimal amd64 3.4.3-1ubuntu1~14.04.5 [462 kB]
-Get:18 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main libpq-dev amd64 9.6.1-1.pgdg14.04+1 [210 kB]
-Get:19 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main ntpdate amd64 1:4.2.6.p5+dfsg-3ubuntu2.14.04.10 [57.7 kB]
-Get:20 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libdbus-1-3 amd64 1.6.18-0ubuntu4.4 [132 kB]
-Get:21 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libidn11-dev amd64 1.28-1ubuntu2.1 [520 kB]
-Get:22 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libidn11 amd64 1.28-1ubuntu2.1 [94.4 kB]
-Get:23 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libcurl4-gnutls-dev amd64 7.35.0-1ubuntu2.10 [236 kB]
-Get:24 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libcurl3-gnutls amd64 7.35.0-1ubuntu2.10 [166 kB]
-Get:25 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main imagemagick-common all 8:6.7.7.10-6ubuntu3.3 [37.8 kB]
-Get:26 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main curl amd64 7.35.0-1ubuntu2.10 [123 kB]
-Get:27 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libcurl3 amd64 7.35.0-1ubuntu2.10 [173 kB]
-Get:28 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libgd3 amd64 2.1.0-3ubuntu0.5 [122 kB]
-Get:29 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libgdk-pixbuf2.0-dev amd64 2.30.7-0ubuntu1.6 [42.9 kB]
-Get:30 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libgdk-pixbuf2.0-0 amd64 2.30.7-0ubuntu1.6 [160 kB]
-Get:31 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libgdk-pixbuf2.0-common all 2.30.7-0ubuntu1.6 [9066 B]
-Get:32 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main gir1.2-gdkpixbuf-2.0 amd64 2.30.7-0ubuntu1.6 [7960 B]
-Get:33 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libgstreamer1.0-0 amd64 1.2.4-0ubuntu1.1 [598 kB]
-Get:34 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libharfbuzz0b amd64 0.9.27-1ubuntu1.1 [127 kB]
-Get:35 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main lxc-templates amd64 1.0.8-0ubuntu0.4 [63.0 kB]
-Get:36 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python3-lxc amd64 1.0.8-0ubuntu0.4 [19.9 kB]
-Get:37 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main liblxc1 amd64 1.0.8-0ubuntu0.4 [168 kB]
-Get:38 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main lxc amd64 1.0.8-0ubuntu0.4 [202 kB]
-Get:39 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickwand-dev amd64 8:6.7.7.10-6ubuntu3.3 [270 kB]
-Get:40 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickwand5 amd64 8:6.7.7.10-6ubuntu3.3 [265 kB]
-Get:41 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickcore-dev amd64 8:6.7.7.10-6ubuntu3.3 [906 kB]
-Get:42 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickcore5-extra amd64 8:6.7.7.10-6ubuntu3.3 [57.9 kB]
-Get:43 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickcore5 amd64 8:6.7.7.10-6ubuntu3.3 [1474 kB]
-Get:44 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmysqlclient-dev amd64 5.5.53-0ubuntu0.14.04.1 [869 kB]
-Get:45 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main mysql-common all 5.5.53-0ubuntu0.14.04.1 [13.0 kB]
-Get:46 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmysqlclient18 amd64 5.5.53-0ubuntu0.14.04.1 [597 kB]
-Get:47 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libnl-genl-3-200 amd64 3.2.21-1ubuntu4 [10.2 kB]
-Get:48 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libnl-3-200 amd64 3.2.21-1ubuntu4 [45.6 kB]
-Get:49 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python2.7 amd64 2.7.6-8ubuntu0.3 [197 kB]
-Get:50 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7 amd64 2.7.6-8ubuntu0.3 [1039 kB]
-Get:51 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7-stdlib amd64 2.7.6-8ubuntu0.3 [1873 kB]
-Get:52 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python2.7-minimal amd64 2.7.6-8ubuntu0.3 [1187 kB]
-Get:53 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7-minimal amd64 2.7.6-8ubuntu0.3 [307 kB]
-Get:54 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main lsb-base all 4.1+Debian11ubuntu6.2 [13.3 kB]
-Get:55 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main ntp amd64 1:4.2.6.p5+dfsg-3ubuntu2.14.04.10 [421 kB]
-Get:56 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main lsb-release all 4.1+Debian11ubuntu6.2 [11.6 kB]
-Get:57 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main libpq5 amd64 9.6.1-1.pgdg14.04+1 [128 kB]
-Get:58 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main update-manager-core all 1:0.196.22 [8196 B]
-Get:59 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python3-update-manager all 1:0.196.22 [32.0 kB]
-Get:60 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main update-notifier-common all 0.154.1ubuntu2 [162 kB]
-Get:61 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main tzdata all 2016h-0ubuntu0.14.04 [166 kB]
-Get:62 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main apt-utils amd64 1.0.1ubuntu2.15 [172 kB]
-Get:63 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main isc-dhcp-client amd64 4.2.4-7ubuntu12.8 [640 kB]
-Get:64 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main isc-dhcp-common amd64 4.2.4-7ubuntu12.8 [708 kB]
-Get:65 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main sudo amd64 1.8.9p5-1ubuntu1.3 [342 kB]
-Get:66 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim amd64 2:7.4.052-1ubuntu3.1 [955 kB]
-Get:67 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client-9.3 amd64 9.3.15-1.pgdg14.04+1 [1048 kB]
-Get:68 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim-tiny amd64 2:7.4.052-1ubuntu3.1 [391 kB]
-Get:69 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim-runtime all 2:7.4.052-1ubuntu3.1 [4882 kB]
-Get:70 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim-common amd64 2:7.4.052-1ubuntu3.1 [95.2 kB]
-Get:71 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main klibc-utils amd64 2.0.3-0ubuntu1.14.04.2 [107 kB]
-Get:72 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libklibc amd64 2.0.3-0ubuntu1.14.04.2 [40.6 kB]
-Get:73 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main initramfs-tools all 0.103ubuntu4.4 [44.5 kB]
-Get:74 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main initramfs-tools-bin amd64 0.103ubuntu4.4 [9134 B]
-Get:75 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main accountsservice amd64 0.6.35-0ubuntu7.3 [60.6 kB]
-Get:76 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libaccountsservice0 amd64 0.6.35-0ubuntu7.3 [69.8 kB]
-Get:77 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main dbus amd64 1.6.18-0ubuntu4.4 [231 kB]
-Get:78 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main apt-transport-https amd64 1.0.1ubuntu2.15 [25.0 kB]
-Get:79 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main bind9-host amd64 1:9.9.5.dfsg-3ubuntu0.10 [46.5 kB]
-Get:80 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main dnsutils amd64 1:9.9.5.dfsg-3ubuntu0.10 [97.0 kB]
-Get:81 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libisc95 amd64 1:9.9.5.dfsg-3ubuntu0.10 [148 kB]
-Get:82 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libdns100 amd64 1:9.9.5.dfsg-3ubuntu0.10 [645 kB]
-Get:83 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libisccc90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [15.7 kB]
-Get:84 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libisccfg90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [36.0 kB]
-Get:85 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main liblwres90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [32.6 kB]
-Get:86 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libbind9-90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [22.0 kB]
-Get:87 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main openssh-sftp-server amd64 1:6.6p1-2ubuntu2.8 [34.2 kB]
-Get:88 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main openssh-server amd64 1:6.6p1-2ubuntu2.8 [322 kB]
-Get:89 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main openssh-client amd64 1:6.6p1-2ubuntu2.8 [564 kB]
-Get:90 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main openssl amd64 1.0.1f-1ubuntu2.21 [489 kB]
-Get:91 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main distro-info-data all 0.18ubuntu0.6 [4370 B]
-Get:92 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main grub-pc amd64 2.02~beta2-9ubuntu1.12 [173 kB]
-Get:93 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main grub-pc-bin amd64 2.02~beta2-9ubuntu1.12 [880 kB]
-Get:94 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main grub2-common amd64 2.02~beta2-9ubuntu1.12 [501 kB]
-Get:95 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main grub-common amd64 2.02~beta2-9ubuntu1.12 [1681 kB]
-Get:96 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main imagemagick amd64 8:6.7.7.10-6ubuntu3.3 [189 kB]
-Get:97 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libdbd-mysql-perl amd64 4.025-1ubuntu0.1 [87.6 kB]
-Get:98 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-libc-dev amd64 3.13.0-103.150 [772 kB]
-Get:99 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main mysql-client all 5.5.53-0ubuntu0.14.04.1 [11.2 kB]
-Get:100 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main mysql-client-5.5 amd64 5.5.53-0ubuntu0.14.04.1 [1587 kB]
-Get:101 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main mysql-client-core-5.5 amd64 5.5.53-0ubuntu0.14.04.1 [708 kB]
-Get:102 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main qemu-utils amd64 2.0.0+dfsg-2ubuntu1.30 [416 kB]
-Get:103 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main cloud-init all 0.7.5-0ubuntu1.20 [198 kB]
-Get:104 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main debootstrap all 1.0.59ubuntu0.6 [29.7 kB]
-Get:105 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main git-man all 1:2.10.2-3~ppa1~ubuntu14.04.1 [1418 kB]
-Get:106 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main git-core all 1:2.10.2-3~ppa1~ubuntu14.04.1 [1420 B]
-Get:107 http://ppa.launchpad.net/pollinate/ppa/ubuntu/ trusty/main pollinate all 4.24-0ubuntu1~trusty [20.9 kB]
-Extracting templates from packages: 27%Extracting templates from packages: 55%Extracting templates from packages: 83%Extracting templates from packages: 100%
+  accountsservice bind9-host dbus dnsutils git git-core git-man imagemagick
+  imagemagick-common isc-dhcp-client isc-dhcp-common klibc-utils
+  libaccountsservice0 libbind9-90 libdbus-1-3 libdns100 libisc95 libisccc90
+  libisccfg90 libklibc liblwres90 libmagickcore-dev libmagickcore5
+  libmagickcore5-extra libmagickwand-dev libmagickwand5 libnl-3-200
+  libnl-genl-3-200 libpq-dev libpq5 libpython2.7 libpython2.7-minimal
+  libpython2.7-stdlib libpython3.4-minimal libpython3.4-stdlib linux-libc-dev
+  postgresql-client-9.3 python2.7 python2.7-minimal python3.4
+  python3.4-minimal tar tzdata vim vim-common vim-runtime vim-tiny
+47 upgraded, 0 newly installed, 0 to remove and 3 not upgraded.
+Need to get 29.5 MB of archives.
+After this operation, 2724 kB of additional disk space will be used.
+Get:1 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main tar amd64 1.27.1-1ubuntu0.1 [196 kB]
+Get:2 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python3.4 amd64 3.4.3-1ubuntu1~14.04.5 [178 kB]
+Get:3 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python3.4-minimal amd64 3.4.3-1ubuntu1~14.04.5 [1220 kB]
+Get:4 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main libpq-dev amd64 9.6.1-1.pgdg14.04+1 [210 kB]
+Get:5 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython3.4-stdlib amd64 3.4.3-1ubuntu1~14.04.5 [1985 kB]
+Get:6 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython3.4-minimal amd64 3.4.3-1ubuntu1~14.04.5 [462 kB]
+Get:7 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libdbus-1-3 amd64 1.6.18-0ubuntu4.4 [132 kB]
+Get:8 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main imagemagick-common all 8:6.7.7.10-6ubuntu3.3 [37.8 kB]
+Get:9 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickwand-dev amd64 8:6.7.7.10-6ubuntu3.3 [270 kB]
+Get:10 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickwand5 amd64 8:6.7.7.10-6ubuntu3.3 [265 kB]
+Get:11 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickcore-dev amd64 8:6.7.7.10-6ubuntu3.3 [906 kB]
+Get:12 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main libpq5 amd64 9.6.1-1.pgdg14.04+1 [128 kB]
+Get:13 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickcore5-extra amd64 8:6.7.7.10-6ubuntu3.3 [57.9 kB]
+Get:14 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libmagickcore5 amd64 8:6.7.7.10-6ubuntu3.3 [1474 kB]
+Get:15 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client-9.3 amd64 9.3.15-1.pgdg14.04+1 [1048 kB]
+Get:16 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libnl-genl-3-200 amd64 3.2.21-1ubuntu4 [10.2 kB]
+Get:17 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libnl-3-200 amd64 3.2.21-1ubuntu4 [45.6 kB]
+Get:18 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python2.7 amd64 2.7.6-8ubuntu0.3 [197 kB]
+Get:19 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7 amd64 2.7.6-8ubuntu0.3 [1039 kB]
+Get:20 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7-stdlib amd64 2.7.6-8ubuntu0.3 [1873 kB]
+Get:21 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main python2.7-minimal amd64 2.7.6-8ubuntu0.3 [1187 kB]
+Get:22 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libpython2.7-minimal amd64 2.7.6-8ubuntu0.3 [307 kB]
+Get:23 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main tzdata all 2016h-0ubuntu0.14.04 [166 kB]
+Get:24 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main isc-dhcp-client amd64 4.2.4-7ubuntu12.8 [640 kB]
+Get:25 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main isc-dhcp-common amd64 4.2.4-7ubuntu12.8 [708 kB]
+Get:26 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim amd64 2:7.4.052-1ubuntu3.1 [955 kB]
+Get:27 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim-tiny amd64 2:7.4.052-1ubuntu3.1 [391 kB]
+Get:28 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim-runtime all 2:7.4.052-1ubuntu3.1 [4882 kB]
+Get:29 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main git amd64 1:2.11.0-0ppa3~ubuntu14.04.1 [4461 kB]
+Get:30 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main vim-common amd64 2:7.4.052-1ubuntu3.1 [95.2 kB]
+Get:31 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main klibc-utils amd64 2.0.3-0ubuntu1.14.04.2 [107 kB]
+Get:32 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libklibc amd64 2.0.3-0ubuntu1.14.04.2 [40.6 kB]
+Get:33 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main accountsservice amd64 0.6.35-0ubuntu7.3 [60.6 kB]
+Get:34 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libaccountsservice0 amd64 0.6.35-0ubuntu7.3 [69.8 kB]
+Get:35 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main dbus amd64 1.6.18-0ubuntu4.4 [231 kB]
+Get:36 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main bind9-host amd64 1:9.9.5.dfsg-3ubuntu0.10 [46.5 kB]
+Get:37 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main dnsutils amd64 1:9.9.5.dfsg-3ubuntu0.10 [97.0 kB]
+Get:38 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libisc95 amd64 1:9.9.5.dfsg-3ubuntu0.10 [148 kB]
+Get:39 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libdns100 amd64 1:9.9.5.dfsg-3ubuntu0.10 [645 kB]
+Get:40 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libisccc90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [15.7 kB]
+Get:41 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libisccfg90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [36.0 kB]
+Get:42 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main liblwres90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [32.6 kB]
+Get:43 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libbind9-90 amd64 1:9.9.5.dfsg-3ubuntu0.10 [22.0 kB]
+Get:44 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main imagemagick amd64 8:6.7.7.10-6ubuntu3.3 [189 kB]
+Get:45 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-libc-dev amd64 3.13.0-103.150 [772 kB]
+Get:46 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main git-man all 1:2.11.0-0ppa3~ubuntu14.04.1 [1434 kB]
+Get:47 http://ppa.launchpad.net/git-core/ppa/ubuntu/ trusty/main git-core all 1:2.11.0-0ppa3~ubuntu14.04.1 [1418 B]
+Extracting templates from packages: 63%Extracting templates from packages: 100%
 Preconfiguring packages ...
-Fetched 69.1 MB in 4s (17.0 MB/s)
-(Reading database ... 78439 files and directories currently installed.)
-Preparing to unpack .../base-files_7.2ubuntu5.5_amd64.deb ...
-Unpacking base-files (7.2ubuntu5.5) over (7.2ubuntu5.4) ...
-Processing triggers for plymouth-theme-ubuntu-text (0.8.8-0ubuntu17.1) ...
-update-initramfs: deferring update (trigger activated)
-Processing triggers for install-info (5.2.0.dfsg.1-2) ...
-Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Processing triggers for initramfs-tools (0.103ubuntu4.3) ...
-update-initramfs: Not updating initramfs.
-Setting up base-files (7.2ubuntu5.5) ...
-Installing new version of config file /etc/issue ...
-Installing new version of config file /etc/issue.net ...
-Installing new version of config file /etc/lsb-release ...
-Installing new version of config file /etc/os-release ...
-Processing triggers for plymouth-theme-ubuntu-text (0.8.8-0ubuntu17.1) ...
-update-initramfs: deferring update (trigger activated)
-Processing triggers for initramfs-tools (0.103ubuntu4.3) ...
-update-initramfs: Not updating initramfs.
-(Reading database ... 78439 files and directories currently installed.)
+Fetched 29.5 MB in 9s (3010 kB/s)
+(Reading database ... 77942 files and directories currently installed.)
 Preparing to unpack .../tar_1.27.1-1ubuntu0.1_amd64.deb ...
 Unpacking tar (1.27.1-1ubuntu0.1) over (1.27.1-1) ...
 Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
 Processing triggers for mime-support (3.54ubuntu1.1) ...
 Setting up tar (1.27.1-1ubuntu0.1) ...
-(Reading database ... 78439 files and directories currently installed.)
-Preparing to unpack .../libapt-pkg4.12_1.0.1ubuntu2.15_amd64.deb ...
-Unpacking libapt-pkg4.12:amd64 (1.0.1ubuntu2.15) over (1.0.1ubuntu2.14) ...
-Setting up libapt-pkg4.12:amd64 (1.0.1ubuntu2.15) ...
-Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
-(Reading database ... 78439 files and directories currently installed.)
-Preparing to unpack .../gpgv_1.4.16-1ubuntu2.4_amd64.deb ...
-Unpacking gpgv (1.4.16-1ubuntu2.4) over (1.4.16-1ubuntu2.3) ...
-Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Setting up gpgv (1.4.16-1ubuntu2.4) ...
-(Reading database ... 78439 files and directories currently installed.)
-Preparing to unpack .../gnupg_1.4.16-1ubuntu2.4_amd64.deb ...
-Unpacking gnupg (1.4.16-1ubuntu2.4) over (1.4.16-1ubuntu2.3) ...
-Processing triggers for install-info (5.2.0.dfsg.1-2) ...
-Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Setting up gnupg (1.4.16-1ubuntu2.4) ...
-(Reading database ... 78439 files and directories currently installed.)
-Preparing to unpack .../apt_1.0.1ubuntu2.15_amd64.deb ...
-Unpacking apt (1.0.1ubuntu2.15) over (1.0.1ubuntu2.14) ...
-Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Setting up apt (1.0.1ubuntu2.15) ...
-Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
-(Reading database ... 78439 files and directories currently installed.)
-Preparing to unpack .../libapt-inst1.5_1.0.1ubuntu2.15_amd64.deb ...
-Unpacking libapt-inst1.5:amd64 (1.0.1ubuntu2.15) over (1.0.1ubuntu2.14) ...
+(Reading database ... 77942 files and directories currently installed.)
 Preparing to unpack .../python3.4_3.4.3-1ubuntu1~14.04.5_amd64.deb ...
-Unpacking python3.4 (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.3) ...
+Unpacking python3.4 (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.4) ...
 Preparing to unpack .../python3.4-minimal_3.4.3-1ubuntu1~14.04.5_amd64.deb ...
-Unpacking python3.4-minimal (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.3) ...
+Unpacking python3.4-minimal (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.4) ...
 Preparing to unpack .../libpython3.4-stdlib_3.4.3-1ubuntu1~14.04.5_amd64.deb ...
-Unpacking libpython3.4-stdlib:amd64 (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.3) ...
-Preparing to unpack .../libssl-doc_1.0.1f-1ubuntu2.21_all.deb ...
-Unpacking libssl-doc (1.0.1f-1ubuntu2.21) over (1.0.1f-1ubuntu2.19) ...
-Preparing to unpack .../libssl-dev_1.0.1f-1ubuntu2.21_amd64.deb ...
-Unpacking libssl-dev:amd64 (1.0.1f-1ubuntu2.21) over (1.0.1f-1ubuntu2.19) ...
-Preparing to unpack .../libssl1.0.0_1.0.1f-1ubuntu2.21_amd64.deb ...
-Unpacking libssl1.0.0:amd64 (1.0.1f-1ubuntu2.21) over (1.0.1f-1ubuntu2.19) ...
+Unpacking libpython3.4-stdlib:amd64 (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.4) ...
 Preparing to unpack .../libpython3.4-minimal_3.4.3-1ubuntu1~14.04.5_amd64.deb ...
-Unpacking libpython3.4-minimal:amd64 (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.3) ...
-Preparing to unpack .../ntpdate_1%3a4.2.6.p5+dfsg-3ubuntu2.14.04.10_amd64.deb ...
-Unpacking ntpdate (1:4.2.6.p5+dfsg-3ubuntu2.14.04.10) over (1:4.2.6.p5+dfsg-3ubuntu2.14.04.8) ...
+Unpacking libpython3.4-minimal:amd64 (3.4.3-1ubuntu1~14.04.5) over (3.4.3-1ubuntu1~14.04.4) ...
 Preparing to unpack .../libdbus-1-3_1.6.18-0ubuntu4.4_amd64.deb ...
 Unpacking libdbus-1-3:amd64 (1.6.18-0ubuntu4.4) over (1.6.18-0ubuntu4.3) ...
-Preparing to unpack .../libidn11-dev_1.28-1ubuntu2.1_amd64.deb ...
-Unpacking libidn11-dev (1.28-1ubuntu2.1) over (1.28-1ubuntu2) ...
-Preparing to unpack .../libidn11_1.28-1ubuntu2.1_amd64.deb ...
-Unpacking libidn11:amd64 (1.28-1ubuntu2.1) over (1.28-1ubuntu2) ...
-Preparing to unpack .../libcurl4-gnutls-dev_7.35.0-1ubuntu2.10_amd64.deb ...
-Unpacking libcurl4-gnutls-dev:amd64 (7.35.0-1ubuntu2.10) over (7.35.0-1ubuntu2.8) ...
-Preparing to unpack .../libcurl3-gnutls_7.35.0-1ubuntu2.10_amd64.deb ...
-Unpacking libcurl3-gnutls:amd64 (7.35.0-1ubuntu2.10) over (7.35.0-1ubuntu2.8) ...
 Preparing to unpack .../imagemagick-common_8%3a6.7.7.10-6ubuntu3.3_all.deb ...
-Unpacking imagemagick-common (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
-Preparing to unpack .../curl_7.35.0-1ubuntu2.10_amd64.deb ...
-Unpacking curl (7.35.0-1ubuntu2.10) over (7.35.0-1ubuntu2.8) ...
-Preparing to unpack .../libcurl3_7.35.0-1ubuntu2.10_amd64.deb ...
-Unpacking libcurl3:amd64 (7.35.0-1ubuntu2.10) over (7.35.0-1ubuntu2.8) ...
-Preparing to unpack .../libgd3_2.1.0-3ubuntu0.5_amd64.deb ...
-Unpacking libgd3:amd64 (2.1.0-3ubuntu0.5) over (2.1.0-3ubuntu0.3) ...
-Preparing to unpack .../libgdk-pixbuf2.0-dev_2.30.7-0ubuntu1.6_amd64.deb ...
-Unpacking libgdk-pixbuf2.0-dev (2.30.7-0ubuntu1.6) over (2.30.7-0ubuntu1.2) ...
-Preparing to unpack .../libgdk-pixbuf2.0-0_2.30.7-0ubuntu1.6_amd64.deb ...
-Unpacking libgdk-pixbuf2.0-0:amd64 (2.30.7-0ubuntu1.6) over (2.30.7-0ubuntu1.2) ...
-Preparing to unpack .../libgdk-pixbuf2.0-common_2.30.7-0ubuntu1.6_all.deb ...
-Unpacking libgdk-pixbuf2.0-common (2.30.7-0ubuntu1.6) over (2.30.7-0ubuntu1.2) ...
-Preparing to unpack .../gir1.2-gdkpixbuf-2.0_2.30.7-0ubuntu1.6_amd64.deb ...
-Unpacking gir1.2-gdkpixbuf-2.0 (2.30.7-0ubuntu1.6) over (2.30.7-0ubuntu1.2) ...
-Preparing to unpack .../libgstreamer1.0-0_1.2.4-0ubuntu1.1_amd64.deb ...
-Unpacking libgstreamer1.0-0:amd64 (1.2.4-0ubuntu1.1) over (1.2.4-0ubuntu1) ...
-Preparing to unpack .../libharfbuzz0b_0.9.27-1ubuntu1.1_amd64.deb ...
-Unpacking libharfbuzz0b:amd64 (0.9.27-1ubuntu1.1) over (0.9.27-1ubuntu1) ...
-Preparing to unpack .../lxc-templates_1.0.8-0ubuntu0.4_amd64.deb ...
-Unpacking lxc-templates (1.0.8-0ubuntu0.4) over (1.0.8-0ubuntu0.3) ...
-Preparing to unpack .../python3-lxc_1.0.8-0ubuntu0.4_amd64.deb ...
-Unpacking python3-lxc (1.0.8-0ubuntu0.4) over (1.0.8-0ubuntu0.3) ...
-Preparing to unpack .../liblxc1_1.0.8-0ubuntu0.4_amd64.deb ...
-Unpacking liblxc1 (1.0.8-0ubuntu0.4) over (1.0.8-0ubuntu0.3) ...
-Preparing to unpack .../lxc_1.0.8-0ubuntu0.4_amd64.deb ...
-Unpacking lxc (1.0.8-0ubuntu0.4) over (1.0.8-0ubuntu0.3) ...
+Unpacking imagemagick-common (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../libmagickwand-dev_8%3a6.7.7.10-6ubuntu3.3_amd64.deb ...
-Unpacking libmagickwand-dev (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
+Unpacking libmagickwand-dev (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../libmagickwand5_8%3a6.7.7.10-6ubuntu3.3_amd64.deb ...
-Unpacking libmagickwand5:amd64 (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
+Unpacking libmagickwand5:amd64 (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../libmagickcore-dev_8%3a6.7.7.10-6ubuntu3.3_amd64.deb ...
-Unpacking libmagickcore-dev (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
+Unpacking libmagickcore-dev (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../libmagickcore5-extra_8%3a6.7.7.10-6ubuntu3.3_amd64.deb ...
-Unpacking libmagickcore5-extra:amd64 (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
+Unpacking libmagickcore5-extra:amd64 (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../libmagickcore5_8%3a6.7.7.10-6ubuntu3.3_amd64.deb ...
-Unpacking libmagickcore5:amd64 (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
-Preparing to unpack .../libmysqlclient-dev_5.5.53-0ubuntu0.14.04.1_amd64.deb ...
-Unpacking libmysqlclient-dev (5.5.53-0ubuntu0.14.04.1) over (5.5.50-0ubuntu0.14.04.1) ...
-Preparing to unpack .../mysql-common_5.5.53-0ubuntu0.14.04.1_all.deb ...
-Unpacking mysql-common (5.5.53-0ubuntu0.14.04.1) over (5.5.50-0ubuntu0.14.04.1) ...
-Preparing to unpack .../libmysqlclient18_5.5.53-0ubuntu0.14.04.1_amd64.deb ...
-Unpacking libmysqlclient18:amd64 (5.5.53-0ubuntu0.14.04.1) over (5.5.50-0ubuntu0.14.04.1) ...
+Unpacking libmagickcore5:amd64 (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../libnl-genl-3-200_3.2.21-1ubuntu4_amd64.deb ...
 Unpacking libnl-genl-3-200:amd64 (3.2.21-1ubuntu4) over (3.2.21-1ubuntu3) ...
 Preparing to unpack .../libnl-3-200_3.2.21-1ubuntu4_amd64.deb ...
 Unpacking libnl-3-200:amd64 (3.2.21-1ubuntu4) over (3.2.21-1ubuntu3) ...
 Preparing to unpack .../libpq-dev_9.6.1-1.pgdg14.04+1_amd64.deb ...
-Unpacking libpq-dev (9.6.1-1.pgdg14.04+1) over (9.3.14-0ubuntu0.14.04) ...
+Unpacking libpq-dev (9.6.1-1.pgdg14.04+1) over (9.3.15-0ubuntu0.14.04) ...
 Preparing to unpack .../libpq5_9.6.1-1.pgdg14.04+1_amd64.deb ...
-Unpacking libpq5:amd64 (9.6.1-1.pgdg14.04+1) over (9.3.14-0ubuntu0.14.04) ...
+Unpacking libpq5:amd64 (9.6.1-1.pgdg14.04+1) over (9.3.15-0ubuntu0.14.04) ...
 Preparing to unpack .../python2.7_2.7.6-8ubuntu0.3_amd64.deb ...
 Unpacking python2.7 (2.7.6-8ubuntu0.3) over (2.7.6-8ubuntu0.2) ...
 Preparing to unpack .../libpython2.7_2.7.6-8ubuntu0.3_amd64.deb ...
@@ -683,52 +537,22 @@ Preparing to unpack .../python2.7-minimal_2.7.6-8ubuntu0.3_amd64.deb ...
 Unpacking python2.7-minimal (2.7.6-8ubuntu0.3) over (2.7.6-8ubuntu0.2) ...
 Preparing to unpack .../libpython2.7-minimal_2.7.6-8ubuntu0.3_amd64.deb ...
 Unpacking libpython2.7-minimal:amd64 (2.7.6-8ubuntu0.3) over (2.7.6-8ubuntu0.2) ...
-Preparing to unpack .../lsb-base_4.1+Debian11ubuntu6.2_all.deb ...
-Unpacking lsb-base (4.1+Debian11ubuntu6.2) over (4.1+Debian11ubuntu6.1) ...
-Processing triggers for mime-support (3.54ubuntu1.1) ...
-Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Processing triggers for install-info (5.2.0.dfsg.1-2) ...
-Processing triggers for ureadahead (0.100.0-16) ...
-Setting up lsb-base (4.1+Debian11ubuntu6.2) ...
-(Reading database ... 78472 files and directories currently installed.)
-Preparing to unpack .../ntp_1%3a4.2.6.p5+dfsg-3ubuntu2.14.04.10_amd64.deb ...
-+ expr ntp : postgresql.*
-0
-+ exit 0
- * Stopping NTP server ntpd
-   ...done.
-Unpacking ntp (1:4.2.6.p5+dfsg-3ubuntu2.14.04.10) over (1:4.2.6.p5+dfsg-3ubuntu2.14.04.8) ...
-Preparing to unpack .../lsb-release_4.1+Debian11ubuntu6.2_all.deb ...
-Unpacking lsb-release (4.1+Debian11ubuntu6.2) over (4.1+Debian11ubuntu6.1) ...
-Preparing to unpack .../update-manager-core_1%3a0.196.22_all.deb ...
-Unpacking update-manager-core (1:0.196.22) over (1:0.196.14) ...
-Preparing to unpack .../python3-update-manager_1%3a0.196.22_all.deb ...
-Unpacking python3-update-manager (1:0.196.22) over (1:0.196.14) ...
-Preparing to unpack .../update-notifier-common_0.154.1ubuntu2_all.deb ...
-Unpacking update-notifier-common (0.154.1ubuntu2) over (0.154.1ubuntu1) ...
 Preparing to unpack .../tzdata_2016h-0ubuntu0.14.04_all.deb ...
-Unpacking tzdata (2016h-0ubuntu0.14.04) over (2016d-0ubuntu0.14.04) ...
-Processing triggers for ureadahead (0.100.0-16) ...
+Unpacking tzdata (2016h-0ubuntu0.14.04) over (2016g-0ubuntu0.14.04) ...
+Processing triggers for mime-support (3.54ubuntu1.1) ...
 Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
 Setting up tzdata (2016h-0ubuntu0.14.04) ...
 
 Current default time zone: 'Etc/UTC'
-Local time is now:      Thu Dec  1 04:38:56 UTC 2016.
-Universal Time is now:  Thu Dec  1 04:38:56 UTC 2016.
+Local time is now:      Thu Dec  1 19:39:23 UTC 2016.
+Universal Time is now:  Thu Dec  1 19:39:23 UTC 2016.
 Run 'dpkg-reconfigure tzdata' if you wish to change it.
 
-(Reading database ... 78480 files and directories currently installed.)
-Preparing to unpack .../apt-utils_1.0.1ubuntu2.15_amd64.deb ...
-Unpacking apt-utils (1.0.1ubuntu2.15) over (1.0.1ubuntu2.14) ...
+(Reading database ... 77975 files and directories currently installed.)
 Preparing to unpack .../isc-dhcp-client_4.2.4-7ubuntu12.8_amd64.deb ...
-Unpacking isc-dhcp-client (4.2.4-7ubuntu12.8) over (4.2.4-7ubuntu12.4) ...
+Unpacking isc-dhcp-client (4.2.4-7ubuntu12.8) over (4.2.4-7ubuntu12.7) ...
 Preparing to unpack .../isc-dhcp-common_4.2.4-7ubuntu12.8_amd64.deb ...
-Unpacking isc-dhcp-common (4.2.4-7ubuntu12.8) over (4.2.4-7ubuntu12.4) ...
-Preparing to unpack .../sudo_1.8.9p5-1ubuntu1.3_amd64.deb ...
-+ expr sudo : postgresql.*
-0
-+ exit 0
-Unpacking sudo (1.8.9p5-1ubuntu1.3) over (1.8.9p5-1ubuntu1.2) ...
+Unpacking isc-dhcp-common (4.2.4-7ubuntu12.8) over (4.2.4-7ubuntu12.7) ...
 Preparing to unpack .../vim_2%3a7.4.052-1ubuntu3.1_amd64.deb ...
 Unpacking vim (2:7.4.052-1ubuntu3.1) over (2:7.4.052-1ubuntu3) ...
 Preparing to unpack .../vim-tiny_2%3a7.4.052-1ubuntu3.1_amd64.deb ...
@@ -741,149 +565,55 @@ Preparing to unpack .../klibc-utils_2.0.3-0ubuntu1.14.04.2_amd64.deb ...
 Unpacking klibc-utils (2.0.3-0ubuntu1.14.04.2) over (2.0.3-0ubuntu1.14.04.1) ...
 Preparing to unpack .../libklibc_2.0.3-0ubuntu1.14.04.2_amd64.deb ...
 Unpacking libklibc (2.0.3-0ubuntu1.14.04.2) over (2.0.3-0ubuntu1.14.04.1) ...
-Preparing to unpack .../initramfs-tools_0.103ubuntu4.4_all.deb ...
-Unpacking initramfs-tools (0.103ubuntu4.4) over (0.103ubuntu4.3) ...
-Preparing to unpack .../initramfs-tools-bin_0.103ubuntu4.4_amd64.deb ...
-Unpacking initramfs-tools-bin (0.103ubuntu4.4) over (0.103ubuntu4.3) ...
 Preparing to unpack .../accountsservice_0.6.35-0ubuntu7.3_amd64.deb ...
 Unpacking accountsservice (0.6.35-0ubuntu7.3) over (0.6.35-0ubuntu7.2) ...
 Preparing to unpack .../libaccountsservice0_0.6.35-0ubuntu7.3_amd64.deb ...
 Unpacking libaccountsservice0:amd64 (0.6.35-0ubuntu7.3) over (0.6.35-0ubuntu7.2) ...
 Preparing to unpack .../dbus_1.6.18-0ubuntu4.4_amd64.deb ...
 Unpacking dbus (1.6.18-0ubuntu4.4) over (1.6.18-0ubuntu4.3) ...
-Preparing to unpack .../apt-transport-https_1.0.1ubuntu2.15_amd64.deb ...
-Unpacking apt-transport-https (1.0.1ubuntu2.15) over (1.0.1ubuntu2.14) ...
 Preparing to unpack .../bind9-host_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking bind9-host (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking bind9-host (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../dnsutils_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking dnsutils (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking dnsutils (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../libisc95_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking libisc95 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking libisc95 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../libdns100_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking libdns100 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking libdns100 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../libisccc90_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking libisccc90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking libisccc90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../libisccfg90_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking libisccfg90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking libisccfg90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../liblwres90_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking liblwres90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
+Unpacking liblwres90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
 Preparing to unpack .../libbind9-90_1%3a9.9.5.dfsg-3ubuntu0.10_amd64.deb ...
-Unpacking libbind9-90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.8) ...
-Preparing to unpack .../git_1%3a2.10.2-3~ppa1~ubuntu14.04.1_amd64.deb ...
-Unpacking git (1:2.10.2-3~ppa1~ubuntu14.04.1) over (1:1.9.1-1ubuntu0.3) ...
-Preparing to unpack .../git-man_1%3a2.10.2-3~ppa1~ubuntu14.04.1_all.deb ...
-Unpacking git-man (1:2.10.2-3~ppa1~ubuntu14.04.1) over (1:1.9.1-1ubuntu0.3) ...
-Preparing to unpack .../git-core_1%3a2.10.2-3~ppa1~ubuntu14.04.1_all.deb ...
-Unpacking git-core (1:2.10.2-3~ppa1~ubuntu14.04.1) over (1:2.9.3-0ppa1~ubuntu14.04.1) ...
-Preparing to unpack .../heroku-toolbelt_3.43.14_all.deb ...
-Unpacking heroku-toolbelt (3.43.14) over (3.43.9) ...
-Preparing to unpack .../heroku_3.43.14_all.deb ...
-Unpacking heroku (3.43.14) over (3.43.9) ...
-Preparing to unpack .../openssh-sftp-server_1%3a6.6p1-2ubuntu2.8_amd64.deb ...
-Unpacking openssh-sftp-server (1:6.6p1-2ubuntu2.8) over (1:6.6p1-2ubuntu2.7) ...
-Preparing to unpack .../openssh-server_1%3a6.6p1-2ubuntu2.8_amd64.deb ...
-Unpacking openssh-server (1:6.6p1-2ubuntu2.8) over (1:6.6p1-2ubuntu2.7) ...
-Preparing to unpack .../openssh-client_1%3a6.6p1-2ubuntu2.8_amd64.deb ...
-Unpacking openssh-client (1:6.6p1-2ubuntu2.8) over (1:6.6p1-2ubuntu2.7) ...
-Preparing to unpack .../openssl_1.0.1f-1ubuntu2.21_amd64.deb ...
-Unpacking openssl (1.0.1f-1ubuntu2.21) over (1.0.1f-1ubuntu2.19) ...
-Preparing to unpack .../distro-info-data_0.18ubuntu0.6_all.deb ...
-Unpacking distro-info-data (0.18ubuntu0.6) over (0.18ubuntu0.5) ...
-Preparing to unpack .../docker-engine_1.12.3-0~trusty_amd64.deb ...
-+ expr docker : postgresql.*
-0
-+ exit 0
-docker stop/waiting
-Unpacking docker-engine (1.12.3-0~trusty) over (1.12.0-0~trusty) ...
-Preparing to unpack .../grub-pc_2.02~beta2-9ubuntu1.12_amd64.deb ...
-Unpacking grub-pc (2.02~beta2-9ubuntu1.12) over (2.02~beta2-9ubuntu1.8) ...
-Preparing to unpack .../grub-pc-bin_2.02~beta2-9ubuntu1.12_amd64.deb ...
-Unpacking grub-pc-bin (2.02~beta2-9ubuntu1.12) over (2.02~beta2-9ubuntu1.8) ...
-Preparing to unpack .../grub2-common_2.02~beta2-9ubuntu1.12_amd64.deb ...
-Unpacking grub2-common (2.02~beta2-9ubuntu1.12) over (2.02~beta2-9ubuntu1.8) ...
-Preparing to unpack .../grub-common_2.02~beta2-9ubuntu1.12_amd64.deb ...
-+ expr grub-common : postgresql.*
-0
-+ exit 0
-Unpacking grub-common (2.02~beta2-9ubuntu1.12) over (2.02~beta2-9ubuntu1.8) ...
+Unpacking libbind9-90 (1:9.9.5.dfsg-3ubuntu0.10) over (1:9.9.5.dfsg-3ubuntu0.9) ...
+Preparing to unpack .../git_1%3a2.11.0-0ppa3~ubuntu14.04.1_amd64.deb ...
+Unpacking git (1:2.11.0-0ppa3~ubuntu14.04.1) over (1:2.10.2-3~ppa1~ubuntu14.04.1) ...
+Preparing to unpack .../git-man_1%3a2.11.0-0ppa3~ubuntu14.04.1_all.deb ...
+Unpacking git-man (1:2.11.0-0ppa3~ubuntu14.04.1) over (1:2.10.2-3~ppa1~ubuntu14.04.1) ...
+Preparing to unpack .../git-core_1%3a2.11.0-0ppa3~ubuntu14.04.1_all.deb ...
+Unpacking git-core (1:2.11.0-0ppa3~ubuntu14.04.1) over (1:2.10.2-3~ppa1~ubuntu14.04.1) ...
 Preparing to unpack .../imagemagick_8%3a6.7.7.10-6ubuntu3.3_amd64.deb ...
-Unpacking imagemagick (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.1) ...
-Preparing to unpack .../libdbd-mysql-perl_4.025-1ubuntu0.1_amd64.deb ...
-Unpacking libdbd-mysql-perl (4.025-1ubuntu0.1) over (4.025-1) ...
+Unpacking imagemagick (8:6.7.7.10-6ubuntu3.3) over (8:6.7.7.10-6ubuntu3.2) ...
 Preparing to unpack .../linux-libc-dev_3.13.0-103.150_amd64.deb ...
-Unpacking linux-libc-dev:amd64 (3.13.0-103.150) over (3.13.0-93.140) ...
-Preparing to unpack .../mysql-client_5.5.53-0ubuntu0.14.04.1_all.deb ...
-Unpacking mysql-client (5.5.53-0ubuntu0.14.04.1) over (5.5.50-0ubuntu0.14.04.1) ...
-Preparing to unpack .../mysql-client-5.5_5.5.53-0ubuntu0.14.04.1_amd64.deb ...
-Unpacking mysql-client-5.5 (5.5.53-0ubuntu0.14.04.1) over (5.5.50-0ubuntu0.14.04.1) ...
-Preparing to unpack .../mysql-client-core-5.5_5.5.53-0ubuntu0.14.04.1_amd64.deb ...
-Unpacking mysql-client-core-5.5 (5.5.53-0ubuntu0.14.04.1) over (5.5.50-0ubuntu0.14.04.1) ...
-Preparing to unpack .../pollinate_4.24-0ubuntu1~trusty_all.deb ...
-Unpacking pollinate (4.24-0ubuntu1~trusty) over (4.21-0ubuntu1~trusty) ...
+Unpacking linux-libc-dev:amd64 (3.13.0-103.150) over (3.13.0-101.148) ...
 Preparing to unpack .../postgresql-client-9.3_9.3.15-1.pgdg14.04+1_amd64.deb ...
-Unpacking postgresql-client-9.3 (9.3.15-1.pgdg14.04+1) over (9.3.14-0ubuntu0.14.04) ...
-Preparing to unpack .../qemu-utils_2.0.0+dfsg-2ubuntu1.30_amd64.deb ...
-Unpacking qemu-utils (2.0.0+dfsg-2ubuntu1.30) over (2.0.0+dfsg-2ubuntu1.27) ...
-Preparing to unpack .../cloud-init_0.7.5-0ubuntu1.20_all.deb ...
-Unpacking cloud-init (0.7.5-0ubuntu1.20) over (0.7.5-0ubuntu1.18) ...
-Preparing to unpack .../debootstrap_1.0.59ubuntu0.6_all.deb ...
-Unpacking debootstrap (1.0.59ubuntu0.6) over (1.0.59ubuntu0.5) ...
+Unpacking postgresql-client-9.3 (9.3.15-1.pgdg14.04+1) over (9.3.15-0ubuntu0.14.04) ...
 Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Processing triggers for ureadahead (0.100.0-16) ...
 Processing triggers for mime-support (3.54ubuntu1.1) ...
-Processing triggers for ufw (0.34~rc-0ubuntu2) ...
-Processing triggers for install-info (5.2.0.dfsg.1-2) ...
+Processing triggers for ureadahead (0.100.0-16) ...
 Processing triggers for hicolor-icon-theme (0.13-1) ...
-
-(gtk-update-icon-cache:14848): GdkPixbuf-WARNING **: Cannot open pixbuf loader module file '/usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache': No such file or directory
-
-This likely means that your installation is broken.
-Try running the command
-  gdk-pixbuf-query-loaders > /usr/lib/x86_64-linux-gnu/gdk-pixbuf-2.0/2.10.0/loaders.cache
-to make things work again for the time being.
-Setting up libapt-inst1.5:amd64 (1.0.1ubuntu2.15) ...
-Setting up libssl1.0.0:amd64 (1.0.1f-1ubuntu2.21) ...
 Setting up libpython3.4-minimal:amd64 (3.4.3-1ubuntu1~14.04.5) ...
 Setting up python3.4-minimal (3.4.3-1ubuntu1~14.04.5) ...
 Setting up libpython3.4-stdlib:amd64 (3.4.3-1ubuntu1~14.04.5) ...
 Setting up python3.4 (3.4.3-1ubuntu1~14.04.5) ...
-Setting up libssl-doc (1.0.1f-1ubuntu2.21) ...
-Setting up libssl-dev:amd64 (1.0.1f-1ubuntu2.21) ...
-Setting up ntpdate (1:4.2.6.p5+dfsg-3ubuntu2.14.04.10) ...
 Setting up libdbus-1-3:amd64 (1.6.18-0ubuntu4.4) ...
-Setting up libidn11:amd64 (1.28-1ubuntu2.1) ...
-Setting up libidn11-dev (1.28-1ubuntu2.1) ...
-Setting up libcurl3-gnutls:amd64 (7.35.0-1ubuntu2.10) ...
-Setting up libcurl4-gnutls-dev:amd64 (7.35.0-1ubuntu2.10) ...
 Setting up imagemagick-common (8:6.7.7.10-6ubuntu3.3) ...
-Setting up libcurl3:amd64 (7.35.0-1ubuntu2.10) ...
-Setting up curl (7.35.0-1ubuntu2.10) ...
-Setting up libgd3:amd64 (2.1.0-3ubuntu0.5) ...
-Setting up libgdk-pixbuf2.0-common (2.30.7-0ubuntu1.6) ...
-Setting up libgdk-pixbuf2.0-0:amd64 (2.30.7-0ubuntu1.6) ...
-Setting up gir1.2-gdkpixbuf-2.0 (2.30.7-0ubuntu1.6) ...
-Setting up libgdk-pixbuf2.0-dev (2.30.7-0ubuntu1.6) ...
-Setting up libgstreamer1.0-0:amd64 (1.2.4-0ubuntu1.1) ...
-Setting up libharfbuzz0b:amd64 (0.9.27-1ubuntu1.1) ...
-Setting up liblxc1 (1.0.8-0ubuntu0.4) ...
-Setting up python3-lxc (1.0.8-0ubuntu0.4) ...
-Setting up lxc (1.0.8-0ubuntu0.4) ...
-+ expr lxc : postgresql.*
-0
-+ exit 0
-+ expr lxc-net : postgresql.*
-0
-+ exit 0
-Setting up lxc dnsmasq configuration.
-Setting up lxc-templates (1.0.8-0ubuntu0.4) ...
 Setting up libmagickcore5:amd64 (8:6.7.7.10-6ubuntu3.3) ...
 Setting up libmagickwand5:amd64 (8:6.7.7.10-6ubuntu3.3) ...
 Setting up libmagickcore5-extra:amd64 (8:6.7.7.10-6ubuntu3.3) ...
 Setting up libmagickcore-dev (8:6.7.7.10-6ubuntu3.3) ...
 Setting up libmagickwand-dev (8:6.7.7.10-6ubuntu3.3) ...
-Setting up mysql-common (5.5.53-0ubuntu0.14.04.1) ...
-Setting up libmysqlclient18:amd64 (5.5.53-0ubuntu0.14.04.1) ...
-Setting up libmysqlclient-dev (5.5.53-0ubuntu0.14.04.1) ...
 Setting up libnl-3-200:amd64 (3.2.21-1ubuntu4) ...
 Setting up libnl-genl-3-200:amd64 (3.2.21-1ubuntu4) ...
 Setting up libpq5:amd64 (9.6.1-1.pgdg14.04+1) ...
@@ -893,31 +623,8 @@ Setting up python2.7-minimal (2.7.6-8ubuntu0.3) ...
 Setting up libpython2.7-stdlib:amd64 (2.7.6-8ubuntu0.3) ...
 Setting up python2.7 (2.7.6-8ubuntu0.3) ...
 Setting up libpython2.7:amd64 (2.7.6-8ubuntu0.3) ...
-Setting up ntp (1:4.2.6.p5+dfsg-3ubuntu2.14.04.10) ...
-Installing new version of config file /etc/cron.daily/ntp ...
-+ expr ntp : postgresql.*
-0
-+ exit 0
- * Starting NTP server ntpd
-   ...done.
-Setting up lsb-release (4.1+Debian11ubuntu6.2) ...
-Setting up python3-update-manager (1:0.196.22) ...
-Setting up update-manager-core (1:0.196.22) ...
-Setting up update-notifier-common (0.154.1ubuntu2) ...
-Setting up apt-utils (1.0.1ubuntu2.15) ...
 Setting up isc-dhcp-common (4.2.4-7ubuntu12.8) ...
 Setting up isc-dhcp-client (4.2.4-7ubuntu12.8) ...
-
-Configuration file '/etc/apparmor.d/sbin.dhclient'
- ==> Deleted (by you or by a script) since installation.
- ==> Package distributor has shipped an updated version.
- ==> Keeping old config file as default.
-Setting up sudo (1.8.9p5-1ubuntu1.3) ...
-
-Configuration file '/etc/sudoers'
- ==> Modified (by you or by a script) since installation.
- ==> Package distributor has shipped an updated version.
- ==> Keeping old config file as default.
 Setting up vim-common (2:7.4.052-1ubuntu3.1) ...
 Setting up vim-runtime (2:7.4.052-1ubuntu3.1) ...
 Processing /usr/share/vim/addons/doc
@@ -925,9 +632,6 @@ Setting up vim (2:7.4.052-1ubuntu3.1) ...
 Setting up vim-tiny (2:7.4.052-1ubuntu3.1) ...
 Setting up libklibc (2.0.3-0ubuntu1.14.04.2) ...
 Setting up klibc-utils (2.0.3-0ubuntu1.14.04.2) ...
-Setting up initramfs-tools-bin (0.103ubuntu4.4) ...
-Setting up initramfs-tools (0.103ubuntu4.4) ...
-update-initramfs: deferring update (trigger activated)
 Setting up dbus (1.6.18-0ubuntu4.4) ...
 Installing new version of config file /etc/dbus-1/system.conf ...
 + expr dbus : postgresql.*
@@ -935,7 +639,6 @@ Installing new version of config file /etc/dbus-1/system.conf ...
 + exit 0
 Setting up libaccountsservice0:amd64 (0.6.35-0ubuntu7.3) ...
 Setting up accountsservice (0.6.35-0ubuntu7.3) ...
-Setting up apt-transport-https (1.0.1ubuntu2.15) ...
 Setting up libisc95 (1:9.9.5.dfsg-3ubuntu0.10) ...
 Setting up libdns100 (1:9.9.5.dfsg-3ubuntu0.10) ...
 Setting up libisccc90 (1:9.9.5.dfsg-3ubuntu0.10) ...
@@ -944,63 +647,13 @@ Setting up libbind9-90 (1:9.9.5.dfsg-3ubuntu0.10) ...
 Setting up liblwres90 (1:9.9.5.dfsg-3ubuntu0.10) ...
 Setting up bind9-host (1:9.9.5.dfsg-3ubuntu0.10) ...
 Setting up dnsutils (1:9.9.5.dfsg-3ubuntu0.10) ...
-Setting up git-man (1:2.10.2-3~ppa1~ubuntu14.04.1) ...
-Setting up git (1:2.10.2-3~ppa1~ubuntu14.04.1) ...
-Setting up git-core (1:2.10.2-3~ppa1~ubuntu14.04.1) ...
-Setting up heroku (3.43.14) ...
-Setting up heroku-toolbelt (3.43.14) ...
-Setting up openssh-client (1:6.6p1-2ubuntu2.8) ...
-Setting up openssh-sftp-server (1:6.6p1-2ubuntu2.8) ...
-Setting up openssh-server (1:6.6p1-2ubuntu2.8) ...
-+ expr ssh : postgresql.*
-0
-+ exit 0
-ssh stop/waiting
-ssh start/running, process 15501
-Setting up openssl (1.0.1f-1ubuntu2.21) ...
-Setting up distro-info-data (0.18ubuntu0.6) ...
-Setting up docker-engine (1.12.3-0~trusty) ...
-Installing new version of config file /etc/init.d/docker ...
-Installing new version of config file /etc/bash_completion.d/docker ...
-+ expr docker : postgresql.*
-0
-+ exit 0
-docker start/running, process 15608
-Setting up grub-common (2.02~beta2-9ubuntu1.12) ...
-Installing new version of config file /etc/grub.d/30_uefi-firmware ...
-+ expr grub-common : postgresql.*
-0
-+ exit 0
-Setting up grub2-common (2.02~beta2-9ubuntu1.12) ...
-Setting up grub-pc-bin (2.02~beta2-9ubuntu1.12) ...
-Setting up grub-pc (2.02~beta2-9ubuntu1.12) ...
-Replacing config file /etc/default/grub with new version
-Installing for i386-pc platform.
-Installation finished. No error reported.
-Generating grub configuration file ...
-Found linux image: /boot/vmlinuz-3.19.0-66-generic
-Found initrd image: /boot/initrd.img-3.19.0-66-generic
-Found linux image: /boot/vmlinuz-3.19.0-64-generic
-Found initrd image: /boot/initrd.img-3.19.0-64-generic
-  No volume groups found
-done
+Setting up git-man (1:2.11.0-0ppa3~ubuntu14.04.1) ...
+Setting up git (1:2.11.0-0ppa3~ubuntu14.04.1) ...
+Setting up git-core (1:2.11.0-0ppa3~ubuntu14.04.1) ...
 Setting up imagemagick (8:6.7.7.10-6ubuntu3.3) ...
-Setting up libdbd-mysql-perl (4.025-1ubuntu0.1) ...
 Setting up linux-libc-dev:amd64 (3.13.0-103.150) ...
-Setting up mysql-client-core-5.5 (5.5.53-0ubuntu0.14.04.1) ...
-Setting up mysql-client-5.5 (5.5.53-0ubuntu0.14.04.1) ...
-Setting up mysql-client (5.5.53-0ubuntu0.14.04.1) ...
-Setting up pollinate (4.24-0ubuntu1~trusty) ...
-Installing new version of config file /etc/default/pollinate ...
 Setting up postgresql-client-9.3 (9.3.15-1.pgdg14.04+1) ...
-Setting up qemu-utils (2.0.0+dfsg-2ubuntu1.30) ...
-Setting up cloud-init (0.7.5-0ubuntu1.20) ...
-Leaving 'diversion of /etc/init/ureadahead.conf to /etc/init/ureadahead.conf.disabled by cloud-init'
-Setting up debootstrap (1.0.59ubuntu0.6) ...
 Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
-Processing triggers for initramfs-tools (0.103ubuntu4.4) ...
-update-initramfs: Not updating initramfs.
-Processing triggers for ureadahead (0.100.0-16) ...
 + apt-get --assume-yes dist-upgrade
 Reading package lists...
 Building dependency tree...
@@ -1009,31 +662,31 @@ The following package was automatically installed and is no longer required:
   postgresql-client-9.3
 Use 'apt-get autoremove' to remove it.
 The following NEW packages will be installed:
-  linux-image-3.19.0-75-generic linux-image-extra-3.19.0-75-generic
-  pgdg-keyring postgresql-client-9.6
+  linux-image-4.4.0-51-generic linux-image-extra-4.4.0-51-generic pgdg-keyring
+  postgresql-client-9.6
 The following packages will be upgraded:
-  linux-image-generic-lts-vivid postgresql-client postgresql-client-common
+  linux-image-generic-lts-xenial postgresql-client postgresql-client-common
 3 upgraded, 4 newly installed, 0 to remove and 0 not upgraded.
-Need to get 56.4 MB of archives.
-After this operation, 213 MB of additional disk space will be used.
-Get:1 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-image-3.19.0-75-generic amd64 3.19.0-75.83~14.04.1 [16.8 MB]
+Need to get 57.8 MB of archives.
+After this operation, 219 MB of additional disk space will be used.
+Get:1 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-image-4.4.0-51-generic amd64 4.4.0-51.72~14.04.1 [18.2 MB]
 Get:2 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main pgdg-keyring all 2014.1 [5898 B]
-Get:3 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-image-extra-3.19.0-75-generic amd64 3.19.0-75.83~14.04.1 [38.3 MB]
-Get:4 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client-common all 177.pgdg14.04+1 [78.0 kB]
-Get:5 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client-9.6 amd64 9.6.1-1.pgdg14.04+1 [1213 kB]
-Get:6 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-image-generic-lts-vivid amd64 3.19.0.75.57 [2354 B]
-Get:7 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client all 9.6+177.pgdg14.04+1 [54.9 kB]
-Fetched 56.4 MB in 1s (35.3 MB/s)
-Selecting previously unselected package linux-image-3.19.0-75-generic.
-(Reading database ... 78632 files and directories currently installed.)
-Preparing to unpack .../linux-image-3.19.0-75-generic_3.19.0-75.83~14.04.1_amd64.deb ...
+Get:3 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client-common all 177.pgdg14.04+1 [78.0 kB]
+Get:4 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client-9.6 amd64 9.6.1-1.pgdg14.04+1 [1213 kB]
+Get:5 http://apt.postgresql.org/pub/repos/apt/ trusty-pgdg/main postgresql-client all 9.6+177.pgdg14.04+1 [54.9 kB]
+Get:6 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-image-extra-4.4.0-51-generic amd64 4.4.0-51.72~14.04.1 [38.3 MB]
+Get:7 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main linux-image-generic-lts-xenial amd64 4.4.0.51.38 [2308 B]
+Fetched 57.8 MB in 1s (48.9 MB/s)
+Selecting previously unselected package linux-image-4.4.0-51-generic.
+(Reading database ... 78024 files and directories currently installed.)
+Preparing to unpack .../linux-image-4.4.0-51-generic_4.4.0-51.72~14.04.1_amd64.deb ...
 Done.
-Unpacking linux-image-3.19.0-75-generic (3.19.0-75.83~14.04.1) ...
-Selecting previously unselected package linux-image-extra-3.19.0-75-generic.
-Preparing to unpack .../linux-image-extra-3.19.0-75-generic_3.19.0-75.83~14.04.1_amd64.deb ...
-Unpacking linux-image-extra-3.19.0-75-generic (3.19.0-75.83~14.04.1) ...
-Preparing to unpack .../linux-image-generic-lts-vivid_3.19.0.75.57_amd64.deb ...
-Unpacking linux-image-generic-lts-vivid (3.19.0.75.57) over (3.19.0.66.48) ...
+Unpacking linux-image-4.4.0-51-generic (4.4.0-51.72~14.04.1) ...
+Selecting previously unselected package linux-image-extra-4.4.0-51-generic.
+Preparing to unpack .../linux-image-extra-4.4.0-51-generic_4.4.0-51.72~14.04.1_amd64.deb ...
+Unpacking linux-image-extra-4.4.0-51-generic (4.4.0-51.72~14.04.1) ...
+Preparing to unpack .../linux-image-generic-lts-xenial_4.4.0.51.38_amd64.deb ...
+Unpacking linux-image-generic-lts-xenial (4.4.0.51.38) over (4.4.0.47.34) ...
 Selecting previously unselected package pgdg-keyring.
 Preparing to unpack .../pgdg-keyring_2014.1_all.deb ...
 Unpacking pgdg-keyring (2014.1) ...
@@ -1045,40 +698,40 @@ Unpacking postgresql-client-9.6 (9.6.1-1.pgdg14.04+1) ...
 Preparing to unpack .../postgresql-client_9.6+177.pgdg14.04+1_all.deb ...
 Unpacking postgresql-client (9.6+177.pgdg14.04+1) over (9.3+154ubuntu1) ...
 Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
-Setting up linux-image-3.19.0-75-generic (3.19.0-75.83~14.04.1) ...
+Setting up linux-image-4.4.0-51-generic (4.4.0-51.72~14.04.1) ...
 Running depmod.
 update-initramfs: deferring update (hook will be called later)
 Examining /etc/kernel/postinst.d.
-run-parts: executing /etc/kernel/postinst.d/apt-auto-removal 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
-run-parts: executing /etc/kernel/postinst.d/initramfs-tools 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
-update-initramfs: Generating /boot/initrd.img-3.19.0-75-generic
-run-parts: executing /etc/kernel/postinst.d/update-notifier 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
-run-parts: executing /etc/kernel/postinst.d/zz-update-grub 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
+run-parts: executing /etc/kernel/postinst.d/apt-auto-removal 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
+run-parts: executing /etc/kernel/postinst.d/initramfs-tools 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
+update-initramfs: Generating /boot/initrd.img-4.4.0-51-generic
+run-parts: executing /etc/kernel/postinst.d/update-notifier 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
+run-parts: executing /etc/kernel/postinst.d/zz-update-grub 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
 Generating grub configuration file ...
-Found linux image: /boot/vmlinuz-3.19.0-75-generic
-Found initrd image: /boot/initrd.img-3.19.0-75-generic
-Found linux image: /boot/vmlinuz-3.19.0-66-generic
-Found initrd image: /boot/initrd.img-3.19.0-66-generic
-Found linux image: /boot/vmlinuz-3.19.0-64-generic
-Found initrd image: /boot/initrd.img-3.19.0-64-generic
+Found linux image: /boot/vmlinuz-4.4.0-51-generic
+Found initrd image: /boot/initrd.img-4.4.0-51-generic
+Found linux image: /boot/vmlinuz-4.4.0-47-generic
+Found initrd image: /boot/initrd.img-4.4.0-47-generic
+Found linux image: /boot/vmlinuz-4.4.0-45-generic
+Found initrd image: /boot/initrd.img-4.4.0-45-generic
   No volume groups found
 done
-Setting up linux-image-extra-3.19.0-75-generic (3.19.0-75.83~14.04.1) ...
-run-parts: executing /etc/kernel/postinst.d/apt-auto-removal 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
-run-parts: executing /etc/kernel/postinst.d/initramfs-tools 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
-update-initramfs: Generating /boot/initrd.img-3.19.0-75-generic
-run-parts: executing /etc/kernel/postinst.d/update-notifier 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
-run-parts: executing /etc/kernel/postinst.d/zz-update-grub 3.19.0-75-generic /boot/vmlinuz-3.19.0-75-generic
+Setting up linux-image-extra-4.4.0-51-generic (4.4.0-51.72~14.04.1) ...
+run-parts: executing /etc/kernel/postinst.d/apt-auto-removal 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
+run-parts: executing /etc/kernel/postinst.d/initramfs-tools 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
+update-initramfs: Generating /boot/initrd.img-4.4.0-51-generic
+run-parts: executing /etc/kernel/postinst.d/update-notifier 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
+run-parts: executing /etc/kernel/postinst.d/zz-update-grub 4.4.0-51-generic /boot/vmlinuz-4.4.0-51-generic
 Generating grub configuration file ...
-Found linux image: /boot/vmlinuz-3.19.0-75-generic
-Found initrd image: /boot/initrd.img-3.19.0-75-generic
-Found linux image: /boot/vmlinuz-3.19.0-66-generic
-Found initrd image: /boot/initrd.img-3.19.0-66-generic
-Found linux image: /boot/vmlinuz-3.19.0-64-generic
-Found initrd image: /boot/initrd.img-3.19.0-64-generic
+Found linux image: /boot/vmlinuz-4.4.0-51-generic
+Found initrd image: /boot/initrd.img-4.4.0-51-generic
+Found linux image: /boot/vmlinuz-4.4.0-47-generic
+Found initrd image: /boot/initrd.img-4.4.0-47-generic
+Found linux image: /boot/vmlinuz-4.4.0-45-generic
+Found initrd image: /boot/initrd.img-4.4.0-45-generic
   No volume groups found
 done
-Setting up linux-image-generic-lts-vivid (3.19.0.75.57) ...
+Setting up linux-image-generic-lts-xenial (4.4.0.51.38) ...
 Setting up pgdg-keyring (2014.1) ...
 Removing apt.postgresql.org key from trusted.gpg: OK
 Importing apt.postgresql.org key: OK
@@ -1091,33 +744,37 @@ Setting up postgresql-client (9.6+177.pgdg14.04+1) ...
 Reading package lists...
 Building dependency tree...
 Reading state information...
-debootstrap is already the newest version.
-debootstrap set to manually installed.
 The following packages were automatically installed and are no longer required:
-  linux-image-3.19.0-64-generic linux-image-extra-3.19.0-64-generic
+  linux-image-4.4.0-45-generic linux-image-extra-4.4.0-45-generic
   postgresql-client-9.3
 Use 'apt-get autoremove' to remove them.
 The following extra packages will be installed:
   libboost-filesystem1.54.0 libboost-program-options1.54.0
-  libboost-regex1.54.0 schroot-common
+  libboost-regex1.54.0 libboost-system1.54.0 schroot-common
 Suggested packages:
   aufs-modules unionfs-modules qemu-user-static
 The following NEW packages will be installed:
-  debian-archive-keyring debian-keyring libboost-filesystem1.54.0
-  libboost-program-options1.54.0 libboost-regex1.54.0 schroot schroot-common
-0 upgraded, 7 newly installed, 0 to remove and 0 not upgraded.
+  debian-archive-keyring debian-keyring debootstrap libboost-filesystem1.54.0
+  libboost-program-options1.54.0 libboost-regex1.54.0 libboost-system1.54.0
+  schroot schroot-common
+0 upgraded, 9 newly installed, 0 to remove and 0 not upgraded.
 Need to get 49.7 MB of archives.
-After this operation, 60.6 MB of additional disk space will be used.
-Get:1 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-filesystem1.54.0 amd64 1.54.0-4ubuntu3.1 [34.2 kB]
-Get:2 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-program-options1.54.0 amd64 1.54.0-4ubuntu3.1 [115 kB]
-Get:3 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-regex1.54.0 amd64 1.54.0-4ubuntu3.1 [261 kB]
-Get:4 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty/universe debian-archive-keyring all 2012.4 [34.4 kB]
-Get:5 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty/universe debian-keyring all 2014.03.03 [48.7 MB]
-Get:6 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main schroot-common all 1.6.8-1ubuntu1.1 [4298 B]
-Get:7 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main schroot amd64 1.6.8-1ubuntu1.1 [554 kB]
-Fetched 49.7 MB in 1s (39.2 MB/s)
+After this operation, 60.9 MB of additional disk space will be used.
+Get:1 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-system1.54.0 amd64 1.54.0-4ubuntu3.1 [10.1 kB]
+Get:2 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-filesystem1.54.0 amd64 1.54.0-4ubuntu3.1 [34.2 kB]
+Get:3 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-program-options1.54.0 amd64 1.54.0-4ubuntu3.1 [115 kB]
+Get:4 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main libboost-regex1.54.0 amd64 1.54.0-4ubuntu3.1 [261 kB]
+Get:5 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty/universe debian-archive-keyring all 2012.4 [34.4 kB]
+Get:6 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty/universe debian-keyring all 2014.03.03 [48.7 MB]
+Get:7 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main schroot-common all 1.6.8-1ubuntu1.1 [4298 B]
+Get:8 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main schroot amd64 1.6.8-1ubuntu1.1 [554 kB]
+Get:9 http://us-central1.gce.archive.ubuntu.com/ubuntu/ trusty-updates/main debootstrap all 1.0.59ubuntu0.6 [29.7 kB]
+Fetched 49.7 MB in 1s (42.1 MB/s)
+Selecting previously unselected package libboost-system1.54.0:amd64.
+(Reading database ... 83875 files and directories currently installed.)
+Preparing to unpack .../libboost-system1.54.0_1.54.0-4ubuntu3.1_amd64.deb ...
+Unpacking libboost-system1.54.0:amd64 (1.54.0-4ubuntu3.1) ...
 Selecting previously unselected package libboost-filesystem1.54.0:amd64.
-(Reading database ... 84127 files and directories currently installed.)
 Preparing to unpack .../libboost-filesystem1.54.0_1.54.0-4ubuntu3.1_amd64.deb ...
 Unpacking libboost-filesystem1.54.0:amd64 (1.54.0-4ubuntu3.1) ...
 Selecting previously unselected package libboost-program-options1.54.0:amd64.
@@ -1138,8 +795,12 @@ Unpacking schroot-common (1.6.8-1ubuntu1.1) ...
 Selecting previously unselected package schroot.
 Preparing to unpack .../schroot_1.6.8-1ubuntu1.1_amd64.deb ...
 Unpacking schroot (1.6.8-1ubuntu1.1) ...
+Selecting previously unselected package debootstrap.
+Preparing to unpack .../debootstrap_1.0.59ubuntu0.6_all.deb ...
+Unpacking debootstrap (1.0.59ubuntu0.6) ...
 Processing triggers for man-db (2.6.7.1-1ubuntu1) ...
 Processing triggers for ureadahead (0.100.0-16) ...
+Setting up libboost-system1.54.0:amd64 (1.54.0-4ubuntu3.1) ...
 Setting up libboost-filesystem1.54.0:amd64 (1.54.0-4ubuntu3.1) ...
 Setting up libboost-program-options1.54.0:amd64 (1.54.0-4ubuntu3.1) ...
 Setting up libboost-regex1.54.0:amd64 (1.54.0-4ubuntu3.1) ...
@@ -1147,6 +808,7 @@ Setting up debian-archive-keyring (2012.4) ...
 Setting up debian-keyring (2014.03.03) ...
 Setting up schroot-common (1.6.8-1ubuntu1.1) ...
 Setting up schroot (1.6.8-1ubuntu1.1) ...
+Setting up debootstrap (1.0.59ubuntu0.6) ...
 Processing triggers for libc-bin (2.19-0ubuntu6.9) ...
 Processing triggers for ureadahead (0.100.0-16) ...
 + apt_get_install_post
@@ -1155,7 +817,7 @@ Reading package lists...
 Building dependency tree...
 Reading state information...
 The following packages were automatically installed and are no longer required:
-  linux-image-3.19.0-64-generic linux-image-extra-3.19.0-64-generic
+  linux-image-4.4.0-45-generic linux-image-extra-4.4.0-45-generic
   postgresql-client-9.3
 Use 'apt-get autoremove' to remove them.
 0 upgraded, 0 newly installed, 0 to remove and 0 not upgraded.
@@ -1164,36 +826,36 @@ Reading package lists...
 Building dependency tree...
 Reading state information...
 The following packages will be REMOVED:
-  linux-image-3.19.0-64-generic linux-image-extra-3.19.0-64-generic
+  linux-image-4.4.0-45-generic linux-image-extra-4.4.0-45-generic
   postgresql-client-9.3
 0 upgraded, 0 newly installed, 3 to remove and 0 not upgraded.
-After this operation, 212 MB disk space will be freed.
-(Reading database ... 84253 files and directories currently installed.)
-Removing linux-image-extra-3.19.0-64-generic (3.19.0-64.72~14.04.1) ...
-run-parts: executing /etc/kernel/postinst.d/apt-auto-removal 3.19.0-64-generic /boot/vmlinuz-3.19.0-64-generic
-run-parts: executing /etc/kernel/postinst.d/initramfs-tools 3.19.0-64-generic /boot/vmlinuz-3.19.0-64-generic
-update-initramfs: Generating /boot/initrd.img-3.19.0-64-generic
-run-parts: executing /etc/kernel/postinst.d/update-notifier 3.19.0-64-generic /boot/vmlinuz-3.19.0-64-generic
-run-parts: executing /etc/kernel/postinst.d/zz-update-grub 3.19.0-64-generic /boot/vmlinuz-3.19.0-64-generic
+After this operation, 218 MB disk space will be freed.
+(Reading database ... 84061 files and directories currently installed.)
+Removing linux-image-extra-4.4.0-45-generic (4.4.0-45.66~14.04.1) ...
+run-parts: executing /etc/kernel/postinst.d/apt-auto-removal 4.4.0-45-generic /boot/vmlinuz-4.4.0-45-generic
+run-parts: executing /etc/kernel/postinst.d/initramfs-tools 4.4.0-45-generic /boot/vmlinuz-4.4.0-45-generic
+update-initramfs: Generating /boot/initrd.img-4.4.0-45-generic
+run-parts: executing /etc/kernel/postinst.d/update-notifier 4.4.0-45-generic /boot/vmlinuz-4.4.0-45-generic
+run-parts: executing /etc/kernel/postinst.d/zz-update-grub 4.4.0-45-generic /boot/vmlinuz-4.4.0-45-generic
 Generating grub configuration file ...
-Found linux image: /boot/vmlinuz-3.19.0-75-generic
-Found initrd image: /boot/initrd.img-3.19.0-75-generic
-Found linux image: /boot/vmlinuz-3.19.0-66-generic
-Found initrd image: /boot/initrd.img-3.19.0-66-generic
-Found linux image: /boot/vmlinuz-3.19.0-64-generic
-Found initrd image: /boot/initrd.img-3.19.0-64-generic
+Found linux image: /boot/vmlinuz-4.4.0-51-generic
+Found initrd image: /boot/initrd.img-4.4.0-51-generic
+Found linux image: /boot/vmlinuz-4.4.0-47-generic
+Found initrd image: /boot/initrd.img-4.4.0-47-generic
+Found linux image: /boot/vmlinuz-4.4.0-45-generic
+Found initrd image: /boot/initrd.img-4.4.0-45-generic
   No volume groups found
 done
-Removing linux-image-3.19.0-64-generic (3.19.0-64.72~14.04.1) ...
+Removing linux-image-4.4.0-45-generic (4.4.0-45.66~14.04.1) ...
 Examining /etc/kernel/postrm.d .
-run-parts: executing /etc/kernel/postrm.d/initramfs-tools 3.19.0-64-generic /boot/vmlinuz-3.19.0-64-generic
-update-initramfs: Deleting /boot/initrd.img-3.19.0-64-generic
-run-parts: executing /etc/kernel/postrm.d/zz-update-grub 3.19.0-64-generic /boot/vmlinuz-3.19.0-64-generic
+run-parts: executing /etc/kernel/postrm.d/initramfs-tools 4.4.0-45-generic /boot/vmlinuz-4.4.0-45-generic
+update-initramfs: Deleting /boot/initrd.img-4.4.0-45-generic
+run-parts: executing /etc/kernel/postrm.d/zz-update-grub 4.4.0-45-generic /boot/vmlinuz-4.4.0-45-generic
 Generating grub configuration file ...
-Found linux image: /boot/vmlinuz-3.19.0-75-generic
-Found initrd image: /boot/initrd.img-3.19.0-75-generic
-Found linux image: /boot/vmlinuz-3.19.0-66-generic
-Found initrd image: /boot/initrd.img-3.19.0-66-generic
+Found linux image: /boot/vmlinuz-4.4.0-51-generic
+Found initrd image: /boot/initrd.img-4.4.0-51-generic
+Found linux image: /boot/vmlinuz-4.4.0-47-generic
+Found initrd image: /boot/initrd.img-4.4.0-47-generic
   No volume groups found
 done
 Removing postgresql-client-9.3 (9.3.15-1.pgdg14.04+1) ...
@@ -1282,7 +944,7 @@ Removing postgresql-client-9.3 (9.3.15-1.pgdg14.04+1) ...
 + id --group --name root
 + readonly CURRENT_GROUP=root
 + hostname
-+ readonly CURRENT_HOST=testing-gce-56acc1dc-99a2-419c-a18b-c4d8dd94ce64
++ readonly CURRENT_HOST=testing-gce-eb26249e-ba7f-4772-b056-cc55527cee93
 + return 0
 + configure_chroot travis travis
 + readonly CHROOT_USER=travis
@@ -1300,8 +962,8 @@ Removing postgresql-client-9.3 (9.3.15-1.pgdg14.04+1) ...
 + test root != root
 + dirname /home/travis/chroot/unstable_amd64_build
 + mkdir --parent /home/travis/chroot
-+ tee /etc/schroot/chroot.d/unstable_amd64_build.conf
 + cat
++ tee /etc/schroot/chroot.d/unstable_amd64_build.conf
 [unstable_amd64_build]
 description=Debian unstable amd64 for build (minbase)
 type=directory
@@ -1476,10 +1138,10 @@ I: Retrieving login 1%3a4.2-3.3
 I: Validating login 1%3a4.2-3.3
 I: Retrieving passwd 1%3a4.2-3.3
 I: Validating passwd 1%3a4.2-3.3
-I: Retrieving libsystemd0 232-6
-I: Validating libsystemd0 232-6
-I: Retrieving libudev1 232-6
-I: Validating libudev1 232-6
+I: Retrieving libsystemd0 232-7
+I: Validating libsystemd0 232-7
+I: Retrieving libudev1 232-7
+I: Validating libudev1 232-7
 I: Retrieving sysvinit-utils 2.88dsf-59.8
 I: Validating sysvinit-utils 2.88dsf-59.8
 I: Retrieving tar 1.29b-1.1
@@ -1759,8 +1421,8 @@ I: Base system installed successfully.
 + tee /home/travis/chroot/unstable_amd64_build/etc/apt/apt.conf.d/01norecommend
 APT::Install-Recommends "0";
 APT::Install-Suggests "0";
-+ cat
 + tee /home/travis/chroot/unstable_amd64_build/etc/apt/apt.conf.d/02force-conf
++ cat
 DPkg::options { "--force-confdef"; "--force-confnew"; }
 + return 0
 + return 0
@@ -1844,7 +1506,7 @@ DPkg::options { "--force-confdef"; "--force-confnew"; }
 + id --group --name root
 + readonly CURRENT_GROUP=root
 + hostname
-+ readonly CURRENT_HOST=testing-gce-56acc1dc-99a2-419c-a18b-c4d8dd94ce64
++ readonly CURRENT_HOST=testing-gce-eb26249e-ba7f-4772-b056-cc55527cee93
 + return 0
 + return 0
 + test root != root
@@ -1873,8 +1535,8 @@ E: gnupg, gnupg2 and gnupg1 do not seem to be installed, but one of them is requ
 INFO: 0: apt-key: error
 + apt-get update
 Get:1 http://deb.debian.org/debian unstable InRelease [223 kB]
-Get:2 http://deb.debian.org/debian unstable/main Translation-en [5579 kB]
-Fetched 5802 kB in 2s (1988 kB/s)
+Get:2 http://deb.debian.org/debian unstable/main Translation-en [5582 kB]
+Fetched 5805 kB in 3s (1558 kB/s)
 Reading package lists...
 W: No sandbox user '_apt' on the system, can not drop privileges
 + apt-get --assume-yes upgrade
@@ -2365,7 +2027,7 @@ Get:290 http://deb.debian.org/debian unstable/main amd64 libxml2-utils amd64 2.9
 Get:291 http://deb.debian.org/debian unstable/main amd64 publican all 4.3.2-1 [2640 kB]
 Get:292 http://deb.debian.org/debian unstable/main amd64 publican-debian all 0.3 [14.5 kB]
 debconf: delaying package configuration, since apt-utils is not installed
-Fetched 135 MB in 28s (4782 kB/s)
+Fetched 135 MB in 8s (16.0 MB/s)
 Selecting previously unselected package perl-modules-5.24.
 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 6297 files and directories currently installed.)
 Preparing to unpack .../000-perl-modules-5.24_5.24.1~rc4-1_all.deb ...
@@ -3571,179 +3233,179 @@ update-alternatives: using /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/servertool 
 update-alternatives: using /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/tnameserv to provide /usr/bin/tnameserv (tnameserv) in auto mode
 update-alternatives: using /usr/lib/jvm/java-8-openjdk-amd64/jre/lib/jexec to provide /usr/bin/jexec (jexec) in auto mode
 Setting up ca-certificates-java (20161107) ...
-Adding debian:Microsec_e-Szigno_Root_CA_2009.pem
-Adding debian:Verisign_Class_3_Public_Primary_Certification_Authority.pem
-Adding debian:Entrust_Root_Certification_Authority_-_G2.pem
-Adding debian:IGC_A.pem
-Adding debian:Certum_Trusted_Network_CA.pem
-Adding debian:QuoVadis_Root_CA.pem
-Adding debian:SwissSign_Gold_CA_-_G2.pem
-Adding debian:UTN_USERFirst_Email_Root_CA.pem
-Adding debian:Verisign_Class_2_Public_Primary_Certification_Authority_-_G3.pem
-Adding debian:Camerfirma_Global_Chambersign_Root.pem
-Adding debian:Equifax_Secure_Global_eBusiness_CA.pem
-Adding debian:CA_Disig_Root_R1.pem
-Adding debian:Hellenic_Academic_and_Research_Institutions_RootCA_2015.pem
-Adding debian:ePKI_Root_Certification_Authority.pem
-Adding debian:Staat_der_Nederlanden_Root_CA_-_G2.pem
-Adding debian:T-TeleSec_GlobalRoot_Class_2.pem
-Adding debian:SwissSign_Platinum_CA_-_G2.pem
-Adding debian:GlobalSign_ECC_Root_CA_-_R5.pem
-Adding debian:ISRG_Root_X1.pem
-Adding debian:S-TRUST_Authentication_and_Encryption_Root_CA_2005_PN.pem
-Adding debian:Entrust_Root_Certification_Authority.pem
-Adding debian:DigiCert_Assured_ID_Root_G3.pem
-Adding debian:Network_Solutions_Certificate_Authority.pem
-Adding debian:UTN_USERFirst_Hardware_Root_CA.pem
-Adding debian:EBG_Elektronik_Sertifika_Hizmet_Sağlayıcısı.pem
-Adding debian:Izenpe.com.pem
-Adding debian:IdenTrust_Public_Sector_Root_CA_1.pem
-Adding debian:Certum_Trusted_Network_CA_2.pem
-Adding debian:GeoTrust_Global_CA.pem
-Adding debian:CA_Disig_Root_R2.pem
-Adding debian:Hellenic_Academic_and_Research_Institutions_ECC_RootCA_2015.pem
-Adding debian:Verisign_Class_2_Public_Primary_Certification_Authority_-_G2.pem
-Adding debian:Comodo_AAA_Services_root.pem
-Adding debian:GeoTrust_Primary_Certification_Authority_-_G2.pem
-Adding debian:Certplus_Root_CA_G2.pem
-Adding debian:Verisign_Class_1_Public_Primary_Certification_Authority_-_G3.pem
-Adding debian:Camerfirma_Chambers_of_Commerce_Root.pem
-Adding debian:AddTrust_Low-Value_Services_Root.pem
-Adding debian:AddTrust_Qualified_Certificates_Root.pem
-Adding debian:CNNIC_ROOT.pem
-Adding debian:D-TRUST_Root_Class_3_CA_2_2009.pem
-Adding debian:DigiCert_Global_Root_G2.pem
-Adding debian:WellsSecure_Public_Root_Certificate_Authority.pem
-Adding debian:Security_Communication_EV_RootCA1.pem
-Adding debian:Visa_eCommerce_Root.pem
-Adding debian:ApplicationCA_-_Japanese_Government.pem
-Adding debian:VeriSign_Class_3_Public_Primary_Certification_Authority_-_G5.pem
-Adding debian:Global_Chambersign_Root_-_2008.pem
-Adding debian:GeoTrust_Primary_Certification_Authority_-_G3.pem
-Adding debian:AffirmTrust_Commercial.pem
-Adding debian:Entrust_Root_Certification_Authority_-_EC1.pem
-Adding debian:VeriSign_Class_3_Public_Primary_Certification_Authority_-_G4.pem
-Adding debian:QuoVadis_Root_CA_2.pem
-Adding debian:GeoTrust_Universal_CA_2.pem
-Adding debian:TÜBİTAK_UEKAE_Kök_Sertifika_Hizmet_Sağlayıcısı_-_Sürüm_3.pem
-Adding debian:PSCProcert.pem
-Adding debian:Swisscom_Root_EV_CA_2.pem
-Adding debian:Actalis_Authentication_Root_CA.pem
-Adding debian:Certplus_Class_2_Primary_CA.pem
-Adding debian:IdenTrust_Commercial_Root_CA_1.pem
-Adding debian:thawte_Primary_Root_CA_-_G2.pem
-Adding debian:certSIGN_ROOT_CA.pem
-Adding debian:CA_WoSign_ECC_Root.pem
-Adding debian:Certinomis_-_Autorité_Racine.pem
-Adding debian:DigiCert_Global_Root_G3.pem
-Adding debian:China_Internet_Network_Information_Center_EV_Certificates_Root.pem
-Adding debian:TWCA_Global_Root_CA.pem
-Adding debian:Security_Communication_Root_CA.pem
-Adding debian:Entrust.net_Premium_2048_Secure_Server_CA.pem
-Adding debian:TWCA_Root_Certification_Authority.pem
-Adding debian:Comodo_Secure_Services_root.pem
-Adding debian:Sonera_Class_2_Root_CA.pem
-Adding debian:NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem
-Adding debian:ACEDICOM_Root.pem
-Adding debian:Certum_Root_CA.pem
-Adding debian:OISTE_WISeKey_Global_Root_GB_CA.pem
-Adding debian:Juur-SK.pem
-Adding debian:Baltimore_CyberTrust_Root.pem
-Adding debian:WoSign_China.pem
-Adding debian:SecureSign_RootCA11.pem
-Adding debian:Microsec_e-Szigno_Root_CA.pem
-Adding debian:Starfield_Services_Root_Certificate_Authority_-_G2.pem
-Adding debian:Secure_Global_CA.pem
-Adding debian:QuoVadis_Root_CA_3.pem
-Adding debian:CFCA_EV_ROOT.pem
-Adding debian:Equifax_Secure_CA.pem
-Adding debian:Go_Daddy_Class_2_CA.pem
-Adding debian:StartCom_Certification_Authority_G2.pem
-Adding debian:Hongkong_Post_Root_CA_1.pem
-Adding debian:TURKTRUST_Certificate_Services_Provider_Root_2007.pem
-Adding debian:GlobalSign_Root_CA.pem
-Adding debian:DigiCert_Trusted_Root_G4.pem
-Adding debian:OpenTrust_Root_CA_G3.pem
-Adding debian:TÜRKTRUST_Elektronik_Sertifika_Hizmet_Sağlayıcısı_H5.pem
-Adding debian:AffirmTrust_Premium.pem
-Adding debian:TÜRKTRUST_Elektronik_Sertifika_Hizmet_Sağlayıcısı_H6.pem
-Adding debian:DigiCert_Assured_ID_Root_G2.pem
-Adding debian:StartCom_Certification_Authority_2.pem
-Adding debian:thawte_Primary_Root_CA_-_G3.pem
-Adding debian:OpenTrust_Root_CA_G2.pem
-Adding debian:Autoridad_de_Certificacion_Firmaprofesional_CIF_A62634068.pem
-Adding debian:Go_Daddy_Root_Certificate_Authority_-_G2.pem
-Adding debian:Certigna.pem
-Adding debian:Starfield_Class_2_CA.pem
 Adding debian:USERTrust_ECC_Certification_Authority.pem
-Adding debian:COMODO_RSA_Certification_Authority.pem
-Adding debian:GeoTrust_Universal_CA.pem
-Adding debian:USERTrust_RSA_Certification_Authority.pem
-Adding debian:Certinomis_-_Root_CA.pem
-Adding debian:Cybertrust_Global_Root.pem
-Adding debian:Swisscom_Root_CA_1.pem
-Adding debian:RSA_Security_2048_v3.pem
-Adding debian:Staat_der_Nederlanden_EV_Root_CA.pem
-Adding debian:GlobalSign_Root_CA_-_R2.pem
-Adding debian:Equifax_Secure_eBusiness_CA_1.pem
-Adding debian:Atos_TrustedRoot_2011.pem
-Adding debian:ACCVRAIZ1.pem
-Adding debian:GeoTrust_Primary_Certification_Authority.pem
-Adding debian:Buypass_Class_2_Root_CA.pem
-Adding debian:GlobalSign_Root_CA_-_R3.pem
-Adding debian:VeriSign_Universal_Root_Certification_Authority.pem
-Adding debian:Buypass_Class_2_CA_1.pem
-Adding debian:T-TeleSec_GlobalRoot_Class_3.pem
-Adding debian:AddTrust_External_Root.pem
-Adding debian:EC-ACC.pem
-Adding debian:SecureTrust_CA.pem
-Adding debian:Chambers_of_Commerce_Root_-_2008.pem
-Adding debian:Verisign_Class_1_Public_Primary_Certification_Authority.pem
-Adding debian:GeoTrust_Global_CA_2.pem
-Adding debian:AddTrust_Public_Services_Root.pem
-Adding debian:Buypass_Class_3_Root_CA.pem
-Adding debian:Trustis_FPS_Root_CA.pem
-Adding debian:COMODO_ECC_Certification_Authority.pem
-Adding debian:ComSign_CA.pem
-Adding debian:QuoVadis_Root_CA_3_G3.pem
-Adding debian:Certification_Authority_of_WoSign_G2.pem
-Adding debian:Certplus_Root_CA_G1.pem
-Adding debian:Swisscom_Root_CA_2.pem
-Adding debian:DigiCert_Assured_ID_Root_CA.pem
-Adding debian:thawte_Primary_Root_CA.pem
-Adding debian:Security_Communication_RootCA2.pem
-Adding debian:DST_ACES_CA_X6.pem
-Adding debian:S-TRUST_Universal_Root_CA.pem
-Adding debian:DigiCert_High_Assurance_EV_Root_CA.pem
-Adding debian:DST_Root_CA_X3.pem
-Adding debian:SwissSign_Silver_CA_-_G2.pem
-Adding debian:AffirmTrust_Networking.pem
-Adding debian:Root_CA_Generalitat_Valenciana.pem
-Adding debian:COMODO_Certification_Authority.pem
-Adding debian:Deutsche_Telekom_Root_CA_2.pem
-Adding debian:WoSign.pem
-Adding debian:XRamp_Global_CA_Root.pem
-Adding debian:D-TRUST_Root_Class_3_CA_2_EV_2009.pem
-Adding debian:SZAFIR_ROOT_CA2.pem
-Adding debian:Verisign_Class_3_Public_Primary_Certification_Authority_-_G3.pem
-Adding debian:DigiCert_Global_Root_CA.pem
-Adding debian:Hellenic_Academic_and_Research_Institutions_RootCA_2011.pem
-Adding debian:GlobalSign_ECC_Root_CA_-_R4.pem
-Adding debian:Taiwan_GRCA.pem
+Adding debian:QuoVadis_Root_CA.pem
 Adding debian:QuoVadis_Root_CA_2_G3.pem
-Adding debian:Starfield_Root_Certificate_Authority_-_G2.pem
-Adding debian:EE_Certification_Centre_Root_CA.pem
-Adding debian:QuoVadis_Root_CA_1_G3.pem
-Adding debian:Comodo_Trusted_Services_root.pem
+Adding debian:WoSign.pem
+Adding debian:Comodo_Secure_Services_root.pem
+Adding debian:Autoridad_de_Certificacion_Firmaprofesional_CIF_A62634068.pem
 Adding debian:AffirmTrust_Premium_ECC.pem
-Adding debian:AC_Raíz_Certicámara_S.A..pem
-Adding debian:OpenTrust_Root_CA_G1.pem
-Adding debian:TC_TrustCenter_Class_3_CA_II.pem
 Adding debian:StartCom_Certification_Authority.pem
-Adding debian:TeliaSonera_Root_CA_v1.pem
-Adding debian:E-Tugra_Certification_Authority.pem
+Adding debian:AddTrust_Low-Value_Services_Root.pem
+Adding debian:Camerfirma_Chambers_of_Commerce_Root.pem
+Adding debian:China_Internet_Network_Information_Center_EV_Certificates_Root.pem
+Adding debian:DST_Root_CA_X3.pem
+Adding debian:OpenTrust_Root_CA_G2.pem
+Adding debian:Verisign_Class_1_Public_Primary_Certification_Authority.pem
+Adding debian:StartCom_Certification_Authority_G2.pem
+Adding debian:TC_TrustCenter_Class_3_CA_II.pem
+Adding debian:AddTrust_Public_Services_Root.pem
+Adding debian:Certplus_Root_CA_G1.pem
+Adding debian:Cybertrust_Global_Root.pem
+Adding debian:Certification_Authority_of_WoSign_G2.pem
+Adding debian:Verisign_Class_2_Public_Primary_Certification_Authority_-_G2.pem
+Adding debian:Staat_der_Nederlanden_EV_Root_CA.pem
+Adding debian:Certum_Trusted_Network_CA_2.pem
+Adding debian:GlobalSign_Root_CA_-_R3.pem
+Adding debian:DigiCert_Assured_ID_Root_G2.pem
+Adding debian:Secure_Global_CA.pem
+Adding debian:AffirmTrust_Premium.pem
+Adding debian:ACEDICOM_Root.pem
+Adding debian:AffirmTrust_Networking.pem
+Adding debian:IdenTrust_Commercial_Root_CA_1.pem
+Adding debian:Buypass_Class_2_CA_1.pem
+Adding debian:Trustis_FPS_Root_CA.pem
+Adding debian:OpenTrust_Root_CA_G1.pem
+Adding debian:Certinomis_-_Root_CA.pem
+Adding debian:Certigna.pem
+Adding debian:T-TeleSec_GlobalRoot_Class_3.pem
+Adding debian:DST_ACES_CA_X6.pem
+Adding debian:WellsSecure_Public_Root_Certificate_Authority.pem
+Adding debian:TÜBİTAK_UEKAE_Kök_Sertifika_Hizmet_Sağlayıcısı_-_Sürüm_3.pem
+Adding debian:AddTrust_Qualified_Certificates_Root.pem
+Adding debian:XRamp_Global_CA_Root.pem
+Adding debian:QuoVadis_Root_CA_1_G3.pem
+Adding debian:Certinomis_-_Autorité_Racine.pem
+Adding debian:Chambers_of_Commerce_Root_-_2008.pem
+Adding debian:DigiCert_High_Assurance_EV_Root_CA.pem
+Adding debian:T-TeleSec_GlobalRoot_Class_2.pem
+Adding debian:Hellenic_Academic_and_Research_Institutions_RootCA_2015.pem
+Adding debian:Entrust.net_Premium_2048_Secure_Server_CA.pem
+Adding debian:thawte_Primary_Root_CA_-_G3.pem
+Adding debian:Entrust_Root_Certification_Authority_-_EC1.pem
+Adding debian:GeoTrust_Primary_Certification_Authority_-_G3.pem
+Adding debian:S-TRUST_Universal_Root_CA.pem
+Adding debian:Root_CA_Generalitat_Valenciana.pem
+Adding debian:IdenTrust_Public_Sector_Root_CA_1.pem
+Adding debian:Security_Communication_RootCA2.pem
+Adding debian:Security_Communication_EV_RootCA1.pem
+Adding debian:TÜRKTRUST_Elektronik_Sertifika_Hizmet_Sağlayıcısı_H6.pem
+Adding debian:Microsec_e-Szigno_Root_CA.pem
 Adding debian:Staat_der_Nederlanden_Root_CA_-_G3.pem
+Adding debian:Security_Communication_Root_CA.pem
+Adding debian:Network_Solutions_Certificate_Authority.pem
+Adding debian:TWCA_Root_Certification_Authority.pem
+Adding debian:QuoVadis_Root_CA_2.pem
+Adding debian:SwissSign_Platinum_CA_-_G2.pem
+Adding debian:VeriSign_Universal_Root_Certification_Authority.pem
+Adding debian:Global_Chambersign_Root_-_2008.pem
+Adding debian:Equifax_Secure_eBusiness_CA_1.pem
+Adding debian:ACCVRAIZ1.pem
+Adding debian:Starfield_Root_Certificate_Authority_-_G2.pem
+Adding debian:Equifax_Secure_Global_eBusiness_CA.pem
+Adding debian:Buypass_Class_3_Root_CA.pem
+Adding debian:ePKI_Root_Certification_Authority.pem
+Adding debian:Swisscom_Root_EV_CA_2.pem
+Adding debian:USERTrust_RSA_Certification_Authority.pem
+Adding debian:DigiCert_Assured_ID_Root_G3.pem
+Adding debian:SZAFIR_ROOT_CA2.pem
+Adding debian:GlobalSign_Root_CA.pem
+Adding debian:ComSign_CA.pem
+Adding debian:Equifax_Secure_CA.pem
+Adding debian:GeoTrust_Universal_CA_2.pem
 Adding debian:OISTE_WISeKey_Global_Root_GA_CA.pem
+Adding debian:PSCProcert.pem
+Adding debian:Staat_der_Nederlanden_Root_CA_-_G2.pem
+Adding debian:DigiCert_Global_Root_CA.pem
+Adding debian:DigiCert_Trusted_Root_G4.pem
+Adding debian:Buypass_Class_2_Root_CA.pem
+Adding debian:IGC_A.pem
+Adding debian:DigiCert_Assured_ID_Root_CA.pem
+Adding debian:thawte_Primary_Root_CA_-_G2.pem
+Adding debian:COMODO_Certification_Authority.pem
+Adding debian:VeriSign_Class_3_Public_Primary_Certification_Authority_-_G5.pem
+Adding debian:SwissSign_Gold_CA_-_G2.pem
+Adding debian:TWCA_Global_Root_CA.pem
+Adding debian:Entrust_Root_Certification_Authority_-_G2.pem
+Adding debian:Swisscom_Root_CA_2.pem
+Adding debian:UTN_USERFirst_Hardware_Root_CA.pem
+Adding debian:Camerfirma_Global_Chambersign_Root.pem
+Adding debian:Verisign_Class_1_Public_Primary_Certification_Authority_-_G3.pem
+Adding debian:Swisscom_Root_CA_1.pem
+Adding debian:GeoTrust_Primary_Certification_Authority_-_G2.pem
+Adding debian:AddTrust_External_Root.pem
+Adding debian:COMODO_RSA_Certification_Authority.pem
+Adding debian:Actalis_Authentication_Root_CA.pem
+Adding debian:D-TRUST_Root_Class_3_CA_2_EV_2009.pem
+Adding debian:OISTE_WISeKey_Global_Root_GB_CA.pem
+Adding debian:UTN_USERFirst_Email_Root_CA.pem
+Adding debian:Comodo_AAA_Services_root.pem
+Adding debian:Certum_Root_CA.pem
+Adding debian:Juur-SK.pem
+Adding debian:COMODO_ECC_Certification_Authority.pem
+Adding debian:Certum_Trusted_Network_CA.pem
+Adding debian:Entrust_Root_Certification_Authority.pem
+Adding debian:Taiwan_GRCA.pem
+Adding debian:RSA_Security_2048_v3.pem
+Adding debian:D-TRUST_Root_Class_3_CA_2_2009.pem
+Adding debian:WoSign_China.pem
+Adding debian:ISRG_Root_X1.pem
+Adding debian:EBG_Elektronik_Sertifika_Hizmet_Sağlayıcısı.pem
+Adding debian:Hellenic_Academic_and_Research_Institutions_ECC_RootCA_2015.pem
+Adding debian:EC-ACC.pem
+Adding debian:GlobalSign_ECC_Root_CA_-_R4.pem
+Adding debian:GlobalSign_ECC_Root_CA_-_R5.pem
+Adding debian:CNNIC_ROOT.pem
+Adding debian:CA_Disig_Root_R2.pem
+Adding debian:Deutsche_Telekom_Root_CA_2.pem
+Adding debian:QuoVadis_Root_CA_3.pem
+Adding debian:Microsec_e-Szigno_Root_CA_2009.pem
+Adding debian:S-TRUST_Authentication_and_Encryption_Root_CA_2005_PN.pem
+Adding debian:E-Tugra_Certification_Authority.pem
+Adding debian:Certplus_Class_2_Primary_CA.pem
+Adding debian:GeoTrust_Global_CA.pem
+Adding debian:GeoTrust_Global_CA_2.pem
+Adding debian:Hongkong_Post_Root_CA_1.pem
+Adding debian:Go_Daddy_Class_2_CA.pem
+Adding debian:VeriSign_Class_3_Public_Primary_Certification_Authority_-_G4.pem
+Adding debian:Sonera_Class_2_Root_CA.pem
+Adding debian:QuoVadis_Root_CA_3_G3.pem
+Adding debian:Verisign_Class_2_Public_Primary_Certification_Authority_-_G3.pem
+Adding debian:EE_Certification_Centre_Root_CA.pem
+Adding debian:SwissSign_Silver_CA_-_G2.pem
+Adding debian:TeliaSonera_Root_CA_v1.pem
+Adding debian:CA_Disig_Root_R1.pem
+Adding debian:GeoTrust_Universal_CA.pem
+Adding debian:AffirmTrust_Commercial.pem
+Adding debian:Verisign_Class_3_Public_Primary_Certification_Authority_-_G3.pem
+Adding debian:Visa_eCommerce_Root.pem
+Adding debian:SecureTrust_CA.pem
+Adding debian:TÜRKTRUST_Elektronik_Sertifika_Hizmet_Sağlayıcısı_H5.pem
+Adding debian:thawte_Primary_Root_CA.pem
+Adding debian:Certplus_Root_CA_G2.pem
+Adding debian:NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem
+Adding debian:Hellenic_Academic_and_Research_Institutions_RootCA_2011.pem
+Adding debian:OpenTrust_Root_CA_G3.pem
+Adding debian:Starfield_Class_2_CA.pem
+Adding debian:Starfield_Services_Root_Certificate_Authority_-_G2.pem
+Adding debian:DigiCert_Global_Root_G3.pem
+Adding debian:GeoTrust_Primary_Certification_Authority.pem
+Adding debian:CA_WoSign_ECC_Root.pem
+Adding debian:ApplicationCA_-_Japanese_Government.pem
+Adding debian:Atos_TrustedRoot_2011.pem
+Adding debian:StartCom_Certification_Authority_2.pem
+Adding debian:GlobalSign_Root_CA_-_R2.pem
+Adding debian:Go_Daddy_Root_Certificate_Authority_-_G2.pem
+Adding debian:Baltimore_CyberTrust_Root.pem
+Adding debian:DigiCert_Global_Root_G2.pem
+Adding debian:AC_Raíz_Certicámara_S.A..pem
+Adding debian:Izenpe.com.pem
+Adding debian:TURKTRUST_Certificate_Services_Provider_Root_2007.pem
+Adding debian:certSIGN_ROOT_CA.pem
+Adding debian:Verisign_Class_3_Public_Primary_Certification_Authority.pem
+Adding debian:Comodo_Trusted_Services_root.pem
+Adding debian:CFCA_EV_ROOT.pem
+Adding debian:SecureSign_RootCA11.pem
 done.
 Setting up liblwp-protocol-https-perl (6.06-2) ...
 Setting up fop (1:2.1-4) ...
@@ -3782,7 +3444,7 @@ Reading state information...
 + return 0
 + return 0
 + exit 0
-+schroot --chroot=unstable_amd64_build -- /home/travis/build/l/debian-handbook-test/.travis/script.sh systems:build/repository/setup /home/travis/tmp/base.2kUwoa/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
++schroot --chroot=unstable_amd64_build -- /home/travis/build/l/debian-handbook-test/.travis/script.sh systems:build/repository/setup /home/travis/tmp/base.n1hu9G/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
 + set -eu
 + alias git_commit=git \
 	commit \
@@ -3838,12 +3500,12 @@ Reading state information...
 	--pretty 2 \
 	--output \
 
-+ main systems:build/repository/setup /home/travis/tmp/base.2kUwoa/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
++ main systems:build/repository/setup /home/travis/tmp/base.n1hu9G/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
 + readonly MODE=systems:build/repository/setup
 + shift 1
-+ systems_build_repository_setup /home/travis/tmp/base.2kUwoa/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
-+ systems_build_repository_setup_pre /home/travis/tmp/base.2kUwoa/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
-+ readonly _GIT_WORK_TREE=/home/travis/tmp/base.2kUwoa/build
++ systems_build_repository_setup /home/travis/tmp/base.n1hu9G/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
++ systems_build_repository_setup_pre /home/travis/tmp/base.n1hu9G/build /home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
++ readonly _GIT_WORK_TREE=/home/travis/tmp/base.n1hu9G/build
 + readonly WEBLATE_SYNC=/home/travis/build/l/debian-handbook-test/.travis/weblate-sync.pl
 + configure_publican
 + readonly _PUBLICAN_SURNAME=AYANOKOUZI
@@ -3881,10 +3543,10 @@ Reading state information...
 + readonly _GIT_LOCAL_GITHUB_BRANCH=jessie/master/gh-pages
 + return 0
 + return 0
-+ cd /home/travis/tmp/base.2kUwoa/build
++ cd /home/travis/tmp/base.n1hu9G/build
 + setup_build_dir
 + git init
-Initialized empty Git repository in /home/travis/tmp/base.2kUwoa/build/.git/
+Initialized empty Git repository in /home/travis/tmp/base.n1hu9G/build/.git/
 + setup_remote_local weblate git://git.weblate.org/debian-handbook.git git://git.weblate.org/debian-handbook.git jessie/master jessie/master/translation/weblate
 + local _GIT_REMOTE_NAME=weblate
 + local _GIT_REMOTE_FETCH=git://git.weblate.org/debian-handbook.git
@@ -4449,22 +4111,22 @@ OK zh-TW/Book_Info.po                       https://hosted.weblate.org/download/
 OK zh-TW/Revision_History.po                https://hosted.weblate.org/download/debian-handbook/Revision_History/zh_Hant/
 + git log --pretty=%ad -1 HEAD
 + git log --pretty=%cd -1 HEAD
-+ GIT_AUTHOR_DATE=Mon Nov 28 22:04:32 2016 +0000 GIT_COMMITTER_DATE=Thu Dec 1 00:45:19 2016 +0100 git commit --all --allow-empty --message=Sync PO files to Weblate
-[jessie/master/translation/weblate bc769fd] Sync PO files to Weblate
- 3 files changed, 21 insertions(+), 14 deletions(-)
++ GIT_AUTHOR_DATE=Tue Nov 29 10:56:11 2016 +0000 GIT_COMMITTER_DATE=Thu Dec 1 12:45:32 2016 +0100 git commit --all --allow-empty --message=Sync PO files to Weblate
+[jessie/master/translation/weblate 4048dba] Sync PO files to Weblate
+ 3 files changed, 19 insertions(+), 10 deletions(-)
 + git --no-pager log --reverse --color --stat --pretty=fuller @{upstream}..HEAD
-[33mcommit bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda[m
+[33mcommit 4048dba828b22520ac62ae44e0e0d714fdd1e8fe[m
 Author:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-AuthorDate: Mon Nov 28 22:04:32 2016 +0000
+AuthorDate: Tue Nov 29 10:56:11 2016 +0000
 Commit:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-CommitDate: Thu Dec 1 00:45:19 2016 +0100
+CommitDate: Thu Dec 1 12:45:32 2016 +0100
 
     Sync PO files to Weblate
 
- nb-NO/00b_foreword.po | 16 [32m++++++++++[m[31m------[m
+ nb-NO/14_security.po  | 10 [32m++++++++[m[31m--[m
  nb-NO/99_backcover.po |  6 [32m+++[m[31m---[m
  nb-NO/Book_Info.po    | 13 [32m++++++++[m[31m-----[m
- 3 files changed, 21 insertions(+), 14 deletions(-)
+ 3 files changed, 19 insertions(+), 10 deletions(-)
 + setup_remote_local origin git://anonscm.debian.org/debian-handbook/debian-handbook.git git://anonscm.debian.org/debian-handbook/debian-handbook.git jessie/master jessie/master/translation/origin
 + local _GIT_REMOTE_NAME=origin
 + local _GIT_REMOTE_FETCH=git://anonscm.debian.org/debian-handbook/debian-handbook.git
@@ -4993,20 +4655,36 @@ Your branch is ahead of 'origin/jessie/master' by 1 commit.
  Date: Mon Nov 28 22:04:32 2016 +0000
  1 file changed, 576 insertions(+), 157 deletions(-)
 + return 0
-+ git_cherry_pick bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ local _GIT_COMMIT_HASH=bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
++ git_cherry_pick 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ local _GIT_COMMIT_HASH=9f5247b7b3fa03fc560c11daef8710e5eecbe97f
 + shift 1
-+ git cherry-pick --no-commit --keep-redundant-commits --allow-empty bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ git log --pretty=%ad -1 bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ git log --pretty=%an -1 bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ git log --pretty=%ae -1 bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ git log --pretty=%cd -1 bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ git log --pretty=%cn -1 bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ git log --pretty=%ce -1 bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-+ GIT_AUTHOR_DATE=Mon Nov 28 22:04:32 2016 +0000 GIT_AUTHOR_NAME=AYANOKOUZI, Ryuunosuke GIT_AUTHOR_EMAIL=i38w7i3@yahoo.co.jp GIT_COMMITTER_DATE=Thu Dec 1 00:45:19 2016 +0100 GIT_COMMITTER_NAME=AYANOKOUZI, Ryuunosuke GIT_COMMITTER_EMAIL=i38w7i3@yahoo.co.jp git commit --no-verify --allow-empty --allow-empty-message --reuse-message=bc769fd2d15cbfd7d73cdeea71aa065ec20b0fda
-[jessie/master/build 8882a65] Sync PO files to Weblate
- Date: Mon Nov 28 22:04:32 2016 +0000
- 3 files changed, 21 insertions(+), 14 deletions(-)
++ git cherry-pick --no-commit --keep-redundant-commits --allow-empty 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ git log --pretty=%ad -1 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ git log --pretty=%an -1 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ git log --pretty=%ae -1 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ git log --pretty=%cd -1 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ git log --pretty=%cn -1 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ git log --pretty=%ce -1 9f5247b7b3fa03fc560c11daef8710e5eecbe97f
++ GIT_AUTHOR_DATE=Tue Nov 29 10:56:11 2016 +0000 GIT_AUTHOR_NAME=Petter Reinholdtsen GIT_AUTHOR_EMAIL=pere-weblate@hungry.com GIT_COMMITTER_DATE=Thu Dec 1 12:45:32 2016 +0100 GIT_COMMITTER_NAME=Weblate GIT_COMMITTER_EMAIL=noreply@weblate.org git commit --no-verify --allow-empty --allow-empty-message --reuse-message=9f5247b7b3fa03fc560c11daef8710e5eecbe97f
+[jessie/master/build 02e1664] nb-NO: Translated using Weblate.
+ Author: Petter Reinholdtsen <pere-weblate@hungry.com>
+ Date: Tue Nov 29 10:56:11 2016 +0000
+ 1 file changed, 5 insertions(+), 5 deletions(-)
++ return 0
++ git_cherry_pick 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ local _GIT_COMMIT_HASH=4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ shift 1
++ git cherry-pick --no-commit --keep-redundant-commits --allow-empty 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ git log --pretty=%ad -1 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ git log --pretty=%an -1 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ git log --pretty=%ae -1 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ git log --pretty=%cd -1 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ git log --pretty=%cn -1 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ git log --pretty=%ce -1 4048dba828b22520ac62ae44e0e0d714fdd1e8fe
++ GIT_AUTHOR_DATE=Tue Nov 29 10:56:11 2016 +0000 GIT_AUTHOR_NAME=AYANOKOUZI, Ryuunosuke GIT_AUTHOR_EMAIL=i38w7i3@yahoo.co.jp GIT_COMMITTER_DATE=Thu Dec 1 12:45:32 2016 +0100 GIT_COMMITTER_NAME=AYANOKOUZI, Ryuunosuke GIT_COMMITTER_EMAIL=i38w7i3@yahoo.co.jp git commit --no-verify --allow-empty --allow-empty-message --reuse-message=4048dba828b22520ac62ae44e0e0d714fdd1e8fe
+[jessie/master/build ac42392] Sync PO files to Weblate
+ Date: Tue Nov 29 10:56:11 2016 +0000
+ 3 files changed, 19 insertions(+), 10 deletions(-)
 + return 0
 + return 0
 + return 0
@@ -5040,13 +4718,13 @@ Your branch is ahead of 'origin/jessie/master' by 1 commit.
 	deleted empty pot file: pot/debian-handbook.pot
 + git log --pretty=%ad -1 HEAD
 + git log --pretty=%cd -1 HEAD
-+ GIT_AUTHOR_DATE=Mon Nov 28 22:04:32 2016 +0000 GIT_COMMITTER_DATE=Thu Dec 1 00:45:19 2016 +0100 git commit --all --allow-empty --message=Update POT files
++ GIT_AUTHOR_DATE=Tue Nov 29 10:56:11 2016 +0000 GIT_COMMITTER_DATE=Thu Dec 1 12:45:32 2016 +0100 git commit --all --allow-empty --message=Update POT files
 
 $ publican \
 	update_pot \
 ;
 
-[jessie/master/build 5069ee5] Update POT files
+[jessie/master/build 77a73a2] Update POT files
  25 files changed, 50 insertions(+), 50 deletions(-)
 + publican update_po --msgmerge --previous --langs=all --firstname=Ryuunosuke --surname=AYANOKOUZI --email=i38w7i3@yahoo.co.jp
 Skipping unknown language: brand
@@ -5601,7 +5279,7 @@ Skipping unknown language: misc-scripts
 	Processing file zh-TW/Revision_History.xml -> zh-TW/Revision_History.xml
 + git log --pretty=%ad -1 HEAD
 + git log --pretty=%cd -1 HEAD
-+ GIT_AUTHOR_DATE=Mon Nov 28 22:04:32 2016 +0000 GIT_COMMITTER_DATE=Thu Dec 1 00:45:19 2016 +0100 git commit --all --allow-empty --message=Update PO files
++ GIT_AUTHOR_DATE=Tue Nov 29 10:56:11 2016 +0000 GIT_COMMITTER_DATE=Thu Dec 1 12:45:32 2016 +0100 git commit --all --allow-empty --message=Update PO files
 
 $ publican \
 	update_po \
@@ -5613,7 +5291,7 @@ $ publican \
 	--email='i38w7i3@yahoo.co.jp' \
 ;
 
-[jessie/master/build 11a13ab] Update PO files
+[jessie/master/build 02ab5bb] Update PO files
  26 files changed, 87 insertions(+), 1524 deletions(-)
 + git --no-pager log --reverse --color --stat --pretty=fuller @{upstream}..HEAD
 [33mcommit 36158eab45f42d8459a883e4ec1c8af017dd0857[m
@@ -5925,24 +5603,35 @@ CommitDate: Thu Dec 1 00:45:19 2016 +0100
  nb-NO/12_advanced-administration.po | 733 [32m++++++++++++++++++++++++++++[m[31m--------[m
  1 file changed, 576 insertions(+), 157 deletions(-)
 
-[33mcommit 8882a6587dbeeab9eac44a8b82199be2456b2a40[m
+[33mcommit 02e1664c0359e5c8c3ba5d6b2d67eeae1d4085da[m
+Author:     Petter Reinholdtsen <pere-weblate@hungry.com>
+AuthorDate: Tue Nov 29 10:56:11 2016 +0000
+Commit:     Weblate <noreply@weblate.org>
+CommitDate: Thu Dec 1 12:45:32 2016 +0100
+
+    nb-NO: Translated using Weblate.
+
+ nb-NO/00b_foreword.po | 10 [32m+++++[m[31m-----[m
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+[33mcommit ac42392d3c217f37c1e1a8eef96d9b3a6bc57248[m
 Author:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-AuthorDate: Mon Nov 28 22:04:32 2016 +0000
+AuthorDate: Tue Nov 29 10:56:11 2016 +0000
 Commit:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-CommitDate: Thu Dec 1 00:45:19 2016 +0100
+CommitDate: Thu Dec 1 12:45:32 2016 +0100
 
     Sync PO files to Weblate
 
- nb-NO/00b_foreword.po | 16 [32m++++++++++[m[31m------[m
+ nb-NO/14_security.po  | 10 [32m++++++++[m[31m--[m
  nb-NO/99_backcover.po |  6 [32m+++[m[31m---[m
  nb-NO/Book_Info.po    | 13 [32m++++++++[m[31m-----[m
- 3 files changed, 21 insertions(+), 14 deletions(-)
+ 3 files changed, 19 insertions(+), 10 deletions(-)
 
-[33mcommit 5069ee5bda4d35dc0a665d06c7c8ada2733cc8c2[m
+[33mcommit 77a73a2d6a83152367601d294942ad0de71e56b7[m
 Author:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-AuthorDate: Mon Nov 28 22:04:32 2016 +0000
+AuthorDate: Tue Nov 29 10:56:11 2016 +0000
 Commit:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-CommitDate: Thu Dec 1 00:45:19 2016 +0100
+CommitDate: Thu Dec 1 12:45:32 2016 +0100
 
     Update POT files
     
@@ -5977,11 +5666,11 @@ CommitDate: Thu Dec 1 00:45:19 2016 +0100
  pot/Revision_History.pot            | 4 [32m++[m[31m--[m
  25 files changed, 50 insertions(+), 50 deletions(-)
 
-[33mcommit 11a13abb09a9211a768f54f11eee6be5526a89c5[m
+[33mcommit 02ab5bb3c4085625e1088a4e17e8903e49e846bf[m
 Author:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-AuthorDate: Mon Nov 28 22:04:32 2016 +0000
+AuthorDate: Tue Nov 29 10:56:11 2016 +0000
 Commit:     AYANOKOUZI, Ryuunosuke <i38w7i3@yahoo.co.jp>
-CommitDate: Thu Dec 1 00:45:19 2016 +0100
+CommitDate: Thu Dec 1 12:45:32 2016 +0100
 
     Update PO files
     
@@ -6054,20 +5743,20 @@ tweek	https://github.com/l/debian-handbook.git (push)
 weblate	git://git.weblate.org/debian-handbook.git (fetch)
 weblate	git://git.weblate.org/debian-handbook.git (push)
 + git branch --all --verbose --verbose
-* jessie/master/build                                                        11a13ab [origin/jessie/master: ahead 30] Update PO files
+* jessie/master/build                                                        02ab5bb [origin/jessie/master: ahead 31] Update PO files
   jessie/master/proposal/put_backcover_and_website_as_appendix               3ab4d18 [tweek/jessie/master/proposal/put_backcover_and_website_as_appendix] Put backcover and website as appendix
   jessie/master/translation/origin                                           7ddc2a6 [origin/jessie/master] Update translations
-  jessie/master/translation/weblate                                          bc769fd [weblate/jessie/master: ahead 1] Sync PO files to Weblate
+  jessie/master/translation/weblate                                          4048dba [weblate/jessie/master: ahead 1] Sync PO files to Weblate
   remotes/origin/jessie/master                                               7ddc2a6 Update translations
   remotes/tweek/jessie/master/proposal/put_backcover_and_website_as_appendix 3ab4d18 Put backcover and website as appendix
-  remotes/weblate/jessie/master                                              aa9fdda nb-NO: Translated using Weblate.
+  remotes/weblate/jessie/master                                              9f5247b nb-NO: Translated using Weblate.
 + return 0
 + cd -
 /home/travis/build/l/debian-handbook-test
 + return 0
 + return 0
 + exit 0
-+schroot --chroot=unstable_amd64_build -- /home/travis/build/l/debian-handbook-test/.travis/script.sh systems:build/repository/build /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/fifo
++schroot --chroot=unstable_amd64_build -- /home/travis/build/l/debian-handbook-test/.travis/script.sh systems:build/repository/build /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/fifo
 + set -eu
 + alias git_commit=git \
 	commit \
@@ -6123,14 +5812,14 @@ weblate	git://git.weblate.org/debian-handbook.git (push)
 	--pretty 2 \
 	--output \
 
-+ main systems:build/repository/build /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/fifo
++ main systems:build/repository/build /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/fifo
 + readonly MODE=systems:build/repository/build
 + shift 1
-+ systems_build_repository_build /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/fifo
-+ systems_build_repository_build_pre /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/fifo
-+ readonly _GIT_WORK_TREE=/home/travis/tmp/base.2kUwoa/build
-+ readonly _FIFO_DIR=/home/travis/tmp/base.2kUwoa/fifo
-+ readonly _LANGS_TXT=/home/travis/tmp/base.2kUwoa/fifo/langs.txt
++ systems_build_repository_build /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/fifo
++ systems_build_repository_build_pre /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/fifo
++ readonly _GIT_WORK_TREE=/home/travis/tmp/base.n1hu9G/build
++ readonly _FIFO_DIR=/home/travis/tmp/base.n1hu9G/fifo
++ readonly _LANGS_TXT=/home/travis/tmp/base.n1hu9G/fifo/langs.txt
 + configure_git
 + export GIT_AUTHOR_NAME=AYANOKOUZI, Ryuunosuke
 + export GIT_AUTHOR_EMAIL=i38w7i3@yahoo.co.jp
@@ -6162,10 +5851,10 @@ weblate	git://git.weblate.org/debian-handbook.git (push)
 + readonly _GIT_LOCAL_GITHUB_BRANCH=jessie/master/gh-pages
 + return 0
 + return 0
-+ cd /home/travis/tmp/base.2kUwoa/build
++ cd /home/travis/tmp/base.n1hu9G/build
 + git checkout jessie/master/build
 Already on 'jessie/master/build'
-Your branch is ahead of 'origin/jessie/master' by 30 commits.
+Your branch is ahead of 'origin/jessie/master' by 31 commits.
   (use "git push" to publish your local commits)
 + local _EXIT_STATUS=0
 + build_html_all
@@ -6394,7 +6083,7 @@ Your branch is ahead of 'origin/jessie/master' by 30 commits.
 + sh -eu ./build/build-html --opts=--quiet --lang=zh-TW
 + return 0
 + read _LANG
-+ rm /home/travis/tmp/base.2kUwoa/fifo/langs.txt
++ rm /home/travis/tmp/base.n1hu9G/fifo/langs.txt
 + return 0
 + git clean --dry-run --force -d -x
 Would remove log/
@@ -6405,7 +6094,7 @@ Would remove tmp/
 + return 0
 + return 0
 + exit 0
-+schroot --chroot=unstable_amd64_build -- /home/travis/build/l/debian-handbook-test/.travis/script.sh systems:build/repository/build/targets/prepare /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/divert /home/travis/tmp/base.2kUwoa/fifo
++schroot --chroot=unstable_amd64_build -- /home/travis/build/l/debian-handbook-test/.travis/script.sh systems:build/repository/build/targets/prepare /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/divert /home/travis/tmp/base.n1hu9G/fifo
 + set -eu
 + alias git_commit=git \
 	commit \
@@ -6461,19 +6150,19 @@ Would remove tmp/
 	--pretty 2 \
 	--output \
 
-+ main systems:build/repository/build/targets/prepare /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/divert /home/travis/tmp/base.2kUwoa/fifo
++ main systems:build/repository/build/targets/prepare /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/divert /home/travis/tmp/base.n1hu9G/fifo
 + readonly MODE=systems:build/repository/build/targets/prepare
 + shift 1
-+ systems_build_repository_build_targets_prepare /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/divert /home/travis/tmp/base.2kUwoa/fifo
-+ systems_build_repository_build_targets_prepare_pre /home/travis/tmp/base.2kUwoa/build /home/travis/tmp/base.2kUwoa/divert /home/travis/tmp/base.2kUwoa/fifo
-+ readonly _GIT_WORK_TREE=/home/travis/tmp/base.2kUwoa/build
-+ readonly _GIT_DIVERT_DIR=/home/travis/tmp/base.2kUwoa/divert
-+ readonly _FIFO_DIR=/home/travis/tmp/base.2kUwoa/fifo
-+ readonly _FILES_TXT=/home/travis/tmp/base.2kUwoa/fifo/files.txt
++ systems_build_repository_build_targets_prepare /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/divert /home/travis/tmp/base.n1hu9G/fifo
++ systems_build_repository_build_targets_prepare_pre /home/travis/tmp/base.n1hu9G/build /home/travis/tmp/base.n1hu9G/divert /home/travis/tmp/base.n1hu9G/fifo
++ readonly _GIT_WORK_TREE=/home/travis/tmp/base.n1hu9G/build
++ readonly _GIT_DIVERT_DIR=/home/travis/tmp/base.n1hu9G/divert
++ readonly _FIFO_DIR=/home/travis/tmp/base.n1hu9G/fifo
++ readonly _FILES_TXT=/home/travis/tmp/base.n1hu9G/fifo/files.txt
 + return 0
-+ cd /home/travis/tmp/base.2kUwoa/build
-+ + sort
-find publish tmp log -name *.html
++ cd /home/travis/tmp/base.n1hu9G/build
++ find publish tmp log -name *.html
++ sort
 + local _FILE_PATH=
 + read _FILE_PATH
 + file --brief --mime-type publish/ar-MA/Debian/8/html/debian-handbook/advanced-administration.html
@@ -29004,8 +28693,8 @@ find publish tmp log -name *.html
 + xmllint --noout tmp/zh-TW/html/workstation.html
 + xmllint --pretty 2 --output tmp/zh-TW/html/workstation.html tmp/zh-TW/html/workstation.html
 + read _FILE_PATH
-+ rm /home/travis/tmp/base.2kUwoa/fifo/files.txt
-+ mv publish tmp log /home/travis/tmp/base.2kUwoa/divert
++ rm /home/travis/tmp/base.n1hu9G/fifo/files.txt
++ mv publish tmp log /home/travis/tmp/base.n1hu9G/divert
 + cd -
 /home/travis/build/l/debian-handbook-test
 + return 0
@@ -29014,8 +28703,8 @@ find publish tmp log -name *.html
 + xmllint --noout tmp/zh-TW/html/workstation.html
 + xmllint --pretty 2 --output tmp/zh-TW/html/workstation.html tmp/zh-TW/html/workstation.html
 + read _FILE_PATH
-+ rm /home/travis/tmp/base.2kUwoa/fifo/files.txt
-+ mv publish tmp log /home/travis/tmp/base.2kUwoa/divert
++ rm /home/travis/tmp/base.n1hu9G/fifo/files.txt
++ mv publish tmp log /home/travis/tmp/base.n1hu9G/divert
 + cd -
 /home/travis/build/l/debian-handbook-test
 + return 0
@@ -29030,12 +28719,12 @@ tweek	https://github.com/l/debian-handbook.git (fetch)
 tweek	https://github.com/l/debian-handbook.git (push)
 weblate	git://git.weblate.org/debian-handbook.git (fetch)
 weblate	git://git.weblate.org/debian-handbook.git (push)
-  jessie/master/build                                                        11a13ab [origin/jessie/master: ahead 30] Update PO files
-* jessie/master/gh-pages                                                     5d22e0f [github/gh-pages] Save buid result at 2016-11-30T10:03:53+00:00
+  jessie/master/build                                                        02ab5bb [origin/jessie/master: ahead 31] Update PO files
+* jessie/master/gh-pages                                                     c5182bb [github/gh-pages] Save buid result at 2016-12-01T04:59:59+00:00
   jessie/master/proposal/put_backcover_and_website_as_appendix               3ab4d18 [tweek/jessie/master/proposal/put_backcover_and_website_as_appendix] Put backcover and website as appendix
   jessie/master/translation/origin                                           7ddc2a6 [origin/jessie/master] Update translations
-  jessie/master/translation/weblate                                          bc769fd [weblate/jessie/master: ahead 1] Sync PO files to Weblate
-  remotes/github/gh-pages                                                    5d22e0f Save buid result at 2016-11-30T10:03:53+00:00
+  jessie/master/translation/weblate                                          4048dba [weblate/jessie/master: ahead 1] Sync PO files to Weblate
+  remotes/github/gh-pages                                                    c5182bb Save buid result at 2016-12-01T04:59:59+00:00
   remotes/origin/jessie/master                                               7ddc2a6 Update translations
   remotes/tweek/jessie/master/proposal/put_backcover_and_website_as_appendix 3ab4d18 Put backcover and website as appendix
-  remotes/weblate/jessie/master                                              aa9fdda nb-NO: Translated using Weblate.
+  remotes/weblate/jessie/master                                              9f5247b nb-NO: Translated using Weblate.
