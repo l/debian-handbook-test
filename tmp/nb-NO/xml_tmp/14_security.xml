@@ -812,46 +812,15 @@ Finished generating profile for /sbin/dhclient.</computeroutput>
           <para>Her søker programmet lesetillatelse for  <filename>/etc/nsswitch.conf</filename>. <command>aa-genprof</command> oppdaget at denne tillatelsen ble også gitt av flere "abstraksjoner", og tilbyr dem som alternative valg. En abstraksjon tilbyr et gjenbrukbar sett tilgangsregler som grupperer sammen flere ressurser som ofte brukes sammen. I dette konkrete tilfellet, blir filen vanligvis nådd gjennom navnetjenestens relaterte funksjoner i C-biblioteket, og vi skriver "3" for å først å velge "#include &lt;abstractions/nameservice&gt;”-valget og så “A” for å tillate det.</para>
         </callout>
         <callout arearefs="aa-genprof-write">
-          <para>
-            The program wants to create the <filename>/run/dhclient-eth0.pid</filename>
-            file. If we allow the creation of this specific file only, the program
-            will not work when the user will use it on another network interface.
-            Thus we select “New” to replace the filename with the more generic
-            “/run/dhclient*.pid” before recording the rule with “Allow”.
-          </para>
+          <para>Programmet vil opprette <filename>/run/dhclient-eth0.pid</filename> filen. Hvis vi bare tillater å opprette denne bestemte filen, vil programmet ikke fungerer når brukeren skal bruke det i et annet nettverksgrensesnitt. Derfor kan vi velge "New" for å erstatte filnavnet med det mer generiske “/run/dhclient*.pid” før regelen spilles inn med “Allow”.</para>
         </callout>
         <callout arearefs="aa-genprof-other-profile">
-          <para>
-            Notice that this access request is not part of the dhclient
-            profile but of the new profile that we created when we allowed
-            <filename>/usr/lib/NetworkManager/nm-dhcp-helper</filename> to
-            run with its own profile.
-          </para>
-          <para>
-            After having gone through all the logged events, the program
-            offers to save all the profiles that were created during the
-            run. In this case, we have two profiles that we save at once
-            with “Save” (but you can save them individually too) before
-            leaving the program with “Finish”.
-          </para>
+          <para>Legg merke til at denne tilgangsforespørselen er ikke en del av dhclient profilen, men av den nye profilen som vi laget når vi tillot <filename>/usr/lib/NetworkManager/nm-dhcp-helper</filename> å kjøre med sin egen profil.</para>
+          <para>Etter å ha gått gjennom alle de loggede hendelsene, tilbyr programmet  å lagre alle profilene som ble opprettet under kjøringen. I dette tilfellet har vi to profiler som vi sparer med én gang med "Save" (men du kan lagre dem enkeltvis også) før du forlater programmet med "Finish".</para>
         </callout>
       </calloutlist>
-      <para>
-        <command>aa-genprof</command> is in fact only a smart wrapper
-        around <command>aa-logprof</command>: it creates an empty profile,
-        loads it in complain mode and then run
-        <command>aa-logprof</command> which is a tool to update a profile
-        based on the profile violations that have been logged. So you can
-        re-run that tool later to improve the profile that you just
-        created.
-      </para>
-      <para>
-        If you want the generated profile to be complete, you should use the
-        program in all the ways that it is legitimately used. In the case
-        of dhclient, it means running it via Network Manager, running it via
-        ifupdown, running it manually, etc. In the end, you might get
-        a <filename>/etc/apparmor.d/sbin.dhclient</filename> close to this:
-      </para>
+      <para><command>aa-genprof</command> er i realiteten bare et smart omslag rundt <command>aa-logprof</command>: Den skaper en tom profil, laster den inn klagemodus, og kjører deretter <command>aa-logprof</command>, som er et verktøy for å oppdatere en profil basert på profilovertredelsen som har blitt logget. Så du kan kjøre dette verktøyet igjen senere for å forbedre profilen du nettopp opprettet.</para>
+      <para>Hvis du vil ha den genererte profilen komplett, bør du bruke programmet på alle måter det legitimt å bruke det. Med dhclient, betyr det å kjøre den via Network Manager, å kjører den via ifupdown, å kjøre den manuelt, etc. Til slutt, kan du få en <filename>/etc/apparmor.d/sbin.dhclient</filename> nær denne:</para>
       <programlisting>
 # Last Modified: Tue Sep  8 21:40:02 2015
 #include &lt;tunables/global&gt;
@@ -895,23 +864,14 @@ Finished generating profile for /sbin/dhclient.</computeroutput>
   </section>
 
   <section id="sect.selinux">
-    <title>Introduction to SELinux</title>
+    <title>Introduksjon til SELinux</title>
     <indexterm><primary>SELinux</primary></indexterm>
     <section id="sect.selinux-principles">
       <title>Prinsipper</title>
 
-      <para>SELinux (<emphasis>Security Enhanced Linux</emphasis>) is a
-      <emphasis>Mandatory Access Control</emphasis> system built on Linux's
-      LSM (<emphasis>Linux Security Modules</emphasis>) interface. In
-      practice, the kernel queries SELinux before each system call to know
-      whether the process is authorized to do the given operation.</para>
+      <para>SELinux (<emphasis>Security Enhanced Linux</emphasis>) er et <emphasis>Mandatory Access Control</emphasis>-system som bygger på Linux sin LSM (<emphasis>Linux Security Modules</emphasis>)-grensesnitt. I praksis spør kjernen SELinux før hver systempåkalling for å vite om prosessen er autorisert til å gjøre den gitte operasjonen.</para>
 
-      <para>SELinux uses a set of rules — collectively known as a
-      <emphasis>policy</emphasis> — to authorize or forbid operations.
-      Those rules are difficult to create. Fortunately, two standard
-      policies (<emphasis>targeted</emphasis> and
-      <emphasis>strict</emphasis>) are provided to avoid the bulk of the
-      configuration work.</para>
+      <para>SELinux bruker et sett med regler — kollektivt kjent som en <emphasis>policy</emphasis> — for å godkjenne eller forby operasjoner. Disse reglene er vanskelige å lage. Heldigvis er to standardregler (<emphasis>targeted</emphasis> og <emphasis>strict</emphasis>) laget for å unngå mesteparten av konfigurasjonsarbeidet.</para>
 
       <para>With SELinux, the management of rights is completely different
       from traditional Unix systems. The rights of a process depend on its
