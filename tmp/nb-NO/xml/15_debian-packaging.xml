@@ -81,40 +81,40 @@
 				Den tidligere kommandoen kan mislykkes hvis <literal>Build-Depends</literal>-feltene ikke her blitt oppdatert, eller hvis de relaterte pakker ikke er installert. I dette tilfelle er det mulig å overprøve denne sjekken ved å sende <literal>-d</literal>-valget til <command>dpkg-buildpackage</command>. Men å eksplisitt ignorere disse avhengigheter gir risiko for at byggeprosessen mislykkes på et senere tidspunkt. Verre, kan pakken synes å bli bygget riktig, men klarer ikke å kjøre skikkelig: Noen programmer deaktiverer automatisk noen av sine oppgaver når et nødvendig bibliotek er ikke tilgjengelig på byggetidspunktet.
 			</para>
 			 <para>
-				More often than not, Debian developers use a higher-level program such as <command>debuild</command>; this runs <command>dpkg-buildpackage</command> as usual, but it also adds an invocation of a program that runs many checks to validate the generated package against the Debian policy. This script also cleans up the environment so that local environment variables do not “pollute” the package build. The <command>debuild</command> command is one of the tools in the <emphasis>devscripts</emphasis> suite, which share some consistency and configuration to make the maintainers' task easier.
+				Oftere enn ikke bruker Debian-utviklere et høynivå-program som <command>debuild</command>; Dette kjører <command>dpkg-buildpackage</command> til vanlig, men legger også til en påkalling til et program som kjører mange kontroller for å validere den genererte pakken opp mot Debians politikk. Dette skriptet renser også opp i miljøet, slik at lokale miljøvariabler ikke "forurenser" pakkebyggingen. <command>debuild</command>-kommandoen er et av verktøyene i <emphasis>devscripts</emphasis>-pakken, som deler noe konsistens og oppsett for å gjøre vedlikeholderens oppgave enklere.
 			</para>
 			 <sidebar> <title><emphasis>QUICK LOOK</emphasis> <command>pbuilder</command></title>
 			 <indexterm>
 				<primary><command>pbuilder</command></primary>
 			</indexterm>
 			 <para>
-				The <command>pbuilder</command> program (in the similarly named package) allows building a Debian package in a <emphasis>chrooted</emphasis> environment. It first creates a temporary directory containing the minimal system required for building the package (including the packages mentioned in the <emphasis>Build-Depends</emphasis> field). This directory is then used as the root directory (<filename>/</filename>), using the <command>chroot</command> command, during the build process.
+				<command>pbuilder</command>-programmet (i pakken med det tilsvarende navnet) tillater bygging av en Debian-pakke i en <emphasis>chrooted</emphasis>-omgivelse. Den lager først en midlertidig katalog med det minimale systemet som kreves for å bygge pakken (inkludert pakkene nevnt i <emphasis>Build-Depends</emphasis>-feltet). Denne katalogen blir så brukt som rotkatalog (<filename>/</filename>), og bruker <command>chroot</command>-kommandoen under byggeprosessen.
 			</para>
 			 <para>
-				This tool allows the build process to happen in an environment that is not altered by users' manipulations. This also allows for quick detection of the missing build-dependencies (since the build will fail unless the appropriate dependencies are documented). Finally, it allows building a package for a Debian version that is not the one used by the system as a whole: the machine can be using <emphasis role="distribution">Stable</emphasis> for its normal workload, and a <command>pbuilder</command> running on the same machine can be using <emphasis role="distribution">Unstable</emphasis> for package builds.
+				Dette verktøyet gjør at byggeprosessen skjer i et miljø som ikke endres av brukernes virksomhet. Dette gir også mulighet for rask påvisning av manglende bygge-avhengigheter (siden byggingen vil mislykkes uten dokumentasjon av de riktige avhengighetene). Til slutt, tillater det å bygge en pakke for en Debian-versjon som ikke er den som brukes av systemet som helhet: Maskinen kan bruke <emphasis role="distribution">Stable</emphasis> i sitt normale arbeid, og en <command>pbuilder</command> som kjører på den samme maskinen, kan bruke <emphasis role="distribution">Unstable</emphasis> til pakkebygging.
 			</para>
 			 </sidebar>
 		</section>
 
 	</section>
 	 <section id="sect.building-first-package">
-		<title>Building your First Package</title>
+		<title>Å bygge din første pakke</title>
 		 <section>
-			<title>Meta-Packages or Fake Packages</title>
+			<title>Meta-pakker eller falsk pakker</title>
 			 <para>
-				Fake packages and meta-packages are similar, in that they are empty shells that only exist for the effects their meta-data have on the package handling stack.
+				Falske pakker og meta-pakker er like, ved at de er tomme skall som bare eksisterer for effektene meta-dataene deres har på pakkehåndterings-stabelen.
 			</para>
 			 <para>
-				The purpose of a fake package is to trick <command>dpkg</command> and <command>apt</command> into believing that some package is installed even though it's only an empty shell. This allows satisfying dependencies on a package when the corresponding software was installed outside the scope of the packaging system. Such a method works, but it should still be avoided whenever possible, since there is no guarantee that the manually installed software behaves exactly like the corresponding package would and other packages depending on it would not work properly.
+				Formålet med en falsk pakke er å lure <command>dpkg</command> og <command>apt</command> til å tro at noen pakker er installert, selv om de bare er et tomt skall. Dette tillater å tilfredsstille avhengigheter i en pakke når den tilsvarende programvaren ble installert utenfor rammen av pakkesystemet. En slik metode fungerer, men bør likevel unngås når det er mulig, ettersom det ikke er noen garanti for at den manuelt installerte programvaren oppfører seg akkurat som den tilsvarende pakken ville ha gjort, og andre pakker som er avhengig av den, ikke vil fungere ordentlig.
 			</para>
 			 <para>
-				On the other hand, a meta-package exists mostly as a collection of dependencies, so that installing the meta-package will actually bring in a set of other packages in a single step.
+				På den annen side foreligger det en meta-pakke oftest som en samling av avhengigheter, slik at montering av meta-pakken faktisk vil føre inn et sett av andre pakker i et enkelt trinn.
 			</para>
 			 <para>
-				Both these kinds of packages can be created by the <command>equivs-control</command> and <command>equivs-build</command> commands (in the <emphasis role="pkg">equivs</emphasis> package). The <command>equivs-control <replaceable>file</replaceable></command> command creates a Debian package header file that should be edited to contain the name of the expected package, its version number, the name of the maintainer, its dependencies, and its description. Other fields without a default value are optional and can be deleted. The <literal>Copyright</literal>, <literal>Changelog</literal>, <literal>Readme</literal> and <literal>Extra-Files</literal> fields are not standard fields in Debian packages; they only make sense within the scope of <command>equivs-build</command>, and they will not be kept in the headers of the generated package.
+				Begge disse pakkesalgene kan lages av <command>equivs-control</command> og <command>equivs-build</command>-kommandoene (i <emphasis role="pkg">equivs</emphasis>-pakken). <command>equivs-control <replaceable>file</replaceable></command>-kommandoen oppretter en Debian-pakke topptekstfil som skal redigeres for å inneholde navnet på den forventede pakken, dens versjonsnummer, navnet på vedlikeholderen, avhengighetene, og beskrivelsen. Andre felt uten en standardverdi er valgfrie og kan slettes.<literal>Copyright</literal>, <literal>Changelog</literal>, <literal>Readme</literal> og <literal>Extra-Files</literal>-feltene er ikke standard felt i Debian-pakker; de bare gir mening innenfor rammen av <command>equivs-build</command>, og de vil ikke bli beholdt i overskriftene til den genererte pakken.
 			</para>
 			 <example>
-				<title>Header file of the <emphasis>libxml-libxml-perl</emphasis> fake package</title>
+				<title>Topptekstfil for den falske pakken <emphasis>libxml-libxml-perl</emphasis></title>
 				 
 <programlisting>
 Section: perl
