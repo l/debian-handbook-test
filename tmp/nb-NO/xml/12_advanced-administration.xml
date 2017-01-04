@@ -276,10 +276,10 @@ Writing superblocks and filesystem accounting information: done
 /dev/md0        7.9G   18M  7.4G   1% /srv/raid-0
 </computeroutput></screen>
 				 <para>
-					<command>mdadm --create</command>-kommandoen krever flere parametre: Navnet på volumet som skal lages (<filename>/dev/md*</filename>, der MD står for <foreignphrase>Multiple Device</foreignphrase>), RAID-nivået, antall disker (som er obligatorisk til tross for at det er mest meningsfullt bare med RAID-1 og over), og de fysiske enhetene som skal brukes. Når enheten er opprettet, kan vi bruke den som vi ville bruke en vanlig partisjon, opprette et filsystem på den, montere dette filsystemet, og så videre. Vær oppmerksom på at vår etablering av et RAID-0-volum på <filename>md0</filename> ikke er et sammentreff, og nummereringen av tabellen ikke trenger å være korrelert til det valgte størrelsen på reservekapasiteten. Det er også mulig å lage navngitte RAID arrays, ved å gi <command>mdadm</command>.parametre slik som <filename>/dev/md/linear</filename> instedet for <filename>/dev/md0</filename>.
+					Kommandoen <command>mdadm --create</command> krever flere parametre: Navnet på volumet som skal lages (<filename>/dev/md*</filename>, der MD står for <foreignphrase>Multiple Device</foreignphrase>), RAID-nivået, antall disker (som er obligatorisk til tross for at det er mest meningsfullt bare med RAID-1 og over), og de fysiske enhetene som skal brukes. Når enheten er opprettet, kan vi bruke den som vi ville bruke en vanlig partisjon, opprette et filsystem på den, montere dette filsystemet, og så videre. Vær oppmerksom på at vår etablering av et RAID-0-volum på <filename>md0</filename> ikke er et sammentreff, og nummereringen av tabellen ikke trenger å være korrelert til den valgte størrelsen på reservekapasiteten. Det er også mulig å lage navngitte RAID-arrays, ved å gi <command>mdadm</command> parametre slik som <filename>/dev/md/linear</filename> i stedet for <filename>/dev/md0</filename>.
 				</para>
 				 <para>
-					Opprettelse av en RAID-1 følger op en lignende måte, forskjellene bare blir merkbare etter etableringen:
+					Opprettelse av en RAID-1 følger opp en lignende måte, forskjellene blir bare merkbare etter etableringen:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md1 --level=1 --raid-devices=2 /dev/sdd2 /dev/sde</userinput>
@@ -325,17 +325,17 @@ Working Devices : 2
           State : clean
 [...]
 </computeroutput></screen>
-				 <sidebar> <title><emphasis>TIP</emphasis> RAID, disker og partisjoner</title>
+				 <sidebar> <title><emphasis>TIPS</emphasis> RAID, disker og partisjoner</title>
 				 <para>
-					Som illustrert ved vårt eksempel, kan RAID-enheter bygges fra ediskpartisjoner, og krever ikke hele disker.
+					Som illustrert ved vårt eksempel, kan RAID-enheter bygges fra diskpartisjoner, og krever ikke hele disker.
 				</para>
 				 </sidebar> <para>
-					Noen få merknader er på sin plass. Først, <command>mdadm</command> merker at de fysiske elementene har forskjellige størrelser; Siden dette innebærer at noe plass går tapt på de større elementene, kreves en bekreftelse.
+					Noen få merknader er på sin plass. Først, <command>mdadm</command> merker at de fysiske elementene har forskjellige størrelser; siden dette innebærer at noe plass går tapt på de større elementene, kreves en bekreftelse.
 				</para>
 				 <para>
-					Enda viktigere, merk tilstanden til speilet. Normal tilstand for et RAID speil er at begge diskene har nøyaktig samme innhold. Men ingenting garanterer dette er tilfelle når volumet blir opprettet. RAIDs subsystem vil derfor gi denne garantien selv, og det vil være en synkroniseringsfase så snart RAID-enheten er opprettet. Etter en tid (det nøyaktige tiden vil avhenge av den faktiske størrelsen på diskene ...), skifter RAID-tabellen til "aktiv" eller "ren" tilstand. Legg merke til at i løpet av denne gjenoppbyggingsfasen, er speilet i en degradert modus, og reservekapasitet er ikke sikret. En disk som svikter i løpet av dette risiko-vinduet kan føre til at alle data mistes. Store mengder av viktige data er imidlertid sjelden lagret på en nyopprettet RAID før den første synkroniseringen. Legg merke til at selv i degradert modus, vil <filename>/dev/md1</filename> kunne brukes, et filsystem kan opprettes på den, så vel som noe data kopieres på den.
+					Enda viktigere er det å merke tilstanden til speilet. Normal tilstand for et RAID-speil er at begge diskene har nøyaktig samme innhold. Men ingenting garanterer at dette er tilfelle når volumet blir opprettet. RAID-subsystem vil derfor gi denne garantien selv, og det vil være en synkroniseringsfase så snart RAID-enheten er opprettet. Etter en tid (den nøyaktige tiden vil avhenge av den faktiske størrelsen på diskene ...), skifter RAID-tabellen til «aktiv» eller «ren» tilstand. Legg merke til at i løpet av denne gjenoppbyggingsfasen, er speilet i en degradert modus, og reservekapasitet er ikke sikret. En disk som svikter på dette trinnet kan føre til at alle data mistes. Store mengder av viktige data er imidlertid sjelden lagret på en nyopprettet RAID før den første synkroniseringen. Legg merke til at selv i degradert modus, vil <filename>/dev/md1</filename> kunne brukes, og et filsystem kan opprettes på den, så vel som noe data kopieres på den.
 				</para>
-				 <sidebar> <title><emphasis>TIP</emphasis> Å starte et speil i degradert modus</title>
+				 <sidebar> <title><emphasis>TIPS</emphasis> Å starte et speil i degradert modus</title>
 				 <para>
 					Noen ganger er to disker ikke umiddelbart tilgjengelig når man ønsker å starte et RAID-1-speil, for eksempel fordi en av diskene en planlegger å inkludere allerede er brukt til å lagre dataene man ønsker å flytte til matrisen. I slike tilfeller er det mulig å bevisst skape en degraderte RAID-1-tabell ved å sende <filename>missing</filename> i stedet for et enhetsfil som ett av argumentene til <command>mdadm</command>. Når dataene er blitt kopiert til "speilet", kan den gamle disken legges til matrisen. Så vil det finne sted en synkronisering, noe som gir oss den reservekapasitet som var ønsket i første omgang.
 				</para>
