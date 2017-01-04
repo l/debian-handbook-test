@@ -455,21 +455,20 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 
 	<para>Først, PV (<emphasis>Physical Volume</emphasis>, fysisk volum) er enheten nærmest maskinvaren: Det kan være partisjoner på en disk, en full disk, eller til og med en annen blokkenhet (inkludert, for eksempel, en RAID-matrise). Merk at når et fysisk element er satt opp til å bli en PV for LVM, skal den kun være tilgjengelige via LVM, ellers vil systemet bli forvirret.</para>
 
-	<para>Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>, volumgruppe), som kan sammenlignes med både virtuelle og utvidbare disker.  VG er abstrakte, og vises ikke i en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risiko for å bruke dem direkte.</para>
+	<para>Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>, volumgruppe), som kan sammenlignes med både virtuelle og utvidbare disker. VG er abstrakte, og vises ikke i en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risiko for å bruke dem direkte.</para>
 
-	<para>Den tredje typen objekt er LV (<emphasis>Logical Volume</emphasis>), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <filename>/dev</filename>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, for å være vert for et filsystem eller et vekselminne).</para>
+	<para>Den tredje typen objekt er LV (<emphasis>Logical Volume</emphasis>, logisk volum), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <filename>/dev</filename>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, for å være vert for et filsystem eller et vekselminne).</para>
 
-	<para>Det viktige er at splittingen av en VG til LVS-er er helt uavhengig av dens fysiske komponenter (PVS-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; På samme måte kan en VG bruke flere fysiske disker og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen allokert til LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.</para>
+	<para>Det viktige er at splittingen av en VG til LVS-er er helt uavhengig av dens fysiske komponenter (PVS-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; på samme måte kan en VG bruke flere fysiske disker, og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen allokert (fordelt) til LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.</para>
 
-	<para>Det er imildertid ofte fornuftig, å ha noen form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, de raske de kan bli gruppert i en VG og tregere seg i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.</para>
+	<para>Det er imidlertid ofte fornuftig å ha en viss form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, kan de raske bli gruppert i en VG, og de tregere i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.</para>
 
 	<para>I alle fall, husk at en LV ikke er spesielt knyttet til en bestemt PV. Det er mulig å påvirke hvor data fra en LV fysisk er lagret, men å bruk denne muligheten på daglig basis er ikke nødvendig. Tvert imot: Ettersom settet med fysiske komponenter i en VG utvikler seg, kan de fysiske lagringsstedene som tilsvarer en bestemt LV, migreres over disker (mens den selvfølgelig blir værende innenfor PV-er tildelt VG-en).</para>
       </section>
       <section id="sect.lvm-setup">
         <title>Å sette opp LVM</title>
 
-	<para>La oss nå følge, trinn for trinn, prosessen med å sette opp LVM for et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon skjer vanligvis etter en lang
-og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål, vil vi vurdere en tjener der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:</para>
+	<para>La oss nå følge, trinn for trinn, prosessen med å sette opp LVM for et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon skjer vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål vil vi vurdere en tjener der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:</para>
         <itemizedlist>
           <listitem>
 	    <para>på <filename>sdb</filename>-disken, en <filename>sdb2</filename>-partisjon, 4 GB;</para>
@@ -481,15 +480,15 @@ og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsform
 	    <para><filename>sdd</filename>-disken, 4 GB, fullt tilgjengelig;</para>
           </listitem>
           <listitem>
-	    <para>På <filename>sdf</filename>-disken, en <filename>sdf1</filename>-partisjon, 4 GB; og en  <filename>sdf2</filename>-partisjon, 5 GB.</para>
+	    <para>på <filename>sdf</filename>-disken, en <filename>sdf1</filename>-partisjon, 4 GB; og en  <filename>sdf2</filename>-partisjon, 5 GB.</para>
           </listitem>
         </itemizedlist>
 
 	<para>I tillegg, la oss anta at diskene <filename>sdb</filename> og <filename>sdf</filename> er raskere enn de andre to.</para>
 
-	<para>Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB) De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhinder bruk av partisjoner på egen hånd; Å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.</para>
+	<para>Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB). De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhindrer bruk av partisjoner på egen hånd; å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.</para>
 
-	<para>De verktøy som kreves er i <emphasis role="pkg">lvm2</emphasis>-pakken og det den krever. Når de er installert, skal det det tre trinn til for å sette opp LVM som svarer til de tre konsept-nivåene.</para>
+	<para>De verktøy som kreves er i <emphasis role="pkg">lvm2</emphasis>-pakken og det den krever. Når de er installert, skal det tre trinn til for å sette opp LVM som svarer til de tre konseptnivåene.</para>
 
 	<para>Først forbereder vi de fysiske volumene ved å bruke <command>pvcreate</command>:</para>
 
@@ -526,7 +525,7 @@ og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsform
 
 	<para>Så langt så bra. Vær oppmerksom på at en PV kan settes opp på en full disk, samt på individuelle partisjoner på den. Som vist ovenfor <command>pvdisplay</command>-kommandoen lister eksisterende PV-er, med to mulige utdata-resultater.</para>
 
-	<para>Nå la oss sette sammen disse fysiske elementer til VG-er ved bruke <command>vgcreate</command>. Vi vil samle bare PV-er fra de raske diskene inn i en <filename>vg_critical</filename>-VG. Den andre VG-en, <filename>vg_normal</filename>, vil også inkludere langsommere elementer.</para>
+	<para>Nå la oss sette sammen disse fysiske elementer til VG-er ved å bruke <command>vgcreate</command>. Vi vil samle bare PV-er fra de raske diskene inn i en <filename>vg_critical</filename>-VG. Den andre VG-en, <filename>vg_normal</filename>, vil også inkludere langsommere elementer.</para>
 
         <screen id="screen.vgcreate"><computeroutput># </computeroutput><userinput>vgdisplay</userinput>
 <computeroutput>  No volume groups found

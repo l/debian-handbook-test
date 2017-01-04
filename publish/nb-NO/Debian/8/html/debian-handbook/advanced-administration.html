@@ -687,14 +687,14 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 				</div><div
                 class="para">
 					Den tredje typen objekt er LV (<span
-                  class="emphasis"><em>Logical Volume</em></span>), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <code
+                  class="emphasis"><em>Logical Volume</em></span>, logisk volum), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <code
                   class="filename">/dev</code>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, for å være vert for et filsystem eller et vekselminne).
 				</div><div
                 class="para">
-					Det viktige er at splittingen av en VG til LVS-er er helt uavhengig av dens fysiske komponenter (PVS-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; På samme måte kan en VG bruke flere fysiske disker og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen allokert til LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.
+					Det viktige er at splittingen av en VG til LVS-er er helt uavhengig av dens fysiske komponenter (PVS-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; på samme måte kan en VG bruke flere fysiske disker, og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen allokert (fordelt) til LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.
 				</div><div
                 class="para">
-					Det er imildertid ofte fornuftig, å ha noen form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, de raske de kan bli gruppert i en VG og tregere seg i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.
+					Det er imidlertid ofte fornuftig å ha en viss form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, kan de raske bli gruppert i en VG, og de tregere i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.
 				</div><div
                 class="para">
 					I alle fall, husk at en LV ikke er spesielt knyttet til en bestemt PV. Det er mulig å påvirke hvor data fra en LV fysisk er lagret, men å bruk denne muligheten på daglig basis er ikke nødvendig. Tvert imot: Ettersom settet med fysiske komponenter i en VG utvikler seg, kan de fysiske lagringsstedene som tilsvarer en bestemt LV, migreres over disker (mens den selvfølgelig blir værende innenfor PV-er tildelt VG-en).
@@ -705,7 +705,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
                         xmlns=""
                         id="sect.lvm-setup"></a>12.1.2.2. Å sette opp LVM</h4></div></div></div><div
                 class="para">
-					La oss nå følge, trinn for trinn, prosessen med å sette opp LVM for et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon skjer vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål, vil vi vurdere en tjener der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:
+					La oss nå følge, trinn for trinn, prosessen med å sette opp LVM for et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon skjer vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål vil vi vurdere en tjener der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:
 				</div><div
                 xmlns:d="http://docbook.org/ns/docbook"
                 class="itemizedlist"><ul><li
@@ -728,7 +728,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 						</div></li><li
                     class="listitem"><div
                       class="para">
-							På <code
+							på <code
                         class="filename">sdf</code>-disken, en <code
                         class="filename">sdf1</code>-partisjon, 4 GB; og en <code
                         class="filename">sdf2</code>-partisjon, 5 GB.
@@ -739,11 +739,11 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
                   class="filename">sdf</code> er raskere enn de andre to.
 				</div><div
                 class="para">
-					Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB) De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhinder bruk av partisjoner på egen hånd; Å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
+					Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB). De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhindrer bruk av partisjoner på egen hånd; å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
 				</div><div
                 class="para">
 					De verktøy som kreves er i <span
-                  class="pkg pkg">lvm2</span>-pakken og det den krever. Når de er installert, skal det det tre trinn til for å sette opp LVM som svarer til de tre konsept-nivåene.
+                  class="pkg pkg">lvm2</span>-pakken og det den krever. Når de er installert, skal det tre trinn til for å sette opp LVM som svarer til de tre konseptnivåene.
 				</div><div
                 class="para">
 					Først forbereder vi de fysiske volumene ved å bruke <code
@@ -796,7 +796,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
                   class="command">pvdisplay</code>-kommandoen lister eksisterende PV-er, med to mulige utdata-resultater.
 				</div><div
                 class="para">
-					Nå la oss sette sammen disse fysiske elementer til VG-er ved bruke <code
+					Nå la oss sette sammen disse fysiske elementer til VG-er ved å bruke <code
                   class="command">vgcreate</code>. Vi vil samle bare PV-er fra de raske diskene inn i en <code
                   class="filename">vg_critical</code>-VG. Den andre VG-en, <code
                   class="filename">vg_normal</code>, vil også inkludere langsommere elementer.
