@@ -324,7 +324,7 @@ Working Devices : 1
        1       8       64        -      faulty   /dev/sde</computeroutput>
 </screen>
 
-	<para>Innholdet i volumet er fortsatt tilgjengelig (og, hvis det er montert, legger ikke programmene merke til en ting), men datasikkerheten er ikke trygg lenger: Skulle <filename>sdd</filename> disken i sin tur svikte, vil dataene gå tapt. Vi ønsker å unngå denne risikoen, så vi erstatter den ødelagte disken med et ny en, <filename>sdf</filename>:</para>
+	<para>Innholdet i volumet er fortsatt tilgjengelig (og, hvis det er montert, legger ikke programmene merke til en ting), men datasikkerheten er ikke trygg lenger: Skulle <filename>sdd</filename>-disken i sin tur svikte, vil dataene gå tapt. Vi ønsker å unngå denne risikoen, så vi erstatter den ødelagte disken med en ny en, <filename>sdf</filename>:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --add /dev/sdf</userinput>
 <computeroutput>mdadm: added /dev/sdf
@@ -376,7 +376,7 @@ Working Devices : 2
        1       8       64        -      faulty   /dev/sde</computeroutput>
 </screen>
 
-	<para>Her igjen, utløser kjernen automatisk en rekonstruksjonsase der volumet, fortsatt tilgjengelig, men i en degradert modus. Når gjenoppbyggingen er over, er RAID-matrisen tilbake i normal tilstand. Man kan da si til systemet at <filename>sde</filename>-disken er i ferd med å bli fjernet fra matrisen, for å ende opp med et klassisk RAID-speil på to disker:</para>
+	<para>Her igjen utløser kjernen automatisk en rekonstruksjonsfase der volumet fortsatt er tilgjengelig, men i en degradert modus. Når gjenoppbyggingen er over, er RAID-matrisen tilbake i normal tilstand. Man kan da si til systemet at <filename>sde</filename>-disken er i ferd med å bli fjernet fra matrisen, for å ende opp med et klassisk RAID-speil på to disker:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --remove /dev/sde</userinput>
 <computeroutput>mdadm: hot removed /dev/sde from /dev/md1
@@ -388,17 +388,17 @@ Working Devices : 2
        2       8       80        1      active sync   /dev/sdf</computeroutput>
 </screen>
 
-	<para>Fra da av kan driveren fysisk fjernes når tjeneren nærmest er slått av, eller til og med hot-fjernes når maskinvareoppsettet tillater det. Slike konfigurasjoner inkluderer noen SCSI-kontrollere, de fleste SATA disker, og eksterne harddisker som opererer via USB eller Firewire.</para>
+	<para>Fra da av kan driveren fysisk fjernes når tjeneren nærmest er slått av, eller til og med hot-fjernes når maskinvareoppsettet tillater det. Slike konfigurasjoner inkluderer noen SCSI-kontrollere, de fleste SATA-disker, og eksterne harddisker som opererer via USB eller Firewire.</para>
       </section>
       <section id="sect.backup-raid-config">
         <title>Sikkerhetskopi av konfigureringen</title>
 
-	<para>De fleste av meta-dataene som gjelder gjelder RAID-volumer lagres direkte på diskene til disse matrisene, slik at kjernen kan oppdage matriser og komponentene deres, og montere dem automatisk når systemet starter opp. Men det oppmuntres til sikkerhetskopiering av denne konfigurasjonen, fordi denne deteksjonen ikke er feilfri, og det er bare å forvente at den vil svikte akkurat under sensitive omstendigheter. I vårt eksempel, hvis en svikt i <filename>sde</filename>-disken hadde vært virkelig (i stedet for simulert) og at systemet har blitt startet på nytt uten å fjerne denne <filename>sde</filename>-disken, kunne denne disken begynne å jobbe igjen etter å ha  blitt undersøkt under omstarten. Kjernen vil da ha tre fysiske elementer, som hver utgir seg for å inneholde halvparten av det samme RAID volumet. En annen kilde til forvirring kan komme når RAID-volumer fra to tjenere er konsolidert inn i bare en tjener. Hvis disse matrisene kjørte normalt før diskene ble flyttet, ville kjernen være i stand til å oppdage og montere parene riktig; men hvis de flyttede diskene hadde blitt samlet i en <filename>md1</filename> på den gamle tjeneren, og den nye tjeneren allerede har en <filename>md1</filename>, ville en av speilene få nytt navn.</para>
+	<para>De fleste av meta-dataene som gjelder gjelder RAID-volumer lagres direkte på diskene til disse matrisene, slik at kjernen kan oppdage matriser og komponentene deres, og montere dem automatisk når systemet starter opp. Men det oppmuntres til sikkerhetskopiering av denne konfigurasjonen, fordi denne deteksjonen ikke er feilfri, og det er bare å forvente at den vil svikte akkurat under sensitive omstendigheter. I vårt eksempel, hvis en svikt i <filename>sde</filename>-disken hadde vært virkelig (i stedet for simulert), og systemet har blitt startet på nytt uten å fjerne denne <filename>sde</filename>-disken, kunne denne disken begynne å jobbe igjen etter å ha  blitt undersøkt under omstarten. Kjernen vil da ha tre fysiske elementer, som hver utgir seg for å inneholde halvparten av det samme RAID-volumet. En annen kilde til forvirring kan komme når RAID-volumer fra to tjenere er konsolidert inn i bare en tjener. Hvis disse matrisene kjørte normalt før diskene ble flyttet, ville kjernen være i stand til å oppdage og montere parene riktig; men hvis de flyttede diskene hadde blitt samlet i en <filename>md1</filename> på den gamle tjeneren, og den nye tjeneren allerede har en <filename>md1</filename>, ville et av speilene få nytt navn.</para>
 
 	<para>Å sikkerhetskopiere konfigurasjonen er derfor viktig, om bare som referanse. Den vanlige måten å gjøre det på er å redigere <filename>/etc/mdadm/mdadm.conf</filename>-filen, et eksempel på det er listet her:</para>
 
         <example id="example.mdadm-conf">
-          <title><command>mdadm</command> konfigurasjonsfil</title>
+          <title><command>mdadm</command>-konfigurasjonsfil</title>
 
           <programlisting># mdadm.conf
 #
@@ -428,11 +428,11 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 </programlisting>
         </example>
 
-	<para>En av de mest nyttige detaljer er <literal>DEVICE</literal>-valget, som viser enhetene som systemet automatisk vil se etter deler av RAID-volumer ved oppstartstidtidspunktet. I vårt eksempel, erstattet vi standardverdien, <literal>partitions containers</literal>,med en eksplisitt liste over enhetsfiler, siden vi valgte å bruke hele disker og ikke bare partisjoner for noen volumer.</para>
+	<para>En av de mest nyttige detaljer er <literal>DEVICE</literal>-valget, som viser enhetene som systemet automatisk vil se etter deler av RAID-volumer ved oppstartstidspunktet. I vårt eksempel erstattet vi standardverdien, <literal>partitions containers</literal>, med en eksplisitt liste over enhetsfiler, siden vi valgte å bruke hele disker, og ikke bare partisjoner for noen volumer.</para>
 
-	<para>De to siste linjene i vårt eksempel er de som tillater kjernen trygt velge hvilke volumnummer som skal tilordnes hvilken matrise. Metadataene som er lagret på selve diskene er nok til å sette volumene sammen igjen, men ikke for å bestemme volumnummeret (og det matchende <filename>/dev/md*</filename>-enhetsnavn).</para>
+	<para>De to siste linjene i vårt eksempel er de som tillater kjernen trygt å velge hvilke volumnummer som skal tilordnes hvilken matrise. Metadataene som er lagret på selve diskene er nok til å sette volumene sammen igjen, men ikke for å bestemme volumnummeret (og det matchende <filename>/dev/md*</filename>-enhetsnavn).</para>
 
-	<para>Heldigvis kan disse lenjene generes automatisk:</para>
+	<para>Heldigvis kan disse linjene generes automatisk:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm --misc --detail --brief /dev/md?</userinput>
 <computeroutput>ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
@@ -445,17 +445,17 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
     <section id="sect.lvm">
       <title>LVM</title>
       <indexterm><primary>LVM</primary></indexterm>
-      <indexterm><primary>Logical Volume Manager</primary></indexterm>
+      <indexterm><primary>Logical Volume Manager ( logisk volumhåndtering)</primary></indexterm>
 
-      <para>LVM, <emphasis>Logical Volume Manager</emphasis>, er en annen tilnærming for å abstrahere logiske volumer fra sin fysiske forankring, som fokuserer på økt fleksibilitet i stedet for økt pålitelighet. LVM lar deg endre et logisk volum transparent så langt programmene angår; For eksempel, er det mulig å legge til nye disker, overføre dataene til dem, og fjerne gamle disker, uten at volumet demonteres.</para>
+      <para>LVM, <emphasis>Logical Volume Manager</emphasis> ( logisk volumhåndtering), er en annen tilnærming for å abstrahere logiske volumer fra sin fysiske forankring, som fokuserer på økt fleksibilitet i stedet for økt pålitelighet. LVM lar deg endre et logisk volum transparent så langt programmene angår; for eksempel er det mulig å legge til nye disker, overføre dataene til dem, og fjerne gamle disker, uten at volumet demonteres.</para>
       <section id="sect.lvm-concepts">
-        <title>LVM konsepter</title>
+        <title>LVM-konsepter</title>
 
 	<para>Denne fleksibilitet oppnås med et abstraksjonsnivå som involverer tre konsepter.</para>
 
-	<para>Først, PV (<emphasis>Physical Volume</emphasis>) er enheten nærmest maskinvaren: Det kan være partisjoner på en disk, en full disk, eller til og med en annen blokkenhet (inkludert, for eksempel, en RAID-matrise). Merk at når et fysisk element er satt opp til å bli en PV for LVM, skal den kun være tilgjengelige via LVM, ellers vil systemet bli forvirret.</para>
+	<para>Først, PV (<emphasis>Physical Volume</emphasis>, fysisk volum) er enheten nærmest maskinvaren: Det kan være partisjoner på en disk, en full disk, eller til og med en annen blokkenhet (inkludert, for eksempel, en RAID-matrise). Merk at når et fysisk element er satt opp til å bli en PV for LVM, skal den kun være tilgjengelige via LVM, ellers vil systemet bli forvirret.</para>
 
-	<para>Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>), som kan sammenlignes med både virtuelle og utvidbare disker.  VG er abstrakte, og vises ikke i en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risk for å bruke dem direkte.</para>
+	<para>Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>, volumgruppe), som kan sammenlignes med både virtuelle og utvidbare disker.  VG er abstrakte, og vises ikke i en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risiko for å bruke dem direkte.</para>
 
 	<para>Den tredje typen objekt er LV (<emphasis>Logical Volume</emphasis>), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <filename>/dev</filename>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, for å være vert for et filsystem eller et vekselminne).</para>
 
