@@ -511,7 +511,7 @@ testxen login: </code></pre><div
 						på filsystemet, kjernen sjekker tillatelser etter de numeriske iidentifikatorer for brukere og grupper. Disse identifikatorene kan utpeke ulike brukere og grupper avhengig av beholderen, noe en bør huske på om skrivbare deler av filsystemet er delt mellom beholdere.
 					</div></li></ul></div></div><div
             class="para">
-				Siden vi har å gjøre med isolasjon og ikke vanlig virtualisering, er å sette opp LXC beholdere mer komplisert enn bare å kjøre en Debian-installer på en virtuell maskin. Vi vil beskrive noen forutsetninger, og deretter gå videre til nettverkskonfigurasjonen. Da vil vi faktisk være i stand til å lage systemet som skal kjøres i beholderen.
+				Siden vi har å gjøre med isolasjon, og ikke vanlig virtualisering, er å sette opp LXC-beholdere mer komplisert enn bare å kjøre en Debian-installer på en virtuell maskin. Vi vil beskrive noen forutsetninger, og deretter gå videre til nettverkskonfigurasjonen. Da vil vi faktisk være i stand til å lage systemet som skal kjøres i beholderen.
 			</div><div
             class="section"><div
               class="titlepage"><div><div><h4
@@ -519,13 +519,13 @@ testxen login: </code></pre><div
                       xmlns=""
                       id="id-1.15.5.13.7"></a>12.2.2.1. Innledende skritt</h4></div></div></div><div
               class="para">
-					<span
-                class="pkg pkg">lxc</span>-pakken inneholder de verktøyene som kreves for å kjøre LXC, og må derfor være installert.
+					Pakken <span
+                class="pkg pkg">lxc</span> inneholder de verktøyene som kreves for å kjøre LXC, og må derfor være installert.
 				</div><div
               class="para">
-					LXC krever også oppsettsystemet <span
-                class="emphasis"><em>control groups</em></span> som er et virtuelt filsystem til å monteres på <code
-                class="filename">/sys/fs/cgroup</code>. Ettersom Debian 8 byttet til systemd, som også er avhengig av kontrollgrupper gjøres dette nå automatisk ved oppstart uten ytterligere konfigurasjon.
+					LXC krever også oppsettssystemet <span
+                class="emphasis"><em>kontrollgrupper</em></span>, som er et virtuelt filsystem til å monteres på <code
+                class="filename">/sys/fs/cgroup</code>. Ettersom Debian 8 byttet til systemd, som også er avhengig av kontrollgrupper, gjøres dette nå automatisk ved oppstart uten ytterligere konfigurasjon.
 				</div></div><div
             class="section"><div
               class="titlepage"><div><div><h4
@@ -533,14 +533,14 @@ testxen login: </code></pre><div
                       xmlns=""
                       id="sect.lxc.network"></a>12.2.2.2. Nettverksoppsett</h4></div></div></div><div
               class="para">
-					Målet med å installere LXC er å sette opp virtuelle maskiner; mens vi selvfølgelig kan holde dem isolert fra nettverket, og bare kommunisere med dem via filsystemet, innebærer de fleste brukstilfeller å minst gi minimal nettverkstilgang til beholderne. I det typiske tilfellet vil hver beholder får et virtuelt nettverksgrensesnitt koblet til det virkelige nettverket via en bro. Dette virtuelle grensesnittet kan kobles enten direkte på vertens fysiske nettverksgrensesnitt (der beholderen er direkte på nettverket), eller på et annet virtuelt grensesnitt som er definert hos verten (og verten kan da filtrere eller rute trafikk). I begge tilfelle kreves <span
-                class="pkg pkg">bridge-utils</span> pakken.
+					Målet med å installere LXC er å sette opp virtuelle maskiner; mens vi selvfølgelig kan holde dem isolert fra nettverket, og bare kommunisere med dem via filsystemet, innebærer de fleste brukstilfeller i det minste å gi minimal nettverkstilgang til beholderne. I det typiske tilfellet vil hver beholder få et virtuelt nettverksgrensesnitt koblet til det virkelige nettverket via en bro. Dette virtuelle grensesnittet kan kobles enten direkte på vertens fysiske nettverksgrensesnitt (der beholderen er direkte på nettverket), eller på et annet virtuelt grensesnitt som er definert hos verten (og verten kan da filtrere eller rute trafikk). I begge tilfelle kreves <span
+                class="pkg pkg">bridge-utils</span>-pakken.
 				</div><div
               class="para">
 					Det enkle tilfellet gjelder bare redigering <code
                 class="filename">/etc/network/interfaces</code>, å flytte oppsettet for det fysiske grensesnittet (for eksempel <code
                 class="literal">eth0</code>) til et brogrensesnitt (vanligvis <code
-                class="literal">br0</code>), og konfigurere koblingen mellom dem. For eksempel, hvis nettverkskonfigurasjonsfilen i utgangspunktet inneholder oppføringer som for eksempel de følgende:
+                class="literal">br0</code>), og konfigurere koblingen mellom dem. For eksempel, hvis nettverkskonfigurasjonsfilen i utgangspunktet inneholder oppføringer som de følgende:
 				</div><pre
               class="programlisting">auto eth0
 iface eth0 inet dhcp</pre><div
@@ -554,16 +554,16 @@ auto br0
 iface br0 inet dhcp
   bridge-ports eth0</pre><div
               class="para">
-					Effekten av denne konfigurasjonen vil ligne på hva som ville blitt oppnådd dersom beholderne var maskiner koblet til det samme fysiske nettverket som vert. Bro-konfigurasjon håndterer transitt av Ethernet-rammer mellom alle bro-grensesnitt som inkluderer fysisk <code
-                class="literal">eth0</code> samt grensesnittet definert for beholderne.
+					Effekten av denne konfigurasjonen vil ligne på hva som ville blitt oppnådd dersom beholderne var maskiner koblet til det samme fysiske nettverket som vert. Bro-konfigurasjon (“bridge”-konfigurasjonen) håndterer transitt av Ethernet-rammer mellom alle bro-grensesnitt som inkluderer fysisk <code
+                class="literal">eth0</code>, samt grensesnittet definert for beholderne.
 				</div><div
               class="para">
 					I tilfeller der denne konfigurasjonen ikke kan brukes (for eksempel hvis ingen offentlige IP-adresser kan tildeles beholderne), blir et virtuelt <span
-                class="emphasis"><em>tap</em></span> grensesnitt opprettet og koblet til broen. Den tilsvarende nettverksammenhengen blir da som en vert med en et andre nettverkskort koblet til en egen bryter, med også beholderne koblet til denne bryteren. Verten fungerer da som en inngangsport for beholdere hvis de er ment å kommunisere med omverdenen.
+                class="emphasis"><em>tap</em></span>-grensesnitt opprettet og koblet til broen. Den tilsvarende nettverkssammenhengen blir da som en vert med et andre nettverkskort koblet til en egen bryter, med også beholderne koblet til denne bryteren. Verten fungerer da som en inngangsport for beholdere hvis de er ment å kommunisere med omverdenen.
 				</div><div
               class="para">
 					I tillegg til <span
-                class="pkg pkg">bridge-utils</span>, krever denne "rike" konfigurasjonen <span
+                class="pkg pkg">bridge-utils</span>, krever denne «rike» konfigurasjonen <span
                 class="pkg pkg">vde2</span>-pakken; <code
                 class="filename">/etc/network/interfaces</code>-filen blir da:
 				</div><pre
@@ -593,10 +593,10 @@ iface br0 inet static
                       xmlns=""
                       id="id-1.15.5.13.9"></a>12.2.2.3. Å sette opp systemet</h4></div></div></div><div
               class="para">
-					La oss nå satt opp filsystemet som skal brukes av beholderen. Siden denne "virtuelle maskinen" vil ikke kjøres direkte på maskinvare , er noen finjusteringer nødvendige sammenlignet med et standard filsystem, spesielt så langt som kjernen, enheter og konsollene angår. Heldigvis inkluderer <span
+					La oss nå sette opp filsystemet som skal brukes av beholderen. Siden denne «virtuelle maskinen» ikke vil kjøres direkte på maskinvare, er noen finjusteringer nødvendige sammenlignet med et standard filsystem, spesielt så langt som kjernen, enheter og konsollene angår. Heldigvis inkluderer <span
                 class="pkg pkg">lxc</span> skript som stort sett automatiserer denne konfigurasjonen. For eksempel vil følgende kommandoer (som krever <span
                 class="pkg pkg">debootstrap</span> og <span
-                class="pkg pkg">rsync</span> packages) installere en Debian beholder:
+                class="pkg pkg">rsync</span>-packages) installere en Debian beholder:
 				</div><pre
               class="screen"><code
                 class="computeroutput">root@mirwiz:~# </code><strong
@@ -615,18 +615,18 @@ Root password is 'sSiKhMzI', please change !
 root@mirwiz:~# </code>
 </pre><div
               class="para">
-					Merk at filsystemet opprinnelig er opprettet i<code
+					Merk at filsystemet opprinnelig er opprettet i <code
                 class="filename">/var/cache/lxc</code>, og deretter flyttet til den katalogen filsystemet skal til. Dette gjør det mulig å lage identiske beholdere mye raskere, ettersom det da bare kreves kopiering.
 				</div><div
               class="para">
-					Merk at Debian-skriptet for å opprette maler godtar et <code
+					Merk at Debian-skriptet, for å opprette maler, godtar et <code
                 class="option">--arch</code>-valg for å spesifisere arkitekturen til systemet som skal installeres, og et <code
                 class="option">--release</code>-valg hvis du ønsker å installere noe annet enn den nåværende stabile utgaven av Debian. Du kan også sette omgivelsesvariabelen <code
                 class="literal">MIRROR</code> til å peke på et lokalt Debian speil.
 				</div><div
               class="para">
 					Nå inneholder det nyopprettede filsystemet et minimalt Debian-system, og som standard har ikke beholderen nettverksgrensesnitt (utover filmonteringen). Siden dette ikke er virkelig ønsket, vil vi endre beholderens konfigurasjonsfil (<code
-                class="filename">/var/lib/lxc/testlxc/config</code>) og legge til noen få <code
+                class="filename">/var/lib/lxc/testlxc/config</code>), og legge til noen få <code
                 class="literal">lxc.network.*</code>-innganger:
 				</div><pre
               class="programlisting">lxc.network.type = veth
@@ -635,14 +635,13 @@ lxc.network.link = br0
 lxc.network.hwaddr = 4a:49:43:49:79:20
 </pre><div
               class="para">
-					Disse oppføringene betyr, henholdsvis, at et virtuelt grensesnitt vil bli opprettet i beholderen; at det automatisk vil vist når det blir meldt at beholderen er startet; at det automatisk vil bli koblet til <code
+					Disse oppføringene betyr, henholdsvis, at et virtuelt grensesnitt vil bli opprettet i beholderen; at det automatisk vil bli vist når det blir meldt at beholderen er startet; at det automatisk vil bli koblet til <code
                 class="literal">br0</code>-broen hos verten; og at MAC-adressen vil være som spesifisert. Skulle denne siste posten mangle eller være deaktivert, vil det genereres en tilfeldig MAC-adresse.
 				</div><div
               class="para">
 					En annen nyttig inngang i den filen er innstillingen for vertsnavnet:
 				</div><pre
-              class="programlisting">lxc.utsname = testlxc
-</pre></div><div
+              class="programlisting">lxc.utsname = testlxc</pre></div><div
             class="section"><div
               class="titlepage"><div><div><h4
                     class="title"><a
@@ -692,7 +691,7 @@ root       266  0.0  0.1  12656  1840 ?        Ss   17:39   0:00 /sbin/agetty --
 root       267  0.0  0.1  12656  1928 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty6 linux
 root@testlxc:~# </code></pre><div
               class="para">
-					Nå er vi i beholderen; vår tilgang til prosessene er begrenset til bare de som er startet fra beholderen selv, og vår tilgang til filsystemet er tilsvarende begrenset til den øremerkede undergruppen i hele filsystemet (<code
+					Nå er vi i beholderen; vår tilgang til prosessene er begrenset til bare dem som er startet fra beholderen selv, og vår tilgang til filsystemet er tilsvarende begrenset til den øremerkede undergruppen i hele filsystemet (<code
                 class="filename">/var/lib/lxc/testlxc/rootfs</code>). Vi kan gå ut av konsollet med <span
                 class="keycap"><strong>Control</strong></span>+<span
                 class="keycap"><strong>a</strong></span> <span
