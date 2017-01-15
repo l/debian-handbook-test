@@ -1341,7 +1341,7 @@ root                 unconfined_u         SystemLow-SystemHigh *
 system_u             system_u             SystemLow-SystemHigh *
 # </computeroutput><userinput>semanage login -d rhertzog</userinput></screen>
 				 <para>
-					<command>semanage user -l</command> viser adresseringen mellom SELinux-brukeridentiteter og tillatte roller. Å legge til en ny identitet krever å definere både de tilsvarende rollene og en merkingsforstavelse som brukes til å tilordne en type til personlige filer (<filename>/home/<replaceable>user</replaceable>/*</filename>). Forstavelosen må velges mellom <literal>user</literal>, <literal>staff</literal>, og <literal>sysadm</literal>. “<literal>staff</literal>”-forstavelsen resulterer i filer av typen “<literal>staff_home_dir_t</literal>”. Å lage en ny SELinux-brukeridentitet gjøres med <command>semanage user -a -R <replaceable>roles</replaceable> -P <replaceable>prefix</replaceable> <replaceable>identity</replaceable></command>. Til slutt, du kan fjerne en SELinux-brukeridentitet med <command>semanage user -d <replaceable>identity</replaceable></command>.
+					<command>semanage user -l</command> viser adresseringen mellom SELinux-brukeridentiteter og tillatte roller. Å legge til en ny identitet krever å definere både de tilsvarende rollene og en merkingsforstavelse som brukes til å tilordne en type til personlige filer (<filename>/home/<replaceable>bruker</replaceable>/*</filename>). Forstavelsen må velges mellom <literal>user</literal>, <literal>staff</literal>, og <literal>sysadm</literal>. «<literal>staff</literal>»-forstavelsen resulterer i filer av typen «<literal>staff_home_dir_t</literal>». Å lage en ny SELinux-brukeridentitet gjøres med <command>semanage user -a -R <replaceable>roller</replaceable> -P <replaceable>prefiks</replaceable> <replaceable>identitet</replaceable></command>. Til slutt; du kan fjerne en SELinux-brukeridentitet med <command>semanage user -d <replaceable>identitet</replaceable></command>.
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>semanage user -a -R 'staff_r user_r' -P staff test_u</userinput>
@@ -1369,7 +1369,7 @@ user_u          user       SystemLow  SystemLow             user_r
 					Tilsvarende er TCP/UDP-portene merket på en måte som sikrer at bare de tilsvarende nissene kan lytte til dem. For eksempel, hvis du vil at nett-tjeneren skal kunne lytte på port 8080, bør du kjøre <command>semanage port -m -t http_port_t -p tcp 8080</command>.
 				</para>
 				 <para>
-					Noen SELinux-moduler eksporterer boolske valg som du kan justere for å endre gjøremålene til standardreglene. <command>getsebool</command>-verktøyet kan brukes til å inspisere disse valgene (<command>getsebool <replaceable>boolean</replaceable></command> viser ett valg, og <command>getsebool -a</command> alle). <command>setsebool <replaceable>boolean</replaceable> <replaceable>value</replaceable></command>-kommandoen endrer den gjeldende verdien av et boolsk alternativ. <literal>-P</literal>-valget gjør endringen permanent, det betyr at den nye verdien blir standard og blir beholdt etter restart. Eksempelet nedenfor gir nett-tjenere tilgang til hjemmeområder (dette er nyttig når brukerne har personlige nettsteder i <filename>~/public_html/</filename>).
+					Noen SELinux-moduler eksporterer boolske valg som du kan justere for å endre gjøremålene til standardreglene. <command>getsebool</command>-verktøyet kan brukes til å inspisere disse valgene (<command>getsebool <replaceable>boolsk</replaceable></command> viser ett valg, og <command>getsebool -a</command> alle). <command>setsebool <replaceable>boolsk</replaceable> <replaceable>verdt</replaceable></command>-kommandoen endrer den gjeldende verdien av et boolsk alternativ. <literal>-P</literal>-valget gjør endringen permanent. Det betyr at den nye verdien blir standard, og blir beholdt etter restart. Eksempelet nedenfor gir nett-tjenere tilgang til hjemmeområder (dette er nyttig når brukerne har personlige nettsteder i <filename>~/public_html/</filename>).
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput>
@@ -1384,10 +1384,10 @@ user_u          user       SystemLow  SystemLow             user_r
 		 <section id="sect.selinux-custom-rules">
 			<title>Å tilpasse reglene</title>
 			 <para>
-				Siden SELinux-opplegget er modulbasert, kan det være interessant å utvikle nye moduler for (muligens tilpassede) programmer som mangler dem. Disse nye modulene vil da komplettere <emphasis>reference policy</emphasis>.
+				Siden SELinux-opplegget er modulbasert, kan det være interessant å utvikle nye moduler for (muligens tilpassede) programmer som mangler dem. Disse nye modulene vil da komplettere <emphasis>referanseregler</emphasis>.
 			</para>
 			 <para>
-				For å lage nye moduler, kreves <emphasis role="pkg">selinux-policy-dev</emphasis>-pakken så vel som <emphasis role="pkg">selinux-policy-doc</emphasis>. Den siste inneholder dokumentasjonen om standardreglene (<filename>/usr/share/doc/selinux-policy-doc/html/</filename>) og eksempelfiler som kan brukes som maler for å lage nye moduler. Installer disse filene og studer dem nærmere:
+				For å lage nye moduler kreves <emphasis role="pkg">selinux-policy-dev</emphasis>-pakken så vel som <emphasis role="pkg">selinux-policy-doc</emphasis>. Den siste inneholder dokumentasjonen om standardreglene (<filename>/usr/share/doc/selinux-policy-doc/html/</filename>) og eksempelfiler som kan brukes som maler for å lage nye moduler. Installer disse filene, og studer dem nærmere:
 			</para>
 			 
 <screen><computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/Makefile.example Makefile</userinput>
@@ -1395,7 +1395,7 @@ user_u          user       SystemLow  SystemLow             user_r
 <computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.if ./</userinput>
 <computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.te ./</userinput></screen>
 			 <para>
-				<filename>.te</filename>-filen er den viktigste. Den definerer reglene. <filename>.fc</filename>-filen definerer "filkonteksten", det er typene som er tilordnet filer knyttet til denne modulen. Dataene innenfor <filename>.fc</filename>-filen brukes under filemerkingstrinnet. Endelig definerer <filename>.if</filename>-filen modulens grensesnittet: Det er et sett med "offentlige funksjoner" som andre moduler kan bruke til en riktig samhandling med modulen du oppretter.
+				Filen <filename>.te</filename> er den viktigste. Den definerer reglene. Filen <filename>.fc</filename> definerer «filkonteksten»; det er typene som er tilordnet filer knyttet til denne modulen. Dataene innenfor <filename>.fc</filename>-filen brukes under filmerkingstrinnet. Endelig definerer <filename>.if</filename>-filen modulens grensesnitt. Det er et sett med «offentlige funksjoner» som andre moduler kan bruke til en riktig samhandling med modulen du oppretter.
 			</para>
 			 <section>
 				<title>Å skrive en <filename>.fc</filename>-fil</title>
@@ -1403,7 +1403,7 @@ user_u          user       SystemLow  SystemLow             user_r
 					Å lese eksemplet nedenfor bør være tilstrekkelig til å forstå strukturen i en slik fil. Du kan bruke vanlige uttrykk for å tilordne den samme sikkerhetskonteksten til flere filer, eller til og med til et helt katalogtre.
 				</para>
 				 <example>
-					<title><filename>example.fc</filename>-file</title>
+					<title><filename>example.fc</filename> file</title>
 					 
 <programlisting role="scale"># myapp executable will have:
 # label: system_u:object_r:myapp_exec_t
@@ -1419,13 +1419,13 @@ user_u          user       SystemLow  SystemLow             user_r
 			 <section>
 				<title>Å skrive en <filename>.if</filename>-fil</title>
 				 <para>
-					I eksemplet nedenfor, det første grensesnittet (“<literal>myapp_domtrans</literal>”) kontrollerer hvem som kan kjøre programmet. Det andre (“<literal>myapp_read_log</literal>”) gir leserettigheter til programmets logg filer.
+					I eksemplet nedenfor kontrollerer det første grensesnittet (“<literal>myapp_domtrans</literal>”) hvem som kan kjøre programmet. Det andre («<literal>myapp_read_log</literal>») gir leserettigheter til programmets loggfiler.
 				</para>
 				 <para>
-					Hvert grensesnitt må generere et gyldig sett med regler som kan legges inn i en <filename>.te</filename>-fil. Du bør derfor formidle alle typene du bruker (med <literal>gen_require</literal>-makro), og bruke standard-direktiver for å gi rettigheter. Vær imidlertid oppmerksom på at du kan bruke grensesnitt som tilbys av andre moduler. Den neste seksjonen vil gi flere forklaringer om hvordan disse rettighetene skal uttrykkes.
+					Hvert grensesnitt må generere et gyldig sett med regler som kan legges inn i en <filename>.te</filename>-fil. Du bør derfor formidle alle typene du bruker (med <literal>gen_require</literal>-makro), og bruke standard direktiver for å gi rettigheter. Vær imidlertid oppmerksom på at du kan bruke grensesnitt som tilbys av andre moduler. Den neste seksjonen vil gi flere forklaringer om hvordan disse rettighetene skal uttrykkes.
 				</para>
 				 <example>
-					<title><filename>example.if</filename> fil</title>
+					<title><filename>example.if</filename> File</title>
 					 
 <programlisting>## &lt;summary&gt;Myapp example policy&lt;/summary&gt;
 ## &lt;desc&gt;
@@ -1480,18 +1480,18 @@ interface(`myapp_read_log',`
 </programlisting>
 
 				</example>
-				 <sidebar> <title><emphasis>DOCUMENTATION</emphasis> Forklaringer om <emphasis>reference policy</emphasis></title>
+				 <sidebar> <title><emphasis>DOKUMENTASJON</emphasis> Forklaringer om <emphasis>referanseregler</emphasis></title>
 				 <para>
-					<emphasis>reference policy</emphasis> utvikler seg som alle fri programvare-prosjekt: basert på frivillige bidrag. Tresys er vert for prosjektet, en av de mest aktive selskapene på SELinux-feltet. Wikien deres har forklaringer på hvordan reglene er strukturert og hvordan du kan lage nye. <ulink type="block" url="https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted" />
+					<emphasis>Referanseregler</emphasis> utvikler seg som alle fri programvareprosjekt: basert på frivillige bidrag. Tresys er vert for prosjektet, et av de mest aktive selskapene på SELinux-feltet. Wikien deres har forklaringer på hvordan reglene er strukturert, og hvordan du kan lage nye. <ulink type="block" url="https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted" />
 				</para>
 				 </sidebar>
 			</section>
 			 <section id="sect.writing-a-te-file">
 				<title>Å skrive en <filename>.te</filename>-fil</title>
 				 <para>
-					Se på <filename>example.te</filename>-filen:
+					Have a look at the <filename>example.te</filename> file:
 				</para>
-				 <sidebar> <title><emphasis>GOING FURTHER</emphasis> The <command>m4</command> makrospråk</title>
+				 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Med makrospråket <command>m4</command></title>
 				 <para>
 					For å strukturere opplegget riktig, brukte SELinux-utviklerne en makro-kommando-prosessor. I stedet for å duplisere mange lignende <emphasis>allow</emphasis>-direktiver, laget de "makrofunksjoner " for å bruke en høyere-nivå logikk, som også resulterer i en mye mer lesbart opplegg.
 				</para>
