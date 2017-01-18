@@ -1,0 +1,1487 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="unix-services">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-unix-services.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>Systemoppstart</keyword>
+      <keyword>Initskript</keyword>
+      <keyword>SSH</keyword>
+      <keyword>Telnet</keyword>
+      <keyword>Rettigheter</keyword>
+      <keyword>Tillatelser</keyword>
+      <keyword>Overvåking</keyword>
+      <keyword>Inetd</keyword>
+      <keyword>Cron</keyword>
+      <keyword>Sikkerhetskopiering</keyword>
+      <keyword>Hot-plugging</keyword>
+      <keyword>PCMCIA</keyword>
+      <keyword>APM</keyword>
+      <keyword>ACPI</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>Unix-tjenester</title>
+  <highlights>
+    <para>Dette kapitlet dekker en rekke grunnleggende tjenester felles for mange Unix-systemer. Alle administratorer bør være kjent med dem.</para>
+  </highlights>
+  <section id="sect.system-boot">
+    <title>Systemoppstart</title>
+    <indexterm><primary>oppstart</primary><secondary>systemet</secondary></indexterm>
+
+    <para>Når du starter datamaskinen, vises mange meldinger på konsollskjermen at mange automatiske initialiseringer og konfigurasjoner blir utført. Noen ganger kan du ønske å endre litt på hvordan dette stadiet fungerer, noe som betyr at du må forstå det godt. Det er hensikten med denne seksjonen.</para>
+
+    
+    <para>Først tar BIOS kontroll over datamaskinen, registrerer diskene, laster<emphasis>Master Boot Record</emphasis>, og starter oppstartslasteren. Oppstartslasteren tar over, finner kjernen på disken, laster og kjører den. Kjernen blir så initialisert, og begynner å søke etter, og montere partisjonen som  inneholder rotfilsystemet, og til slutt utfører det første programmet - <command>init</command>. Ofte er, faktisk, denne «rotpartisjonen» og denne <command>init</command> plassert i et virtuelt filsystem som bare finnes i RAM (derav navnet, «initramfs», tidligere kalt «initrd» for «initialisering RAM disk»). Dette filsystem er lastet inn i minnet av oppstartslasteren, ofte fra en fil på en harddisk, eller fra nettverket. Den inneholder bare et minimum som kreves av kjernen for å laste det «sanne» rotfilsystemet: Dette kan være drivermoduler for harddisken, eller andre enheter uten noe som systemet ikke kan starte opp, eller oftere, initialiseringsskript og moduler for montering av RAID matriser, åpne krypterte partisjoner, for å aktivere LVM, etc. Når rotpartisjonen er montert, overlater initramfs kontrollen til den virkelige init-en, og maskinen går tilbake til standard oppstartsprosess.</para>
+
+    <figure id="figure.boot-process-systemd">
+      <title>Oppstartssekvens med en datamaskin som kjører Linux med systemd</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/startup-systemd.png" scalefit="1" width="80%" />
+        </imageobject>
+      </mediaobject>
+    </figure>
+
+    <section id="sect.systemd"><title>Systemd init system</title>
+
+    <para>Den «ekte init» blir nå levert av <emphasis role="pkg">systemd</emphasis>, og denne seksjonen dokumenter dette init-systemet.</para>
+
+    <sidebar>
+      <title><emphasis>KULTUR</emphasis> før <command>systemd</command></title>
+
+      <para><command>systemd</command> er et relativt nytt «init system», og selv om det allerede er tilgjengelig, til en viss grad, i <emphasis role="distribution">Wheezy</emphasis>, er det bare blitt standard i Debian <emphasis role="distribution">Jessie</emphasis>. Tidligere versjoner bygger, som standard, på «System V init» (i <emphasis role="pkg">sysv-rc</emphasis>-pakken), et mye mer tradisjonelt system. Vi beskriver System V init senere.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIV</emphasis> Andre systemer for oppstart</title>
+
+      <para>Denne boken beskriver oppstartssystemet som brukes som standard i Debian <emphasis role="distribution">Jessie</emphasis> (som implementert av <emphasis role="pkg">systemd</emphasis>-pakken), så vel som den tidligere standarden, <emphasis role="pkg">sysvinit</emphasis>, som er avledet og arvet fra <emphasis>System V</emphasis> Unix-systemer; det er andre.</para>
+
+      <para><emphasis role="pkg">file-rc</emphasis> er et oppstartssystem med en veldig enkel prosess. Det holder prinsippet om kjørenivå, men erstatter mapper og symbolske lenker med en konfigurasjonsfil, som viser til <command>init</command> - prosessene som må startes, og lanseringsrekkefølgen deres.</para>
+
+      <para><command>upstart</command>-systemet er fortsatt ikke testet helt ut på Debian. Det er hendelsesbasert: init-skripter utføres ikke lenger i en sekvensiell rekkefølge, men som respons til hendelser som for eksempel fullføring av et annet skript som de er avhengige av. Dette systemet, startet av Ubuntu, er med i Debian <emphasis role="distribution">Jessie</emphasis>, men er ikke i standarden. Det kommer faktisk som en erstatning for <emphasis role="pkg">sysvinit</emphasis>, og en av oppgavene kjørt av <command>upstart</command> er å kjøre de prosedyrer som er skrevet for tradisjonelle systemer, spesielt de fra <emphasis role="pkg">sysv-rc</emphasis>-pakken.</para>
+
+      <para>Det er også andre systemer og andre driftsmodi, for eksempel <command>runit</command> eller <command>minit</command>, men de er relativt spesialiserte, og ikke utbredt.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>SPESIFIKK SAK</emphasis> Oppstart fra nettverket</title>
+
+      <para>I noen konfigurasjoner kan BIOS bli konfigurert til ikke å utføre MBR, men å søke tilsvarende i nettverket, noe som gjør det mulig å bygge datamaskiner uten en harddisk, eller som blir helt reinstallert ved hver oppstart. Dette alternativet er ikke tilgjengelig for alle maskinvarer, og det krever vanligvis en egnet kombinasjon av BIOS og nettverkskort.</para>
+
+      <para>Oppstart fra nettverket kan bli brukt til å kjøre <command>debian-installer</command> eller FAI (se <xref linkend="sect.installation-methods" />).</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>TILBAKE TIL BASIS</emphasis> Prosessen, et programeksempel</title>
+      <indexterm><primary>prosess</primary></indexterm>
+
+      <para>En prosess er representasjonen av et program som kjører i minnet. Det inkluderer all informasjon som er nødvendig for en forsvarlig kjøring av programvaren (selve koden, men også dataene som den har i minnet, en liste over filer som den har åpnet, nettverksforbindelsene den har etablert, etc.). Et enkelt program kan startes opp i flere prosesser, som ikke nødvendigvis kjører under forskjellige bruker-ID-er.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>SIKKERHET</emphasis> Bruke skall som <command>init</command> for å få rotrettigheter</title>
+
+      <para>Av tradisjon; den første prosessen som starter er <command>init</command>-programmet (som er en symbolsk lenke til  <filename>/lib/systemd/systemd</filename> som standard). Imidlertid er det mulig å sende et <literal>init</literal>-valg til kjernen for å indikere et annet program.</para>
+      <indexterm><primary><command>init</command></primary></indexterm>
+
+      <para>Alle som er i stand til å få tilgang til datamaskinen kan trykke på <keycap>Reset</keycap>-knappen og restarte den. Så, på oppstartslasterens ledetekst, er det mulig å sende <literal>init=/bin/sh</literal>-valget til kjernen for å få rottilgang uten å kjenne administratorens passord.</para>
+
+      <para>For å unngå dette kan du beskytte oppstartslasteren med et passord. Du kan også tenke på å beskytte tilgang til BIOS (en mekanisme for passordbeskyttelse er nesten alltid tilgjengelig). Uten den kan en ondsinnet inntrenger fortsatt starte maskinen med et flyttbart medium som har sitt eget Linux-system, som de deretter kan bruke til å få tilgang til data på datamaskinens harddisker.</para>
+
+      <para>Til slutt, være klar over at de fleste BIOS-er har et generisk passord tilgjengelig. I utgangspunktet er de tenkt for feilsøking for dem som har glemt passordet sitt. Disse passordene er nå offentlige og tilgjengelig på Internett (se selv ved å søke etter «generiske BIOS-passord» i en søkemotor). Alle disse beskyttelsene vil dermed hindre uautorisert tilgang til maskinen, men uten å være i stand til å fullstendig hindre det. Det er ingen pålitelig måte å beskytte en datamaskin på hvis angriperen kan få fysisk tilgang til den; de kan uansett demontere harddisker for å koble dem til en datamaskin under egen kontroll, eller stjele hele maskinen, eller slette BIOS-minnet for å tilbakestille passordet …</para>
+    </sidebar>
+
+
+<para>Systemd utfører flere prosesser, som har ansvaret for å sette opp systemet: tastatur, drivere, filsystemer, nettverk, tjenester. Den gjør dette mens du holder et overordnet oppsyn på systemet som en helhet, og kravene til komponentene. Hver komponent er beskrevet av en «enhetsfil» («unit file») (noen ganger mer); den generelle syntaksen er avledet fra det mye brukte «* INI-filer» syntaks, med <literal><replaceable>nøkkel</replaceable> = <replaceable>verdi</replaceable></literal> par gruppert mellom <literal>[<replaceable>seksjon</replaceable>]</literal> topptekster. «Unit filer» er lagret under <filename>/lib/systemd/system/</filename>, og <filename>/etc/systemd/system/</filename>. De kommer i flere varianter, men her vil vi fokusere på «tjenester» og «mål».</para>
+
+<para>En systemd «tjenestefil» beskriver en prosess styrt av systemd. Den inneholder omtrent den samme informasjonen som i et gammelt stil init-skript, men uttrykt på en deklaratorisk (og mye mer konsis) måte. Systemd håndterer mesteparten av de repeterende oppgavene (som starter og stopper prosessen, sjekker statusen, loggingen, dropper privilegier, og så videre), og tjenestefilen trenger bare å fylle ut detaljene i prosessen. For eksempel, her er tjenestefilen for SSH:</para>
+
+<programlisting>[Unit]
+Description=OpenBSD Secure Shell server
+After=network.target auditd.service
+ConditionPathExists=!/etc/ssh/sshd_not_to_be_run
+
+[Service]
+EnvironmentFile=-/etc/default/ssh
+ExecStart=/usr/sbin/sshd -D $SSHD_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=sshd.service</programlisting>
+
+<para>Som du kan se, er det svært lite kode her, bare deklarasjoner. Systemd tar seg av visning av fremdriftsrapporter, holder orden på prosessene, og starter dem selv når det trengs.</para>
+
+<para>En systemd «målfil» («target file») beskriver et systems tilstand, hvor et sett av tjenester som er kjent for å være operasjonelle. Det kan sees på som å tilsvare det gammeldagse kjørenivået. Ett av målene er <literal>local-fs.target</literal>; Når det er nådd, kan resten av systemet gå ut fra at alle de lokale filsystemer er montert og tilgjengelige. Andre mål inkluderer <literal>network-online.target</literal> og <literal>sound.target</literal>. Avhengigheter for et mål kan enten være oppført i målfilen (i <literal>Requires=</literal>-linjen), eller man kan bruke en symbolsk fil i <literal>/lib/systemd/system/<replaceable>targetname</replaceable>.target.wants/</literal>-mappen. For eksempel inneholder <filename>/etc/systemd/system/printer.target.wants/</filename> en link til <filename>/lib/systemd/system/cups.service</filename>; systemd vil derfor sikre at CUPS kjører, for å nå <literal>printer.target</literal>.</para>
+
+<para>Siden enhetsfiler er deklarative heller enn skripter eller programmer, kan de ikke kjøres direkte, og de blir bare tolket av systemd. Flere verktøy tillater derfor administratoren å samhandle med systemd for å kontrollere tilstanden til systemet, og for hver komponent.</para>
+
+<para>Det første slikt verktøy er <command>systemctl</command>. Kjørt uten argumenter, viser den alle enhetsfiler som er kjent for systemd (bortsett fra de som er blitt deaktivert), samt deres status. <command>systemctl status</command> gir en bedre oversikt over tjenestene, samt relaterte prosesser. Hvis navnet på en tjeneste er gitt (som i <command>systemctl status ntp.service</command>), returnerer den enda flere detaljer, så vel som de få siste logglinjer knyttet til denne tjenesten (mer om det senere).</para>
+
+<para>Å starte en tjeneste for hånd er en enkel sak, kjør <command>systemctl start <replaceable>tjenestenavn</replaceable>.service</command>. Som man kan gjette seg til, å stoppe tjenesten gjøres med <command>systemctl stop <replaceable>tjenestenavn</replaceable>.service</command>. Andre underkommandoer inkluderer <command>reload</command> og <command>restart</command>.</para>
+
+<para>For å kontrollere om en tjeneste er aktiv (dvs. om den vil komme i gang automatisk ved oppstart), bruk <command>systemctl enable <replaceable>tjenestnavn</replaceable>.service</command> (eller <command>disable</command>). <command>is-enabled</command> åpner for å sjekke tjenestens status.</para>
+
+<para>Et interessant trekk ved systemd er at den inneholder en loggingskomponent som heter <command>journald</command>. Den kommer som et supplement til mer tradisjonelle loggingsystemer, for eksempel <command>syslogd</command>, men den legger til interessante funksjoner som en formell kobling mellom en tjeneste og meldingene den genererer, og evnen til å fange opp feilmeldinger generert fra sin initialiseringsekvens. Meldingene kan vises senere, med litt hjelp fra <command>journalctl</command>-kommandoen. Uten noen argumenter, avgir den bare alle loggmeldinger som har oppstått etter oppstart av systemet. Det vil sjelden bli brukt på den måten. Mesteparten av tiden vil den bli brukt med en tjenesteidentifikator:</para>
+
+<screen><computeroutput># </computeroutput><userinput>journalctl -u ssh.service
+</userinput><computeroutput>-- Logs begin at Tue 2015-03-31 10:08:49 CEST, end at Tue 2015-03-31 17:06:02 CEST. --
+Mar 31 10:08:55 mirtuel sshd[430]: Server listening on 0.0.0.0 port 22.
+Mar 31 10:08:55 mirtuel sshd[430]: Server listening on :: port 22.
+Mar 31 10:09:00 mirtuel sshd[430]: Received SIGHUP; restarting.
+Mar 31 10:09:00 mirtuel sshd[430]: Server listening on 0.0.0.0 port 22.
+Mar 31 10:09:00 mirtuel sshd[430]: Server listening on :: port 22.
+Mar 31 10:09:32 mirtuel sshd[1151]: Accepted password for roland from 192.168.1.129 port 53394 ssh2
+Mar 31 10:09:32 mirtuel sshd[1151]: pam_unix(sshd:session): session opened for user roland by (uid=0)
+</computeroutput></screen>
+
+<para>En annen nyttig kommandolinjemarkør er <command>-f</command>, som instruerer <command>journalctl</command> til å fortsette å vise nye meldinger etter hvert som de er sendt ut (mye på samme måte som <command>tail -f <replaceable>file</replaceable></command>).</para>
+
+<para>Hvis en tjeneste ikke ser ut til å virke som forventet, er første skritt for å løse problemet å kontrollere at tjenesten faktisk kjører, med <command>systemctl status</command>. Hvis den ikke kjører, og meldingene er gitt av den første kommandoen ikke er nok til å diagnostisere problemet, sjekk loggene samlet av journald om denne tjenesten. For eksempel, anta SSH server ikke virker:</para>
+
+<screen><computeroutput># </computeroutput><userinput>systemctl status ssh.service
+</userinput><computeroutput>● ssh.service - OpenBSD Secure Shell server
+   Loaded: loaded (/lib/systemd/system/ssh.service; enabled)
+   Active: failed (Result: start-limit) since Tue 2015-03-31 17:30:36 CEST; 1s ago
+  Process: 1023 ExecReload=/bin/kill -HUP $MAINPID (code=exited, status=0/SUCCESS)
+  Process: 1188 ExecStart=/usr/sbin/sshd -D $SSHD_OPTS (code=exited, status=255)
+ Main PID: 1188 (code=exited, status=255)
+
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service start request repeated too quickly, refusing to start.
+Mar 31 17:30:36 mirtuel systemd[1]: Failed to start OpenBSD Secure Shell server.
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+# </computeroutput><userinput>journalctl -u ssh.service
+</userinput><computeroutput>-- Logs begin at Tue 2015-03-31 17:29:27 CEST, end at Tue 2015-03-31 17:30:36 CEST. --
+Mar 31 17:29:27 mirtuel sshd[424]: Server listening on 0.0.0.0 port 22.
+Mar 31 17:29:27 mirtuel sshd[424]: Server listening on :: port 22.
+Mar 31 17:29:29 mirtuel sshd[424]: Received SIGHUP; restarting.
+Mar 31 17:29:29 mirtuel sshd[424]: Server listening on 0.0.0.0 port 22.
+Mar 31 17:29:29 mirtuel sshd[424]: Server listening on :: port 22.
+Mar 31 17:30:10 mirtuel sshd[1147]: Accepted password for roland from 192.168.1.129 port 38742 ssh2
+Mar 31 17:30:10 mirtuel sshd[1147]: pam_unix(sshd:session): session opened for user roland by (uid=0)
+Mar 31 17:30:35 mirtuel sshd[1180]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:35 mirtuel sshd[1182]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:35 mirtuel sshd[1184]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel sshd[1186]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel sshd[1188]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service start request repeated too quickly, refusing to start.
+Mar 31 17:30:36 mirtuel systemd[1]: Failed to start OpenBSD Secure Shell server.
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+# </computeroutput><userinput>vi /etc/ssh/sshd_config
+</userinput><computeroutput># </computeroutput><userinput>systemctl start ssh.service
+</userinput><computeroutput># </computeroutput><userinput>systemctl status ssh.service
+</userinput><computeroutput>● ssh.service - OpenBSD Secure Shell server
+   Loaded: loaded (/lib/systemd/system/ssh.service; enabled)
+   Active: active (running) since Tue 2015-03-31 17:31:09 CEST; 2s ago
+  Process: 1023 ExecReload=/bin/kill -HUP $MAINPID (code=exited, status=0/SUCCESS)
+ Main PID: 1222 (sshd)
+   CGroup: /system.slice/ssh.service
+           └─1222 /usr/sbin/sshd -D
+# </computeroutput></screen>
+
+<para>Etter å ha sjekket status på tjenesten (feilet), gikk vi videre til å sjekke loggene. De indikerer en feil i konfigurasjonsfilen. Etter å ha redigert konfigurasjonsfilen og fikset feilen, starter vi tjenesten, og kontroller så at den faktisk kjører.</para>
+
+<sidebar><title><emphasis>GÅR VIDERE</emphasis> Andre typer enhetsfiler</title>
+
+<para>Vi har bare beskrevet det mest grunnleggende av systemd sine muligheter i denne seksjonen. Den tilbyr mange andre interessante funksjoner, og vi vil bare liste noen her:</para>
+
+<itemizedlist>
+
+<listitem><para>socket aktivering: en «socket» enhetsfil kan brukes til å beskrive et nettverk eller en Unix socket administrert av systemd. Dette betyr at socket-en vil bli opprettet av systemd, og selve tjenesten kan startes etter behov ved et faktisk tilkoblingsforsøk. Dette replikerer omtrent funksjonssettet til <command>inetd</command>. Se <citerefentry><refentrytitle>systemd.socket</refentrytitle><manvolnum>5</manvolnum></citerefentry>.</para></listitem>
+
+<listitem><para>timere: en «timer»-enhetsfil beskriver hendelser som inntreffer med en fast frekvens eller på bestemte tider. Når en tjeneste er knyttet til en slik timer, vil den tilsvarende oppgaven bli utført når tiden er inne. Dette gjør det mulig å kopiere en del av <command>cron</command>s egenskaper. Se <citerefentry><refentrytitle>systemd.timer</refentrytitle><manvolnum>5</manvolnum></citerefentry>.</para></listitem>
+
+<listitem><para>nettverk: et «nettverk»s enhetsfil beskriver et nettverksgrensesnitt som gjør det mulig å konfigurere slike grensesnitt, samt uttrykke at en tjeneste er avhengig av at et bestemt grensesnitt er oppe.</para></listitem>
+
+</itemizedlist>
+</sidebar>
+
+</section>
+
+<section id="sect.sysvinit"><title>System V init system</title>
+    <para>System V init system (som vi kaller init for korthets skyld) utfører flere prosesser, etter anvisning fra <filename>/etc/inittab</filename>-filen. Det første program som kjøres (som tilsvarer <emphasis>sysinit</emphasis> trinnet) er <command>/etc/init.d/rcS</command>, et skript som kjører alle programene i <filename>/etc/rcS.d/</filename>-mappen. <indexterm><primary><filename>/etc/init.d/rcS</filename></primary></indexterm> <indexterm><primary><filename>rcS</filename></primary></indexterm> <indexterm><primary><filename>/etc/init.d/rcS.d/</filename></primary></indexterm> <indexterm><primary><filename>rcS.d</filename></primary></indexterm></para>
+
+    <para>Blant disse finner du suksessivt programmer med ansvar for:</para>
+    <itemizedlist>
+      <listitem>
+	<para>oppsettet av konsollets tastatur;</para>
+      </listitem>
+      <listitem>
+	<para>laste drivere: de fleste av kjernemodulene er lastet av kjernen selv i takt med at maskinvaren blir oppdaget; ekstra drivere blir deretter lastet inn automatisk når de korresponderende modulene er oppført i <filename>/etc/modules</filename>;</para>
+      </listitem>
+      <listitem>
+	<para>sjekke integriteten til filsystemene;</para>
+      </listitem>
+      <listitem>
+	<para>montere lokale partisjoner;</para>
+      </listitem>
+      <listitem>
+	<para>sette opp nettverket;</para>
+      </listitem>
+      <listitem>
+	<para>montere nettverk filsystemer (NFS).</para>
+      </listitem>
+    </itemizedlist>
+
+    <sidebar>
+      <title><emphasis>TILBAKE TIL BASIS</emphasis> Kildemoduler og valgmuligheter</title>
+      <indexterm><primary>moduler</primary><secondary>kjernemoduler</secondary></indexterm>
+
+      <para>Kjernemoduler har også valgmuligheter som kan konfigureres ved å sette noen filer i <filename>/etc/modprobe.d/</filename>. Disse alternativene er definert med direktiver som dette: <literal>options <replaceable>modulnavn</replaceable> <replaceable>opsjonsnavn</replaceable>=<replaceable>opsjonsverdi</replaceable></literal>. Flere alternativer kan spesifiseres med ett eneste direktiv om nødvendig.</para>
+
+      <para>Disse konfigurasjonsfiler er beregnet for <command>modprobe</command> - programmet som laster en kjernemodul med dets avhengigheter (moduler kan faktisk påkalle andre moduler). Dette programmet blir levert av <emphasis role="pkg">kmod</emphasis>-pakken.</para>
+      <indexterm><primary><command>modprobe</command></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">kmod</emphasis></primary></indexterm>
+    </sidebar>
+
+    <para>Etter dette trinnet tar <command>init</command> over, og starter programmene aktivert i standard kjørenivå (som vanligvis er driftsnivå 2). Den utfører <command>/etc/init.d/rc 2</command>, et skript som starter alle tjenestene som er oppført i <filename>/etc/rc2.d/</filename>, og der navnet begynner med bokstaven «S». Det tosifrede nummer som følger, har historisk blitt brukt til å definere i hvilken rekkefølge tjenestene måtte startes, men i dag brukes det standard oppstartssystemet <command>insserv</command>, som berammer alt automatisk basert på skriptenes avhengigheter. Hvert oppstartsskript melder om betingelsene som må være oppfylt for å starte eller stoppe tjenesten (for eksempel hvis det må starte før eller etter en annen tjeneste); Så starter <command>init</command> dem i den rekkefølgen som oppfyller disse betingelsene. Skriptenes statiske nummerering tas derfor ikke lenger i betraktning (men de må alltid ha et navn som begynner med «S» etterfulgt av to sifre, og selve navnet på skriptet som brukes for avhengighetene. Vanligvis startes basistjenester (for eksempel logger med <command>rsyslog</command>, eller tildeling av port med <command>portmap</command>) først, fulgt av standardtjenestene og det grafiske brukergrensesnittet (<command>gdm3</command>).</para>
+
+    <para>Dette avhengighetsbaserte oppstartssystemet gjør det mulig å automatisere renummerering, som kan være ganske kjedelig hvis det må gjøres manuelt. Det begrenser risikoen for menneskelige feil, ettersom tidsrekkefølgen blir gjennomført i henhold til de parameterne som er angitt. En annen fordel er at tjenester kan startes parallelt når de er uavhengige av hverandre, noe som kan akselerere oppstartsprosessen.</para>
+
+    <indexterm><primary>driftsnivå (runlevel)</primary></indexterm>
+    <indexterm><primary>nivå, driftsnivå (runlevel)</primary></indexterm>
+
+    <para><command>init</command> skiller mellom ulike kjørenivåer, så det kan bytte fra ett til et annet med <command>telinit <replaceable>new-level</replaceable></command>-kommandoen. Umiddelbart vil <command>init</command> kjøre <command>/etc/init.d/rc</command> igjen med det nye kjørenivået. Dette skriptet vil da starte de manglende tjenestene, og stoppe de som ikke lenger er ønsket. For å gjøre dette viser det til innholdet i <filename>/etc/rc<replaceable>X</replaceable>.d</filename> (der <replaceable>X</replaceable> representerer det nye kjørenivået). Skript som begynner med «S» (som i «Start») er tjenester som skal i gang; de som starter med «K» (som i «Kill») er de tjenestene som skal stoppes. Skriptet starter ikke noen tjenester som allerede var aktive med det forrige driftsnivået.</para>
+
+    <para>Som standard bruker System V init i Debian fire forskjellige driftsnivåer:</para>
+    <itemizedlist>
+      <listitem>
+	<para>Nivå 0 brukes bare midlertidig, mens maskinen slår seg av. Dermed inneholder den bare mange «K»-skripter.</para>
+      </listitem>
+      <listitem>
+	<para>Nivå 1, også kjent som enkeltbrukermodus, tilsvarer systemet i nedgradert modus; det inneholder bare basistjenester, og er beregnet for vedlikeholdsoperasjoner hvor samhandling med vanlige brukere ikke er ønsket.</para>
+      </listitem>
+      <listitem>
+	<para>Nivå 2 er nivået for normal drift, som omfatter nettverkstjenester, et grafisk grensesnitt, brukerpålogging, etc.</para>
+      </listitem>
+      <listitem>
+	<para>Nivå 6 er lik nivå 0, bortsett fra at det brukes under nedkoblingsfasen før en omstart.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Andre nivåer finnes, spesielt 3 til 5. Som standard er de konfigurert til å operere på samme måte som nivå 2, men administratoren kan endre dem (ved å legge til eller slette skript i de tilsvarende <filename>/etc/rc<replaceable>X</replaceable>.d</filename> kataloger) for å tilpasse dem til spesielle behov.</para>
+
+    <figure id="figure.boot-process-sysvinit">
+      <title>Oppstartssekvens for en datamaskin som kjører Linux med System V init</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/startup-sysvinit.png" scalefit="1" width="80%" />
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <indexterm><primary>initialiseringsskript</primary></indexterm>
+
+    <para>Alle skriptene som inngår i de ulike <filename>/etc/rc<replaceable>X</replaceable>.d</filename>-kataloger er egentlig bare symbolske lenker - opprettet ved pakkeinstallasjon av <command>update-rc.d</command>-programmet - som peker til selve skriptet som er lagret i<filename>/etc/init.d/</filename>. Administratoren kan finjustere tjenestene som er tilgjengelige i hvert kjørenivå ved å kjøre <command>update-rc.d</command> igjen med justerte parametre. <citerefentry><refentrytitle>update-rc.d</refentrytitle><manvolnum>1</manvolnum></citerefentry> - denne manuelle siden beskriver syntaksen i detalj. Vær oppmerksom på at å fjerne alle symbolske lenker (med <literal>remove</literal>-parameteret) ikke er noen god metode for å deaktivere en tjeneste. I stedet bør du bare konfigurere den til ikke å starte i det ønskede kjørenivået (mens man skjermer de samsvarende påkallinger for å stoppe den i det tilfelle tjenesten bruker det forrige kjørenivået. Siden <command>update-rc.d</command> har et noe innfløkt grensesnitt, kan du foretrekke å bruke <command>rcconf</command> (fra <emphasis role="pkg">rcconf</emphasis>-pakken som gir et mer brukervennlig grensesnitt.</para>
+    <indexterm><primary><command>update-rc.d</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>DEBIAN POLICY</emphasis> Å restarte tjenester</title>
+      <indexterm><primary><command>invoke-rc.d</command></primary></indexterm>
+      <indexterm><primary>tjenesten</primary><secondary>restart</secondary></indexterm>
+      <indexterm><primary>restarte tjenester</primary></indexterm>
+
+      <para>Vedlikeholdsskripter for Debian-pakker vil noen ganger restarte visse tjenester for å sikre at de er tilgjengelige, eller få dem til å ta hensyn til visse valgmuligheter. Kommandoen som styrer en tjeneste - <command>tjeneste <replaceable>tjeneste</replaceable> <replaceable>operasjon</replaceable></command> - tar ikke driftsnivå i betraktning, forutsetter (feilaktig) at tjenesten brukes for øyeblikket, og kan dermed iverksette uriktige operasjoner (starter en tjeneste som bevisst var bevisst, eller stoppe en tjeneste som allerede er stanset, etc.). Debian introduserte derfor <command>invoke-rc.d</command>-programmet: Dette programmet må benyttes av vedlikeholdsskripter til å kjøre skripter for å ta initiativet til tjenester, og det vil bare utføre de nødvendige kommandoer. Legg merke til at, i motsetning til vanlig bruk, er <filename>.d</filename>-suffikset her brukt i et programnavn, og ikke i en katalog.</para>
+    </sidebar>
+
+    <para>Til slutt, <command>init</command> starter kontrollprogrammer for ulike virtuelle konsoller (<command>getty</command>). Den viser en ledetekst, venter på et brukernavn, og så kjører <command>login <replaceable>bruker</replaceable></command> for å starte en økt.</para>
+    <indexterm><primary><command>getty</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>ORDFORRÅD</emphasis> Konsoll og terminal</title>
+
+      <para>De første datamaskinene besto vanligvis av flere, svært store deler: Lagringskabinett og den sentrale prosessenheten var atskilt fra eksterne enheter som ble brukt av operatørene til å kontrollere maskinene. Dette var deler i et eget møbel, «konsollet». Dette begrepet ble beholdt, men betydningen har endret seg. Det har blitt mer eller mindre synonymt med «terminal», som er et tastatur og en skjerm.</para>
+
+      <para>Med utviklingen av datamaskiner, tilbyr operativsystemer flere virtuelle konsoller for å muliggjøre flere uavhengige sesjoner på samme tid, selv om det er bare ett tastatur og en skjerm. De fleste GNU/Linux-systemer tilbyr seks virtuelle konsoller (i tekstmodus), som er tilgjengelige ved å skrive inn tastekombinasjonene <keycombo action="simul"> <keycap>Control</keycap> <keycap>Alt</keycap> <keycap>F1</keycap> </keycombo> til <keycombo action="simul"> <keycap>Control</keycap> <keycap>Alt</keycap> <keycap>F6</keycap> </keycombo>.</para>
+
+      <para>I forlengelsen av dette, kan begrepene «konsoll» og «terminal» også referere til en terminalemulator i en grafisk X11 sesjon (for eksempel <command>xterm</command>, <command>gnome-terminal</command>, eller <command>konsole</command>).</para>
+    </sidebar>
+</section>
+  </section>
+  <section id="sect.remote-login">
+    <title>Ekstern innlogging</title>
+
+    <para>Det er viktig for en administrator å kunne koble seg til en datamaskin utenfra. Tjenere, innesperret i sitt eget rom, er sjelden utstyrt med permanente tastaturer og skjermer - men de er koblet til nettverket.</para>
+
+    <sidebar>
+      <title><emphasis>TILBAKE TIL BASIS</emphasis> Klient, tjener</title>
+      <indexterm><primary>tjener</primary><secondary>tjener/server arkitektur</secondary></indexterm>
+      <indexterm><primary>server</primary><secondary>tjener/server arkitektur</secondary></indexterm>
+
+      <para>Et system hvor flere prosesser kommuniserer med hverandre, blir ofte beskrevet med «klient/tjener» metaforer. Tjeneren er programmet som tar forespørsler som kommer fra en klient, og utfører dem. Det er klienten som styrer operasjonene, tjeneren tar ikke noen egne initiativ.</para>
+    </sidebar>
+
+    <indexterm><primary>logg inn</primary><secondary>logge inn eksternt </secondary></indexterm>
+    <indexterm><primary>logge inn eksternt</primary></indexterm>
+
+    <section id="sect.ssh">
+      <title>Sikker ekstern innlogging: SSH</title>
+      <indexterm><primary>SSH</primary></indexterm>
+      <indexterm><primary>Secure Shell</primary></indexterm>
+
+      <para><emphasis>SSH</emphasis> (Secure SHell)-protokollen ble utformet med tanke på sikkerhet og pålitelighet. Tilkoblinger som bruker SSH er sikre: Partneren er godkjent, og all datautveksling er kryptert.</para>
+
+      <sidebar>
+        <title><emphasis>KULTUR</emphasis> Telnet og RSH er foreldet</title>
+	<indexterm><primary><command>telnet</command></primary></indexterm>
+	<indexterm><primary><command>rsh</command></primary></indexterm>
+
+	<para>Før SSH var <emphasis>Telnet</emphasis> og <emphasis>RSH</emphasis> de viktigste verktøyene for ekstern innlogging. Nå er de i stor grad foreldet, og skal ikke lenger brukes selv om Debian fortsatt har dem med.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>ORDFORRÅD</emphasis> Autentisering, kryptering</title>
+
+	<para>Når du trenger å gi en klient evnen til å utføre eller utløse handlinger på en server, er sikkerhet viktig. Du må sikre identiteten til klienten; dette er autentisering. Denne identiteten består vanligvis av et passord som må holdes hemmelig, ellers kan hvilken som helst skaffe seg passordet. Dette er hensikten med kryptering, som er en form for koding som tillater to systemer å kommunisere konfidensiell informasjon på en offentlig kanal, samtidig som den er beskyttet mot å være lesbar for andre.</para>
+
+	<para>Autentisering og kryptering er ofte nevnt sammen, både fordi de ofte er brukt sammen, og fordi de vanligvis gjennomføres med matematiske begreper som ligner hverandre.</para>
+      </sidebar>
+
+      <para>SSH tilbyr også to filoverføringstjenester. <command>scp</command> er et kommandolinjeverktøy som kan brukes som <command>cp</command>, bortsett fra at hvilken som helst sti til en annen maskin har et prefiks med maskinens navn, etterfulgt av et kolon.</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>scp fil maskin:/tmp/</userinput></screen>
+
+      <para><command>sftp</command> er en interaktiv kommando, som svarer til <command>ftp</command>. I en enkelt økt kan <command>sftp</command> overføre flere filer, og med den er det mulig å manipulere eksterne filer (slette, endre navn, endre tillatelser, etc.).</para>
+      <indexterm><primary><command>scp</command></primary></indexterm>
+      <indexterm><primary><command>sftp</command></primary></indexterm>
+
+      <para>Debian bruker OpenSSH, som er en fri versjon av SSH, som vedlikeholdes av <command>OpenBSD</command>-prosjektet (et fritt operativsystem basert på BSD-kjernen, med fokus på sikkerhet), og er en gaffel av den opprinnelige SSH-programvaren utviklet av SSH Communications Security Corp selskapet i Finland. Dette selskapet utviklet opprinnelig SSH som fri programvare, men som til slutt bestemte seg for å fortsette utviklingen under en proprietær lisens. OpenBSD-prosjektet opprettet deretter OpenSSH for å opprettholde en fri versjon av SSH.</para>
+      <indexterm><primary>OpenSSH</primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>TILBAKE TIL BASIS</emphasis> <foreignphrase>Fork («gaffel»)</foreignphrase></title>
+        <indexterm><primary>fork («gaffel»)</primary></indexterm>
+
+	<para>På programvarefeltet betyr en «gaffel» et nytt prosjekt som starter som en klone av et eksisterende prosjekt, og som vil konkurrere med det. Fra da av vil begge programvarer raskt avvike fra hverandre i nyutvikling. En gaffel er ofte et resultat av uenighet innenfor utviklingsteamet.</para>
+
+	<para>Alternativet til å «gafle» et prosjekt, er et direkte resultat av selve naturen til fri programvare; en gaffel er en sunn hendelse når det muliggjør en videreføring av et prosjekt som fri programvare (for eksempel i tilfelle av lisensendringer). En gaffel, som følge av tekniske eller personlige uoverensstemmelser, er ofte en sløsing med menneskelige ressurser; en annen løsning ville være å foretrekke. Fusjoner av to prosjekter som tidligere gikk gjennom en tidligere gaffel har forekommet.</para>
+      </sidebar>
+
+      <para>OpenSSL er delt i to pakker: Klientdelen er i <emphasis role="pkg">openssh-client</emphasis>-pakken, og tjeneren er i <emphasis role="pkg">openssh-server</emphasis>-pakken. <emphasis role="pkg">ssh</emphasis>-meta-pakken er avhengig av begge, og forenkler installeringen av begge (<command>apt install ssh</command>).</para>
+
+      <section id="sect.ssh-key-based-auth">
+        <title>Nøkkel-basert autentisering</title>
+
+	<para>Hver gang noen logger inn over SSH, spør en ekstern tjener om et passord for å autentisere brukeren. Dette kan være problematisk hvis du ønsker å automatisere en tilkobling, eller hvis du bruker et verktøy som krever hyppige forbindelser over SSH. Dette er grunnen til at SSH tilbyr et nøkkelbasert autentiseringssystem.</para>
+
+	<para>Brukeren generer et nøkkelpar på klientmaskinen med <command>ssh-keygen -t rsa</command>; den offentlige nøkkelen er lagret i <filename>~/.ssh/id_rsa.pub</filename>, mens den korresponderende private nøkkel er lagret i <filename>~/.ssh/id_rsa</filename>. Brukeren bruker så <command>ssh-copy-id <replaceable>server</replaceable></command> for å legge til sin offentlige nøkkel til <filename>~/.ssh/authorized_keys</filename>-filen på tjeneren. Dersom den private nøkkelen ikke var beskyttet med en «adgangsfrase» p å tidspunktet for etableringen, vil alle etterfølgende innlogginger på serveren fungere uten et passord. Ellers må den private nøkkelen dekrypteres hver gang ved å skrive inn passordet. Heldigvis tillater <command>ssh-agent</command> oss å holde private nøkler i minnet for å ikke regelmessig måtte taste inn igjen passord. For dette bruker du bare <command>ssh-add</command> (en gang per økt), forutsatt at økten allerede er knyttet til en funksjonell forekomst med <command>ssh-agent</command>. Debian aktiverer den som standard i grafiske økter, men dette kan deaktiveres ved å endre <filename>/etc/X11/Xsession.options</filename>. Du kan manuelt starte en konsolløkt med <command>eval $(ssh-agent)</command>.</para>
+
+        <sidebar>
+          <title><emphasis>SIKKERHET</emphasis> Beskyttelse av den private nøkkelen</title>
+
+	  <para>Den som har den private nøkkelen, kan logge seg på den kontoen som er konfigurert for det. Dette er grunnen til tilgang til den private nøkkelen er beskyttet av en «adgangsfrase» («passphrase»). Noen som får en kopi av en privat nøkkelfil (for eksempel <filename>~/.ssh/id_rsa</filename>), må fremdeles kjenne denne frasen for å kunne bruke den. Denne ekstra beskyttelse er imidlertid ikke uangripelig, og hvis du tror at denne filen har blitt kompromittert, er det best å deaktivere den nøkkelen på datamaskinene der den har blitt installert (ved å fjerne den fra <filename>authorized_keys</filename> filer), og erstatte den med en nylig generert nøkkel.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>KULTUR</emphasis> OpenSSL feil i Debian <emphasis role="distribution">Etch</emphasis></title>
+
+	  <para>OpenSSL-biblioteket, som i utgangspunktet er tilgjengelig i Debian <emphasis role="distribution">Etch</emphasis>, hadde et alvorlig problem i sin generator for tilfeldige tall (RNG). Faktisk hadde Debians vedlikeholder gjort en endring slik at programmer som bruker den ikke lenger ville generere advarsler når den ble analysert av et testverktøy for minnet som <command>valgrind</command>. 
+Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde som korresponderer med prosessantallet (PID), der 32 000 mulige verdier ikke gir tilstrekkelig tilfeldighet. <ulink type="block" url="http://www.debian.org/security/2008/dsa-1571" /></para>
+
+	  <para>Spesielt når OpenSSL ble brukt til å generere en nøkkel, produserte den alltid en nøkkel i løpet av et visst sett av hundretusener av nøkler (32 000 multiplisert med et lite antall nøkkellengder). Dette påvirket SSH-nøkler, SSL-nøkler og X.509-sertifikater som brukes av mange programmer, som OpenVPN. En inntrenger trengte bare å prøve alle nøklene for å få uautorisert tilgang. For å redusere virkningen av problemet ble SSH-nissen modifisert til å nekte problematiske nøkler som er oppført i <emphasis role="pkg">openssh-blacklist</emphasis>- og <emphasis role="pkg">openssh-blacklist-extra</emphasis>-pakkene. I tillegg tillater <command>ssh-vulnkey</command>-kommandoen identifisering av mulige kompromitterte nøkler i systemet.</para>
+
+	  <para>En grundigere analyse av denne hendelsen bringer frem i lyset at det er et resultat av flere (små) problemer, både i OpenSSL-prosjektet og med Debian-pakkevedlikeholderen. Et mye brukt bibliotek som OpenSSL skal - uten endringer - ikke generere advarsler under testing av <command>valgrind</command>. Videre bør koden (spesielt de delene som er så følsomme som RNG) bli bedre kommentert for å forhindre slike feil. På Debians side, ønsket vedlikeholderen å validere modifikasjonene med OpenSSLs utviklere, men forklarte ganske enkelt endringene, uten å legge ut den korresponderende programfiksen til gjennomgang, og unnlot å nevne sin rolle i Debian. Endelig, vedlikeholdsvalgene var sub-optimale: Endringene i den opprinnelige koden ble ikke klart dokumentert; alle modifikasjoner ble effektivt lagret i en Subversjon kildebrønn, men de endte opp med alt samlet i en enkelt programfiks under oppretting av kildepakken.</para>
+
+	  <para>Det er vanskelig under slike forhold å finne de korrigerende tiltak for å hindre gjentakelse av slike hendelser. Denne leksen ga her den lærdommen at alle divergenser Debian introduserer i oppstrøms programvare, må begrunnes, dokumenteres, sendes til oppstrømsprosjektetet når det er mulig, og publiseres vidt. Det er ut fra dette perspektivet at det nye kildepakkeformatet («3.0 (quilt)») og webtjenesten for Debian-kilder ble utviklet. <ulink type="block" url="http://sources.debian.net" /></para>
+        </sidebar>
+      </section>
+      <section id="sect.ssh-x11">
+        <title>Ved hjelp av Remote X11-programmer</title>
+
+	<para>SSH-protokollen tillater videresending av grafiske data («X11» sesjon, fra navnet på det mest utbredte grafiske systemet i Unix); tjeneren holder da en egen kanal for disse dataene. Spesielt kan et grafisk program, kjørt eksternt, vises på X.org-tjeneren til den lokale skjermen, og hele økten (inndata og visning) vil være sikker. Ettersom denne funksjonen tillater at eksterne programmer forstyrrer det lokale systemet, er det deaktivert som standard. Du kan aktivere det ved å angi <literal>X11Forwarding yes</literal> i tjenerkonfigurasjonsfilen (<filename>/etc/ssh/sshd_config</filename>). Avslutningsvis må brukeren også be om det ved å legge <literal>-X</literal>-valget til <command>ssh</command>-kommandolinjen.</para>
+      </section>
+      <section id="sect.ssh-port-forwarding">
+        <title>Å lage krypterte tunneler med portvideresending (Port Forwarding)</title>
+        <indexterm><primary>port videresending (port forwarding)</primary></indexterm>
+
+	<para>Dets <literal>-R</literal> og <literal>-L</literal>-valg tillater <command>ssh</command> å lage «krypterte tunneler» mellom to maskiner, sikker videresending til en lokal TCP-port (se sidestolpe <xref linkend="sidebar.tcp-udp" />) til en ekstern maskin og omvendt.</para>
+
+        <sidebar>
+          <title><emphasis>ORDFORRÅD</emphasis> Tunnel</title>
+          <indexterm><primary>tunnell (SSH)</primary><seealso>VPN</seealso></indexterm>
+          <indexterm><primary>SSH tunnell</primary><seealso>VPN</seealso></indexterm>
+
+	  <para>Internettet, og de fleste lokalnett som er koblet til det, opererer i pakke-modus, og ikke i tilkoblet modus. Dette betyr at en pakke utstedt fra en datamaskin til en annen, kommer til å bli oppholdt på flere mellomliggende rutere for å finne veien til sin destinasjon. Du kan fortsatt simulere en tilkoblet operasjon der strømmen er innkapslet i normale IP-pakker. Disse pakkene følger sin vanlige rute, men strømmen blir rekonstruert uendret på bestemmelsesstedet. Vi kaller dette en «tunnel», tilsvarende en veitunnel der biler kjører direkte fra inngangen (inndata) til utgangen (utdata) uten å møte noen kryss, i motsetning til en bane på overflaten, som ville innebære kryss og skiftende retninger.</para>
+
+	  <para>Du kan bruke denne muligheten til å legge kryptering til tunnelen: Strømmen som flommer igjennom er da ugjenkjennelig fra utsiden, men den blir levert dekryptert ved utgangen av tunnelen.</para>
+        </sidebar>
+
+	<para><command>ssh -L 8000:server:25 intermediary</command> etablerer en SSH-økt med <replaceable>intermediary</replaceable>-verten, og lytter til lokal port  8000 (se <xref linkend="figure.ssh-L" />). For alle tilkoblinger som etableres til denne porten, vil <command>ssh</command> initiere en forbindelse fra <replaceable>intermediary</replaceable>-datamaskinen til port 25 på  <replaceable>server</replaceable>-tjeneren, og vil binde begge tilknytninger sammen.</para>
+
+	<para><command>ssh -R 8000:server:25 intermediary</command> etablerer også en SSH-økt til <replaceable>intermediary</replaceable>-datamaskinen, men det er på denne maskinen at <command>ssh</command> lytter til port 8000 (se <xref linkend="figure.ssh-R" />). Alle tilknytninger som er etablert til denne porten vil få <command>ssh</command> til å åpne en tilknytning fra den lokale maskinen til port 25 hos <replaceable>server</replaceable>-en, og til å binde begge tilknytninger sammen.</para>
+
+	<para>I begge tilfeller er forbindelsene lagt til port 25 på <replaceable> 1server</replaceable>-verten, og passerer gjennom SSH-tunnelen som er etablert mellom den lokale maskinen og <replaceable> 3intermediary</replaceable>-maskinen. I det første tilfellet er inngangen til tunnelen lokal port 8000, og dataene beveger seg mot <replaceable>intermediary</replaceable>-maskinen før de blir dirigert videre til  <replaceable>server</replaceable>en i det «offentlige» nettverket. I det andre tilfellet er inngangen og utgangen i tunnelen reversert: Inngangen er port 8000 på <replaceable>intermediary</replaceable>-maskinen, og utdataene er på den lokale verten, og dataene blir deretter sendt til <replaceable>server</replaceable>-en. I praksis er tjeneren vanligvis enten den lokale maskinen eller mellomstasjonen. På den måten sikrer SSH forbindelsen fra den ene enden til den andre.</para>
+
+        <figure id="figure.ssh-L">
+          <title>Videresende en lokal port med SSH</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="images/ssh-L.png" width="35%" />
+            </imageobject>
+          </mediaobject>
+        </figure>
+
+        <figure id="figure.ssh-R">
+          <title>Videresende en ekstern port med SSH</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="images/ssh-R.png" width="35%" />
+            </imageobject>
+          </mediaobject>
+        </figure>
+      </section>
+    </section>
+    <section id="sect.remote-desktops">
+      <title>Å bruke eksterne grafiske skrivebord</title>
+
+      <para>VNC (Virtual Network Computing) tillater ekstern tilgang til grafiske skrivebord.</para>
+      <indexterm><primary>VNC</primary></indexterm>
+      <indexterm><primary>Virtual Network Computing</primary></indexterm>
+      <indexterm><primary>grafisk desktop (skrivebord)</primary><secondary>eksternt</secondary></indexterm>
+      <indexterm><primary>ekstern grafisk desktop (skrivebord)</primary></indexterm>
+      <indexterm><primary>desktop (skrivebord), ekstern grafisk desktop</primary></indexterm>
+
+      <para>Dette verktøyet er mest brukt for teknisk assistanse; administratoren kan se feil som brukeren står overfor, og vise dem hva det er riktig å gjøre, uten å måtte stå ved siden av dem.</para>
+      <indexterm><primary><emphasis role="pkg">vino</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">krfb</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">x11vnc</emphasis></primary></indexterm>
+
+      <para>Først må brukeren autorisere deling av sin sesjon. GNOMEs grafiske skrivebordsmiljø i <emphasis role="distribution">Jessie</emphasis> omfatter dette alternativet i sitt konfigurasjonspanel (i motsetning til tidligere versjoner av Debian, der brukeren måtte installere og kjøre <command>vino</command>). KDE krever fortsatt at <command>krfb</command> brukes for å tillate deling av en eksisterende økt over VNC. For andre grafiske skrivebordsmiljøer tjener <command>x11vnc</command>-kommandoen (fra Debian-pakken med samme navn) samme formål: Du kan gjøre det tilgjengelig for brukeren med et eksplisitt ikon.</para>
+
+      <indexterm><primary><emphasis role="pkg">vinagre</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">tsclient</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">krdc</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">xvnc4viewer</emphasis></primary></indexterm>
+
+      <para>Når den grafiske økten er gjort tilgjengelig av VNC, må administratoren koble den til med en VNC-klient. GNOME har <command>vinagre</command> og <command>remmina</command> til det, mens KDE innkluderer <command>krdc</command> (i menyen hos <menuchoice> <guimenu>K</guimenu> <guisubmenu>Internet</guisubmenu> <guimenuitem>Tilkobling til et eksternt system (Remote Desktop Client)</guimenuitem></menuchoice>). Det er andre VNC-klienter som bruker kommandolinjen, for eksempel <command>xvnc4viewer</command> i Debian pakken med samme navn. Når du er tilkoblet, kan administratoren se hva som skjer, arbeide eksternt på maskinen, og vise brukeren hvordan man går frem.</para>
+
+      <sidebar>
+        <title><emphasis>SIKKERHET</emphasis> VNC over SSH</title>
+        <indexterm><primary>SSH-tunnel</primary><secondary>VNC</secondary></indexterm>
+
+	<para>Hvis du ønsker å koble til med VNC, og du ikke vil at dataene sendes i klartekst på nettverket, er det mulig å kapsle dataene i en SSH-tunnel (se <xref linkend="sect.ssh-port-forwarding" />). Du må bare vite at VNC bruker port 5900 som standard for det første skjermbildet (kalt «localhost:0»), 5901 for den andre (kalt «localhost:1»), osv.</para>
+
+	<para><command>ssh -L localhost:5901:localhost:5900 -N -T <replaceable>maskin</replaceable></command>-kommandoen oppretter en tunnel mellom lokal port 5901 i lokalvertgrensesnittet og til 5900-porten hos <replaceable>maskin</replaceable>-verten. Den første «lokalverten» begrenser SSH til å lytte bare til det grensesnittet på den lokale maskinen. Den andre «lokalverten» indikerer grensesnittet på den eksterne maskinen som skal motta nettverkstrafikk til «localvertst:5901». Dermed vil <command>vncviewer localhost:1</command> knytte VNC-klienten til den eksterne skjermen, selv om du anga navnet på den lokale maskinen.</para>
+
+	<para>Når VNC-sesjonen er lukket, må du huske å stenge tunnelen ved også å avslutte den tilsvarende SSH-økten.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>TILBAKE TIL BASIS</emphasis> Display manager</title>
+        <indexterm><primary><command>gdm3</command></primary></indexterm>
+        <indexterm><primary><command>kdm</command></primary></indexterm>
+        <indexterm><primary><command>xdm</command></primary></indexterm>
+        <indexterm><primary><command>lightdm</command></primary></indexterm>
+        <indexterm><primary>manager</primary><secondary>display manager (skjermhåndterer)</secondary></indexterm>
+        <indexterm><primary>display manager (skjermhåndterer)</primary></indexterm>
+
+	<para><command>gdm3</command>, <command>kdm</command>, <command>lightdm</command>, og <command>xdm</command> er Display Managere. De tar kontroll over det grafiske grensesnittet kort etter oppstart for å gi brukeren et innloggingsbilde. Når brukeren har logget inn, kjøres de programmene som trengs for å starte en grafisk arbeidsøkt .</para>
+      </sidebar>
+
+      <para>VNC fungerer også for mobile brukere, eller næringslivsledere, som av og til trenger å logge inn hjemmefra for å få tilgang til et eksternt skrivebord lik det de bruker på jobben. Konfigurasjonen av en slik tjeneste er mer komplisert: Du må først installere<emphasis role="pkg">vnc4server</emphasis>-pakken, endre oppsettet på skjermviseren til å godta <literal>XDMCP Query</literal>-forespørsler (for <command>gdm3</command>. Dette kan gjøres ved å legge til <literal>Enable=true</literal> i «xdmcp»-seksjonen til <filename>/etc/gdm3/daemon.conf</filename>), og til slutt, starte VNC-tjeneren med <command>inetd</command> slik at en økt starter automatisk når en bruker prøver å logge seg inn. For eksempel kan du legge til denne linjen til <filename>/etc/inetd.conf</filename>:</para>
+
+      <programlisting>5950  stream  tcp  nowait  nobody.tty  /usr/bin/Xvnc Xvnc -inetd -query localhost -once -geometry 1024x768 -depth 16 securitytypes=none</programlisting>
+
+      <para>Å omdirigere innkomne forbindelser til skjermhåndterer, løser problemet med autentisering, fordi bare brukere med lokale kontoer vil passere innloggingsskjermen <command>gdm3</command> login screen (eller tilsvarende <command>kdm</command>, <command>xdm</command>, etc.). Ettersom denne operasjonen tillater flere samtidige pålogginger uten problem (forutsatt at serveren er kraftig nok), kan den også brukes til å tilby komplette skrivebord til mobile brukere (eller til mindre kraftige stasjonære systemer, konfigurert som tynne klienter). Brukere logger bare inn på serverens skjerm med <command>vncviewer <replaceable>server</replaceable>:50</command>, fordi den benyttede porten er 5950.</para>
+      <indexterm><primary><emphasis role="pkg">vnc4server</emphasis></primary></indexterm>
+    </section>
+  </section>
+  <section id="sect.rights-management">
+    <title>Å håndtere rettigheter</title>
+
+    <para>Linux er definitivt et flerbrukersystem (multi-user system), så det er nødvendig å gi et tillatelsessystem for å kontrollere et sett autoriserte operasjoner på filer og kataloger, for alle systemressurser og enheter (på et Unix-system, er enhver enhet representert ved en fil eller katalog). Dette prinsippet er felles for alle Unix-systemer, men en påminnelse er alltid nyttig, særlig fordi det er noen interessante og relativt ukjente, avanserte bruksmåter.</para>
+    <indexterm><primary>rettigheter</primary></indexterm>
+    <indexterm><primary>tillatelser</primary></indexterm>
+    <indexterm><primary>bruker</primary><secondary>eier</secondary></indexterm>
+    <indexterm><primary>gruppe</primary><secondary>eier</secondary></indexterm>
+    <indexterm><primary>eier</primary><secondary>bruker</secondary></indexterm>
+    <indexterm><primary>eier</primary><secondary>gruppe</secondary></indexterm>
+
+    <para>Hver fil eller katalog har egne tillatelser for tre kategorier av brukere:</para>
+    <itemizedlist>
+      <listitem>
+	<para>dens eier (symbolisert ved <literal>u</literal> som i «user»);</para>
+      </listitem>
+      <listitem>
+	<para>dens eiergruppe (symbolisert med <literal>g</literal> som i «gruppe»), som representerer alle medlemmene i gruppen;</para>
+      </listitem>
+      <listitem>
+	<para>de andre (symbolisert med <literal>o</literal> som i «other»).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Tre typer rettigheter kan kombineres:</para>
+    <itemizedlist>
+      <listitem>
+	<para>lesing (symbolisert med <literal>r</literal> som i «read»);</para>
+      </listitem>
+      <listitem>
+	<para>skrive (eller modifisere, symbolisert ved <literal>w</literal> som i «write»);</para>
+      </listitem>
+      <listitem>
+	<para>utføre (symbolisert med <literal>x</literal> som i «eXecute»).</para>
+      </listitem>
+    </itemizedlist>
+    <indexterm><primary>lese, rettighet</primary></indexterm>
+    <indexterm><primary>skrive, rettighet</primary></indexterm>
+    <indexterm><primary>modifikasjon (endre), rettighet</primary></indexterm>
+    <indexterm><primary>utføre, rettighet</primary></indexterm>
+
+    <para>Når det gjelder en fil, er disse rettighetene lette å forstå: Lesetilgang tillater å lese innhold (inkludert kopiering), skrivetilgang tillater å endre den, og med kjøretilgang kan du kjøre den (som bare vil fungere hvis den er et program).</para>
+
+    <sidebar>
+      <title><emphasis>SIKKERHET</emphasis> <literal>setuid</literal> og <literal>setgid</literal> kjørbare</title>
+
+      <para>To spesielle rettigheter er relevante for kjørbare filer:<literal>setuid</literal> og <literal>setgid</literal> (symbolisert med bokstaven «s»). Merk at vi ofte snakker om «bit», siden hver av disse boolske verdiene kan representeres ved en 0 eller et 1. Disse to rettighetene tillater alle brukere å kjøre programmet med henholdsvis rettighetene til eieren eller gruppen. Denne mekanismen gir tilgang til funksjoner som krever tillatelser på et høyere nivå enn du vanligvis har.</para>
+      <indexterm><primary><literal>setuid</literal>, rettighet</primary></indexterm>
+      <indexterm><primary><literal>setgid</literal>, rettighet</primary></indexterm>
+
+      <para>Ettersom et <literal>setuid</literal>-rotprogram systematisk kjøres under superbruker-identiteten, er det svært viktig å sikre at det er trygt og pålitelig. Faktisk, skulle en bruker klare å forbigå (undergrave) det for å bruke en kommando etter eget valg, kunne denne brukeren utgi seg for å være rotbruker, og få alle rettigheter til systemet.</para>
+    </sidebar>
+
+    <para>En katalog håndteres annerledes. Lesetilgang gir rett til å gjennomgå listen over oppføringene (filer og kataloger), skrivetilgang tillater å lage eller slette filer, og utføringstilgang tillater å krysse gjennom den (spesielt å gå dit med <command>cd</command>-kommandoen). Å kunne krysse gjennom en katalog uten å kunne lese den, gir tillatelse til å gå til de oppføringene som er kjent ved navn, men ikke til å finne dem hvis man ikke vet at de finnes, eller deres nøyaktige navn.</para>
+
+    <sidebar id="sidebar.setgid-dir">
+      <title><emphasis>SIKKERHET</emphasis> <literal>setgid</literal> katalog og <emphasis>sticky bit</emphasis></title>
+      <indexterm><primary><literal>setgid</literal> katalog</primary></indexterm>
+
+      <para><literal>setgid</literal>-biten gjelder også kataloger. Ethvert nyopprettet element i slike kataloger blir automatisk knyttet til eiergruppen til den overordnede katalogen, i stedet for, som vanlig, å arve opphavsmannens(skaperens) hovedgruppe. Med dette oppsettet unngås det at brukeren trenger å endre sin hovedgruppe (med <command>newgrp</command>-kommandoen) når man arbeider i et fil-tre som deles mellom flere brukere i samme dediserte gruppe.</para>
+      <indexterm><primary>sticky bit</primary></indexterm>
+
+      <para>«Sticky bit» - den «klebrige» bit-en - (symbolisert med bokstaven «t») er en tillatelse som bare er nyttig i kataloger. Det blir spesielt brukt for midlertidige kataloger, der alle har skrivetilgang (for eksempel <filename>/tmp/</filename>): Bit-en begrenser slettingen av filer slik at bare fileieren (eller eieren av den overordnede katalogen) kan gjøre det. Mangler denne, kan alle slette andre brukeres filer i <filename>/tmp/</filename>.</para>
+    </sidebar>
+
+    <para>Tre kommandoer kontrollerer tillatelser knyttet til en fil:</para>
+    <itemizedlist>
+      <listitem>
+	<para><command>chown <replaceable>bruker</replaceable> <replaceable>fil</replaceable></command> endrer eieren av filen;</para>
+      </listitem>
+      <listitem>
+	<para><command>chgrp <replaceable>gruppe</replaceable> <replaceable>fil</replaceable></command> endrer eiergruppen;</para>
+      </listitem>
+      <listitem>
+	<para><command>chmod <replaceable>rettigheter</replaceable> <replaceable>fil</replaceable></command> endrer tillatelsene for filen.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Det er to måter å presentere rettighetene på. Blant dem er den symbolske representasjon trolig den enkleste å forstå og huske. Det innebærer bokstavsymboler som nevnt ovenfor. Du kan definere rettigheter for hver kategori av brukere (<literal>u</literal>/<literal>g</literal>/<literal>o</literal>), ved å sette dem eksplisitt (ved <literal>=</literal>), ved å legge til (<literal>+</literal>), eller trekke fra (<literal>-</literal>). Dermed gir <literal>u=rwx,g+rw,o-r</literal>-formelen eieren lese-, skrive-, og utføringsrettigheter, legger til lese- og skriverettigheter for eiergruppen, og fjerner leserettigheter for andre brukere. Rettigheter som ikke er endret ved å legge til eller fjerne i en slik kommando, forblir uendret. Bokstaven <literal>a</literal>, for «alle», dekker alle tre kategorier brukere, slik at <literal>a=rx</literal> gir alle tre kategorier de samme rettigheter (lese og kjøre, men ikke skrive).</para>
+    <indexterm><primary><command>chmod</command></primary></indexterm>
+    <indexterm><primary><command>chown</command></primary></indexterm>
+    <indexterm><primary><command>chgrp</command></primary></indexterm>
+    <indexterm><primary>oktal representasjon av rettigheter</primary></indexterm>
+    <indexterm><primary>rettigheter</primary><secondary>oktal representasjon</secondary></indexterm>
+
+    <para>Den (åttetalls-) numeriske representasjonen forbinder hver rettighet med en verdi: 4 for lese-, 2 for skrive, og 1 for å utføre. Vi forbinder hver kombinasjon av rettigheter med summen av tallene. Hver verdi blir deretter knyttet til ulike kategorier av brukere ved å sette dem side ved side (end to end)i den vanlige rekkefølgen (eier, gruppe, andre).</para>
+
+    <para>For eksempel <command>chmod 754 <replaceable>fil</replaceable></command>-kommandoen vil gi de følgende rettigheter: lese, skrive og utføre for eieren (fordi 7 = 4 + 2 + 1); lese og utføre for gruppen (fordi 5 = 4 + 1); bare lese for andre. <literal>0</literal> betyr ingen rettigheter; da <command>chmod 600 <replaceable>fil</replaceable></command> tillater lese/skrive-rettigheter for eieren, og ingen rettigheter for noen andre. De hyppigste rettighetskombinasjonene er <literal>755</literal> for kjørbare filer og kataloger, og <literal>644</literal> for datafiler.</para>
+
+    <para>For å representere spesielle rettigheter kan du stille et fjerde siffer foran dette tallet etter samme prinsipp, der <literal>setuid</literal>, <literal>setgid</literal> og <literal>sticky</literal>-bitene er henholdsvis 4, 2 og 1. <command>chmod 4754</command> vil knytte <literal>setuid</literal>-biten til den tidligere beskrevne rettigheten.</para>
+
+    <para>Merk at bruk av åttetallsystemet bare tillater å sette alle rettigheter samtidig i en fil; du kan ikke bruke den til å bare legge til en ny rett, slik som lesetilgang for gruppens eier, siden du må ta hensyn til eksisterende rettigheter, og beregne ny tilsvarende tallverdi.</para>
+
+    <sidebar>
+      <title><emphasis>TIPS</emphasis> Gjentatte operasjoner</title>
+
+      <para>Noen ganger må vi endre rettighetene for et helt fil-tre. Alle kommandoene ovenfor har en <literal>-R</literal>-mulighet til å operere gjentakende (rekursivt) i underkataloger.</para>
+
+      <para>Skillet mellom kataloger og filer fører noen ganger til problemer med rekursive operasjoner. Derfor er «X»-bokstaven innført i symboloversikten over rettigheter. Den representerer en rett til å utføre noe som bare gjelder kataloger (og som ikke gjelder filer som ikke har denne retten). Dermed vil <command>chmod -R a+X <replaceable>katalog</replaceable></command> bare legge til utføringsrettigheter for alle kategorier av brukere (<literal>a</literal>) for alle underkataloger, og filer der minst én brukerkategori (selv om det er eneeieren) allerede har utføringsrettigheter.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>TIPS</emphasis> Endre bruker og gruppe</title>
+
+      <para>Ofte vil du ønske å endre filgruppen samtidig som du endrer eier. <command>chown</command>-kommandoen har en egen syntaks for det: <command>chown <replaceable>bruker</replaceable>:<replaceable>gruppe</replaceable> <replaceable>fil</replaceable></command></para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>GÅR VIDERE</emphasis> <command>umask</command></title>
+
+      <para>Når et program oppretter en fil, tildeler det indikative tillatelser, vel vitende om at systemet fjerner visse rettigheter, gitt av kommandoen <command>umask</command>. Skriv inn <command>umask</command> i et skall; og du vil se en maske slik som <computeroutput>0022</computeroutput>. Dette er rett og slett en åttetalls representasjon av rettighetene som systematisk skal fjernes (i dette tilfellet, skriverettigheten for gruppen og andre brukere).</para>
+      <indexterm><primary>umask</primary></indexterm>
+      <indexterm><primary>rettigheter</primary><secondary>maske</secondary></indexterm>
+      <indexterm><primary>maske</primary><secondary>rettigheter maske</secondary></indexterm>
+
+      <para>Hvis du gir den en ny oktal verdi, modifiserer <command>umask</command>-kommandoen masken. Brukt i en skall-initialiseringsfil (for eksempel <filename>~/.bash_profile</filename>), vil den effektivt endre standardmasken for dine arbeidsøkter.</para>
+    </sidebar>
+  </section>
+  <section id="sect.administration-interfaces">
+    <title>Administrasjonsgrensesnitt</title>
+    <indexterm><primary>grensesnitt</primary><secondary>administrasjonsgrensesnitt</secondary></indexterm>
+    <indexterm><primary>administrasjon, grensesnitt</primary></indexterm>
+
+    <para>Å bruke et grafisk administrasjonsgrensesnitt er interessant i ulike situasjoner. En administrator kjenner ikke nødvendigvis alle konfigurasjonsdetaljer for alle sine tjenester, og har ikke alltid tid til å gå igjennom dokumentasjonen i saken. Et grafisk administrasjonsgrensesnitt kan dermed akselerere utplassering av en ny tjeneste. Det kan også forenkle oppsettet av tjenester som er vanskelige å konfigurere.</para>
+
+    <para>Et slikt grensesnitt er bare et hjelpemiddel, og ikke et mål i seg selv. I alle tilfeller må administratoren beherske hvordan det virker for å forstå og løse mulige problemer.</para>
+
+    <para>Siden ingen grensesnitt er perfekte, kan du bli fristet til å prøve ulike løsninger. Dette bør så mye som mulig unngås, siden arbeidsmetodikken til ulike verktøy ofte er uforenlige. Selv om alle har som mål å være svært fleksible, og prøve å adoptere konfigurasjonsfilen som en eneste referanse, er de ikke alltid i stand til å integrere eksterne endringer.</para>
+    <section id="sect.webmin">
+      <title>Å administrere med et nettbrukergrensesnitt: <command>webmin</command></title>
+      <indexterm><primary><emphasis>webmin</emphasis></primary></indexterm>
+
+      <para>Dette er uten tvil et av de mest vellykkede administrasjonsgrensesnittene. Det er et modulsystem styrt gjennom en nettleser, og dekker et bredt spekter av områder og verktøy. Videre er det internasjonalisert, og tilgjengelig på mange språk.</para>
+
+      <para>Trist nok, <command>webmin</command> er ikke lenger en del av Debian. Debian vedlikeholder - Jaldhar H. Vyas - fjernet pakkene han hadde laget fordi han ikke lenger hadde den tiden som er nødvendig for å vedlikeholde dem på et akseptabelt kvalitetsnivå. Ingen har offisielt tatt over, så <emphasis role="distribution">Jessie</emphasis> har ikke med <command>webmin</command>-pakken.</para>
+
+      <para>Det er imidlertid en uoffisiell pakke fordelt på <literal>webmin.com</literal>-nettsiden. Til forskjell fra den opprinnelige Debian-pakken, er denne pakken monolittisk; alle konfigurasjonsmodulene installeres og aktiveres som standard, selv om den tilsvarende tjenesten ikke er installert på maskinen.</para>
+
+      <sidebar>
+        <title><emphasis>SIKKERHET</emphasis> Endre rotpassordet</title>
+
+	<para>Ved den første innloggingen blir identifikasjon avklart med rotbrukernavn og tilhørende passord. Det anbefales å endre passordet som brukes for <command>webmin</command> så snart som mulig, slik at hvis det er kompromittert, berøres ikke rotpassordet, selv om dette tildeler viktige administrative rettigheter til maskinen.</para>
+
+	<para>Vær forsiktig! Fordi <command>webmin</command> har så mange funksjoner, vil en ondsinnet bruker med tilgang til den kunne kompromittere sikkerheten til hele systemet. Generelt er grensesnitt av denne typen ikke anbefalt for viktige systemer med sterke sikkerhetsbegrensninger (brannmur, sensitive servere, etc.).</para>
+      </sidebar>
+
+      <para>Webmin brukes via et nettgrensesnitt, men krever ikke at Apache installeres. I hovedsak har dette programmet sin egen integrerte mini-nettjener. Denne tjeneren lytter som standard på port 10000, og aksepterer sikre HTTP-tilkoblinger.</para>
+
+      <para>De inkluderte moduler dekker et bredt spekter av tjenester, blant disse er:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>alle basistjenester: oppretting av brukere og grupper, håndtering av <filename>crontab</filename>-filer, init-skripter, å se logger, etc.</para>
+        </listitem>
+        <listitem>
+	  <para>bind: DNS tjeneroppsett (navntjeneste);</para>
+        </listitem>
+        <listitem>
+	  <para>postfix: SMTP-tjeneroppsett (e-post);</para>
+        </listitem>
+        <listitem>
+	  <para>inetd: oppsett for <command>inetd</command>-supertjeneren;</para>
+        </listitem>
+        <listitem>
+	  <para>quota: brukerkvotehåndtering;</para>
+        </listitem>
+        <listitem>
+	  <para>dhcpd: DHCP-tjeneroppsett;</para>
+        </listitem>
+        <listitem>
+	  <para>proftpd: FTP-tjeneroppsett;</para>
+        </listitem>
+        <listitem>
+	  <para>samba: Samba filtjeneroppsett;</para>
+        </listitem>
+        <listitem>
+	  <para>software: Installasjon eller fjerning av programvare fra Debian-pakker og systemoppdateringer .</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Administrasjonsgrensesnittet er tilgjengelig i en nettleser på <literal>https://localhost:10000</literal>. Pass opp! Ikke alle modulene kan brukes direkte. Noen ganger må de konfigureres ved å angi plasseringen av de tilhørende konfigurasjonsfiler og noen kjørbare filer (programmer). Ofte vil systemet høflig be deg når det ikke klarer å aktivere en modulen det er bedt om.</para>
+
+      <sidebar>
+        <title><emphasis>ALTERNATIV</emphasis> GNOME kontrollsenter</title>
+        <indexterm><primary><emphasis role="pkg">gnome-control-center</emphasis></primary></indexterm>
+
+	<para>GNOME-prosjektet gir også flere administrasjonsgrensesnitt som vanligvis er tilgjengelig via «Innstillinger»-elementet i brukermenyen øverst til høyre.   <command>gnome-control-center</command> er hovedprogrammet som bringer dem alle sammen, men mange av de brede systemomfattende konfigurasjonsverktøy er effektivt levert av andre pakker (<emphasis role="pkg">accountsservice</emphasis>, <emphasis role="pkg">system-config-printer</emphasis>, etc.). Selv om de er enkle å bruke, dekker disse programmene kun et begrenset antall basetjenester: Brukeradministrasjon, tidsoppsett, nettverksoppsett, skriveroppsett, og så videre.</para>
+      </sidebar>
+    </section>
+    <section id="sect.debconf">
+      <title>Konfigurering av pakker: <command>debconf</command></title>
+      <indexterm><primary><command>debconf</command></primary></indexterm>
+      <indexterm><primary><command>dpkg-reconfigure</command></primary></indexterm>
+
+      <para>Mange pakker blir automatisk konfigurert etter å ha spurt noen spørsmål under installasjon via Debconf-verktøyet. Disse pakkene kan konfigureres ved å kjøre <command>dpkg-reconfigure <replaceable>pakke</replaceable></command>.</para>
+
+      <para>I de fleste tilfeller er disse innstillingene veldig enkle; bare noen få viktige variabler i konfigurasjonsfilen er endret. Disse variablene er ofte gruppert mellom to «avgrensnings»-linjer slik at ny konfigurering av pakken bare påvirker dette avgrensede området. I andre tilfeller vil ikke en ny konfigurering endre noe om skriptet oppdager en manuell endring i konfigurasjonsfilen, for å kunne bevare disse manuelle inngrepene (fordi skriptet ikke kan sikre at egne tilpasninger ikke vil forstyrre eksisterende innstillinger).</para>
+
+      <sidebar>
+        <title><emphasis>DEBIAN POLICY</emphasis> Ta vare på forandringer</title>
+
+	<para>Debian Policy fastslår uttrykkelig at alt skal gjøres for å bevare manuelle endringer i en konfigurasjonsfil, slik at flere og flere skript tar forholdsregler når du redigerer konfigurasjonsfiler. Det generelle prinsippet er enkelt: Skriptet vil bare gjøre endringer hvis den kjenner statusen til konfigurasjonsfilen, som er bekreftet ved å sammenligne kontrollsummen til filen mot den til den siste automatisk generert filen. Hvis de er de samme, er skriptet autorisert til å endre konfigurasjonsfilen. Ellers bestemmer det at filen er blitt endret, og spør hvilke tiltak det skal ta (installere den nye filen, lagre den gamle filen, eller prøve å integrere de nye endringene med den eksisterende filen). Dette føre var-prinsippet har lenge vært unikt for Debian, men andre distribusjoner har gradvis begynt å omfavne det.</para>
+
+	<para>Programmet <command>ucf</command> (fra Debian-pakken med samme navn) kan brukes til å få til at det skjer.</para>
+        <indexterm><primary><command>ucf</command></primary></indexterm>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.syslog">
+    <title><command>syslog</command> Systemhendelser</title>
+    <indexterm><primary><command>rsyslogd</command></primary></indexterm>
+    <indexterm><primary>filer</primary><secondary>loggfiler</secondary></indexterm>
+    <indexterm><primary>logger</primary><secondary>utsending</secondary></indexterm>
+    <section id="sect.syslog-principe">
+      <title>Prinsipp og mekanisme</title>
+
+      <para><command>rsyslogd</command>-nissen er ansvarlig for innsamling av servicemeldinger som kommer fra programmer og kjernen, og deretter ekspedere dem til loggfiler (vanligvis lagret i <filename>/var/log/</filename>-mappen). Den adlyder konfigurasjonsfilen <filename>/etc/rsyslog.conf</filename>.</para>
+
+      <para>Hver loggmelding er forbundet med en delsystemapplikasjon (kalt «facility» i dokumentasjonen):</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>auth</literal> og <literal>authpriv</literal>: for autentisering;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>cron</literal>: kommer fra aktivitetsplanleggingstjenester,<command>cron</command> og <command>atd</command>;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>daemon</literal>: påvirker en nisse uten noen spesiell klassifisering (DNS, NTP, etc.);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ftp</literal>: gjelder FTP-tjeneren;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>kern</literal>: melding kommer fra kjernen;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>lpr</literal>: kommer fra skriver-delsystemet;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>mail</literal>: kommer fra e-post-delsystemet (the e-mail-subsystem);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>news</literal>: Usenet delsystem-melding (spesielt fra en NNTP - Network News Transfer Protocol - tjener som styrer nyhetsgrupper);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>syslog</literal>: meldinger fra <command>syslogd</command>-tjeneren selv;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>user</literal>: brukermeldinger (generisk);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>uucp</literal>: meldinger fra UUCP-tjeneren (Unix til Unix Copy Program, en gammel protokoll som særlig brukes til å distribuere e-postmeldinger);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>local0</literal> til <literal>local7</literal>: reservert for lokal bruk.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Hver melding er også knyttet til et prioritetsnivå. Her er listen i synkende rekkefølge:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>emerg</literal>: «Hjelp!» Det er krise, systemet er sannsynligvis ubrukelig.</para>
+        </listitem>
+        <listitem>
+	  <para><literal>alert</literal>: skynd deg, enhver forsinkelse kan være farlig, det må handles umiddelbart;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>crit</literal>: forholdene er kritiske;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>err</literal>: feil;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>warn</literal>: advarsel (mulig fare);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>notice</literal>: forholdene er normale, men budskapet er viktig;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>info</literal>: informativt budskap;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>debug</literal>: feilsøkingsbudskap.</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+    <section id="sect.syslog-config">
+      <title>Konfigurasjonsfilen</title>
+
+      <para>Syntaksen til <filename>/etc/rsyslog.conf</filename>-filen er beskrevet detaljert i <citerefentry><refentrytitle>rsyslog.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>-manualsiden, men det er også HTML-dokumentasjon tilgjengelig i <emphasis role="pkg">rsyslog-doc</emphasis>-pakken (<filename>/usr/share/doc/rsyslog-doc/html/index.html</filename>). Det gjennomgående prinsippet er å skrive «selector» og «action»-par. «Selector» definerer alle relevante meldinger, og handlingene beskriver hvordan man skal håndtere dem.</para>
+      <section id="sect.syslog-selector-syntax">
+        <title>Syntaksen til velgeren (Selector)</title>
+
+	<para>Selektoren (velgeren) er en semikolon-delt liste med <literal><replaceable>subsystem</replaceable>.<replaceable>prioritet</replaceable></literal>-par (for eksempel: <literal>auth.notice;mail.info</literal>). En stjerne kan representere alle delsystemer, eller alle prioriteringer (eksempler:<literal>*.alert</literal>, eller <literal>mail.*</literal>). En stjerne kan representere alle delsystemer, eller alle prioriteringer (eksempler:<literal>auth,mail.info</literal>). Den indikerte prioriteten dekker også meldinger med tilsvarende, eller høyere prioritet; på den måten <literal>auth.alert</literal> indikerer <literal>auth</literal> subsystem-meldingene til <literal>alert</literal>, eller <literal>emerg</literal>-prioritet. Prefiks med et utropstegn (!), indikerer det motsatte, med andre ord de strengt tatt lavere prioriteringer; <literal>auth.!notice</literal>, og indikerer dermed meldinger utstedt fra <literal>auth</literal>, med <literal>info</literal> eller <literal>debug</literal>-prioritet. Prefiks med et likhetstegn (=), tilsvarer presist og bare den angitte prioriteten (<literal>auth.=notice</literal>, gjelder bare meldinger fra <literal>auth</literal> med <literal>notice</literal>-prioritet).</para>
+
+	<para>Hvert element i Selektor-listen overstyrer tidligere elementer. Dermed er det mulig å avgrense et sett, eller å utestenge visse elementer fra den. For eksempel betyr <literal>kern.info;kern.!err</literal> meldinger fra kjernen med prioritet mellom <literal>info</literal> og <literal>warn</literal>. <literal>none</literal>-prioritet indikerer det tomme settet (ingen prioriteringer), og kan tjene til å utelukke et delsystem fra et sett med meldinger. Dermed indikerer <literal>*.crit;kern.none</literal> alle meldingene med prioritet lik eller høyere enn <literal>crit</literal>, som ikke kommer fra kjernen.</para>
+      </section>
+      <section id="sect.syslog-action-syntax">
+        <title>Syntaks for handlinger</title>
+
+        <sidebar>
+          <title><emphasis>TILBAKE TIL BASIS</emphasis> Den navngitte kanalen (the Pipe), en vedvarende kanal</title>
+          <indexterm><primary>navngitt kanal</primary></indexterm>
+          <indexterm><primary>kanal (pipe), navngitt kanal</primary></indexterm>
+
+	  <para>En navngitt kanal er en spesiell type fil som virker som en tradisjonell kanal (kanalen som du lager med «|» -symbolet på kommandolinjen), men via en fil. Denne mekanismen har fordelen av å kunne forholde seg til to ikke-relaterte prosesser. Alt som er skrevet til en navngitt kanal blokkerer prosessen som skriver frem til en annen fremgangsmåte forsøker å lese de data som er skrevet. Denne andre prosessen leser de dataene som er skrevet av den første, som så kan gjenoppta kjøringen.</para>
+
+	  <para>En slik fil er laget med <command>mkfifo</command>-kommandoen.</para>
+        </sidebar>
+
+	<para>De forskjellige mulige handlinger er:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>å legge til en melding til en fil (eksempel: <filename>/var/log/messages</filename>);</para>
+          </listitem>
+          <listitem>
+	    <para>sende meldingen til en ekstern <command>syslog</command>-tjener (eksempel: <literal>@log.falcot.com</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>sende meldingen til en eksisterende navngitt kanal (example: <literal>|/dev/xconsole</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>sende meldingen til en eller flere brukere, hvis de er logget inn (eksempel:<literal>root,rhertzog</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>sende meldingen til alle innloggede brukere (eksempel: <literal>*</literal>);</para>
+          </listitem>
+          <listitem>
+	    <para>skrive meldingen i en tekstkonsoll (eksempel: <literal>/dev/tty8</literal>).</para>
+          </listitem>
+        </itemizedlist>
+
+        <sidebar>
+          <title><emphasis>SIKKERHET</emphasis> Å videresende logger</title>
+          <indexterm><primary>logg</primary><secondary>videresende</secondary></indexterm>
+
+	  <para>Det er en god idé å spille inn de viktigste loggene på en annen maskin (kanskje avsatt til dette formålet), siden dette vil hindre enhver mulig inntrenger fra å fjerne sporene av inntrengningen deres (med mindre, selvfølgelig, de også kompromitterer denne andre tjeneren). Videre har du, ved et stort problem (for eksempel et kjernekrasj), logger tilgjengelig på en annen maskin, noe som øker dine sjanser til å bestemme rekkefølgen av hendelser som forårsaket ulykken.</para>
+
+	  <para>For å godta loggmeldinger sendt fra andre maskiner må du konfigurere <emphasis>rsyslog</emphasis>: I praksis, er det tilstrekkelig å aktivere de ferdig-til-bruk oppføringene i <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad imudp</literal> og <literal>$UDPServerRun 514</literal>).</para>
+        </sidebar>
+      </section>
+    </section>
+  </section>
+  <section id="sect.inetd">
+    <title>Super-server <command>inetd</command></title>
+
+    <para>Inetd (ofte kalt «Internet super-server») er en tjener for tjenere. Den kjører tjenere som er sjelden brukt, etter behov, slik at de slipper å kjøre kontinuerlig.</para>
+    <indexterm><primary><command>inetd</command></primary></indexterm>
+    <indexterm><primary>super-server (super-tjener)</primary></indexterm>
+
+    <para><filename>/etc/inetd.conf</filename>-filen lister disse tjenerne og deres vanlige porter. Kommandoen <command>inetd</command> lytter til dem alle; Når den oppdager en forbindelse til en slik port, kjører den det  tjenesteprogrammet som hører til.</para>
+
+    <sidebar>
+      <title><emphasis>DEBIAN POLICY</emphasis> Å registrere en tjener i <filename>inetd.conf</filename></title>
+
+      <para>Pakker ønsker ofte å registrere en ny tjener i <filename>/etc/inetd.conf</filename>-filen, men Debian Policy forhindrer alle pakker fra å modifisere en konfigurasjonsfil som den ikke eier. Dette er grunnen til at <command>update-inetd</command>-skriptet (i pakken med samme navn) ble opprettet: Den håndterer konfigurasjonsfilen, og andre pakker kan dermed bruke den til å registrere en ny tjener i super-tjenerens konfigurasjon.</para>
+    </sidebar>
+
+    <para>Hver viktige linje i <filename>/etc/inetd.conf</filename>-filen beskriver en tjener med syv felt (atskilt med mellomrom):</para>
+    <itemizedlist>
+      <listitem>
+	<para>TCP- eller UDP-portnummer, eller tjenestenavnet (som er koblet til et standard portnummer med den informasjonen som finnes i <filename>/etc/services</filename>-filen).</para>
+      </listitem>
+      <listitem>
+	<para>Type socket: <literal>stream</literal> for en TCP-forbindelse, <literal>dgram</literal> for UDP-datagrammer.</para>
+      </listitem>
+      <listitem>
+	<para>Protokollen: <literal>tcp</literal> eller <literal>udp</literal>.</para>
+      </listitem>
+      <listitem>
+	<para>Valgene: To mulige verdier: <literal>wait</literal> eller <literal>nowait</literal>, for å formidle til <command>inetd</command> om det skal vente eller ikke til slutten av den startede prosessen før du godtar en annen forbindelse. For TCP-forbindelser, enkelt multiplexbare, kan du vanligvis bruke <literal>nowait</literal>. For programmer som svarer over UDP, skal du bruke <literal>nowait</literal> bare hvis tjeneren kan håndtere flere tilkoblinger i parallell. Du kan ende dette feltet med et punktum, fulgt av det maksimale antall forbindelser autorisert per minutt (standardgrensen er 256).</para>
+      </listitem>
+      <listitem>
+	<para>Brukernavnet til brukeren under hvilken identitet tjeneren vil kjøre.</para>
+      </listitem>
+      <listitem>
+	<para>Den fullstendige banen til det tjenerprogrammet som skal kjøres.</para>
+      </listitem>
+      <listitem>
+	<para>Argumentene: Dette er en oversikt over programmets argumenter, inkludert dets eget navn (<literal>argv[0]</literal> in C).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Følgende eksempel illustrerer de mest vanlige tilfellene:</para>
+
+    <example id="example.inetd-conf">
+      <title>Utdrag fra <filename>/etc/inetd.conf</filename></title>
+
+      <programlisting>talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
+finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlisting>
+    </example>
+    <indexterm><primary><command>tcpd</command></primary></indexterm>
+
+    <para>Programmet <command>tcpd</command> er ofte brukt i <filename>/etc/inetd.conf</filename>-filen. Det lar deg begrense innkommende tilkoblinger ved å bruke regler for adgangskontroll, dokumentert på manualsiden <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry>, og som er konfigurert i <filename>/etc/hosts.allow</filename> og <filename>/etc/hosts.deny</filename>-filene. Når det er fastslått at tilkoblingen er autorisert, <command>tcpd</command> kjøres den virkelige tjeneren (som <command>in.fingerd</command> i vårt eksempel). Det er ikke verd noe at <command>tcpd</command> støtter seg til det navnet det ble aktivert med (som er det første argumentet, <literal>argv[0]</literal>) for å identifisere det virkelige programmet som skal kjøres. Så du bør ikke starte argumentslisten med <literal>tcpd</literal>, men med det omgivende programmet.</para>
+
+    <sidebar>
+      <title><emphasis>SAMFUNNET</emphasis> Wietse Venema</title>
+      <indexterm><primary>Wietse Venema</primary></indexterm>
+      <indexterm><primary>Venema, Wietse</primary></indexterm>
+
+      <para>Wietse Venema, hvis ekspertise innen sikkerhet har gjort ham til en kjent programmerer, er forfatter av <command>tcpd</command>-programmet. Han er også den viktigste skaperen av Postfix, den modulære e-post (SMTP, Simple Mail Transfer Protocol), designet for å være tryggere og mer pålitelig enn <command>sendmail</command>, som har en lang historie med sikkerhetsproblemer.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIV</emphasis> Andre <command>inetd</command>-kommandoer</title>
+
+      <para>Mens Debian installerer <emphasis role="pkg">openbsd-inetd</emphasis> ved oppstart, mangler det ikke alternativer. Vi kan nevne <emphasis role="pkg">inetutils-inetd</emphasis>, <emphasis role="pkg">micro-inetd</emphasis>, <emphasis role="pkg">rlinetd</emphasis> og <emphasis role="pkg">xinetd</emphasis>.</para>
+
+      <para>Denne siste utgaven av en super-tjener tilbyr svært interessante muligheter. Først og fremst kan konfigurasjonen deles opp i flere filer (lagret, selvfølgelig, i <filename>/etc/xinetd.d/</filename>-mappen), noe som kan gjøre en administrators liv lettere.</para>
+
+      <para>Sist, men ikke minst, er det også mulig å etterligne <command>inetd</command>s virke med <command>systemd</command>s socket-akiveringsmekanisme (se <xref linkend="sect.systemd" />).</para>
+    </sidebar>
+  </section>
+  <section id="sect.task-scheduling-cron-atd">
+    <title>Planlegge oppgaver i tide med <command>cron</command> og <command>atd</command></title>
+    <indexterm><primary><command>cron</command></primary></indexterm>
+    <indexterm><primary><command>atd</command></primary></indexterm>
+    <indexterm><primary>planlagte kommandoer</primary></indexterm>
+    <indexterm><primary>kommandoplanlegging</primary></indexterm>
+
+    <para><command>cron</command> er nissen som kjører planlagte og gjentatte kommandoer (hver dag, hver uke, etc.); <command>atd</command> håndterer kommandoer som skal utføres en eneste gang, på et bestemt tidspunkt i fremtiden.</para>
+
+    <para>I et Unix-system er mange oppgaver planlagt for regelmessig gjennomføring:</para>
+    <itemizedlist>
+      <listitem>
+	<para>å rotere loggene;</para>
+      </listitem>
+      <listitem>
+	<para>å oppdatere databasen for <command>locate</command>-programmet;</para>
+      </listitem>
+      <listitem>
+	<para>sikkerhetskopieringer;</para>
+      </listitem>
+      <listitem>
+	<para>vedlikeholdsskript (for eksempel opprydding i midlertidige filer).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Som standard kan alle brukere planlegge kjøring av oppgaver. Hver bruker har da sin egen <emphasis>crontab</emphasis>, der de kan legge planlagte kommandoer. Den kan redigeres ved å kjøre <command>crontab -e</command> (innholdet er lagret i <filename>/var/spool/cron/crontabs/<replaceable>bruker</replaceable></filename>-filen).</para>
+
+    <sidebar>
+      <title><emphasis>SIKKERHET</emphasis> Begrense <command>cron</command> eller <command>atd</command></title>
+
+      <para>Du kan begrense adgangen til <command>cron</command> ved å lage en eksplisitt tillatelsesfil (hviteliste) i <filename>/etc/cron.allow</filename>, der du angir de eneste brukerne med tillatelse til å planlegge kommandoer. Alle andre vil automatisk bli fratatt denne funksjonen. Motsatt, for å bare blokkere én eller to bråkmakere kan du skrive deres brukernavn i en eksplisitt forbudsfil (svarteliste),<filename>/etc/cron.deny</filename>. Denne samme egenskapen er tilgjengelig for <command>atd</command>, med  <filename>/etc/at.allow</filename> og <filename>/etc/at.deny</filename>-filene.</para>
+    </sidebar>
+
+    <para>Rotbrukeren har sine egne <emphasis>crontab</emphasis>, men kan også bruke <filename>/etc/crontab</filename>-filen, eller skrive i tillegg  <emphasis>crontab</emphasis>-filer i <filename>/etc/cron.d</filename>-mappen. Disse to siste løsningene har fordelen av å kunne spesifisere brukerens identitet når kommandoen utføres.</para>
+
+    <para>Pakken <emphasis>cron</emphasis> inkluderer som standard enkelte planlagte kommandoer som kjører:</para>
+    <itemizedlist>
+      <listitem>
+	<para>programmer i <filename>/etc/cron.hourly/</filename>-mappen en gang i timen;</para>
+      </listitem>
+      <listitem>
+	<para>programmer i <filename>/etc/cron.daily/</filename> en gang om dagen;</para>
+      </listitem>
+      <listitem>
+	<para>programmer i <filename>/etc/cron.weekly/</filename> en gang per uke;</para>
+      </listitem>
+      <listitem>
+	<para>programmer i <filename>/etc/cron.monthly/</filename> en gang per måned.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>Mange Debian-pakker er avhengige av denne tjenesten: Ved å sette vedlikeholdsskript i disse katalogene, sikrer de optimal drift av sine tjenester.</para>
+    <section id="sect.format-crontab">
+      <title>Format til en <filename>crontab</filename>-fil</title>
+      <indexterm><primary><filename>crontab</filename></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>TIPS</emphasis> Tekstsnarveier for <command>cron</command></title>
+
+	<para><command>cron</command> gjenkjenner noen forkortelser som erstatter de første fem feltene i en <filename>crontab</filename>-inngang. De svarer til de klassiske planleggingsalternativene:</para>
+        <itemizedlist>
+          <listitem>
+	    <para><literal>@yearly</literal>: en gang i året (1. januar klokken 00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@monthly</literal>: en gang per måned (den første i måneden, kl.  00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@weekly</literal>: en gang i uken (søndag kl 00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@daily</literal>: en gang hver dag (kl 00:00);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@hourly</literal>: en gang i timen (ved begynnelsen av hver time).</para>
+          </listitem>
+        </itemizedlist>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>SPESIELT TILFELLE</emphasis> <command>cron</command> og sommertid</title>
+
+	<para>I Debian tar <command>cron</command> hensyn til tidsendringen (for sommertid, eller faktisk for alle vesentlige endringer i lokal tid) som best den kan. Dermed kjøres kommandoene som burde vært utført i løpet av en time som aldri har eksistert (for eksempel oppgaver planlagt til 02:30 under vårens tidsendring i Frankrike, ettersom klokken 02:00 hopper direkte til 03:00) kort tid etter den tidsendringen (altså rundt 03:00 sommertid). På den andre siden, om høsten, når kommandoer ville bli kjørt flere ganger (02:30 sommertid, så en time senere på 02:30 normert tid, så på 03:00 sommertid for klokken går tilbake til 02:00) blir bare kjørt én gang.</para>
+
+	<para>Vær forsiktig, for hvis rekkefølgen for når de ulike tidfestede oppgavene, og forsinkelsen mellom de respektive kjøringene betyr noe, bør du sjekke kompatibiliteten til disse begrensningene opp mot hvordan <command>cron</command> virker; Hvis det er nødvendig, kan du forberede en spesiell tidsplan for de to årlige, problematiske nettene.</para>
+      </sidebar>
+
+      <para>Hver signifikante linje i en <emphasis>crontab</emphasis> beskriver en planlagt kommando med de seks (eller syv) følgende felter:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>verdien for minuttet (tall fra 0 til 59);</para>
+        </listitem>
+        <listitem>
+	  <para>verdien for timen (nummer 0 til 23);</para>
+        </listitem>
+        <listitem>
+	  <para>verdien for dagen i måneden (fra 1 til 31);</para>
+        </listitem>
+        <listitem>
+	  <para>verdien for måneden (fra 1 til 12);</para>
+        </listitem>
+        <listitem>
+	  <para>verdien for  ukedagen (0-7, 1 tilsvarer mandag, søndag korresponderer med både 0 og 7; Det  er også mulig å bruke de tre første bokstavene i navnet på ukedagen på engelsk, som for eksempel <literal>Sun</literal>, <literal>Mon</literal>, etc.);</para>
+        </listitem>
+        <listitem>
+	  <para>brukernavnet hvis identitet kommandoen må kjøres i (i <filename>/etc/crontab</filename>-filen, og i fragmentene som ligger i <filename>/etc/cron.d/</filename>, men ikke i brukerens egne crontab-filer);</para>
+        </listitem>
+        <listitem>
+	  <para>kommandoen kjøres (når vilkårene som er definert i de fem første kolonnene er oppfylt).</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Alle disse detaljene er dokumentert i manualsiden <citerefentry><refentrytitle>crontab</refentrytitle> <manvolnum>5</manvolnum></citerefentry>.</para>
+
+      <para>Hver verdi kan uttrykkes i form av en liste over mulige verdier (atskilt med kommaer). Syntaksen <literal>a-b</literal> beskriver intervallet for alle verdiene mellom <literal>a</literal> og <literal>b</literal>. Syntaksen <literal>a-b/c</literal> beskriver intervallet med økningen til <literal>c</literal> (eksempel: <literal>0-10/2</literal> betyr <literal>0,2,4,6,8,10</literal>). En asterisk <literal>*</literal> er et jokertegn som representerer alle mulige verdier.</para>
+
+      <example id="example.crontab">
+        <title>Eksempel på en <filename>crontab</filename>-fil</title>
+
+        <programlisting>#Format
+#min time dag måned ukedag  kommando
+
+# Last ned data hver natt kl. 19:25
+ 25  19   *   *   *    $HOME/bin/get.pl
+
+# 08:00, på ukedager (mandag til fredag)
+ 00  08   *   *   1-5  $HOME/bin/dosomething
+
+# Start IRC-mellomtjener på nytt etter hver omstart
+@reboot /usr/bin/dircproxy</programlisting>
+      </example>
+
+      <sidebar>
+        <title><emphasis>TIPS</emphasis> Kjøre en kommando ved oppstart</title>
+
+	<para>For å kjøre en kommando en eneste gang like etter oppstart av datamaskinen, kan du bruke <literal>@reboot</literal> makro (en enkelt omstart av <command>cron</command> utløser ikke en kommando planlagt med <literal>@reboot</literal>). Denne makroen erstatter de første fem feltene i en oppføring i <emphasis>crontab</emphasis>.</para>
+      </sidebar>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIV</emphasis> Å etterligne <command>cron</command> med <command>systemd</command></title>
+
+      <para>Det er mulig å etterligne en del av <command>cron</command>s oppgaver med <command>systemd</command>s timermekanisme (se <xref linkend="sect.systemd" />).</para>
+    </sidebar>
+
+    </section>
+    <section id="sect.at-command">
+      <title>Å bruke <command>at</command>-kommandoen</title>
+      <indexterm><primary><command>at</command></primary></indexterm>
+
+      <para><command>at</command> utfører en kommando på et angitt tidspunkt i fremtiden. Det tar ønsket tid og dato som kommandolinjeparametere, og kommandoen som skal utføres i sin standard inndata. Kommandoen vil bli utført som om den hadde blitt lagt inn i det gjeldende skallet. <command>at</command> sørger selv for å beholde det aktuelle miljøet, for å  reprodusere de samme betingelser når det utfører kommandoen. Tiden er indikert ved å følge de vanlige konvensjonene: <literal>16:12</literal> eller <literal>4:12pm</literal> representerer 4:12 pm. Datoen kan spesifiseres i flere europeiske og vestlige formater, inkludert <literal>DD.MM.YY</literal> (<literal>27.07.15</literal> som da representerer 27 juli 2015), <literal>YYYY-MM-DD</literal> (samme dato blir uttrykt som <literal>2015-07-27</literal>), <literal>MM/DD/[CC]YY</literal> (dvs., <literal>12/25/15</literal> eller <literal>12/25/2015</literal> vil bli 25. desember 25, 2015), eller ganske enkelt <literal>MMDD[CC]YY</literal> (slik at <literal>122515</literal> eller <literal>12252015</literal> vil på samme måte representere Desember 25, 2015 (25. desember 2015). Uten det, vil kommandoen bli utført så snart klokken når tiden som er angitt (samme dag, eller i morgen hvis det tidspunktet allerede er passert på samme dag). Du kan også bare skrive «to day» eller «tomorrow», som er selvforklarende.</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>at 09:00 27.07.15 &lt;&lt;END</userinput>
+<computeroutput>&gt; </computeroutput><userinput>echo "Ikke glem å gratulere Raphaël med dagen!" \</userinput>
+<computeroutput>&gt; </computeroutput><userinput>  | mail lolando@debian.org</userinput>
+<computeroutput>&gt; </computeroutput><userinput>END</userinput>
+<computeroutput>warning: commands will be executed using /bin/sh
+job 31 at Mon Jul 27 09:00:00 2015</computeroutput></screen>
+
+      <para>En alternativ syntaks utsetter gjennomføringen med en bestemt varighet: <command>at now + <replaceable>nummer</replaceable> <replaceable>varighet</replaceable></command>. <replaceable>varighet</replaceable> kan være <literal>minutes</literal>, <literal>hours</literal>, <literal>days</literal>, eller <literal>weeks</literal>. <replaceable>nummer</replaceable> indikerer rett og slett antallet av de nevnte enheter som må ha passert før kommandoen utføres.</para>
+
+      <para>For å avbryte en tidfestet oppgave med <command>cron</command>, kjør ganske enkelt <command>crontab -e</command>, og slett den tilsvarende linjen i <emphasis>crontab</emphasis>-filen. For <command>at</command>-oppgaver, er det nesten like lett; kjør <command>atrm <replaceable>oppgavenummer</replaceable></command>. Oppgavenummeret er indikert av <command>at</command>-kommandoen når du har tidfestet den, men du kan finne det igjen med <command>atq</command>-kommandoen, som gir den gjeldende listen over tidfestede oppgaver.</para>
+      <indexterm><primary><command>atrm</command></primary></indexterm>
+      <indexterm><primary><command>atq</command></primary></indexterm>
+    </section>
+  </section>
+  <section id="sect.asynchronous-task-scheduling-anacron">
+    <title>Å planlegge asynkrone oppgaver: <command>anacron</command></title>
+
+    <para><command>anacron</command> er nissen som fullfører <command>cron</command> for datamaskiner som ikke er på hele tiden. Siden vanlige oppgaver vanligvis er planlagt midt på natten, vil de aldri bli kjørt hvis maskinen er slått av på den tiden. Meningen med <command>anacron</command> er å utføre dem, når det tas hensyn til perioder når datamaskinen ikke er på.</para>
+    <indexterm><primary><command>anacron</command></primary></indexterm>
+
+    <para>Noter gjerne at <command>anacron</command> ofte vil utføre slik aktivitet noen få minutter etter oppstart av maskinen, noe som kan gjøre datamaskinen mindre tilgjengelig. Dette er grunnen til at oppgavene i <filename>/etc/anacrontab</filename>-filen er startet med <command>nice</command>-kommandoen, noe som reduserer kjøreprioriteten deres, og dermed begrenser innvirkningen deres på resten av systemet. Vær klar over at formatet på denne filen ikke er det samme som for <filename>/etc/crontab</filename>. Har du bestemte behov for <command>anacron</command>, se manualsiden <citerefentry><refentrytitle>anacrontab</refentrytitle> <manvolnum>5</manvolnum></citerefentry>.</para>
+
+    <sidebar>
+      <title><emphasis>TILBAKE TIL BASIS</emphasis> Prioriteter og <command>nice</command></title>
+
+      <para>Unix-systemer (og dermed Linux) er fleroppgavekjøring og flerbrukersystemer. Faktisk kan flere prosesser kjøres parallelt, og være eid av forskjellige brukere; kjernen formidler tilgang til ressursene mellom de ulike prosessene. Som en del av denne oppgaven, har den et prioritetskonsept som etter behov gjør det mulig å favorisere visse prosesser fremfor andre. Når du vet at en prosess kan kjøre i lav prioritet, kan du angi det ved å kjøre den med <command>nice <replaceable>program</replaceable></command>. Programmet vil da få en mindre andel av CPU, og vil ha en mindre innvirkning på andre prosesser som kjører. Selvfølgelig, hvis ingen andre prosesser trenger å kjøre, vil programmet ikke bli holdt kunstig tilbake.</para>
+
+      <para><command>nice</command> arbeider med nivåer av «snillhet»; de positive nivåene (fra 1 til 19) senker prioriteten progressivt, mens de negative nivåer (fra -1 til -20) vil øke det - men bare rot kan bruke disse negative nivåer. Dersom ikke annet er angitt (se håndboken side <citerefentry><refentrytitle>nice</refentrytitle> <manvolnum>1</manvolnum></citerefentry>), <command>nice</command> øker det gjeldende nivået med 10.</para>
+
+      <para>Hvis du oppdager at en allerede kjørende oppgave skulle vært i gang med <command>nice</command>, er det ikke for sent å ordne det;  <command>renice</command>-kommandoen endrer prioritet for en prosess som allerede kjører, i begge retninger (men å redusere «snillheten» for en prosess er forbeholdt rotbrukeren).</para>
+    </sidebar>
+
+    <para>Installasjon av <emphasis role="pkg">anacron</emphasis>-pakken deaktiverer kjøring med <command>cron</command> av skriptene i <filename>/etc/cron.hourly/</filename>, <filename>/etc/cron.daily/</filename>, <filename>/etc/cron.weekly/</filename>, og <filename>/etc/cron.monthly/</filename>-mappene. Dette hindrer dobbel kjøring av <command>anacron</command> og <command>cron</command>. <command>cron</command>-kommandoen er fortsatt aktiv, og vil fortsette å håndtere de andre planlagte oppgavene (spesielt de planlagt av brukere).</para>
+  </section>
+  <section id="sect.quotas">
+    <title>Kvoter (Quotas)</title>
+    <indexterm><primary>quota</primary></indexterm>
+
+    <para>Kvotesystemet kan begrense diskplass avsatt til en bruker, eller gruppe av brukere. For å sette det opp må du ha en kjerne som støtter det (utarbeidet med <varname>CONFIG_QUOTA</varname> alternativ) - som er tilfellet med Debian-kjernene. Kvotehåndteringsprogrammet finnes i <emphasis role="pkg">quota</emphasis> Debian-pakken.</para>
+
+    <para>For å aktivere kvoter i et filsystem må du angi <literal>usrquota</literal> og <literal>grpquota</literal>-valgene i <filename>/etc/fstab</filename> for henholdsvis bruker- og gruppekvotene. Deretter vil restarting av maskinen oppdatere kvotene i fravær av diskaktivitet (en nødvendig betingelse for riktig bokføring av allerede brukt diskplass).</para>
+
+    <para>Kommandoen <command>edquota <replaceable>bruker</replaceable></command> (eller <command>edquota -g <replaceable>gruppe</replaceable></command>) tillater deg å endre grensene mens bruken av gjeldende diskplass undersøkes.</para>
+    <indexterm><primary><command>edquota</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>GÅR VIDERE</emphasis> Å definere kvoter med et skript</title>
+      <indexterm><primary><command>setquota</command></primary></indexterm>
+
+      <para>Programmet <command>setquota</command> kan bli brukt i et skript for automatisk å forandre mange kvoter. Dets manualside <citerefentry><refentrytitle>setquota</refentrytitle> <manvolnum>8</manvolnum></citerefentry> gir detaljer om syntaksen som kan brukes.</para>
+    </sidebar>
+
+    <para>Kvotesystemet lar deg sette fire grenser:</para>
+    <itemizedlist>
+      <listitem>
+	<para>to grenser (kalt «myk» og «hard») refererer til det antall blokker som brukes. Hvis filsystemet ble opprettet med en blokk-størrelse på 1 kibibyte, inneholder en blokk 1024 byte fra den samme filen. Ikke fylte blokker forårsaker dermed tap av diskplass . En kvote på 100 blokker, som teoretisk tillater lagring av 102.400 byte, vil imidlertid være fylt med bare 100 filer på 500 byte hver, og bare representere 50.000 byte totalt.</para>
+      </listitem>
+      <listitem>
+	<para>to grenser (myke og harde) refererer til antall brukte inoder. Hver fil opptar minst en inode for å lagre informasjon om den (tillatelser, eier, tidsstempel for siste tilgang, etc.). Det er derfor en grense på antallet brukerfiler .</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>En «myk» grense kan overskrides midlertidig; Brukeren vil bare bli advart om at de overstiger kvoten fra <command>warnquota</command>-kommandoen, som vanligvis er utløst av <command>cron</command>. En «hard» grense kan aldri bli overskredet: Systemet vil nekte enhver operasjon som vil føre til at en hard kvote blir overskredet.</para>
+
+    <sidebar>
+      <title><emphasis>ORDFORRÅD</emphasis> Blokker og inoder</title>
+      <indexterm><primary>blokk (disk)</primary></indexterm>
+      <indexterm><primary>inode</primary></indexterm>
+
+      <para>Filsystemet deler harddisken inn i blokker - små sammenhengende områder. Størrelsen på disse blokkene er definert ved etableringen av filsystemet, og varierer vanligvis mellom 1 og 8 kibibytes.</para>
+
+      <para>En blokk kan enten brukes til å lagre de virkelige dataene fra en fil, eller til metadata som brukes av filsystemet. Blant disse metadataene vil du særlig finne inoder. En inode bruker en blokk på harddisken (men denne blokken er det ikke tatt hensyn til i blokkvoten, bare i inodekvoten), og inneholder både informasjon om filen som den tilsvarer (navn, eier, tillatelser, etc .) og pekere til datablokker som faktisk brukes. For meget store filer som opptar flere blokker enn det er mulig å referere til i en enkelt inode, er det et indirekte blokkeringssystem; inoden refererer til en liste med blokker som ikke direkte inneholder data, men en annen liste med blokker.</para>
+    </sidebar>
+    <indexterm><primary><command>warnquota</command></primary></indexterm>
+
+    <para>Med <command>edquota -t</command>-kommandoen, kan du definere en maksimal tillatt «nådeperiode» («grace period») innenfor hvilken en myk grense kan overskrides. Etter denne perioden, vil den myke grensen bli behandlet som en hard grense, og brukeren vil måtte redusere sin bruk av diskplass til denne grensen, for å kunne skrive noe på harddisken.</para>
+
+    <sidebar>
+      <title><emphasis>FORDYPNING</emphasis> Å sette en utgangskvote for nye brukere</title>
+
+      <para>For å sette opp en kvote til nye brukere automatisk må du konfigurere en brukermal (med <command>edquota</command>, eller <command>setquota</command>), og indikere brukernavnet deres i <varname>QUOTAUSER</varname>-variabelen i <filename>/etc/adduser.conf</filename>-filen. Denne kvotekonfigurasjonen vil da automatisk bli brukt på hver nye bruker som opprettes med <command>adduser</command>-kommandoen.</para>
+    </sidebar>
+  </section>
+  <section id="sect.backup">
+    <title>Sikkerhetskopiering</title>
+
+    <para>Sikkerhetskopiering er en av hovedoppgavene for en administrator, men det er et komplekst tema, som involverer kraftige verktøy som det ofte er vanskelig å mestre.</para>
+    <indexterm><primary>sikkerhetskopi</primary></indexterm>
+    <indexterm><primary>restaurering</primary></indexterm>
+
+    <para>Mange programmer finnes, slike som <command>amanda</command>, <command>bacula</command>, <command>BackupPC</command>. De er klient/server-systemer med mange muligheter, men konfigurasjonen er ganske vanskelig. Noen av dem har brukervennlige nett-grensesnitt for å redusere denne. Men Debian inneholder dusinvis av andre backup-programvarer som dekker alle mulige bruksmåter, som du enkelt kan bekrefte med<command>apt-cache search backup</command>.</para>
+    <indexterm><primary><command>amanda</command></primary></indexterm>
+    <indexterm><primary><command>bacula</command></primary></indexterm>
+    <indexterm><primary><command>BackupPC</command></primary></indexterm>
+
+    <para>Snarere enn en detaljert gjennomgang av noen av dem, vil dette avsnittet presentere de tanker Falcot Corp-administratorene har når de definerer sin strategi for sikkerhetskopiering.</para>
+
+    <para>Hos Falcot Corp, har sikkerhetskopiering to mål: Å gjenopprette feilaktig slettede filer, og raskt gjenopprette en datamaskin (tjener eller desktop) hvis harddisken har feilet.</para>
+    <section>
+      <title>Sikkerhetskopiering med <command>rsync</command></title>
+
+      <para>Da sikkerhetskopier på tape har blitt ansett for å være tregt og dyrt, blir data sikkerhetskopiert på harddisker på en øremerket tjener, der bruk av programvare-RAID (se <xref linkend="sect.raid-soft" />) vil beskytte data fra feil på harddisken. Stasjonære datamaskiner støttes ikke opp individuelt, men brukerne gjøres oppmerksom på at deres personlige konto på deres avdelings filtjener blir sikkerhetskopiert. <command>rsync</command>-kommando (fra pakken med samme navn) brukes daglig for å sikkerhetskopiere disse forskjellige tjenerne.</para>
+      <indexterm><primary><command>rsync</command></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>TILBAKE TIL BASIS</emphasis> Den harde linken, et annet navn for filen</title>
+        <indexterm><primary>lenke</primary><secondary>hard lenke</secondary></indexterm>
+        <indexterm><primary>hard lenke</primary></indexterm>
+
+	<para>En hard kobling, i motsetning til en symbolsk kobling, kan ikke differensieres fra den den koblede filen. Å lage en hard lenke er egentlig det samme som å gi en eksisterende fil et annet navn. Dette er grunnen til sletting av en hard lenke bare fjerner ett av navnene forbundet med filen. Så lenge et annet navn er fortsatt tildelt filen, er dataene der fortsatt til stede i filsystemet. Det er interessant å merke seg at, i motsetning til en kopi, tar ikke den hard linken opp tilleggsplass på harddisken.</para>
+
+	<para>En hard er lenke laget med <command>ln <replaceable>mål</replaceable> <replaceable>lenke</replaceable></command>-kommandoen. <replaceable>lenke</replaceable>-filen er så det nye navnet for <replaceable>mål</replaceable>-filen. Harde lenker kan bare opprettes på samme filsystem, mens symbolske lenker er ikke underlagt denne begrensningen.</para>
+      </sidebar>
+
+      <para>Den tilgjengelige harddiskplassen forbyr gjennomføring av en komplett daglig sikkerhetskopiering. Som sådan, <command>rsync</command>-kommandoen innledes med en duplisering av innholdet i den forrige sikkerhetskopien med harde lenker, som forhindrer bruk av for mye plass på harddisken. Prosessen <command>rsync</command> erstatter da bare filer som har blitt endret siden siste backup. Med denne mekanismen kan et stort antall sikkerhetskopier holdes på en liten mengde plass. Ettersom alle sikkerhetskopier er umiddelbart tilgjengelige, og med adgang (for eksempel i ulike kataloger av en gitt andel på nettverket), kan du raskt gjøre sammenligninger mellom to gitte datoer.</para>
+      <indexterm><primary>kopiere, sikkerhetskopi</primary></indexterm>
+      <indexterm><primary>sikkerhetskopi (backup)</primary><secondary>kopiere</secondary></indexterm>
+      <indexterm><primary><emphasis role="pkg">dirvish</emphasis></primary></indexterm>
+
+      <para>Denne sikkerhetskopi-mekanismen kan lett implementeres med <command>dirvish</command>-programmet. Den bruker en sikkerhetskopi-lagringsplass («bank» i sitt vokabular) hvor det plasserer tidsmerkede kopier av settene med sikkerhetskopi-filer (disse settene er kalt «vaults» i dirvish-dokumentasjon).</para>
+
+      <para>Hovedoppsettet er i <filename>/etc/dirvish/master.conf</filename>-filen. Den definerer plasseringen av lagringsplassen for sikkerhetskopien, listen over «vaults» for å administere, og standardverdier for utløpstidspunktet for sikkerhetskopier. Resten av konfigurasjonen er plassert i <filename><replaceable>bank</replaceable>/<replaceable>vault</replaceable>/dirvish/default.conf</filename>-filer, og inneholder det spesifikke oppsettet for det tilsvarende settet med filer.</para>
+
+      <example id="example.dirvish-master">
+        <title>Filen <filename>/etc/dirvish/master.conf</filename></title>
+
+        <programlisting>bank:
+    /backup
+exclude:
+    lost+found/
+    core
+    *~
+Runall:
+    root    22:00
+expire-default: +15 days
+expire-rule:
+#   MIN HR    DOM MON       DOW  STRFTIME_FMT
+    *   *     *   *         1    +3 months
+    *   *     1-7 *         1    +1 year
+    *   *     1-7 1,4,7,10  1</programlisting>
+      </example>
+
+      <para>Innstillingen <literal>bank</literal> angir katalogen hvor sikkerhetskopiene er lagret. Med <literal>exclude</literal>-innstillingen kan du angi filer (eller filtyper) som kan utelukkes fra sikkerhetskopieringen. <literal>Runall</literal> er en liste med filsett som kan sikkerhetskopieres med et tidsstempel for hvert sett, noe som gjør det mulig å tildele riktig dato til kopien, i tilfelle sikkerhetskopiering ikke er utløst på nøyaktig den tildelte tiden. Du må angi et tidspunkt like før selve utføringstidspunktet (som er, som standard, 10:04 pm i Debian, ifølge <filename>/etc/cron.d/dirvish</filename>). Til slutt, <literal>expire-default</literal> og <literal>expire-rule</literal>-settingene definerer opplegget for når tiden for sikkerhetskopier utløper. Eksempelet ovenfor beholder for alltid sikkerhetskopier som er generert på den første søndagen i hvert kvartal, sletter etter ett år de fra den første søndagen i hver måned, og etter 3 måneder de fra andre søndager. Andre daglige sikkerhetskopier er beholdt i 15 dager. Rekkefølgen av reglene spiller en rolle, Dirvish bruker siste samsvarende regel, eller <literal>expire-default</literal> hvis ingen andre <literal>expire-rule</literal> samsvarer.</para>
+
+      <sidebar>
+        <title><emphasis>I PRAKSIS</emphasis> Planlagt utløp</title>
+
+	<para>Utløpsreglene blir ikke brukt av <command>dirvish-expire</command> for å gjøre jobben sin. I realiteten blir utløpsregler brukt når du oppretter en ny sikkerhetskopi for å definere den utløpsdatoen som er knyttet til denne kopien. <command>dirvish-expire</command> leser ganske enkelt igjennom de lagrede kopiene, og sletter dem om utløpsdatoen har passert.</para>
+      </sidebar>
+
+      <example id="example.dirvish-vault">
+        <title>Filen <filename>/backup/root/dirvish/default.conf</filename></title>
+
+        <programlisting>client: rivendell.falcot.com
+tree: /
+xdev: 1
+index: gzip
+image-default: %Y%m%d
+exclude:
+    /var/cache/apt/archives/*.deb
+    /var/cache/man/**
+    /tmp/**
+    /var/tmp/**
+    *.bak</programlisting>
+      </example>
+
+      <para>Eksempelet ovenfor spesifiserer settet med filer som skal sikkerhetskopieres: Dette er filer på maskinen <emphasis>rivendell.falcot.com</emphasis> (for lokal sikkerhetskopiering av data, ganske enkelt angi navnet på den lokale maskinen som angitt av <command>hostname</command>), særlig de i rot-treet (<literal>tree: /</literal>), untatt de som er listet i <literal>exclude</literal>. Sikkerhetskopien vil være avgrenset til innholdet i ett filsystem (<literal>xdev: 1</literal>). Den vil ikke inkludere filer fra andre monteringspunkter. En indeks over lagrede filer vil generes (<literal>index: gzip</literal>), og bildet blir navngitt med dagens dato (<literal>image-default: %Y%m%d</literal>).</para>
+
+      <para>Det er mange alternativer tilgjengelig, alle dokumentert i manualsiden <citerefentry><refentrytitle>dirvish.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>. Når disse konfigurasjonsfiler er opprettet, må du starte hvert filsett med <command>dirvish --vault <replaceable>vault</replaceable> --init</command>-kommandoen. Fra da av vil den daglige påkallelsen fra <command>dirvish-runall</command> automatisk opprette en ny sikkerhetskopi like etter å ha slettet de som er utløpt.</para>
+
+      <sidebar>
+        <title><emphasis>I PRAKSIS</emphasis> Ekstern sikkerhetskopiering via SSH</title>
+
+	<para>Når dirvish trenger å lagre data på en ekstern maskin, vil den bruke <command>ssh</command> for å koble seg til den, og vil starte <command>rsync</command> som en tjener. Dette krever at rotbrukeren automatisk kan koble seg til den. Å bruke en SSH-autentiseringsnøkkel tillater nettopp dette (se <xref linkend="sect.ssh-key-based-auth" />).</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Å gjenopprette maskiner uten sikkerhetskopier</title>
+
+      <para>Stasjonære datamaskiner, som ikke er sikkerhetskopiert, kan enkelt installeres fra tilpassede DVD-ROM-er klargjort med <emphasis>Simple-CDD</emphasis> (se <xref linkend="sect.simple-cdd" />). Siden dette lager en installasjon fra bunnen av, mistes noe tilpasning som kan ha blitt gjort etter den første installasjonen. Dette er greit, siden systemene alle er koblet til en sentral LDAP-katalog for kontoer, og de fleste skrivebordsprogrammer er forhåndskonfigurert takket være dconf (se <xref linkend="sect.gnome-desktop" /> for mer informasjon om dette).</para>
+
+      <para>Falcot Corp administratorer er klar over begrensningene i sin sikkerhetskopi-politikk. Siden de ikke kan beskytte sikkerhetskopi-tjeneren samt et bånd (tape) i en brannsikker safe, har de  installert det i et eget rom, slik at hendelser, for eksempel en brann i tjenerrommet, ikke  ødelegger sikkerhetskopier sammen med alt annet. Videre lager de en trinnvis sikkerhetskopiering på DVD-ROM en gang per uke - kun de filer som er endret siden siste sikkerhetskopiering er inkludert.</para>
+
+      <sidebar>
+        <title><emphasis>GÅR VIDERE</emphasis> Sikkerhetskopiere SQL- og LDAP-tjenester</title>
+
+	<para>Mange tjenester (som for eksempel SQL- eller LDAP-databaser) kan ikke sikkerhetskopieres bare ved å kopiere filene deres (med mindre de er riktig avbrutt når sikkerhetskopiene lages, noe som ofte er problematisk, siden de er ment å være tilgjengelig til enhver tid). Dermed er det nødvendig å bruke en «eksport»-mekanisme for å lage en «data dump» som trygt kan sikkerhetskopieres. Disse er ofte ganske store, men de komprimeres godt. For å redusere plassbehovet som trengs kan du bare lagre komplett tekstfil per uke, og en <command>diff</command> hver dag, som lages med en kommando av typen <command>diff <replaceable>gårsdagens_fil</replaceable> <replaceable>dagens_fil</replaceable></command>. Programmet  <command>xdelta</command> lager økende forskjeller fra binære dumper.</para>
+        <indexterm><primary><command>xdelta</command></primary></indexterm>
+        <indexterm><primary><command>diff</command></primary></indexterm>
+        <indexterm><primary>dump</primary></indexterm>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>KULTUR</emphasis> <emphasis>TAR</emphasis>, standarden for sikkerhetskopiering på tape (bånd)</title>
+        <indexterm><primary>sikkerhetskopiering</primary><secondary>på tape</secondary></indexterm>
+        <indexterm><primary>tape, sikkerhetskopiering</primary></indexterm>
+        <indexterm><primary>TAR</primary></indexterm>
+
+	<para>De enkleste måtene for å lage en sikkerhetskopi på Unix var, historisk sett, å lagre et <emphasis>TAR</emphasis>-arkiv på et bånd. Kommandoen <command>tar</command> fikk til og med sitt navn fra «Tape ARchive».</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.hotplug">
+    <title>Varm tilkobling: <emphasis>hotplug</emphasis></title>
+    <section>
+      <title>Introduksjon</title>
+
+      <para>Kjerne-delsystemet <emphasis>hotplug</emphasis> håndterer å legge til og fjerne enheter ved å laste de riktige driverne, og ved å lage passende enhetsfiler (med hjelp av <command>udevd</command>). Med moderne maskinvare og visualisering, kan nesten alt bli varmtilkoblet (hotplugged): fra den vanlige USB/PCMCIA/IEEE 1394 enheter til SATA-harddisker, men også CPU-en og minnet.</para>
+
+      <para>Kjernen har en database som knytter hver enhets-ID med den nødvendige driveren. Denne databasen brukes under oppstart for å laste alle driverne til eksterne enheter som oppdages på forskjellige busser, men også når en ekstra varmtilkoblingsenhet blir koblet til. Når enheten er klar til bruk, sendes en melding til <command>udevd</command> slik at den kan lage den tilsvarende oppføringen i <filename>/dev/</filename>.</para>
+
+      <indexterm><primary><emphasis>hotplug</emphasis></primary></indexterm>
+      <indexterm><primary>hotplug</primary></indexterm>
+      <indexterm><primary>USB</primary></indexterm>
+      <indexterm><primary>IEEE 1394</primary></indexterm>
+      <indexterm><primary>PCMCIA</primary></indexterm>
+      <indexterm><primary>SATA</primary></indexterm>
+    </section>
+    <section>
+      <title>Navneproblemet</title>
+
+      <para>Før varm-tilkoblingene, var det enkelt å tilordne et fast navn til en enhet. Det var enkelt basert på enhetenes posisjonen på sine respektive busser. Men dette er ikke mulig når slike enheter kan komme og gå på bussen. Det typiske tilfellet er bruk av et digitalt kamera og en USB-minnepenn, som begge for datamaskinen ser ut som harddisker . Den første tilkoblede kan være <filename>/dev/sdb</filename> og den andre <filename>/dev/sdc</filename> (med <filename>/dev/sda</filename> som representerer datamaskinens egen harddisk). Enhetsnavnet er ikke fast; det er avhengig av rekkefølge enheter er koblet til.</para>
+
+      <para>I tillegg bruker flere og flere drivere dynamiske verdier for enhetenes store/små nummer, noe som gjør det umulig å ha statiske oppføringer for de gitte enhetene, siden deres grunnleggende egenskaper kan variere etter en omstart.</para>
+
+      <para><emphasis>udev</emphasis> ble laget nettopp for å løse dette problemet.</para>
+
+      <sidebar>
+        <title><emphasis>I PRAKSIS</emphasis> Håndtering av nettverkskort</title>
+
+	<para>Mange datamaskiner har flere nettverkskort (noen ganger to kablede grensesnitt og et wifi-grensesnitt), og med <emphasis>hotplug</emphasis>-støtte til de fleste busstyper,garanterer ikke Linux-kjernen fast navngiving av nettverksgrensesnitt . Men brukere som ønsker å konfigurere sine nettverk i <filename>/etc/network/interfaces</filename> trenger et fast navn!</para>
+
+	<para>Det ville være vanskelig å be hver bruker om å lage sine egne <emphasis>udev</emphasis>-regler for å løse dette problemet. Dette er grunnen til at <emphasis>udev</emphasis> ble konfigurert på en heller spesiell måte. Ved første oppstart (og, mer generelt, hver gang et nytt nettverkskortet vises) bruker den navnet på nettverksgrensesnittet og dets MAC-adresse for å lage nye regler som vil tilordne samme navn på de påfølgende oppstartene. Disse reglene er lagret i <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>.</para>
+
+        
+	<para>Denne mekanismen har noen sidevirkninger som du bør vite om. La oss vurdere hvordan på en datamaskin som bare har ett PCI-nettverkskort. Nettverkets grensesnitt heter <literal>eth0</literal>, logisk. Nå, si at kortet bryter sammen, og administratoren erstatter det; det nye kortet vil ha en ny MAC-adresse. Siden det gamle kortet ble gitt navnet, <literal>eth0</literal>, vil det nye bli tildelt <literal>eth1</literal>, selv om <literal>eth0</literal>-kortet er borte for godt (og nettverket vil ikke være funksjonelt fordi <filename>/etc/network/interfaces</filename> sannsynligvis konfigurerer et <literal>eth0</literal>-grensesnitt). I dette tilfellet er det nok å bare slette <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>-filen før maskinen restartes. Det nye kortet vil da bli gitt det forventede <literal>eth0</literal>-navnet.</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Hvordan <emphasis>udev</emphasis> virker</title>
+
+      <para>Når <emphasis>udev</emphasis> varsles av kjernen når en ny enhet dukker opp, samler den ulike opplysninger om den gitte enheten ved å konsultere de tilsvarende oppføringene i <filename>/sys/</filename>, spesielt de som klart identifiserer den (MAC-adressen til et nettverkskort, serienummer for enkelte USB-enheter, etc.).</para>
+
+      <para>Bevæpnet med all denne informasjonen, <emphasis>udev</emphasis> konsulterer så alle reglene som ligger i <filename>/etc/udev/rules.d/</filename> og <filename>/lib/udev/rules.d/</filename>. I denne prosessen bestemmer den hvordan enheten skal navnes, hvilke symbolske lenker som skal lages (for å gi den alternative navn), og hvilke kommandoer som skal kjøres. Alle disse filene er konsultert , og reglene er alle vurdert sekvensielt (bortsett fra når en fil bruker «GOTO»-direktiver). Således kan det være flere regler som svarer til en gitt hendelse.</para>
+
+      <para>Regelfilenes syntaks er ganske enkel: Hver rad inneholder utvalgskriterier og variable oppdrag. Den første er brukt til å velge hendelser der det er behov for å reagere, og sistnevnte definerer handlingen som skal utføres. De er alle enkelt atskilt med komma, og operatøren skiller implisitt mellom et utvalgskriterium (med sammenligningsoperatorer, for eksempel <literal>==</literal>, eller <literal>!=</literal>), eller et oppdragsdirektiv (med operatorer som <literal>=</literal>, <literal>+=</literal> eller <literal>:=</literal>).</para>
+
+      <para>Sammenligningsoperatorer brukes på følgende variabler:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>KJERNE</literal>: navnet som kjernen tilordner til enheten;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ACTION</literal>: handlingen som tilsvarer hendelsen («add» når en enhet er lagt til, «remove» når den er fjernet);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>DEVPATH</literal>: Stien til enhetens <filename>/sys/</filename> inngang;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SUBSYSTEM</literal>: kjerne-delsystemet som genererer forespørselen (det er mange, men noen eksempler er «usb»,«ide», «net», «firmware», etc.);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ATTR{<replaceable>attributt (egenskap)</replaceable>}</literal>: filinnholdet til <replaceable>attributt</replaceable>-filen i <filename>/sys/<replaceable>$devpath</replaceable>/</filename>-mappen til enheten. Det er her du finner MAC-adressen og andre buss-spesifikke identifikatorer;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>KERNELS</literal>, <literal>SUBSYSTEMS</literal> og <literal>ATTRS{<replaceable>attributter</replaceable>}</literal> er variasjoner som vil prøve å treffe de ulike valgene hos en av de overordnede enhetene til den aktuelle enheten;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>PROGRAM</literal>: delegerer testen til det angitte programmet (sant hvis den returnerer 0, falsk hvis ikke). Innholdet av programmmets standard resultat blir lagret slik at det kan brukes om igjen av <literal>RESULT</literal>-testen;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RESULT</literal>: utfører tester på standardresultatet lagret under siste kontakt til <literal>PROGRAM</literal>.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>De riktige operander kan bruke mønsteruttrykk for å finne flere verdier som passer samtidig. For eksempel, <literal>*</literal> matcher alle strenger (selv en tom en); <literal>?</literal> treffer hvilken som helst tegn, og <literal>[]</literal> matcher settet med tegn som er listet mellom hakeparenteser (eller det motsatte hvis det første tegnet er et utropstegn, og sammenhengende rekker med tegn er angitt som <literal>a-z</literal>).</para>
+
+      <para>Når det gjelder tildelingsoperatørene,  <literal>=</literal> tildeler en verdi (og erstatter gjeldende verdi); i tilfelle av en liste, blir den tømt, og inneholder bare den tildelte verdien. <literal>:=</literal> gjør det samme, men hindrer senere endringer i samme variabel. Når det gjelder <literal>+=</literal>, legger den til et element i en liste. Følgende variabler kan endres:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>NAME</literal>: filnavnet til enheten som skal opprettes i <filename>/dev/</filename>. Bare den første oppgaven teller; de andre blir ignorert;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SYMLINK</literal>: listen med symbolske lenker som vil peke til den samme enheten;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>OWNER</literal>, <literal>GROUP</literal> og <literal>MODE</literal> definerer brukeren og gruppen som eier enheten, samt tilhørende tillatelse;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RUN</literal>: listen over programmer som må kjøres som reaksjon på denne hendelsen.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Verdiene tilordnet disse variablene kan bruke en rekke erstatninger:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>$kernel</literal> eller <literal>%k</literal>: som tilsvarer <literal>KERNEL</literal>;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$number</literal> eller <literal>%n</literal>: rekkefølgenummeret til enheten, for eksempel for <literal>sda3</literal>, ville det være «3»;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$devpath</literal> eller <literal>%p</literal>: som tilsvarerer <literal>DEVPATH</literal>;</para>
+        </listitem>
+        <listitem>
+	 
+	  <para><literal>$attr{<replaceable>attributt</replaceable>}</literal> eller <literal>%s{<replaceable>attributt</replaceable>}</literal>: som tilsvarer <literal>ATTRS{<replaceable>attributt</replaceable>}</literal>;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$major</literal> eller <literal>%M</literal>: hovednummeret for enheten i kjernen</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$minor</literal> eller <literal>%m</literal>: undernummer for enheten i kjernen</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$result</literal> eller <literal>%c</literal>: resultatstrengen fra det siste programmet aktivert av <literal>PROGRAM</literal>;</para>
+        </listitem>
+        <listitem>
+	  <para>og, til slutt, <literal>%%</literal> og <literal>$$</literal> for henholdsvis prosent og dollartegnet.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>De ovennevnte listene er ikke komplette (de inneholder kun de viktigste parametrene), men manualside <citerefentry><refentrytitle>udev</refentrytitle><manvolnum>7</manvolnum></citerefentry> skulle være uttømmende.</para>
+    </section>
+    <section>
+      <title>Et konkret eksempel</title>
+
+      <para>La oss vurdere tillfellet med en enkel USB-minnepenn, og prøve å tilordne et fast navn til den. Først må du finne de elementene som unikt vil identifisere den. For å få til dette plugg den inn og kjør <command>udevadm info -a -n /dev/sdc</command> (for å erstatte <replaceable>/dev/sdc</replaceable> med det faktiske navnet minnepennen har).</para>
+
+      <screen><computeroutput># </computeroutput><userinput>udevadm info -a -n /dev/sdc</userinput>
+<computeroutput>[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</computeroutput></screen>
+
+      <para>For å opprette en ny regel kan du bruke tester på enhetens variabler, så vel som de fra en av de overordnede enhetene. Det ovennevnte tilfellet tillater oss å lage to regler som disse:</para>
+
+      <programlisting>KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</programlisting>
+
+      <para>Når disse reglene er satt i en fil, som for eksempel er døpt <filename>/etc/udev/rules.d/010_local.rules</filename>, kan du enkelt fjerne og koble til USB-minnepennen. Deretter kan du se at <filename>/dev/usb_key/disk</filename> representerer disken knyttet til USB-minnepennen, og <filename>/dev/usb_key/part1</filename> er dens første partisjon.</para>
+
+      <sidebar>
+        <title><emphasis>GÅR VIDERE</emphasis> Feilsøking i <emphasis>udev</emphasis> sin konfigurasjon</title>
+
+	<para>Som for mange nisser, lagrer <command>udevd</command> logger i <filename>/var/log/daemon.log</filename>. Men det er ikke veldig detaljert som standard, og det er som regel ikke nok til å forstå hva som skjer. Kommandoen <command>udevadm control --log-priority=info</command> øker detaljnivået, og løser dette problemet. <command>udevadm control --log-priority=err</command> returnerer til standard detaljnivå.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.power-management">
+    <title>Strømstyring: Advanced Configuration and Power Interface (ACPI)</title>
+    <indexterm><primary>strømstyring</primary></indexterm>
+    <indexterm><primary>styring, strømstyring</primary></indexterm>
+
+    <para>Emnet strømstyring er ofte problematisk. Faktisk, riktig hvilemodus for maskinen krever at alle datamaskinens enhetsdrivere vet hvordan de settes i ventemodus, og at de skal konfigurere enhetene ved oppvåkning. Dessverre er det fortsatt noen få enheter som ikke kan sove godt under Linux, fordi produsentene deres ikke har gitt de nødvendige spesifikasjonene.</para>
+
+    <para>Linux støtter ACPI (Advanced Configuration and Power Interface) - den nyeste standarden for strømstyring. Pakken <emphasis role="pkg">acpid</emphasis> har en nisse som ser etter strømstyringsrelaterte hendelser (veksling mellom AC og batteristrøm på en bærbar PC, etc.) og som kan utføre ulike kommandoer som svar.</para>
+
+    <indexterm><primary>ACPI</primary></indexterm>
+    <indexterm><primary>Advanced Configuration and Power Interface</primary></indexterm>
+    <indexterm><primary><command>acpid</command></primary></indexterm>
+    
+    <sidebar>
+      <title><emphasis>FORSIKTIG</emphasis> Grafikkort og ventemodus</title>
+
+      <para>Grafikkortdriveren er ofte den skyldige når ventemodus ikke fungerer ordentlig. I så fall er det en god idé å teste den nyeste versjonen av X.org grafikkserver.</para>
+    </sidebar>
+
+    <para>Etter denne oversikten over grunnleggende tjenester felles for mange Unix-systemer, vil vi fokusere på miljøet for de administrerte maskinene: Nettverket. Mange tjenester er nødvendige for at nettverket skal fungere ordentlig. De blir diskutert i neste kapittel.</para>
+  </section>
+</chapter>

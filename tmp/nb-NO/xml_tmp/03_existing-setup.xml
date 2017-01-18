@@ -1,0 +1,262 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="existing-setup">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-existing-setup.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>Gjeldende oppsett</keyword>
+      <keyword>Gjenbruk</keyword>
+      <keyword>Overflytting</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>Å analysere gjeldende oppsett og migrering</title>
+  <highlights>
+    <para>Alt ettersyn av datasystemer skal ta det eksisterende systemet i betraktning. Dette tillater gjenbruk av tilgjengelige ressurser så langt som mulig, og garanterer interoperabilitet for de ulike elementene som inngår i systemet. Denne studien vil introdusere et generisk rammeverk som kan følges ved alle migrasjoner av en datainfrastruktur til Linux.</para>
+  </highlights>
+  <section id="sect.heterogeneous-environments">
+    <title>Sameksistens i uensartede omgivelser</title>
+    <indexterm><primary>omgivelser</primary><secondary>uensartede omgivelser</secondary></indexterm>
+
+    <para>Debian integreres godt i alle typer eksisterende miljøer, og samspiller godt med andre operativsystemer. Denne nesten perfekte harmoni kommer fra markedpress som krever at programvareutgivere utvikler programmer som følger standarder. Å overholde standarder tillater administratorer å bytte ut programmer: Klienter eller tjenere, enten de er gratis eller ikke.</para>
+    <section>
+      <title>Integrasjon med Windows-maskiner</title>
+
+      <para>Sambas SMB/CIFS-støtte sikrer god kommunikasjon innenfor en Windows kontekst. Den deler filer og utskriftskøer til Windows-klienter, og inkluderer programvare som lar en Linux-maskin bruke ressurser tilgjengelig på Windows-tjenere.</para>
+
+      <sidebar>
+        <title><emphasis>Verktøy</emphasis> Samba</title>
+        <indexterm><primary>Samba</primary></indexterm>
+
+        <para>Den nyeste versjonen av Samba kan erstatte det meste av Windows-funksjonene: Fra dem i en enkel Windows NT-server (autentisering, filer, utskriftskøer, nedlasting av skriverdrivere, DFS, etc.) til den mest avanserte (en domenekontroll som er kompatibel med Active Directory).</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Integrasjon med OS X-maskiner</title>
+
+      <indexterm><primary>Zeroconf</primary></indexterm>
+      <indexterm><primary>Bonjour</primary></indexterm>
+      <indexterm><primary>Avahi</primary></indexterm>
+      <para>OS X-maskiner gir, og er i stand til å bruke, nettverkstjenester som filservere og skriverdeling. Disse tjenestene er publisert på det lokale nettverket, noe som tillater andre maskiner å oppdage dem, og gjøre bruk av dem, uten manuell konfigurering, ved hjelp av Bonjour-gjennomføringen av Zeroconf-protokollen Suite. Debian inkluderer en annen implementering, kalt Avahi, som gir samme funksjonalitet.</para>
+
+      <indexterm><primary>AFP</primary></indexterm>
+      <indexterm><primary>AppleShare</primary></indexterm>
+      <para>I den andre retningen kan Netatalk-nissen brukes til å gi filtjenere til OS X-maskiner i nettverket. Den implementerer AFP-(AppleShare-)protokollen samt de nødvendige meldinger, slik at servere automatisk kan oppdages av OS X-klienter.</para>
+
+      <indexterm><primary>AppleTalk</primary></indexterm>
+      <para>Eldre Mac OS-nettverk (før OS X) brukte en annen protokoll kalt AppleTalk. For miljøer som involverer maskiner ved hjelp av denne protokollen, gir Netatalk også AppleTalk-protokollen (faktisk startet det som en reimplementering av den protokollen). Det sikrer driften av filtjeneren og utskriftskøer, samt tidsserver (klokkesynkronisering ). Ruterfunksjonen dens tillater samtrafikk med AppleTalk-nettverk.</para>
+    </section>
+    <section>
+      <title>Integrasjon med andre Linux/Unix-maskiner</title>
+
+      <para>Til slutt: Både NFS og NIS garanterer samspill med Unix-systemer. NFS sikrer filtjenerfunksjonalitet, mens NIS lager brukerkataloger. BSD-utskriftslag, som brukes av de fleste Unix-systemer, gjør det også mulig å dele utskriftskøer.</para>
+
+      <figure>
+        <title>Sameksistens mellom Debian, OS X, Windows og Unix-systemer</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/existing-setup-1.png" width="25%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+    </section>
+  </section>
+  <section id="sect.how-to-migrate">
+    <title>Hvordan migrere</title>
+    <indexterm><primary>overflytting</primary></indexterm>
+
+    <para>For å sikre kontinuitet i tjenestene må hver datamaskin-migrasjon planlegges og gjennomføres etter planen. Dette prinsippet gjelder uansett hvilket operativsystem som brukes.</para>
+    <section>
+      <title>Kartlegge og identifisere tjenester</title>
+
+      <para>Selv om det ser enkelt ut, er dette trinnet helt nødvendig. En seriøs administrator kjenner virkelig de viktigste oppgavene til hver server, men slike roller kan endre seg, og noen ganger kan erfarne brukere ha installert «ville» tjenester. Å vite at de eksisterer vil i det minste tillate deg å bestemme hva du skal gjøre med dem, heller enn å slette dem på måfå.</para>
+
+      <para>For dette formålet er det fornuftig å informere brukerne av prosjektet før tjeneren migreres. For å involvere dem i prosjektet kan det være nyttig å installere de vanligste gratisprogrammene på sine datamaskiner før migrasjonen, som de vil møte igjen etter overgangen til Debian; LibreOffice og Firefox er de beste eksemplene her.</para>
+      <section>
+        <title>Nettverk og prosesser</title>
+        <indexterm><primary><command>nmap</command></primary></indexterm>
+       
+	<para>Dette <command>nmap</command>-verktøyet (i pakken med samme navn) vil raskt identifisere internettjenester i en nettverkstilkoblet maskin uten engang å kreve innlogging. Bare bruk følgende kommando på en annen maskin koblet til samme nettverk:</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>nmap mirwiz</userinput>
+<computeroutput>Starting Nmap 6.47 ( http://nmap.org ) at 2015-03-24 11:34 CET
+Nmap scan report for mirwiz (192.168.1.104)
+Host is up (0.0037s latency).
+Not shown: 999 closed ports
+PORT   STATE SERVICE
+22/tcp open  ssh
+
+Nmap done: 1 IP address (1 host up) scanned in 0.13 seconds</computeroutput></screen>
+
+        <sidebar>
+          <title><emphasis>ALTERNATIV</emphasis> Bruk <command>netstat</command> for å finne listen med tilgjengelige tjenester</title>
+
+	  <para>På en Linux-maskin vil <command>netstat -tupan</command>-kommandoen vise listen over aktive eller TCP-sesjoner som venter, samt UDP-porter som kjørende programmer er knyttet opp til. Dette muliggjør å identifisere tjenestene som tilbys på nettet.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>FOR VIDEREKOMMENDE</emphasis> IPv6</title>
+
+	  <para>Noen nettverkskommandoer vil virke enten med IPv4 (vanligvis forvalgt), eller med IPv6. Disse innkluderer <command>nmap</command>, og <command>netstat</command>-kommandoer, men også andre, som <command>route</command> eller <command>ip</command>. Det normale er at dette muliggjøres ved å velge kommandolinjen <parameter>-6</parameter>.</para>
+        </sidebar>
+
+	<para>Hvis serveren er en Unix-maskin med skallkontoer til brukere, er det interessant å finne ut om prosessene utføres i bakgrunnen i eierens fravær. Kommandoen <command>ps auxw</command> viser en liste med alle prosesser med sin brukeridentitet. Ved å sjekke denne informasjonen opp mot resultatet av <command>who</command>-kommandoen, som gir en liste over innloggede brukere, er det mulig å identifisere problematiske eller ikke synlige tjenere eller programmer som kjører i bakgrunnen. Å se på <filename>crontabs</filename> (tabeller som automatisk lister handlinger satt opp av brukere) vil ofte gi interessant informasjon om oppgaver tjeneren har utført (en full forklaring av <command>cron</command> er tilgjengelig på <xref linkend="sect.task-scheduling-cron-atd" />).</para>
+
+	<para>Uansett er det viktig å ta backup av dine tjenere: Det tillater gjenoppretting av informasjon i ettertid, når brukere rapporterer spesifikke problemer som følge av migrasjonen.</para>
+      </section>
+    </section>
+    <section>
+      <title>Sikkerhetskopi av konfigureringen</title>
+
+      <para>Det er lurt å beholde konfigurasjonen til hver identifiserte tjeneste for å kunne installere den tilsvarende på den oppdaterte tjeneren. Minstekravet er å lage en sikkerhetskopi av konfigurasjonsfilene .</para>
+
+      <para>For Unix maskiner er konfigurasjonsfilene vanligvis funnet i <filename>/etc/</filename>, men de kan befinne seg i en underkatalog av <filename>/usr/local/</filename>. Dette er tilfellet dersom et program har blitt installert fra kilden, heller enn som en pakke. I noen tilfeller kan man også finne dem under <filename>/opt/</filename>.</para>
+
+      <para>For administrative datatjenester (for eksempel databaser) er det sterkt anbefalt å eksportere dataene til et standard format som vil være lett for den nye programvaren å importere. Et slikt format er vanligvis i tekstmodus og dokumentert; det kan for eksempel være en SQL utskift av en database, eller en LDIF-fil for en LDAP-tjener.</para>
+
+      <figure>
+        <title>Databasebackup</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/existing-setup-2.png" width="50%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>Hver tjenerprogramvare er forskjellig, og det er umulig å beskrive alle eksisterende tilfeller i detalj. Sammenlign dokumentasjon for den eksisterende og den nye programvaren for å identifisere hvilke deler som kan eksporteres (og dermed reimporteres), og de som vil kreve manuell håndtering. Å lese denne boken vil avklare konfigureringen av de viktigste Linux-tjenerprogrammene.</para>
+    </section>
+    <section>
+      <title>Å overta en eksisterende Debian-tjener</title>
+      <indexterm><primary>gjenopprette en Debian-maskin</primary></indexterm>
+      <indexterm><primary>utforske en Debian-maskin</primary></indexterm>
+      <indexterm><primary>ta over en Debian-tjener</primary></indexterm>
+
+      <para>For effektivt å ta over vedlikeholdet av maskinen kan man analysere en maskin som allerede kjører med Debian.</para>
+
+      <para>Den første filen for sjekking er <filename>/etc/debian_version</filename>, som vanligvis inneholder versjonsnummeret for det installerte Debian-systemet (det er en del av <emphasis>base-files</emphasis> pakken). Hvis det indikerer <literal><replaceable>codename</replaceable>/sid</literal>, betyr det at systemet ble oppdatert med pakker som kommer fra en av utviklingsdistribusjonene (enten testing eller ustabil).</para>
+
+      <para><command>apt-show-versions</command>-programmet (fra Debian-pakken med samme navn) sjekker listen over installerte pakker, og identifiserer de tilgjengelige versjonene. <command>aptitude</command> kan også brukes til disse oppgavene, om enn på en mindre systematisk måte.</para>
+
+      <para>Et blikk på <filename>/etc/apt/sources.list</filename>-filen (og <filename>/etc/apt/sources.list.d/</filename>-katalogen) viser hvor de installerte Debian-pakker sannsynligvis kommer fra. Hvis mange ukjente kilder vises, kan administratoren velge å fullstendig reinstallere maskinens system for å sikre optimal kompatibilitet med programvaren levert av Debian.</para>
+
+      <para><filename>sources.list</filename>-filen er ofte en god indikator: flertallet av administratorene beholder, i alle fall i kommentarene, listen over APT-kilder som tidligere ble brukt. Men du bør ikke glemme at tidligere brukte kilder kan ha blitt slettet, og at noen tilfeldige pakker tatt fra Internettet kan ha blitt installert manuelt (med <command>dpkg</command>-kommandoen). I dette tilfellet er maskinen misvisende som en «standard» Debian. Dette er grunnen til at du bør være oppmerksom på enhver indikasjon som vil avdekke tilstedeværelsen av eksterne pakker (forekomsten av <filename>deb</filename>-filer i uvanlige kataloger, pakkeversjonsnumre med en spesiell endelse som indikerer at de stammer fra kilder utenfor Debian-prosjektet, som for eksempel <literal>ubuntu</literal> eller <literal>lmde</literal>, etc.)</para>
+
+      <para>På samme måte er det interessant å analysere innholdet av <filename>/usr/local/</filename>-katalogen, hvis formål er å inneholde programmer kompilert og installert manuelt. Listing av programvare installert på denne måten er instruktivt, siden dette reiser spørsmål om grunnene til ikke å bruke den tilsvarende Debian-pakken, hvis en slik pakke eksisterer.</para>
+
+      <sidebar>
+        <title><emphasis>RASK TITT</emphasis> <emphasis role="pkg">cruft</emphasis></title>
+
+	<para>Den <emphasis role="pkg">cruft</emphasis> utdaterte pakken foreslår å liste tilgjengelige filer som ikke hører hjemme i noen pakke. Den har noen filtre (mer eller mindre effektive, og mer eller mindre oppdatert) for å unngå rapportering av noen legitime filer (filer generert av Debian-pakker, eller genererte konfigurasjonsfiler ikke styrt av <command>dpkg</command>, etc.).</para>
+
+	<para>Vær forsiktig: Slett ikke blindt alt som <command>cruft</command> måtte liste!</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Å installere Debian</title>
+
+      <para>Når all nødvendig informasjon om den aktuelle tjeneren er kjent, kan vi slå den av og starte installasjonen av Debian på den.</para>
+      <indexterm><primary>arkitektur</primary></indexterm>
+
+      <para>For å velge den riktige versjonen må vi kjenne datamaskinens arkitektur. Hvis den er en rimelig fersk PC, er den mest sannsynlig en AMD64 (eldre PC-er er vanligvis i386). I andre tilfeller kan vi avgrense mulighetene ut fra det systemet som ble brukt tidligere.</para>
+
+      <para><xref linkend="tab-corresp" xrefstyle="select: label nopage" /> er ikke ment å være uttømmende, men kan være nyttig. I alle fall er den opprinnelige dokumentasjonen for datamaskinen den mest pålitelige kilden for å finne denne informasjonen.</para>
+
+      <table colsep="1" id="tab-corresp">
+        <title>Samsvarende operativsystem og arkitektur</title>
+        <tgroup cols="2">
+          <thead>
+            <row>
+              <entry>Operativsystem</entry>
+              <entry>Arkitektur(er)</entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry>DEC Unix (OSF/1)</entry>
+              <entry>alpha, mipsel</entry>
+            </row>
+            <row>
+              <entry>HP Unix</entry>
+              <entry>ia64, hppa</entry>
+            </row>
+            <row>
+              <entry>IBM AIX</entry>
+              <entry>PowerPc</entry>
+            </row>
+            <row>
+              <entry>Irix</entry>
+              <entry>mips</entry>
+            </row>
+            <row>
+              <entry>OS X</entry>
+              <entry>AMD64, PowerPc, i386</entry>
+            </row>
+            <row>
+              <entry>z/OS, MVS</entry>
+              <entry>s390x, s390</entry>
+            </row>
+            <row>
+              <entry>Solaris, SunOS</entry>
+              <entry>sparc, i386, m68k</entry>
+            </row>
+            <row>
+              <entry>Ultrix</entry>
+              <entry>mips</entry>
+            </row>
+            <row>
+              <entry>VMS</entry>
+              <entry>alpha</entry>
+            </row>
+            <row>
+              <entry>Windows 95/98/ME</entry>
+              <entry>i386</entry>
+            </row>
+            <row>
+              <entry>Windows NT/2000</entry>
+              <entry>i386, alpha, ia64, mipsel</entry>
+            </row>
+            <row>
+              <entry>Windows XP / Windows Server 2008</entry>
+              <entry>i386, AMD64, ia64</entry>
+            </row>
+            <row>
+              <entry>Windows Vista / Windows 7 / Windows 8</entry>
+              <entry>i386, AMD64</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+
+      <sidebar>
+        <title><emphasis>MASKINVARE</emphasis> 64 bit PC vs 32 bit PC</title>
+        <indexterm><primary>AMD64</primary></indexterm>
+        <indexterm><primary>i386</primary></indexterm>
+
+	<para>De fleste nye datamaskiner har 64 bit Intel eller AMD-prosessorer, som er kompatible med eldre 32 bits prosessorer; derfor fungerer programvare kompilert for «i386»-arkitektur. På den annen side, denne kompatibilitetsmodus utnytter ikke fullt ut egenskapene til disse nye prosessorene. Dette er grunnen til Debian leverer «amd64»-arkitekturen, som kjører på  AMD-brikker så vel som Intel «em64t»-prosessorer (inkludert de fleste i Core-serien), som er svært lik AMD64.</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Installere og konfigurere de valgte tjenestene</title>
+
+      <para>Når Debian er installert, må vi installere og konfigurere en etter en av alle de tjenestene som denne datamaskinen må ha. Den nye konfigurasjonen må ta hensyn til den foregående for å sikre en myk overgang. All informasjon som samles inn i de to første trinnene vil være nyttig for å fullføre denne delen.</para>
+
+      <figure>
+        <title>Å installere de valgte tjenestene</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/existing-setup-4.png" width="66%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>Før du hopper inn i denne øvelsen med begge føttene, er det sterkt anbefalt at du leser resten av denne boken. Etter det du vil ha en mer presis forståelse av hvordan du konfigurerer de forventede tjenestene.</para>
+
+      <para></para>
+    </section>
+  </section>
+</chapter>
