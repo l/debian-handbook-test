@@ -560,45 +560,45 @@ Bus 002 Device 004: ID 413c:8103 Dell Computer Corp. Wireless 350 Bluetooth
 				Det enkleste IPC-systemet er å bruke filer. Prosessen som ønsker å sende data, skriver den inn i en fil (med et navn kjent på forhånd), mens mottakeren bare har å åpne filen, og lese innholdet.
 			</para>
 			 <indexterm>
-				<primary><emphasis>pipe</emphasis></primary>
+				<primary><emphasis>kanal</emphasis></primary>
 			</indexterm>
 			 <para>
-				I tilfeller der du ikke ønsker å lagre data på disken, kan du bruke en <emphasis>pipe</emphasis>, som er rett og slett et objekt med to ender; bytes skrevet i den ene enden er lesbar i den andre. Dersom endene er styrt med separate prosesser, fører dette til en enkel og praktisk inter-prosess kommunikasjonskanal. Rør kan deles inn i to kategorier: Navngitte rør, og anonyme rør. Et navngitt rør er representert ved en oppføring i filsystemet (selv om de overførte data ikke er lagret der), slik at begge prosessene kan åpne det uavhengig om plasseringen av den navngitte røret er kjent på forhånd. I tilfeller hvor de kommuniserende prosessene er relatert (for eksempel en foreldre- og dens barne-prosess), den overordnede prosessen kan også opprette en anonymt rør før forgreninger, og barnet arver det. Begge prosesser vil da være i stand til å utveksle data gjennom røret uten filsystemet.
+				I tilfeller der du ikke ønsker å lagre data på disken, kan du bruke en <emphasis>kanal</emphasis> som rett og slett er et objekt med to ender; byte skrevet i den ene enden er lesbar i den andre. Dersom endene er styrt med separate prosesser, fører dette til en enkel og praktisk kommunikasjon mellom prosesser. Kanaler kan deles inn i to kategorier: Navngitte kanaler, og anonyme kanaler. En navngitt kanal er representert ved en oppføring i filsystemet (selv om de overførte data ikke er lagret der), slik at begge prosessene kan åpne det uavhengig om plasseringen av den navngitte kanalen er kjent på forhånd. I tilfeller hvor de kommuniserende prosessene er relatert (for eksempel en foreldre- og dens barneprosess), den overordnede prosessen kan også opprette en anonym kanal før forgreninger, og barnet arver det. Begge prosesser vil da være i stand til å utveksle data gjennom kanalen uten filsystemet.
 			</para>
-			 <sidebar> <title><emphasis>IN PRACTICE</emphasis> Et konkret eksempel</title>
+			 <sidebar> <title><emphasis>I PRAKSIS</emphasis> Et konkret eksempel</title>
 			 <para>
-				La oss beskrive i detalj hva som skjer når en kompleks kommando (en <emphasis>pipeline</emphasis>) kjøres fra et skall. Vi antar vi har en <command>bash</command>-prosess (standard brukerskallet på Debian), med <emphasis>pid</emphasis> 4374; I dette skallet, skriver vi kommandoen:<command>ls | sort</command>.
-			</para>
-			 <para>
-				Skallet tolker første kommandoen skrevet i. I vårt tilfelle, det forstår at det er to programmer (<command>ls</command> og <command>sort</command>), med en datastrøm som flyter fra den ene til den andre (merket med <userinput>|</userinput>-tegnet, kjent som <emphasis>pipe</emphasis>). <command>bash</command> oppretter først et ikke navngitt rør (som i utgangspunktet bare eksisterer i selve <command>bash</command>-prosessen).
+				La oss beskrive i detalj hva som skjer når en kompleks kommando (en <emphasis>pipeline (kanal)</emphasis>) kjøres fra et skall. Vi antar vi har en <command>bash</command>-prosess (standard brukerskallet på Debian), med <emphasis>pid</emphasis> 4374; I dette skallet skriver vi kommandoen:<command>ls | sort</command>.
 			</para>
 			 <para>
-				Deretter kloner skallet seg selv; Dette fører til en ny <command>bash</command>-prosess, med <emphasis>pid</emphasis> #4521 (<emphasis>pids</emphasis> er abstrakte tall, og generelt ikke har noen bestemt mening). Process #4521 arver røret, noe som betyr at den er i stand til å skrive på sin "input" side;<command>bash</command> omdirigeringer sin standard utgående strøm til dette rørets inngang. Så utfører den (og erstatter seg med)<command>ls</command>-programmet, som viser innholdet i den gjeldende katalogen. Ettersom <command>ls</command> skriver til sine standard utdata, og denne produksjonen tidligere er omdirigert, blir resultatene effektivt sendt inn i røret.
+				Skallet tolker første kommandoen skrevet inn. I vårt tilfelle forstår det at det er to programmer (<command>ls</command> og <command>sort</command>), med en datastrøm som flyter fra den ene til den andre (merket med <userinput>|</userinput>-tegnet, kjent som <emphasis>pipe</emphasis>). <command>bash</command> oppretter først en ikke navngitt kanal (som i utgangspunktet bare eksisterer i selve <command>bash</command>-prosessen).
 			</para>
 			 <para>
-				En lignende operasjon skjer for den andre kommandoen:<command>bash</command> kloner seg igjen, noe som fører til en ny <command>bash</command>-prosess med pid #4522. Siden den også er en barneprosess fra #4374, arver den også røret; <command>bash</command> kobler deretter sin standard inngang til rørets utgang, deretter kjøres (og erstatter seg med) <command>sort</command>-kommandoen, som sorterer sine innspill og viser resultatene.
+				Deretter kloner skallet seg selv. Dette fører til en ny <command>bash</command>-prosess, med <emphasis>pid</emphasis> #4521 (<emphasis>pids</emphasis> er abstrakte tall, og har generelt ikke noen bestemt mening). Process #4521 arver kanalen/røret, noe som betyr at den er i stand til å skrive på sin «input»-side; <command>bash</command> omdirigeringer sin standard utgående strøm til dette rørets/kanalens inngang. Så utfører den (og erstatter seg med) <command>ls</command>-programmet, som viser innholdet i den gjeldende katalogen. Ettersom <command>ls</command> skriver til sine standard utdata, og denne produksjonen tidligere er omdirigert, blir resultatene effektivt sendt inn i kanalen/røret.
 			</para>
 			 <para>
-				Alle bitene i puslespillet er nå satt sammen: <command>ls</command> leser den gjeldende katalogen og skriver en liste over filer inn i røret; <command>sort</command> leser denne listen, sorterer den alfabetisk, og viser resultatene. Så avsluttes prosessnummer #4521 og #4522, og #4374 (som ventet på dem under operasjonen), gjenopptar kontrollen og viser meldingen for å tillate brukeren å skrive inn en ny kommando.
+				En lignende operasjon skjer for den andre kommandoen: <command>bash</command> kloner seg igjen, noe som fører til en ny <command>bash</command>-prosess med pid #4522. Siden den også er en barneprosess fra #4374, arver den også kanalen; <command>bash</command> kobler deretter sin standard inngang til kanalens utgang, deretter kjøres (og erstatter seg med) <command>sort</command>-kommandoen, som sorterer sine innspill, og viser resultatene.
+			</para>
+			 <para>
+				Alle bitene i puslespillet er nå satt sammen: <command>ls</command> leser den gjeldende katalogen og skriver en liste over filer inn i kanalen; <command>sort</command> leser denne listen, sorterer den alfabetisk, og viser resultatene. Så avsluttes prosessnummer #4521 og #4522, og #4374 (som ventet på dem under operasjonen), gjenopptar kontrollen, og viser meldingen for å tillate brukeren å skrive inn en ny kommando.
 			</para>
 			 </sidebar> <para>
-				Ikke all inter-prosess kommunikasjon brukes til å flytte data rundt. I mange situasjoner, er den eneste informasjonen som må overføres kontrollmeldinger som "pause utførelse" eller "gjenoppta kjøring". Unix (og Linux) gir en mekanisme som kalles <emphasis>signals</emphasis>, gjennom hvilken en prosess bare kan sende et bestemt signal (valgt fra en forhåndsdefinert liste av signaler) til en annen prosess. Det eneste kravet er å kjenne til målets <emphasis>pid</emphasis>.
+				Ikke all inter-prosesskommunikasjon brukes til å flytte data rundt. I mange situasjoner er den eneste informasjonen som må overføres, kontrollmeldinger som «pause utførelse» eller «gjenoppta kjøring». Unix (og Linux) gir en mekanisme som kalles <emphasis>signaler</emphasis>, gjennom hvilken en prosess bare kan sende et bestemt signal (valgt fra en forhåndsdefinert liste av signaler) til en annen prosess. Det eneste kravet er å kjenne til målets <emphasis>pid</emphasis>.
 			</para>
 			 <para>
-				For mer komplekse kommunikasjoner, er det også mekanismer som tillater at en prosess åpner tilgang, eller deler, en del av sitt tildelte minne til andre prosesser. Minnet, som nå er delt mellom dem, kan brukes til å flytte data mellom prosessene.
+				For mer komplekse kommunikasjoner er det også mekanismer som tillater at en prosess åpner tilgang, eller deler, en del av sitt tildelte minne til andre prosesser. Minnet, som nå er delt mellom dem, kan brukes til å flytte data mellom prosessene.
 			</para>
 			 <para>
 				Endelig, nettverkstilkoblinger kan også hjelpe prosesser å kommunisere; disse prosessene kan også kjøres på forskjellige datamaskiner, muligens tusenvis av kilometer fra hverandre.
 			</para>
 			 <para>
-				Det er ganske standard for et typisk Unix-likt system i ulik grad å gjøre bruk av alle disse mekanismene.
+				Det er ganske standard for et typisk Unix-lignende system i ulik grad å gjøre bruk av alle disse mekanismene.
 			</para>
 
 		</section>
 		 <section id="sect.libraries">
 			<title>Biblioteker</title>
 			 <indexterm>
-				<primary>library (of functions)</primary>
+				<primary>bibliotek (funksjoner))</primary>
 			</indexterm>
 			 <para>
 				Funksjonsbibliotekene spiller en avgjørende rolle i en Unix-likt operativsystem. De er ikke egentlig programmer, da de ikke kan kjøres på egen hånd, men er samlinger av kodefragmenter som kan brukes av standardprogrammer. Blant de vanligste biblioteker, kan du finne:
