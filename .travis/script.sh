@@ -56,6 +56,10 @@ configure_publican () {
 	return 0;
 }
 
+configure_translation_status () {
+	return 0;
+}
+
 alias git_commit='git \
 	commit \
 	--all \
@@ -456,6 +460,7 @@ systems_build_setup () {
 		openssh-client \
 		file \
 		libxml2-utils \
+		imagemagick \
 	;
 	return 0;
 }
@@ -957,6 +962,70 @@ systems_build_repository_setup () {
 	return 0;
 }
 
+generte_translation_status_lang () {
+	local _LANG="${1}";
+	local _LOG_DIR="log/${_LANG}/translation-status";
+	mkdir \
+		--parent \
+		"${_LOG_DIR}" \
+	;
+	local _OUTPUT_HTML="${_LOG_DIR}/index.html";
+	local _LOG_STDOUT="${_LOG_DIR}/stdout.log";
+	local _LOG_STDERR="${_LOG_DIR}/stderr.log";
+	local _EXIT_STATUS=0;
+	if ! "${TRANSLATION_STATUS}" \
+		"./${LANG}" \
+		"${_OUTPUT_HTML}" \
+		1> "${_LOG_STDOUT}" \
+		2> "${_LOG_STDERR}" \
+		;
+	then
+		cat \
+			"${_LOG_STDOUT}" \
+			"${_LOG_STDERR}" \
+		;
+		_EXIT_STATUS=1;
+	fi
+	return "${_EXIT_STATUS}";
+}
+
+generte_translation_status () {
+	for LANG in $(echo [a-z][a-z]-[A-Z][A-Z]) ;
+	do
+		generte_translation_status_lang \
+			"${LANG}" \
+		;
+	done
+	return 0;
+}
+
+systems_build_repository_translation_status_pre () {
+	readonly _GIT_WORK_TREE="${1}";
+	#readonly _GIT_HOOKS_PRE_COMMIT="${2}";
+	readonly TRANSLATION_STATUS="${2}";
+
+	#configure_publican;
+	#configure_git;
+	#configure_git_repository;
+	configure_translation_status
+
+	return 0;
+}
+
+systems_build_repository_translation_status () {
+	systems_build_repository_translation_status_pre \
+		"${@}" \
+	;
+	cd \
+		"${_GIT_WORK_TREE}" \
+	;
+	generte_translation_status;
+	cd \
+		- \
+	;
+	return 0;
+}
+
 systems_build_repository_build_pre () {
 	readonly _GIT_WORK_TREE="${1}";
 	readonly _FIFO_DIR="${2}";
@@ -1178,6 +1247,12 @@ travis_pre () {
 			"${SELF}" \
 		;)/weblate-sync.pl" \
 	;)";
+	readonly TRANSLATION_STATUS="$(readlink \
+		--canonicalize \
+		"$(dirname \
+			"${SELF}" \
+		;)/translation-status.pl" \
+	;)";
 	#readonly _GIT_HOOKS_PRE_COMMIT="$(readlink \
 	#	--canonicalize \
 	#	"$(dirname \
@@ -1311,6 +1386,14 @@ travis () {
 			"${_GIT_WORK_TREE}" \
 			"${WEBLATE_SYNC}" \
 		;
+		schroot \
+			--chroot="${CHROOT_ID}" \
+			-- \
+			"${SELF}" \
+			'systems:build/repository/translation/status' \
+			"${_GIT_WORK_TREE}" \
+			"${TRANSLATION_STATUS}" \
+		;
 		if ! schroot \
 			--chroot="${CHROOT_ID}" \
 			-- \
@@ -1365,6 +1448,11 @@ main () {
 		;;
 		'systems:build/repository/setup')
 			systems_build_repository_setup \
+				"${@}" \
+			;
+		;;
+		'systems:build/repository/translation/status')
+			systems_build_repository_translation_status \
 				"${@}" \
 			;
 		;;
