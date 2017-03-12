@@ -165,6 +165,7 @@ sub to_weblate {
     my $language = first { $lang eq $_->{file} } @{ $table->{lang} };
     $language = $language->{weblate};
     my ( $component, $dirs, $suffix ) = fileparse( $file, qr/\.[^.]*/ );
+    $component = lc $component;
     return URI->new(
 "https://hosted.weblate.org/download/debian-handbook/$component/$language/"
     );
