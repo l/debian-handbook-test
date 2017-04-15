@@ -28,6 +28,10 @@ our $table = {
             file    => 'da-DK',
             weblate => 'da',
         },
+        {    # Dutch
+            file    => 'nl-NL',
+            weblate => 'nl',
+        },
         {    # French
             file    => 'fr-FR',
             weblate => 'fr',
