@@ -1,0 +1,1392 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="basic-configuration">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-basic-configuration.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>組態</keyword>
+      <keyword>在地化</keyword>
+      <keyword>地區設定</keyword>
+      <keyword>網路</keyword>
+      <keyword>名稱解析</keyword>
+      <keyword>使用者</keyword>
+      <keyword>群組</keyword>
+      <keyword>帳號</keyword>
+      <keyword>命令列解析器</keyword>
+      <keyword>Shell</keyword>
+      <keyword>列印</keyword>
+      <keyword>啟動程式</keyword>
+      <keyword>編譯核心</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>基本組態：網路、帳號、列印...</title>
+  <highlights>
+    <para>以 <command>debian-installer</command> 命令安裝的電腦是儘可能的可用，但仍有若干服務需要組態。而且，瞭解修改初始安裝程序的組態是件好事。</para>
+  </highlights>
+
+  <para>本章包括所有的 “基本組態”：網路、語系與地區設定、列印、掛載點等。</para>
+
+  <section id="sect.config-language-support">
+    <title>組態系統供其他語系使用</title>
+    <indexterm><primary>法文在地化</primary></indexterm>
+
+    <para>選擇法語介面安裝系統，則可能已經把法語當成預設語言。但是瞭解安裝器安裝語系的方法，需要發生時，就可以變更語系。</para>
+
+    <sidebar>
+      <title><emphasis>工具</emphasis> 此 <command>locale</command> 命令顯示當前的組態</title>
+
+      <para><command>locale</command> 命令列出地區設定參數的當前語系組態 (日期格式、數字格式等)，以一組標準的環境變數表示這些設定的動態修改。</para>
+    </sidebar>
+
+    <section id="sect.default-language">
+      <title>設定預設語系</title>
+      <indexterm><primary>locales</primary></indexterm>
+      <indexterm><primary>語系</primary></indexterm>
+      <indexterm><primary><command>locale-gen</command></primary></indexterm>
+
+      <para>地區設定是一組區域設定。不祗是語文，還包括顯示的數字、日期、時間、貨幣與字母對照表 (針對重音符號)。雖然這些參數可以各別設定，我們還是習慣以一個區域設定處理全部事宜，廣義上符合 “地區” 的一組設定值就搞定。這些地區設定以相同形式表現，<literal><replaceable>語文代碼</replaceable>_<replaceable>國家代碼</replaceable></literal>，有時加上後置詞指明使用的編碼。這種方式可以呈現同個語文在不同地區的慣用語或用字。</para>
+
+      <sidebar>
+        <title><emphasis>文字</emphasis> 字元集</title>
+        <indexterm><primary>字元集</primary></indexterm>
+        <indexterm><primary>編碼</primary></indexterm>
+        <indexterm><primary>ISO-8859-1</primary></indexterm>
+        <indexterm><primary>ISO-8859-15</primary></indexterm>
+        <indexterm><primary>Latin 1</primary></indexterm>
+        <indexterm><primary>Latin 9</primary></indexterm>
+
+	<para>過去，每個地區都對應一組 “字元集” (已知字元的集合) 與偏好的 “編碼” (電腦內表示字元的方法)。</para>
+
+	<para>最常見的編碼是拉丁基礎的語言限於256個字元，因為每個字元祗用到一個位元組。256個字元顯然不夠所有的歐洲語系使用，需要多編碼，所以出現 <emphasis>ISO-8859-1</emphasis> (也稱為 “Latin 1”) 至 <emphasis>ISO-8859-15</emphasis> (也稱為 “Latin 9”)，以及其他的編碼方式。</para>
+
+	<para>在英文以外的語系工作，經常需要切換編碼與字元集。尤有甚者，撰寫多語系文件還會碰到極為頑固的問題。Unicode (幾乎包括全世界所有書寫系統的編碼) 就是用來解決此等問題。UTF-8 是 Unicode 的編碼之一，仍是 128 ASCII 符號 (7-位元代碼)，但以不同方式處理其他字元。以逸出字元為首的數個位元帶頭，設定字元的長度。此種方法允許 Unicode 字元以一個或多個位元組呈現。已是 XML 文件的預設編碼方式。</para>
+        <indexterm><primary>ASCII</primary></indexterm>
+        <indexterm><primary>UTF-8</primary></indexterm>
+        <indexterm><primary>Unicode</primary></indexterm>
+
+	<para>就是這個編碼表最常用，Debian 系統把它做為預設值。</para>
+      </sidebar>
+
+      <para><emphasis role="pkg">locales</emphasis> 套件包含應用軟體 “地區化” 後仍維持原有功能所需的所有元素。安裝過程中，此套件要求選擇支援的語系。以根使用者權限執行 <command>dpkg-reconfigure locales</command> 命令就能在任何時候變更語系的設定。</para>
+
+      <para>第一件事是選擇支援的 “地區設定”。選擇英語地區設定 (表示以 “<literal>en_</literal>” 起頭) 是合理的。別忘了再選擇另個地區設定以便支援其他語系。系統的地區設定表儲存在 <filename>/etc/locale.gen</filename> 檔案內。可以手動編輯它，但在修改後應執行 <command>locale-gen</command> 命令。產生新增地區設定所需要的必要檔案，並且移除不需要的檔案。</para>
+
+      <para>第二個問題，標題為 “系統環境預設的地區設定”，選定預設的地區設定。美國是 “<literal>en_US.UTF-8</literal>”。英國是 “<literal>en_GB.UTF-8</literal>”，加拿大是 “<literal>en_CA.UTF-8</literal>” 或，法國是， “<literal>fr_CA.UTF-8</literal>”。<filename>/etc/default/locale</filename> 會被修改儲存前述的設定。從這裡，使用者選定讓 PAM 注入內容至 <varname>LANG</varname> 環境變數。</para>
+      <indexterm><primary>環境</primary></indexterm>
+      <indexterm><primary>地區設定</primary></indexterm>
+      <indexterm><primary><varname>LANG</varname></primary></indexterm>
+
+      <sidebar id="sidebar.intro-pam">
+        <title><emphasis>後台</emphasis> <filename>/etc/environment</filename> 與 <filename>/etc/default/locale</filename></title>
+
+	<para><filename>/etc/environment</filename> 檔案提供 <command>login</command>、<command>gdm</command>、或 <command>ssh</command> 程式建置正確的環境變數。</para>
+
+	<para>應用程式不會直接新增這些變數，而是經由 PAM (<filename>pam_env.so</filename>) 模組做事。可插入式認證模組 (Pluggable Authentication Module, PAM) 是供集中式的機器認證、延遲初始、與密碼管理模組程式庫。PAM 組態的範例參見 <xref linkend="sect.config-pam" />。</para>
+
+	<para><filename>/etc/default/locale</filename> 檔案以類似的方式運作，但祗有 <varname>LANG</varname> 環境變數。感謝此種區隔，某些 PAM 使用者可以在地區設定之外承襲完整的環境。事實上，不鼓勵在伺服器軟體執行地區設定；比較建議在使用者端的程式設定地區及區域。</para>
+        <indexterm><primary>PAM</primary></indexterm>
+        <indexterm><primary><filename>pam_env.so</filename></primary></indexterm>
+      </sidebar>
+    </section>
+
+    <section id="sect.keyboard-config">
+      <title>組態鍵盤</title>
+      <indexterm><primary>鍵盤布局</primary></indexterm>
+      <indexterm><primary>布局，鍵盤</primary></indexterm>
+
+      <para>即使鍵盤布局與終端機和圖形介面的管理不同，Debian 仍提供單一組態介面供兩者使用：以 debconf 為基礎應用於 <emphasis role="pkg">keyboard-configuration</emphasis> 套件。因此，任何時間均可使用 <command>dpkg-reconfigure keyboard-configuration</command> 命令重設鍵盤。</para>
+
+      <indexterm><primary><emphasis>console-data</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis>console-tools</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis>keyboard-configuration</emphasis></primary></indexterm>
+
+      <para><indexterm><primary><literal>azerty</literal></primary></indexterm>問題與鍵盤的實體配置 (美式標準鍵盤為 “通用 104 鍵”)有關，選擇配置 (通常是 “US”)，然後選取 AltGr鍵 (即右側的 Alt 鍵)。最後是 “組合鍵”，以多個鍵同時按下組合成特殊字元。連續鍵入 <keycombo action="seq"><keycap>Compose</keycap><keycap>'</keycap><keycap>e</keycap></keycombo> 就能產生帶讀音符號的 e (“é”)。這些組合鍵列在 <filename>/usr/share/X11/locale/en_US.UTF-8/Compose</filename> 檔案 (或其他檔案，視 <filename>/usr/share/X11/locale/compose.dir</filename> 指示的當前在地設定)。</para>
+      <indexterm><primary><literal>組合</literal>，鍵</primary></indexterm>
+      <indexterm><primary><literal>Meta</literal>, key</primary></indexterm>
+      <indexterm><primary>key</primary><secondary><literal>Meta</literal></secondary></indexterm>
+      <indexterm><primary>key</primary><secondary><literal>Compose</literal></secondary></indexterm>
+
+      <para>此處描述的圖形模式鍵盤組態祗影響預設的布局；在 GNOME 與 KDE 與其他環境下，在系統設定的鍵盤控制面板中，允許使用者擁有自己的組態。在此等控制面板中，還可以加入特定按鍵的選項。</para>
+
+
+    </section>
+    <section id="sect.utf8-migration">
+      <title>移殖至 UTF-8</title>
+
+      <para>期待已久的 UTF-8 一般化編碼是解決互通性的方案之一，可解決文件中字元的國際交換與誤值的限制。其中一個限制是必須經由相當困難的轉換階段。它可以完全透通 (就是，不會同時在全世界發生)，需要兩個轉換作業：檔案內容，以及檔案名稱。幸運的是，該等移殖已經完成且討論甚多。</para>
+
+      <sidebar>
+        <title><emphasis>文化</emphasis> <foreignphrase>亂碼</foreignphrase> 與解譯錯誤</title>
+
+	<para>送出 (或儲存) 未帶編碼資訊的文字時，接收者不見得知道位元組的編碼方式。或許可從統計方式從文字的內容查知其編碼方式，但不見得正確。讀取與撰寫的編碼方式不同時，就會誤解位元組的意思，就會得到錯誤的字元，更慘的是，看見完全無法閱讀的內容。</para>
+
+	<para>因此，法文的內容看起來正常，祗是無法顯示 “Ã©” 或 Ã¨” 或 “Ã§” 等重音字母與符號，很可能以 UTF-8 編碼儲存但被解讀成 ISO-8859-1 或 ISO-8859-15。在地的安裝尚未移殖至 UTF-8。如果，看到問號取代重音字母 — 即使這些問號取代重音字母後的字元 — 很可能已安裝並組態為 UTF-8 不過送出的文件仍以 Western ISO 編碼。</para>
+
+	<para>這些都是 “簡單的” 個案。這些個案祗出現在西方文化裡，因為 Unicode (與 UTF-8) 是擴充拉丁字母為基礎的西方語系編碼，即使失漏部份字元仍可辨識其他內容。</para>
+
+	<para>在較複雜的環境裡，諸如，使用不同字母的兩種語文，通常得到完全不同的結果 — 彼此完全無意義的抽象符號。特別是語言與文字完全不同的亞洲語文。日文的 <foreignphrase>mojibake</foreignphrase>，即亂碼，用來說明此現象。出現時，診斷極為困難，最簡單的方法就是兩端都移殖至 UTF-8。</para>
+      </sidebar>
+
+      <para>轉換檔名編碼，移殖工作還算簡單。<command>convmv</command> 工具 (以同名存在套件內) 是專門移殖用的；可以把檔名重新命名於不同的編碼。此工具還很簡單，但需要兩個步驟。下例說明在 UTF-8 環境下採用 ISO-8859-15 編碼的資料夾，以 <command>convmv</command> 重新命名。</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>ls travail/</userinput>
+<computeroutput>Ic?nes  ?l?ments graphiques  Textes
+$ </computeroutput><userinput>convmv -r -f iso-8859-15 -t utf-8 travail/</userinput>
+<computeroutput>Starting a dry run without changes...
+mv "travail/�l�ments graphiques"        "travail/Éléments graphiques"
+mv "travail/Ic�nes"     "travail/Icônes"
+No changes to your files done. Use --notest to finally rename the files.
+$ </computeroutput><userinput>convmv -r --notest -f iso-8859-15 -t utf-8 travail/</userinput>
+<computeroutput>mv "travail/�l�ments graphiques"        "travail/Éléments graphiques"
+mv "travail/Ic�nes"     "travail/Icônes"
+Ready!
+$ </computeroutput><userinput>ls travail/</userinput>
+<computeroutput>Éléments graphiques  Icônes  Textes</computeroutput></screen>
+
+      <para>以檔案內容來說，因為檔案格式的多樣性，增加轉換工作的複雜度。有些檔案格式本身包括編碼資訊協助軟體使用它們；就可以直接打開它們，並指明以 UTF-8 編碼再儲存之。其他的情況下，則必須以原始的編碼格式 (ISO-8859-1 或 “Western”、或 ISO-8859-15 或 “Western (Euro)”，視其規則而定) 開啟它們。</para>
+
+      <para>簡單的文字檔，可以使用 <command>recode</command> (以同名存在於套件中) 自動重新編碼。此工具有很多選項。建議參加相關的文件， <citerefentry> <refentrytitle>recode</refentrytitle> <manvolnum>1</manvolnum> </citerefentry> man 頁面，或 <citerefentry> <refentrytitle>recode</refentrytitle> </citerefentry> info 頁面 (較為完整)。</para>
+    </section>
+  </section>
+  <section id="sect.network-config">
+    <title>組態網路</title>
+
+    <sidebar id="sidebar.networking-basics">
+      <title><emphasis>基本</emphasis> 必要的網路概念 (Ethernet、IP 位址、次網路、廣播)</title>
+      <indexterm><primary>Ethernet</primary></indexterm>
+      <indexterm><primary>10BASE-T</primary></indexterm>
+      <indexterm><primary>100BASE-T</primary></indexterm>
+      <indexterm><primary>1000BASE-T</primary></indexterm>
+      <indexterm><primary>10GBASE-T</primary></indexterm>
+      <indexterm><primary>連結器，RJ45</primary></indexterm>
+      <indexterm><primary>RJ45 連接器</primary></indexterm>
+
+      <para>當代的網路多半使用 Ethernet 協定，資料分為小小的區塊稱為框並且一次傳送一個框。傳送的速度從舊型 Ethernet 卡的 10 Mb/s 至最新卡的 10 Gb/s (最常見的速度為 100 Mb/s 至 1 Gb/s)。最常見的纜線是 10BASE-T、100BASE-T、1000BASE-T 或 10GBASE-T，視需求而定 (T 是雙絞線英文名稱的第一個字母 “twisted pair”)；這些纜線以 RJ45 連結器相接。當然還有其他類型的纜線，通常供速度超過 1 Gb/s 以上的環境使用。</para>
+
+      <indexterm><primary>位址，IP 位址</primary></indexterm>
+      <indexterm><primary>IP 位址</primary></indexterm>
+
+      <para>IP 位址是一組數字用於辨識電腦在地區網路或網際網路的介面。最常用的是 IP 版本是 (IPv4)，此組數字由 32 位元編成，通常以句點區隔的 4 個數字表示 (如 <literal>192.168.0.1</literal>)，使用 0 至 255 之間的數字 (含在內，對應於 8 位元的資料)。通信協定的下個版本是 IPv6，採用 128 位元表示一個位址，其位址以 16 進位表示，用冒號區隔 (如，2001:0db8:13bb:0002:0000:0000:0000:0020，或 2001:db8:13bb:2::20 簡版表示)。</para>
+
+      <indexterm><primary>次網路</primary></indexterm>
+      <indexterm><primary>遮罩</primary><secondary>次網路遮罩</secondary></indexterm>
+      <indexterm><primary>網路</primary><secondary>位址</secondary></indexterm>
+
+      <para>次網路遮罩 (網路遮罩) 設定對應於網路的 IP 位址二進位代碼，其餘的則有機器指定。在前述的固定 IPv4 位址中，次網路遮罩，<literal>255.255.255.0</literal> (以 2 進位表示，就是 24 個 “1” 之後接著 8 個 “0”) 表示 IP 位址前 24 位元對應至網路位址，且其餘 8 個則指向機器。在 IPv6 裡，為了方便閱讀，祗表示數字 “1”；IPv6 網路的網路遮罩可以是 <literal>64</literal>。</para>
+
+      <para>網路位址是一個 IP 位址，描述機器的號碼是 0。IPv4 位址的範圍是完成的網路以此語法表示，<emphasis>a.b.c.d/e</emphasis>，<emphasis>a.b.c.d</emphasis> 是網路位址，而 <emphasis>e</emphasis> 是被影響的位元數。因此，此網路可寫成：<literal>192.168.0.0/24</literal>。在 IPv6 的類似語法為：<literal>2001:db8:13bb:2::/64</literal>。</para>
+
+      <indexterm><primary>路由器</primary></indexterm>
+      <indexterm><primary>橋接器</primary></indexterm>
+
+      <para>路由器用於連結多個網路。進入路由器的資訊被引導至正確的網路。所以，路由器分析進來的封包，根據其目的位址轉送至其他地方。路由器通常稱為閘道器；協助進入在地網路以外的地方 (網際網路之類的外部網路)。</para>
+
+      <indexterm><primary>廣播</primary></indexterm>
+
+      <para>特定的廣播位址連結網路內所有的站台。幾乎不曾 “發送”，祗在網路內發送問題。就是說，經由廣播發送的資料封包不會通常路由器。</para>
+
+      <para>本章祗討論 IPv4 位址，現在最常見的。IPv6 協定的詳情在 <xref linkend="sect.ipv6" />，其概念是一樣的。</para>
+    </sidebar>
+
+    <para>初始安裝時會自動組態網路，<filename>/etc/network/interfaces</filename> 檔案內已有完備的組態。以 <literal>auto</literal> 起頭的資料在開機時自動被 <emphasis role="pkg">ifupdown</emphasis> 組態，且組態它的 <filename>/etc/init.d/networking</filename> init 腳本。通常是 <literal>eth0</literal>，指向第一個 Ethernet 網卡。</para>
+
+    <indexterm><primary>網路</primary><secondary>組態</secondary></indexterm>
+    <indexterm><primary>組態</primary><secondary>網路</secondary></indexterm>
+    <indexterm><primary>介面</primary><secondary>網路介面</secondary></indexterm>
+    <indexterm><primary><literal>eth0</literal></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>其他</emphasis> NetworkManager</title>
+      <indexterm><primary><emphasis role="pkg">網路管理器</emphasis></primary></indexterm>
+
+      
+      <para>漫遊設定推薦使用的網路管理器 (見 <xref linkend="sect.roaming-network-config" />)，同樣適用於預設的網路管理工具。啟動電腦時以人工啟用 <filename>.ini</filename> 之類的檔案在 <filename>/etc/NetworkManager/system-connections/</filename> 之內或經由圖形工具 (<command>nm-connection-editor</command>)，可以同時新增 “系統連結”。想要網路管理器處理它們時，記得關閉 <filename>/etc/network/interfaces</filename> 內的所有條目。<ulink type="block" url="https://wiki.gnome.org/Projects/NetworkManager/SystemSettings/jessie" /> <ulink type="block" url="https://developer.gnome.org/NetworkManager/0.9/ref-settings.html" /></para>
+    </sidebar>
+
+    <section id="sect.interface-ethernet">
+      <title>Ethernet 介面</title>
+
+      <para>電腦使用 Ethernet 網路卡時，必須以下列的方法之一組態 IP 網路。最簡單的方式是以 DHCP 動態組態，需要在地網路的 DHCP 伺服器。可以使用與下例 <literal>hostname</literal> 設定的主機名稱。DHCP 伺服器就會送出組態設定給適當的網路。</para>
+
+      <indexterm><primary>Ethernet</primary></indexterm>
+      <indexterm><primary>DHCP</primary></indexterm>
+
+      <example id="example.config-dhcp">
+        <title>DHCP 組態</title>
+
+        <programlisting>
+auto eth0
+iface eth0 inet dhcp
+  hostname arrakis</programlisting>
+      </example>
+
+      <para>“靜態” 組態必須以固定方式指明網路設定。至少包括 IP 網址及次網路遮罩；有時也列出網路及廣播位址。必須以閘道指出連結外部的路由器。</para>
+
+      <example id="example.static-network">
+        <title>靜態組態</title>
+
+        <programlisting>
+auto eth0
+iface eth0 inet static
+  address 192.168.0.3
+  netmask 255.255.255.0
+  broadcast 192.168.0.255
+  network 192.168.0.0
+  gateway 192.168.0.1</programlisting>
+      </example>
+
+      <sidebar>
+        <title><emphasis>說明</emphasis> 多位址</title>
+
+	<para>在一個實體網路卡上可以連結多個介面，而且可以設定多個 IP 位址。IP 位址本身可以經由 DNS 對應至多個網域名稱，名稱本身可以對應至多個 IP 位址。</para>
+
+	<para>如您所想，組態可以極為複雜，不過祗限於極為特殊的例子。此處引用的例子都是一般常見的組態。</para>
+      </sidebar>
+    </section>
+    <section id="sect.ppp-rtc">
+      <title>經由 PSTN 數據機的 PPP 連結</title>
+      <indexterm><primary>PPP</primary></indexterm>
+      <indexterm><primary>點對點</primary></indexterm>
+      <indexterm><primary>連結</primary><secondary>經由 PSTN 數據機</secondary></indexterm>
+      <indexterm><primary>數據機</primary><secondary>PSTN</secondary></indexterm>
+
+      <para>點對點 (PPP) 連結建立斷續的連結；這是電話數據機最常見的連結方式 (“PSTN 數據機”，經由公共交換電話網路)。</para>
+
+      <para>電話數據機需要帳號才能連結，包括電話號碼、使用者名稱、密碼、以及認證協定。這種連結 Debian 同名套件內的使用 <command>pppconfig</command> 工具。預設使用的名稱是 <literal>提供者</literal> (做為網際網路服務提供者)。對認證協定有疑義時，選擇 <emphasis>PAP</emphasis>：大多數網際網路服務提供者使用它。</para>
+
+      <indexterm><primary><command>pppconfig</command></primary></indexterm>
+      <indexterm><primary>PAP</primary></indexterm>
+
+      <para>組態之後，就可以使用 <command>pon</command> 命令 (<literal>提供者</literal> 的預設值不適用時，將連結的名稱當成參數)。以 <command>poff</command> 命令斷線。這兩個令可以被根使用者執行，或位在 <literal>dip</literal> 群組的其他使用者。</para>
+
+      <indexterm><primary><command>pon</command></primary></indexterm>
+      <indexterm><primary><command>poff</command></primary></indexterm>
+
+    </section>
+    <section id="sect.adsl">
+      <title>以 ADSL 數據連結</title>
+      <indexterm><primary>連結</primary><secondary>經由 ADSL 數據機</secondary></indexterm>
+      <indexterm><primary>數據機</primary><secondary>ADSL</secondary></indexterm>
+      <indexterm><primary>ADSL，數據機</primary></indexterm>
+
+      <para>“ADSL 數據機” 一辭包括不同功能的多種設備。使用 Linux 的數據機有 Ethernet 介面 (不祗是 USB 介面)。這是極為普遍的數據機；大部份的 ADSL 網際網路服務商出借 (或出租) 一個含 Ethernet 介面的 “盒子”。視其類型而有不同的設定。</para>
+      <section id="sect.adsl-pppoe">
+        <title>支援 PPPOE 的數據機</title>
+        <indexterm><primary>PPPOE</primary></indexterm>
+        <indexterm><primary><command>pppoeconf</command></primary></indexterm>
+
+	<para>部份 Ethernet 數據機使用 PPPOE 協定 (乙太網上的對等協定，Point to Point Protocol over Ethernet)。<command>pppoeconf</command> 工具 (位於同名套件內) 將組態其連結。修改 <filename>/etc/ppp/peers/dsl-provider</filename> 檔案內容時，採用 <filename>/etc/ppp/pap-secrets</filename> 與 <filename>/etc/ppp/chap-secrets</filename> 檔案的內容。建議全盤接納所有的提議。</para>
+
+	<para>組態完成之後，以命令 <command>pon dsl-provider</command> 開啟 ADSL 連結，並以命令 <command>poff dsl-provider</command> 斷線。</para>
+        <indexterm><primary><literal>dsl-provider</literal></primary></indexterm>
+
+        <sidebar>
+          <title><emphasis>秘訣</emphasis>啟動 <command>ppp</command> 於開機時</title>
+          <indexterm><primary><command>systemd</command></primary></indexterm>
+          <indexterm><primary><command>init</command></primary></indexterm>
+
+	  <para>PPP 在 ADSL 上的連結，其本意是斷斷續續的。因為不是依照連線時間收費，所以不必隨時打開它。標準的方法是使用 init 系統。</para>
+
+          <para>在 <emphasis role="distribution">Jessie</emphasis> 預設的 init 系統是 <command>systemd</command>。在 ADSL 連結自動重新啟動很簡單，新增一個像 <filename>/etc/systemd/system/adsl-connection.service</filename> 之類的 “unit file” 就可以了，其內容類似以下的：</para>
+
+<programlisting>[Unit]
+Description=ADSL connection
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/pppd call dsl-provider
+Restart=always
+
+[Install]
+WantedBy=multi-user.target</programlisting>
+
+          <para>設定這個 unit file 之後，還需以 <command>systemctl enable adsl-connection</command> 命令啟動它。然後以手動方式，啟動此命令 <command>systemctl start adsl-connection</command> 迴圈；然後就可在開機時自動啟動。</para>
+
+          <para>未使用 <command>systemd</command> 命令的系統 (包括 <emphasis role="distribution">Wheezy</emphasis> 及更早的 Debian 版本)，可使用標準的 SystemV init。在這種系統裡，祗需在 <filename>/etc/inittab</filename> 檔案加入一行字；然後，在斷線之後，執行 <command>init</command> 就可重新連線。</para>
+
+          <programlisting>
+adsl:2345:respawn:/usr/sbin/pppd call dsl-provider</programlisting>
+
+	  <para>撥接後自動斷線的 ADSL，這種方法減少中斷的次數。</para>
+        </sidebar>
+      </section>
+      <section id="sect.adsl-pptp">
+        <title>支援 PPTP 的數據機</title>
+        <indexterm><primary>PPTP</primary></indexterm>
+
+	<para>PPTP (點對點隧道協議，Point-to-Point Tunneling Protocol) 協定由微軟創製。在 ADSL 的初期就已布置，取代 PPPOE。若被強迫使用此協定，參見 <xref linkend="sect.pptp" />。</para>
+      </section>
+      <section id="sect.adsl-dhcp">
+        <title>支援 DHCP 數據機</title>
+
+	<para>以 Ethernet 纜線 (跳線) 連線電腦的數據機，可以在電腦以 DHCP 組態網路連結；數據機自動成為閘道且執行路由的功能 (就是管理電腦與網際網路的流量)。</para>
+
+        <sidebar>
+          <title><emphasis>基本</emphasis> 直接連結 Ethernet 的跳線</title>
+          <indexterm><primary>跳線</primary></indexterm>
+
+	  <para>電腦網路卡經由特定纜線接收資料，也從同樣的管道送出資料。電腦連上地區網路後，通常以纜線 (直接連線或跳線) 連結網路上與中繼器或交換器。若想直接連結兩部電腦 (不經過交換器或中繼器)，必須經由網路卡送出資料至接收端的另個網路卡，反之亦然。這就是跳線的作用，以及使用它的原因。</para>
+
+          <para>此區別在現在的環境沒有作用，現代的網路卡可以自動偵測纜線的類型並據以配合它，所以兩種纜線都可運用自如。</para>
+        </sidebar>
+
+	<para>大部份的 “ADSL 路由器” 也能這麼做，網際網路服務供應商提供的 ADSL 數據機也具有此功能。</para>
+      </section>
+    </section>
+    <section id="sect.roaming-network-config">
+      <title>網路自動組態漫遊使用者</title>
+      <indexterm><primary><emphasis role="pkg">網路管理器</emphasis></primary></indexterm>
+      <indexterm><primary>網路</primary><secondary>漫遊組態</secondary></indexterm>
+
+      <para>Falcot 公司的工程師擁有專業用的筆電，同時也在家裡使用它。根據使用場所的不同，網路有不同的組態方式。在家裡，可能使用 WiFi 網路 (以 WPA 鑰保護)，在工作場合則使用較安全與頻寬更充足的固接網路。</para>
+
+      <para>為了避免人工連結與斷線對應的網路介面，管理者在漫遊機器安裝 <emphasis role="pkg">network-manager</emphasis> 套件。此軟體可以讓使用者從圖形桌面的小圖示，在多個網路間切換。按下此圖示即顯示可用的網路 (固接與無線)，藉以選擇其中之一。此程式儲存曾連結網路的組態，斷線時自動選擇最佳的網路。</para>
+
+      <para>為了達到這個目的，程式分為兩個部份：在根部執行後台進程並組態網路介面與使用者介面控制該後台進程。PolicyKit 處理必要的權限以控制此程式，然後由 Debian 組態 PolicyKit 讓 netdev 群組成員可以新增或修改 Network Manager 的連結。</para>
+
+      <para>程式自身已組態後，網路管理器就能夠處理多種類型的連線 (DHCP、手動組態、地區網路)。所以能夠系統地忽略在 <filename>/etc/network/interfaces</filename> 裡面不合適的網路介面。網路管理器無法提供未顯示網路連線的詳情，最簡單的方法是刪除 <filename>/etc/network/interfaces</filename> 內必須由網路管理器組態的所有介面。</para>
+
+      <para>在初始安裝階段選擇 “桌面環境”的工作，就能夠預設安裝此程式。</para>
+
+      <sidebar>
+        <title><emphasis>其他</emphasis> 由“網路設定檔”組態</title>
+        <indexterm><primary><emphasis role="pkg">guessnet</emphasis></primary></indexterm>
+
+	<para>更進階的使用者可能布望試用 <emphasis role="pkg">guessnet</emphasis> 套件做為網路自動組態的工具。以一組測試腳本決定啟用與組態的網路設定檔。</para>
+
+	<para>以人工選定網路設定的使用者，將偏向使用在同名套件內找到的 <emphasis role="pkg">netenv</emphasis> 程式。</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.hostname-name-service">
+    <title>設定主機名稱與組態名稱服務</title>
+    <indexterm><primary>名稱</primary><secondary>屬性與解析</secondary></indexterm>
+    <indexterm><primary>指定名稱</primary></indexterm>
+
+    <para>將 IP 數字轉換為名稱係方便記憶。實務上，IP 位址係用於辨識網路卡之類的網路介面設備。機器可能有多個網路卡，每個網路卡可能有多個介面，所以在網域名稱系統裡，一部電腦就可能有多個名稱。</para>
+
+    <para>然而，每部機器都有個辨識用的主要 (如 “canonical”) 名稱，儲存在 <filename>/etc/hostname</filename> 檔案內並以初始腳本經由 <command>hostname</command> 命令與 Linux 核心溝通。現在的值儲存在虛擬檔案系統，可經由 <command>cat /proc/sys/kernel/hostname</command> 命令取得。</para>
+
+    <indexterm><primary><command>主機名稱</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> <filename>/proc/</filename> 與 <filename>/sys/</filename>，虛擬檔案系統</title>
+      <indexterm><primary><filename>/proc/</filename></primary></indexterm>
+      <indexterm><primary><filename>proc</filename></primary></indexterm>
+      <indexterm><primary><filename>/sys/</filename></primary></indexterm>
+      <indexterm><primary><filename>sys</filename></primary></indexterm>
+
+      <para><filename>/proc/</filename> 與 <filename>/sys/</filename> 檔案樹係由 “虛擬” 檔案系統產生。從核心 (以列出虛擬檔案方式) 取得資訊並與其溝通 (寫入虛擬檔案) 的實務。</para>
+
+      <para><filename>/sys/</filename> 係供近用內部核心物件之用，尤其是代表系統的各種設備。核心本身可以共享資源：每個設備的狀態 (如，處於省電模式)、移動狀置等。<filename>/sys/</filename> 祗存於於核心版本 2.6 及更新的版本。</para>
+    </sidebar>
+
+    <para>意外的是，網域名稱的管理方式不同，來自機器的完整名稱，經由名稱解析取得。可以在 <filename>/etc/hosts</filename> 檔案內更改它；在名稱清單前寫入完整的名稱，如下例：</para>
+    <informalexample>
+      <programlisting>
+127.0.0.1     localhost
+192.168.0.1   arrakis.falcot.com arrakis</programlisting>
+    </informalexample>
+    <indexterm><primary><filename>主機</filename></primary></indexterm>
+    <indexterm><primary><filename>/etc/hosts</filename></primary></indexterm>
+    <indexterm><primary>網域</primary><secondary>名稱</secondary></indexterm>
+    <indexterm><primary>名稱</primary><secondary>網域</secondary></indexterm>
+    <indexterm><primary>NSS</primary></indexterm>
+    <section id="sect.name-resolution">
+      <title>名稱解析</title>
+      <indexterm><primary>解析</primary><secondary>名稱</secondary></indexterm>
+      <indexterm><primary>名稱</primary><secondary>解析</secondary></indexterm>
+
+      <para>Linux 的名稱解析機制是模組化的且可使用 <filename>/etc/nsswitch.conf</filename> 宣稱的資料來源。涉及主機名稱解析的款目是 <literal>hosts</literal>。預設，它包括 <literal>files dns</literal>，表示系統先參照 <filename>/etc/hosts</filename> 檔案，再參照 DNS 伺服器。NIS/NIS+ 或 LDAP 伺服器是另個來源選擇。</para>
+
+      <sidebar>
+        <title><emphasis>說明</emphasis> NSS 與 DNS</title>
+
+	<para>專門用於查詢 DNS (特別是 <command>host</command>) 的命令未使用標準的名稱解析機制 (NSS)。也就是，完全未考慮 <filename>/etc/nsswitch.conf</filename>，也不使用 <filename>/etc/hosts</filename>。</para>
+      </sidebar>
+      <section id="sect.dns-server-configuration">
+        <title>組態 DNS 伺服器</title>
+        <indexterm><primary>DNS</primary></indexterm>
+        <indexterm><primary>網域名稱服務</primary></indexterm>
+
+	<para>DNS (網域名稱服務) 是對映名稱至 IP 位址的分散式階層服務，同時也反向對映。尤其是，把人可閱讀的名稱，如 <literal>www.eyrolles.com</literal> 對映至實際的 IP 位址 <literal>213.244.11.247</literal>。</para>
+
+	<para>必須先設定 DNS 伺服器，才能用到 DNS 資訊。Falcot 公司自設該伺服器，但個人使用者可能使用 ISP 提供的 DNS 伺服器。</para>
+
+        <indexterm><primary><filename>resolv.conf</filename></primary></indexterm>
+        <indexterm><primary><literal>nameserver</literal></primary></indexterm>
+
+	<para>DNS 伺服器的用法在 <filename>/etc/resolv.conf</filename> 內，每個一列，在 IP 位址前有 <literal>nameserver</literal> 鍵詞，如下：</para>
+
+        <programlisting>
+nameserver 212.27.32.176
+nameserver 212.27.32.177
+nameserver 8.8.8.8</programlisting>
+
+        <para>網路由 NetworkManager 管理或經由 DHCP 組態時，可以自動處理 (與覆寫) <filename>/etc/resolv.conf</filename> 檔案。</para>
+
+      </section>
+      <section id="sect.etc-hosts">
+        <title><filename>/etc/hosts</filename> 檔案</title>
+        <indexterm><primary><filename>主機</filename></primary></indexterm>
+        <indexterm><primary><filename>/etc/hosts</filename></primary></indexterm>
+
+	<para>地區網路沒洧名稱伺服器時，仍可以在保留給地區網路的 <filename>/etc/hosts</filename> 檔案內，建立 IP 位址與主機名稱的小型對照表。此檔案的語法極簡單：每列一個固定 IP 位址，然後是相關的名稱 (第一個是 “完全合格”，表示包括網域名稱)。</para>
+
+	<para>即使網路停擺或 DNS 伺服器不通仍可近用此檔案，但祗適用於在地區網路所有機器重製的內容。即使是極微小的變動，都需要更新各地所有的檔案。所以， <filename>/etc/hosts</filename> 通常祗包括最重要的款目。</para>
+
+	<para>這個檔案對未連上網際網路的小型網路是夠用的，5 部以內的機器，建議安裝一個 DNS 伺服器較佳。</para>
+
+        <sidebar>
+          <title><emphasis>秘訣</emphasis> 繞過 DNS</title>
+
+	  <para>某些應用程式先檢查 <filename>/etc/hosts</filename> 檔案才查詢 DNS，與 DNS 送回資料不同的部份，可以先儲存在這裡，並略過 DNS 的名稱解析。</para>
+
+	  <para>修改 DNS 但尚未布署前，這種做法可以測試網站名稱與 IP 位址的對應性。</para>
+
+	  <para>另一個可能用法是把流量轉移至指定的區域主機，避免大流量進入指定的主機。例如，可以繞過專供廣告使用的伺服器主機名稱，讓結果更順暢、少些干擾。</para>
+        </sidebar>
+      </section>
+    </section>
+  </section>
+  <section id="sect.user-group-databases">
+    <title>使用者與群組資料庫</title>
+    <indexterm><primary>使用者</primary><secondary>資料庫</secondary></indexterm>
+    <indexterm><primary>群組</primary><secondary>資料庫</secondary></indexterm>
+    <indexterm><primary>資料庫</primary><secondary>使用者</secondary></indexterm>
+    <indexterm><primary>資料庫</primary><secondary>群組</secondary></indexterm>
+
+    <para>使用者清單通常儲存在 <filename>/etc/passwd</filename> 檔案內，把編碼後的密碼儲存在 <filename>/etc/shadow</filename> 檔案內。這兩個檔案都是純文字檔，以簡單的格式儲存，可以用文字編輯器讀取與修改。每個使用者佔一列，其欄位以冒號區隔 (“<literal>:</literal>”)。</para>
+
+    <sidebar>
+      <title><emphasis>說明</emphasis> 編輯系統檔案</title>
+
+      <para>本章討論的系統檔案都是純文字檔，可以用文字編輯器處理。這些檔案對核心系統的運作極為重要，編輯該等檔案時多加慎重不會錯的。首先，先複製或備份原檔案。第二，在伺服器或多人可同時近用該等檔案的機器上，多費心以防止檔案損壞。</para>
+
+      <para>為了達成此目標，最好使用 <command>vipw</command> 命令編輯 <filename>/etc/passwd</filename> 檔案，或使用 <command>vigr</command> 命令編輯 <filename>/etc/group</filename> 檔案。這些命令會先鎖住該等檔案再執行文字編輯器， (預設使用 <command>vi</command> 命令，除非 <varname>EDITOR</varname> 環境變數有其他的設定)。加上 <literal>-s</literal> 選項可同時編輯對應的 <foreignphrase>shadow</foreignphrase> 檔案。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> Crypt，單向的函數</title>
+      <indexterm><primary>crypt</primary></indexterm>
+
+      <para><command>crypt</command> 是單向函數以特別的方法把字串 (<varname>A</varname>) 轉換成另個字串 (<varname>B</varname>)，轉換後無法回覆成 <varname>A</varname> 經由 <varname>B</varname>。辨識 <varname>A</varname> 的唯一方法是逐一測試所有可能的值，查驗等同於 <varname>B</varname> 的結果。最多可輸入 8 個字元 (字串 <varname>A</varname>) 然後產生 13 個字元的可列印 ASCII 字元 (字串 <varname>B</varname>)。</para>
+    </sidebar>
+    <section id="sect.etc-passwd">
+      <title>使用者清單：<filename>/etc/passwd</filename></title>
+
+      <para>在 <filename>/etc/passwd</filename> 檔案內的欄位清單：</para>
+      <indexterm><primary><command>passwd</command></primary></indexterm>
+      <indexterm><primary><filename>/etc/passwd</filename></primary></indexterm>
+      <indexterm><primary><literal>uid</literal></primary></indexterm>
+      <indexterm><primary><literal>gid</literal></primary></indexterm>
+      <indexterm><primary><literal>GECOS</literal></primary></indexterm>
+      <indexterm><primary><literal>login</literal></primary></indexterm>
+      <itemizedlist>
+        <listitem>
+	  <para>登入，例如 <literal>rhertzog</literal>；</para>
+        </listitem>
+        <listitem>
+	  <para>password：就是密碼加密的單向函數 (<command>crypt</command>)，使用 <literal>DES</literal>、<literal>MD5</literal>、<literal>SHA-256</literal> 或 <literal>SHA-512</literal>。以特別符號 “<literal>x</literal>” 表示加密後的密碼儲存在<filename>/etc/shadow</filename>；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>uid</literal>：用於辨識個別使用者的不重複數字；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>gid</literal>：使用者主要群組 (Debian 的預設值係為每個使用者建立一個群組) 的不重複號碼；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>GECOS</literal>：通常儲存使用者全名的資料欄；</para>
+        </listitem>
+        <listitem>
+	  <para>登入資料夾，用於儲存使用者的個人檔案 (環境變數 <varname>$HOME</varname> 通常指向此處)；</para>
+        </listitem>
+        <listitem>
+	  <para>登入時執行的程式。通常是命令解譯器 (shell)，若指定為 <command>/bin/false</command> (不做任何事並立即回到控制)，則使用者無法登入。</para>
+        </listitem>
+      </itemizedlist>
+
+      <sidebar>
+        <title><emphasis>基本</emphasis> Unix 群組</title>
+        <indexterm><primary>群組</primary></indexterm>
+
+	<para>Unix 群組是包括多個使用者的實體，以整合授權系統可以共享檔案 (具有同樣的權限)。可以限定程式供指定的群組使用。</para>
+      </sidebar>
+    </section>
+    <section id="sect.etc-shadow">
+      <title>隱藏與加密的密碼檔：<filename>/etc/shadow</filename></title>
+      <indexterm><primary><filename>shadow</filename></primary></indexterm>
+      <indexterm><primary><filename>/etc/shadow</filename></primary></indexterm>
+
+      <para>The <filename>/etc/shadow</filename> 檔案含以下的欄位：</para>
+      <itemizedlist>
+        <listitem>
+	  <para>登入；</para>
+        </listitem>
+        <listitem>
+	  <para>加密的密碼；</para>
+        </listitem>
+        <listitem>
+	  <para>管理密碼期限的欄位。</para>
+        </listitem>
+      </itemizedlist>
+
+      <sidebar>
+        <title><emphasis>文件</emphasis> <filename>/etc/passwd</filename>、<filename>/etc/shadow</filename> 與 <filename>/etc/group</filename> 檔案格式</title>
+
+	<para>這些格式記錄在下列的手冊頁面：<citerefentry><refentrytitle>passwd</refentrytitle><manvolnum>5</manvolnum></citerefentry>、<citerefentry><refentrytitle>shadow</refentrytitle><manvolnum>5</manvolnum></citerefentry>、與 <citerefentry><refentrytitle>group</refentrytitle><manvolnum>5</manvolnum></citerefentry>。</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>安全</emphasis> <filename>/etc/shadow</filename> 檔案安全</title>
+
+	<para><filename>/etc/shadow</filename>，不同於它的分身，<filename>/etc/passwd</filename>，不能被一般使用者讀取。儲存在 <filename>/etc/passwd</filename> 內的加密後密碼可被任何人讀取；破壞者可以用 “暴力” 法破壞它們，以常見的編碼字元破解。這種攻擊方式 — 稱為 "字典攻擊" — 對於使用 <filename>/etc/shadow</filename> 的系統是無效的。</para>
+      </sidebar>
+    </section>
+    <section id="sect.account-modification">
+      <title>修改既有的帳號或密碼</title>
+      <indexterm><primary><command>chsh</command></primary></indexterm>
+      <indexterm><primary><command>chfn</command></primary></indexterm>
+      <indexterm><primary><command>passwd</command></primary></indexterm>
+      <indexterm><primary><command>chage</command></primary></indexterm>
+      <indexterm><primary>密碼</primary></indexterm>
+
+      <para>以下的命令允許修改使用者資料庫內的特定欄位資料：<command>passwd</command> 允許使用者更改自己的密碼，並更新 <filename>/etc/shadow</filename> 檔案；<command>chfn</command> (CHange Full Name)，保留給超級使用者 (root) 專用，修改 <literal>GECOS</literal> 欄位。<command>chsh</command> (CHange SHell) 允許使用者變更自己的登入 shell，但祗限列名在 <filename>/etc/shells</filename> 之內；另一方面，管理者不受此限，且可設定任何 shell。</para>
+
+      <para>最後，<command>chage</command> (CHange AGE) 命令允許管理者變更密碼的有效期 (<literal>-l <replaceable>使用者</replaceable></literal> 選項列出現在的設定)。以 <command>passwd -e <replaceable>使用者</replaceable></command> 命令強迫密碼失效，要求使用者登錄時變更密碼才能繼續使用。</para>
+    </section>
+    <section id="sect.disabling-account">
+      <title>帳號禁用</title>
+      <indexterm><primary>禁用帳號</primary></indexterm>
+      <indexterm><primary>帳號</primary><secondary>禁用</secondary></indexterm>
+
+      <para>有時需要 “禁用一個帳號” (關閉某使用者)，基於紀律考量、調查、或使用者太久未登入。被禁用的帳號表示該使用者不能登入或近用該機器。帳號還在機器內且檔案與資料都未被刪除木；祗是不能使用。以 <command>passwd -l <replaceable>使用者</replaceable></command> (鎖定) 命令就能夠達成。以同樣的方式另個選項 <literal>-u</literal> (解鎖) 就可恢復該帳號。</para>
+
+      <sidebar id="sidebar.intro-nss">
+        <title><emphasis>下一步</emphasis> NSS 與系統資料庫</title>
+        <indexterm><primary>NSS</primary></indexterm>
+        <indexterm><primary>姓名服務切換</primary></indexterm>
+
+	<para>與其使用檔案管理使用者與群組清單，還可使用其他資料庫類型，諸如 LDAP 或 <command>db</command>，藉由適當的 NSS (Name Service Switch 姓名服務切換) 模組。可用的模組列在 <filename>/etc/nsswitch.conf</filename> 檔案內，在 <literal>passwd</literal>、<literal>shadow</literal> 與 <literal>group</literal> 款目下。LDAP 下的 NSS 模組使用法，見 <xref linkend="sect.config-nss" />。</para>
+      </sidebar>
+    </section>
+    <section id="sect.etc-group">
+      <title>群組清單：<filename>/etc/group</filename></title>
+
+      <para>群組列在 <filename>/etc/group</filename> 檔案內，單純的文字資料庫類似 <filename>/etc/passwd</filename> 檔案，包括以下的欄位：</para>
+      <itemizedlist>
+        <listitem>
+	  <para>群組名稱；</para>
+        </listitem>
+        <listitem>
+	  <para>密碼 (選項)：加入群組會用到 (以 <command>newgrp</command> 或 <command>sg</command> 命令，見專欄 <xref linkend="sidebar.working-with-several-groups" />)；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>gid</literal>：不重複的群組辨識碼；</para>
+        </listitem>
+        <listitem>
+	  <para>成員清單：屬於此群組的使用者名稱清單，以逗點區隔。</para>
+        </listitem>
+      </itemizedlist>
+
+      <para></para>
+
+      <sidebar id="sidebar.working-with-several-groups">
+        <title><emphasis>基本</emphasis> 在多個群組工作</title>
+        <indexterm><primary><command>newgrp</command></primary></indexterm>
+        <indexterm><primary><command>sg</command></primary></indexterm>
+        <indexterm><primary><command>id</command></primary></indexterm>
+        <indexterm><primary>群組</primary><secondary>改變</secondary></indexterm>
+
+	<para>終端使用者可能參加多個群組；其中一個是自己的 “主要群組”。使用者自己的主要群組，使用者初始組態時自動產生的預設值。使用者新增的檔案自動屬於該讀者，以及其主要群組。這種方式並不完全合意；例如，使用者需要在自己主要群組之外的資料夾工作，與其他群組共享其檔案。在這種情況下，使用者需以命令：<command>newgrp</command> 變更其主要群組，產生新的 shell，或以 <command>sg</command> 命令，使用其他群組。這些命令也允許使用者加入其他群組。若該等群組受密碼保護，則需先取得密碼才能執行該等命令。</para>
+
+	<para>使用者還可以設定資料夾的 <literal>setgid</literal> 位元，讓該資料夾內的檔案自動屬於特定群組。詳情見專欄 <xref linkend="sidebar.setgid-dir" />。</para>
+
+	<para><command>id</command> 命令顯示使用者現在的狀態，包括個人辨識碼 (<varname>uid</varname> 變數)、現在的主要群組 (<varname>gid</varname> variable)、以及其所屬群組的清單 (<varname>groups</varname> 變數)。</para>
+      </sidebar>
+      <indexterm><primary><filename>group</filename></primary></indexterm>
+      <indexterm><primary><filename>/etc/group</filename></primary></indexterm>
+
+      <para><command>addgroup</command> 與 <command>delgroup</command> 命令可以新增或刪除群組。<command>groupmod</command> 命令修改群組的資訊 (其 <literal>gid</literal> 或辨識碼)。命令 <command>passwd -g <replaceable>group</replaceable></command> 可變更群組的密碼，<command>passwd -r -g <replaceable>group</replaceable></command> 命令可刪除群組的密碼。</para>
+      <indexterm><primary><command>addgroup</command></primary></indexterm>
+      <indexterm><primary><command>delgroup</command></primary></indexterm>
+      <indexterm><primary><command>groupmod</command></primary></indexterm>
+      <indexterm><primary>群組</primary><secondary>新增</secondary></indexterm>
+      <indexterm><primary>新增</primary><secondary>群組</secondary></indexterm>
+      <indexterm><primary>群組</primary><secondary>刪除</secondary></indexterm>
+      <indexterm><primary>刪除群組</primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>秘訣</emphasis> <command>getent</command></title>
+        <indexterm><primary><command>getent</command></primary></indexterm>
+
+	<para><command>getent</command> (取得款目的意思 get entries) 命令使用適當的程式庫函數，呼叫組態於 <filename>/etc/nsswitch.conf</filename> 檔案的 NSS 模組，以標準方式檢查系統資料庫。此命令需要一個或兩個參數：被檢查的資料庫名稱、以及可能的搜尋鍵詞。因此，<command>getent passwd rhertzog</command> 命令將從使用者 <literal>rhertzog</literal> 中給予使用者資料庫。</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.creating-accounts">
+    <title>新增帳號</title>
+    <indexterm><primary>帳號</primary><secondary>新增</secondary></indexterm>
+    <indexterm><primary>新增</primary><secondary>使用者帳號</secondary></indexterm>
+
+    <para>設定新機器後管理者需做的第一件事就是新增使用者帳號。以 <command>adduser</command> 命令新增使用者的名稱，做為其參數。</para>
+    <indexterm><primary><command>adduser</command></primary></indexterm>
+
+    <para><command>adduser</command> 命令在新增帳號前先詢問若干問題，但其使用方式相當直覺。 <filename>/etc/adduser.conf</filename> 是它的組態檔，包括有趣的設定：可用於自動設定使用者的額度、或改變使用者帳號的位置；後者較少使用，但有多個使用者且需區隔該等帳號於若干硬碟時，就是很好用的工具。也可選擇不同的 shell 為預設值。</para>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> 額度</title>
+      <indexterm><primary>額度</primary></indexterm>
+
+      <para>“額度” 指的是使用者在此機器可使用的資源上限。通常指的是磁碟空間。</para>
+    </sidebar>
+
+    <para>新增帳號時，把使用者的家目錄置於 <filename>/etc/skel/</filename> 模皮。提供使用者一組標準的資料夾與組態檔案。</para>
+    <indexterm><primary>群組</primary><secondary>新增使用者</secondary></indexterm>
+    <indexterm><primary>新增群組的使用者</primary></indexterm>
+
+    <para>有的時候，把使用者加入群組 (除了自己預設的 “主要” 群組) 以取得額外的權限。例如，在 <emphasis>audio</emphasis> 群組內的使用者可以近用該群組內的音效設備 (見專欄 <xref linkend="sidebar.special-files" />)。以 <command>adduser <replaceable>user</replaceable> <replaceable>group</replaceable></command> 命令就能把使用者加入該群組。</para>
+
+    <sidebar id="sidebar.special-files">
+      <title><emphasis>基本</emphasis> 近用設備的權限</title>
+      <indexterm><primary>設備</primary><secondary>近用權限</secondary></indexterm>
+      <indexterm><primary>檔案</primary><secondary>特別</secondary></indexterm>
+      <indexterm><primary>模式</primary><secondary>字元</secondary></indexterm>
+      <indexterm><primary>模式</primary><secondary>區塊</secondary></indexterm>
+      <indexterm><primary>區塊，模組</primary></indexterm>
+      <indexterm><primary>字元，模組</primary></indexterm>
+      <indexterm><primary>特別，檔案</primary></indexterm>
+      <indexterm><primary><command>mknod</command></primary></indexterm>
+
+      <para>每個週邊硬體設備在 Unix 之下，都是一個儲存在 <filename>/dev/</filename> (DEVices) 的特別檔案。根據設備的特性有兩種特別檔案：“字元模式” 與 “區塊模式” 檔案，每個模式都祗有固定數量的運算元。字元模式限制讀/寫運算，區塊模式還允許搜尋可得的資料。最後，每個特別檔案有兩個數字 (“主要” 與 “次要”) 供核心辨識該設備。這種檔案以 <command>mknod</command> 命令新增，包括符號名稱 (人類可以理解的符號)。</para>
+
+      <para>特別檔案的權限對映至近用設備本身的權限。因此，<filename>/dev/mixer</filename> 這個檔案代表混音器，祗有根使用者與 <literal>audio</literal> 群組的使用者擁有讀/取權限。且祗有該等使用者才能操作混音器。</para>
+
+      <para>經由 <emphasis role="pkg">udev</emphasis>、<emphasis role="pkg">consolekit</emphasis> 與 <emphasis role="pkg">policykit</emphasis> 指令，使用者就可以直接操作 (不經由網路) 這些設備。</para>
+    </sidebar>
+  </section>
+  <section id="sect.shell-environment">
+    <title>Shell 環境</title>
+
+    <para>命令解譯器 (或 shells) 是使用者接觸電腦的第一個點，必須足夠友善。大部份的人使用初始設定的腳本組態其行為 (自動完成、提示字元等)。</para>
+    <indexterm><primary>命令列介面</primary></indexterm>
+    <indexterm><primary>命令解譯器</primary></indexterm>
+    <indexterm><primary>shell</primary></indexterm>
+    <indexterm><primary><command>bash</command></primary></indexterm>
+
+    <para><command>bash</command> 是標準的 shell，使用 <filename>/etc/bash.bashrc</filename> 初始腳本做為 “互動” shells，並以 <filename>/etc/profile</filename> 做為 “登入” shells。</para>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> 登入 shell 與 (非) 互動 shell</title>
+
+      <para>簡單說，不論在地登入或使用 <command>ssh</command> 遠端登入，或以 <command>bash --login</command> 命令登入，都啟用登入 shell。在 登入或非登入 shell 裡，該 shell 必須是互動的 (例如在 <command>xterm</command>-type 終端機內)；或非互動式 (使用執行式腳本)。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>發現</emphasis> 其他 shells、其他腳本</title>
+
+      <para>命令解譯器有自己的語法及其組態檔案。因此，<command>zsh</command> 使用 <filename>/etc/zshrc</filename> 與 <filename>/etc/zshenv</filename>；<command>csh</command> 使用 <filename>/etc/csh.cshrc</filename>、<filename>/etc/csh.login</filename> 與 <filename>/etc/csh.logout</filename>。這些程式的手冊頁面詳述其用法。</para>
+      <indexterm><primary><command>zsh</command></primary></indexterm>
+      <indexterm><primary><command>csh</command></primary></indexterm>
+    </sidebar>
+
+    <para><command>bash</command> 啟用 <filename>/etc/bash.bashrc</filename> 檔案 (未評論的幾列) 內的 “自動完成”。</para>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> 自動補完</title>
+      <indexterm><primary>自動補完</primary></indexterm>
+
+      <para>若干命令解譯器提供補完功能，即鍵入命令前幾個字後，使用者按 <keycap>Tab</keycap> 後，shell 自動補完命令名稱或參數。使用者的工作更有效率且更少錯誤。</para>
+
+      
+      <para>此函數極有用並富彈性。可根據每個命令分別組態。因此，<command>apt-get</command> 之後的第一個參數，可根據此命令的語法布建，即使未對映任何檔案 (在本例中，可能的選擇為 <literal>install</literal>、<literal>remove</literal>、<literal>upgrade</literal>等)。</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> 波浪號，回到家資料夾的捷徑</title>
+      <indexterm><primary>~</primary></indexterm>
+      <indexterm><primary>波浪號</primary></indexterm>
+
+      <para>波浪號通常用於表示環境變數 <varname>HOME</varname> 指向 (就是使用者的家資料夾，如 <filename>/home/rhertzog/</filename>) 的資料夾。命令解譯器自動取代：<filename>~/hello.txt</filename> 就是 <filename>/home/rhertzog/hello.txt</filename>。</para>
+
+      <para>波浪號也可近用至另個使用者的家資料夾。因此，<filename>~rmas/bonjour.txt</filename> 等於 <filename>/home/rmas/bonjour.txt</filename>。</para>
+    </sidebar>
+
+    <para>除了這些常見的腳本，使用者還可以建立自己的 <filename>~/.bashrc</filename> 與 <filename>~/.bash_profile</filename> 來組態其 shell。常見的改變是新增別名；即自動取代執行的命令，以加速命令的效率。例如，新增 <literal>la</literal>  別名取代 <command>ls -la | less</command> 命令後，祗需鍵入 <command>la</command> 就能檢視資料夾內容的詳情。</para>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> 環境變數</title>
+      <indexterm><primary>環境</primary><secondary>環境變數</secondary></indexterm>
+      <indexterm><primary>變數，環境</primary></indexterm>
+
+      <para>環境變數儲存供 shell 或其他程式使用的全域設定。它們是與環境相關的 (每個程序都有自己的環境變數) 但可繼承的。最後這個特性讓登入 shell 時可以宣告繼承所有程式的變數。</para>
+    </sidebar>
+
+    <para>設定預設的環境變數是 shell 組態的重要工作。除了把變數指定給 shell 之外，還可以放在 <filename>/etc/environment</filename> 檔案內，以備供啟始 shell 的其他程式使用。設定的變數通常包括 <varname>ORGANIZATION</varname>，包括公司或組織的名稱；以及 <varname>HTTP_PROXY</varname>，指示 HTTP 代理伺服器的位置。</para>
+
+    <sidebar>
+      <title><emphasis>秘訣</emphasis> 所有的 shells 擁有相同的組態</title>
+
+      <para>使用者通常以相同的方式登入與互動 shell。所以，從 <filename>~/.bashrc</filename> 裡的 <filename>~/.bash_profile</filename> 檔案選擇解譯器 (或 “來源”) 的內容。也可使用適用於所有使用者的檔案 (呼叫 <filename>/etc/bash.bashrc</filename> 源自 <filename>/etc/profile</filename>)。</para>
+    </sidebar>
+  </section>
+  <section id="sect.config-printing">
+    <title>列表機組態</title>
+    <indexterm><primary>組態</primary><secondary>列印</secondary></indexterm>
+    <indexterm><primary>列印</primary><secondary>組態</secondary></indexterm>
+
+    <para>組態印表機是管理者與使用者頭痛的項目之一。感謝 IPP 協定 (Internet Printing Protocol) 的自由印表機伺服器 <emphasis role="pkg">cups</emphasis>，這些頭痛已過去了。</para>
+    <indexterm><primary>IPP</primary></indexterm>
+    <indexterm><primary>Internet Printing Protocol</primary></indexterm>
+    <indexterm><primary><command>cups</command></primary></indexterm>
+
+    <para>此程式分散在若干 Debian 套件中：<emphasis role="pkg">cups</emphasis> 是中央印表伺服器；<emphasis role="pkg">cups-bsd</emphasis> 是使用傳統 BSD 列印系統 (<command>lpd</command> 後台進程、<command>lpr</command> 與 <command>lpq</command> 等命令) 命令的相容層；<emphasis role="pkg">cups-client</emphasis> 包括一群與伺服器互動 (攔阻或放行印表機、檢視或刪除進行中的印表工作等) 的程式；最後，<emphasis role="pkg">cups-driver-gutenprint</emphasis> 包括給 <command>cups</command> 使用的其他印表機驅動程式集。</para>
+    <indexterm><primary><command>lpr</command></primary></indexterm>
+    <indexterm><primary><command>lpd</command></primary></indexterm>
+    <indexterm><primary><command>lpq</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>社群</emphasis> CUPS</title>
+      <indexterm><primary>CUPS</primary></indexterm>
+      <indexterm><primary>通用 Unix 列印系統</primary></indexterm>
+
+      <para>CUPS (通用 Unix 列印系統, Common Unix Printing System) 是蘋果公司管理的計畫 (與商標)。<ulink type="block" url="http://www.cups.org/" /></para>
+    </sidebar>
+
+    <para>組態這些套件後，可經由網頁介面進入本地位址就能管理 <command>cups</command>：<literal>http://localhost:631/</literal>。可以新增、移除與管理印表機 (包括網路印表機)。也可以在桌面環境以圖形介面管理 <command>cups</command>。最後，還有 <command>system-config-printer</command> 圖形介面 (來自同名的 Debian 套件) 可用。</para>
+    <indexterm><primary><command>cups</command></primary><secondary>管理</secondary></indexterm>
+
+    <sidebar>
+      <title><emphasis>說明</emphasis> 過時的 <filename>/etc/printcap</filename></title>
+
+      <para><emphasis>cups</emphasis> 不再使用已經過時的 <filename>/etc/printcap</filename> 檔案。從此檔案取得的可用印表機已過時不合用。為了避免此麻燸，應刪除此檔案並連結 (見專欄 <xref linkend="sidebar.symbolic-link" />) 至 <filename>/var/run/cups/printcap</filename>，由 <emphasis>cups</emphasis> 維護該檔案以確保其相容性。</para>
+      <indexterm><primary><filename>printcap</filename></primary></indexterm>
+    </sidebar>
+  </section>
+  <section id="sect.config-bootloader">
+    <title>組態 Bootloader</title>
+    <indexterm><primary>安裝器</primary><secondary>啟動載入器</secondary></indexterm>
+    <indexterm><primary>啟動載入器</primary></indexterm>
+
+    <para>或許已經運作了，但最好知道如何組態與安裝載入啟動器，萬一它不在 Master Boot Record 中。安裝 Windows 等其他作業系統後，很可能出現這種情況。以下的資訊在必要時可協助修改載入啟動器組態。</para>
+
+    <sidebar>
+      <title><emphasis>基本</emphasis> Master boot record</title>
+      <indexterm><primary>MBR</primary></indexterm>
+      <indexterm><primary>Master Boot Record</primary></indexterm>
+
+      <para>主開機記錄 (Master Boot Record, MBR) 位於第一顆磁碟的最前方 512 位元組，首先被 BIOS 載入，再啟動作業系統。一般來說，由主開機記錄安裝啟動程式，移除稍早的內容。</para>
+    </sidebar>
+    <section id="sect.identify-disks">
+      <title>辨識磁碟</title>
+
+      <sidebar>
+        <title><emphasis>文化</emphasis> <emphasis>udev</emphasis> 與 <filename>/dev/</filename></title>
+
+	<para><filename>/dev/</filename> 資料夾習慣儲存被稱為 “特殊的” 檔案，用於代表系統的週邊裝置 (見專欄 <xref linkend="sidebar.special-files" />)。曾經納入所有可能用到的特殊檔案。這種處理方式有若干缺點，限制設備數量是其中之一，每種設備祗能有一個 (因為清單名稱被限制)，且不可能知道實際上該用那個特殊檔案。</para>
+
+	<para>如今，以動態方式管理特殊的檔案，並且更適合熱切換的電腦設備。核心與 <emphasis>udev</emphasis> 合作在需要的時候新增與刪除檔案以對映出現或消失的設備。所以，<filename>/dev/</filename> 不需要維持不變，反而採用 RAM 儲存的檔案系統清除或納入相關的款目。</para>
+
+	<para>核心與新增的設備溝通，並發給主要/次要號碼以供辨識。以 <command>udevd</command> 命令可以新增特殊的檔案並授權使用它。也可新增別名執行其他的工作 (諸如初始化或登錄工作)。<command>udevd</command> 命令的行為由一組 (可客製化) 的規則驅動。</para>
+
+	<para>動態給予名稱，就能夠讓同名稱永遠指向特定設備，不必在意連結的設備或順序，尤其在使用 USB 週邊時更為便利。第一個磁碟的第一個區塊稱為 <filename>/dev/sda1</filename> 可供向後相容，喜歡的話也可稱為 <filename>/dev/root-partition</filename>，或兩者共用，因為 <command>udevd</command> 可以組態成自動新增符號連結。</para>
+
+	<para>過去在需要進入特定設備檔案時，部份的核心模組無法自動載入。現在情況已變了，週邊設備的特殊檔案於載入模組時才會存在；所以問題不大，受惠於自動偵測硬體，大部份模組都可於啟動時載入。但對於偵測不到的週邊 (諸如極舊的磁碟機或 PS/2 滑鼠)，則無效。在此情況下，就需新增 <literal>floppy</literal>、<literal>psmouse</literal> 與 <literal>mousedev</literal> 等模組至 <filename>/etc/modules</filename> 才能於啟動時強迫載入。</para>
+      </sidebar>
+
+      <indexterm><primary>硬碟，名稱</primary></indexterm>
+      <indexterm><primary>名稱</primary><secondary>硬式磁碟機</secondary></indexterm>
+
+      <para>組態啟動程式必須辨認硬碟及其分區。Linux 使用 “block” 特殊檔案儲存在 <filename>/dev/</filename> 資料夾內。因為 Debian <emphasis role="distribution">Squeeze</emphasis> 版本使用源自 Linux 核心的硬碟命名架構，所有的硬碟 (IDE/PATA、SATA、SCSI、USB、IEEE 1394) 都以 <filename>/dev/sd*</filename> 表示。</para>
+
+      <para>每個分區由其磁碟代號表示：如，<filename>/dev/sda1</filename> 是第一個磁碟的第一個分區，而 <filename>/dev/sdb3</filename> 是第二個磁碟的第三個分區。</para>
+
+      <indexterm><primary>分區</primary><secondary>主要</secondary></indexterm>
+      <indexterm><primary>分區</primary><secondary>延伸</secondary></indexterm>
+      <indexterm><primary>分區</primary><secondary>次要</secondary></indexterm>
+      <indexterm><primary>分區表</primary><secondary>MS-DOS 格式</secondary></indexterm>
+      <para>PC 架構 (或 “i386”，包括新出現的 “amd64”) 不再受限於使用 “MS-DOS” 分區表格式，每個磁碟可以擁有超過 4 個 “主要” 分區。在此架構下要超過此限制，必須新增 “延伸” 分區，然後就能使用新增的 “次要” 分區。這些次要分區由 5 開始編號。所以，第一個磁碟的次要分區可以是 <filename>/dev/sda5</filename>，然後是 <filename>/dev/sda6</filename>，餘此類推。</para>
+
+      <para>MS-DOS 分區表格式的另個限制是磁碟的容量不能超過 2 TiB，成為當代磁碟的真正問題。</para>
+
+      <indexterm><primary>GPT</primary><secondary>分區表格式</secondary></indexterm>
+      <indexterm><primary>分區表</primary><secondary>GPT 格式</secondary></indexterm>
+      <para>GPT 是新的分區表格式，解放對區分數的限制 (標準方式最多可以設定 128 個區分) 以及磁碟容量的限制 (最多達 8 ZiB，超過 8 百萬兆位元組)。若想在一個磁碟切出多個實體區分，必須以 GPT 格式新增分區表。</para>
+
+      <para>不容易記得磁碟掛在 SATA 控制卡的位置，或在 SCSI 鏈的第三個位置，尤其是熱插拔硬式磁碟機 (包括 SATA 磁碟與外掛磁碟) 可改變開機的位置。還好，<command>udev</command> 以固定的名稱，新增 <filename>/dev/sd*</filename> 以外的符號連結，就能夠輕易的辨識硬式磁碟機。這種符號連結儲存在 <filename>/dev/disk/by-id</filename> 之內。例如，在兩個實體磁碟的機器，可以找到如下的訊息：</para>
+
+      <screen><computeroutput>mirexpress:/dev/disk/by-id# </computeroutput><userinput>ls -l
+</userinput><computeroutput>total 0
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP-part1 -&gt; ../../sda1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP-part2 -&gt; ../../sda2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697 -&gt; ../../sdb
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697-part1 -&gt; ../../sdb1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697-part2 -&gt; ../../sdb2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP-part1 -&gt; ../../sda1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP-part2 -&gt; ../../sda2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697 -&gt; ../../sdb
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697-part1 -&gt; ../../sdb1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697-part2 -&gt; ../../sdb2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0 -&gt; ../../sdc
+lrwxrwxrwx 1 root root 10 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0-part1 -&gt; ../../sdc1
+lrwxrwxrwx 1 root root 10 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0-part2 -&gt; ../../sdc2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 wwn-0x5000c50015c4842f -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 wwn-0x5000c50015c4842f-part1 -&gt; ../../sda1
+[...]
+mirexpress:/dev/disk/by-id# </computeroutput></screen>
+
+      <para>同顆磁碟出現多次 (因為它們同時做為 ATA 磁碟與 SCSI 磁碟)，但是根據磁碟的型號與序號等相關資訊，就可找到對應的週邊裝置檔案。</para>
+
+      <para>下節的組態檔根據同樣的設定而來：一個 SATA 磁碟，第一個區分是安裝舊型的視窗、第二個分區安裝 Debian GNU/Linux。</para>
+    </section>
+    
+    <section id="sect.config-lilo">
+      <title>組態 LILO</title>
+      <indexterm><primary>LILO</primary></indexterm>
+      <indexterm><primary>Linux 載入器</primary></indexterm>
+
+      <para><emphasis>LILO</emphasis> (Linux 啟動程式, LInux LOader) 是最舊的啟動程式 — 穩定但粗糙。把核心的實體位址寫入 MBR 的啟動，所以每次更新至 LILO (或其組態檔案) 都必須再執行命令 <command>lilo</command>。忘記的話，移除或更新核心後，新的核心就不會在磁碟的原來位置，以致系統無法啟動。</para>
+
+      <para>LILO 的組態檔是 <filename>/etc/lilo.conf</filename>；一個簡單的檔案供標準組態之用，如下例。</para>
+
+      <example id="example.lilo.conf">
+        <title>LILO 組態檔案</title>
+
+        <programlisting>
+# The disk on which LILO should be installed.
+# By indicating the disk and not a partition.
+# you order LILO to be installed on the MBR.
+boot=/dev/sda
+# the partition that contains Debian
+root=/dev/sda2
+# the item to be loaded by default
+default=Linux
+
+# the most recent kernel image
+image=/vmlinuz
+  label=Linux
+  initrd=/initrd.img
+  read-only
+
+# Old kernel (if the newly installed kernel doesn't boot)
+image=/vmlinuz.old
+  label=LinuxOLD
+  initrd=/initrd.img.old
+  read-only
+  optional
+
+# only for Linux/Windows dual boot
+other=/dev/sda1
+  label=Windows</programlisting>
+      </example>
+    </section>
+    <section id="sect.config-grub">
+      <title>GRUB 2 組態</title>
+      <indexterm><primary>GRUB</primary></indexterm>
+      <indexterm><primary>GRUB 2</primary></indexterm>
+
+      <para><emphasis>GRUB</emphasis> (GRand Unified Bootloader) 是最近的事。更新核心後不必再啟動它；<emphasis>GRUB</emphasis> 知道如何讀取檔案系統並找到核心在磁碟的位置。鍵入 <command>grub-install /dev/sda</command> 命令就能夠把它安裝在第一個磁碟的 MBR。<indexterm><primary><command>grub-install</command></primary></indexterm></para>
+
+      <sidebar>
+        <title><emphasis>說明</emphasis> GRUB 的磁碟名稱</title>
+
+	<para>GRUB 祗能根據 BIOS 提供的資訊辨識硬式磁碟機。<literal>(hd0)</literal> 對應偵測到的第一個磁碟、<literal>(hd1)</literal> 第二個磁碟等。大部份的情況下，此順序剛好是 Linux 的磁碟順序，同時使用 SCSI 與 IDE 磁碟時就出問題。GRUB 把偵測到的資訊儲存在 <filename>/boot/grub/device.map</filename> 檔案內。若在此發現錯誤 (因為已知 BIOS 以不同的順序偵測到磁碟)，再次執行 <command>grub-install</command> 命令。<command>grub-mkdevicemap</command> 命令可新增 <filename>device.map</filename> 檔案。</para>
+
+	<para>區分表在 GRUB 內也有特定的名稱。通常使用 MS-DOS 格式的 “經典” 區分，第一個磁碟的第一個分區標記為 <literal>(hd0,msdos1)</literal>、第二個分區標記為 <literal>(hd0,msdos2)</literal>，餘此類推。</para>
+      </sidebar>
+
+      <para>GRUB 2 的組態存在 <filename>/boot/grub/grub.cfg</filename> 內，但該檔案 (在 Debian 環境下) 以其他方式產生。不可以人工方式修改它，否則在下次執行 <command>update-grub</command> 時 (更新多個套件時需執行它)，將失去該等修改的內容。修改 <filename>/boot/grub/grub.cfg</filename> 檔案 (新增給核心使用的參數或改變顯示選單的時間，舉例而已) 通常經由 <filename>/etc/default/grub</filename> 的變數。新增款目至選單時，可以新建 <filename>/boot/grub/custom.cfg</filename> 檔案或修改 <filename>/etc/grub.d/50_custom</filename> 檔案。更複雜的組態，可以修改 <filename>/etc/grub.d</filename> 內的其他檔案，或新增之；這些腳本應送回組態的片斷，很可能是外部程式做的修改。這些腳本將更新啟動的核心：<filename>10_linux</filename> 考量安裝 Linux 核心；<filename>20_linux_xen</filename> 考量 Xen 虛擬系統，而 <filename>30_os-prober</filename> 則列出其他的作業系統 (Windows、OS X、Hurd)。</para>
+    </section>
+    
+    <section id="sect.config-yaboot">
+      <title>Macintosh 電腦 (PowerPC)：組態 Yaboot</title>
+      <indexterm><primary><command>yaboot</command></primary></indexterm>
+
+      <para>Yaboot 是使用 PowerPC 晶片的舊型 Macintosh 電腦用到的啟動程式。它的啟動方式不同於 PC，採用 “引導” 分區法，從 BIOS (或 OpenFirmware) 執行啟動程式，然後由 <command>ybin</command> 程式安裝 <command>yaboot</command> 及其組態檔。修改 <filename>/etc/yaboot.conf</filename> 檔案後 (在啟動程式分區複製，且 <command>yaboot</command> 知道如何到磁碟找尋核心的位置)，需再次執行此命令。</para>
+
+      <para>執行 <command>ybin</command> 之前，應有合法的 <filename>/etc/yaboot.conf</filename> 程式。以下的最小組態的範例。<indexterm><primary><command>ybin</command></primary></indexterm></para>
+
+      <example id="example.yaboot.conf">
+        <title>Yaboot 組態檔案</title>
+
+        <programlisting>
+# bootstrap partition
+boot=/dev/sda2
+# the disk
+device=hd:
+# the Linux partition
+partition=3
+root=/dev/sda3
+# boot after 3 seconds of inactivity
+# (timeout is in tenths of seconds)
+timeout=30
+
+install=/usr/lib/yaboot/yaboot
+magicboot=/usr/lib/yaboot/ofboot
+enablecdboot
+
+# last kernel installed
+image=/vmlinux
+        label=linux
+        initrd=/initrd.img
+        read-only
+
+# old kernel
+image=/vmlinux.old
+        label=old
+        initrd=/initrd.img.old
+        read-only
+
+# only for Linux/Mac OSX dual-boot
+macosx=/dev/sda5
+
+# bsd=/dev/sdaX and macos=/dev/sdaX
+# are also possible</programlisting>
+      </example>
+    </section>
+  </section>
+  <section id="sect.config-misc">
+    <title>其他組態：時間同步、記錄、共享近用…</title>
+
+    <para>本節列出的細目對希望精通 GNU/Linux 系統組態極有幫助。這裡祗列出簡要的內容，詳情仍需參閱文件。</para>
+
+    <section id="sect.timezone">
+      <title>時區</title>
+      <indexterm><primary>時區</primary></indexterm>
+
+      <sidebar id="sidebar.symbolic-link">
+        <title><emphasis>基本</emphasis> 符號連結</title>
+        <indexterm><primary>連結</primary><secondary>符號</secondary></indexterm>
+        <indexterm><primary>符號連結</primary></indexterm>
+        <indexterm><primary><command>ln</command></primary></indexterm>
+
+	<para>符號連結是一種指向另個檔案的指標。近用時，被指向的檔案就被打開。移除連結不會刪除指向的檔案。同樣的，沒有自的授權，而是使用目標本身的授權。最後，可以用於任何類型的檔案：資料夾、特殊檔案 (網路插座、具名管道、設備檔案等)、甚至另個符號連結。</para>
+
+	<para><command>ln -s <replaceable>target</replaceable> <replaceable>link-name</replaceable></command> 命令新增一個符號連結，命名為 <replaceable>link-name</replaceable>，指向 <replaceable>target</replaceable>。</para>
+
+	<para>若目標不存在，則連結算是 “破損” 且其近用送回錯誤訊息指示目標檔案不存在。若連結指向另個連結，該連結又指向其前任連結，則該等連結的 “鏈” 形成 “循環”。在這種情況下，近用循環內的任一連結也會得到特定的錯誤 (“過多層的符號連結”)；經過若干循環後核心放棄它。</para>
+      </sidebar>
+
+      <para>初始安裝時經由 <emphasis role="pkg">tzdata</emphasis> 套件組態時區。<command>dpkg-reconfigure tzdata</command> 命令以互動方式修改時區。其組態內容儲存在 <filename>/etc/timezone</filename> 檔案。在 <filename>/usr/share/zoneinfo</filename> 資料夾內對映的檔案複製在 <filename>/etc/localtime</filename> 檔案內；此檔案包括使用日光節約時間的國家。</para>
+      <indexterm><primary><filename>timezone</filename></primary></indexterm>
+      <indexterm><primary><filename>/etc/timezone</filename></primary></indexterm>
+      <indexterm><primary><filename>zoneinfo</filename></primary></indexterm>
+      <indexterm><primary><filename>/usr/share/zoneinfo/</filename></primary></indexterm>
+      <indexterm><primary>DST</primary></indexterm>
+      <indexterm><primary>日光節約時間</primary></indexterm>
+
+      <para>暫時變更時區，可使用 <varname>TZ</varname> 環境變數，它的優先次序在預設的組態檔之前：</para>
+      <indexterm><primary><varname>TZ</varname></primary></indexterm>
+
+      <screen id="screen.tz">
+<computeroutput>$ </computeroutput><userinput>date</userinput>
+<computeroutput>Thu Feb 19 11:25:18 CET 2015</computeroutput>
+<computeroutput>$ </computeroutput><userinput>TZ="Pacific/Honolulu" date</userinput>
+<computeroutput>Thu Feb 19 00:25:21 HST 2015</computeroutput></screen>
+
+      <sidebar>
+        <title><emphasis>說明</emphasis> 系統時鐘，硬體時鐘</title>
+
+	<para>電腦內有兩個時間來源。主機板有個硬體時鐘，稱為 “CMOS 時鐘”。這個時鐘不準，近用的速度慢。作業系統核心有自己的系統時鐘，以自己的方式 (可能由時間伺服器協助，見 <xref linkend="sect.time-synchronization" />) 保持時間的正確。此系統時鐘較為準確，尤其是不需經由硬體變數就能近用。然而，系統時鐘祗存在於記憶體，開機就歸零，不像 CMOS 時間鐘，有電池支援，不受重新開機或暫停下仍能 “存活”。因此，開機時，由 CMOS 時鐘設定系統時鐘，關機時更新 CMOS 時鐘 (若被不當調整就能修正它)。</para>
+
+	<para>實務上有個問題，因為 CMOS 時鐘祗是個計數器，未含時區資訊。有幾個方式選擇其解釋方式：系統以世界標準時間 (UTC，舊稱 GMT)，或當地時間看待。雖然可以簡單切換，但卻頗為複雜：它的偏移值不是常數。系統無法判斷偏移值的正確性，尤其在時區交接。總是在世界標準時間與時區資訊之間重組在地時間，建議使用 CMOS 時間為世界標準時間。</para>
+
+	<para>不幸的是，視窗系統預設的組態忽視此建議；仍以 CMOS 時鐘為在地時間，啟動時猜測時區的變動。祗要執行單一的視窗系統，就沒有問題。可是，電腦經常安裝多個系統 (“雙重開機” 組態或在虛擬機器執行其他系統)，混亂就免不了，無法決定正確的時間。必須保留視窗系統的前提下，應把 CMOS 時鐘組態成 UTC (把機碼 <literal>HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation\RealTimeIsUniversal</literal> 設定為 “1” 做為 DWORD)，或使用 Debian 系統的 <command>hwclock --localtime --set</command> 設定硬體時鐘並標記追蹤其為在地時間 (並且在春秋兩季手段檢查時鐘的正確性)。</para>
+      </sidebar>
+    </section>
+    <section id="sect.time-synchronization">
+      <title>時間同步</title>
+      <indexterm><primary>時間同步</primary></indexterm>
+      <indexterm><primary>時間</primary><secondary>同步</secondary></indexterm>
+
+      <para>時間同步，在單機時代是多餘，但在網路時代卻很重要。使用者無權修改日期與時間，所以需要精準的時間以免混亂。尤有甚者，網路上的電腦時間同步後，有助於安排社群工作者透過網路全球串聯。受到攻擊時，容易依序恢復原來的運作。由多部機器收集來的統計資料，必須有同步的時間，才能發揮作用。</para>
+
+      <sidebar>
+        <title><emphasis>基本</emphasis> NTP</title>
+        <indexterm><primary>NTP</primary></indexterm>
+        <indexterm><primary>Network</primary><secondary>Time Protocol</secondary></indexterm>
+
+	<para>網路時間協定 (Network Time Protocol, NTP) 可以讓機器間相當精準的同步，甚至把網路延遲及其他偏移值列入考量。</para>
+
+	<para>網際網路上很多 NTP 伺服器可用，受歡迎的其工作量可能負荷過重。所以建議使用 <emphasis>pool.ntp.org</emphasis> NTP 伺服器，它是一組公開的 NTP 伺服器。也可使用針對特定地區的次群組伺服器，如 <emphasis>us.pool.ntp.org</emphasis> 係供美國使用、<emphasis>ca.pool.ntp.org</emphasis> 供加拿大使用。</para>
+
+	<para>然而，管理大型網路時，還是應安裝與公共伺服器同步的自己 NTP 伺服器。同個網路上自己的機器，就能使用內部的 NTP 伺服器不必增加外部公共伺服器的負擔。以自己的時鐘增加網路內機器的同質化，同步擷取與共用資源，使用共同的網路交換時間。</para>
+      </sidebar>
+      <section id="sect.ntp-on-workstations">
+        <title>給工作站</title>
+
+	<para>工作經常需要重新開機 (雖然祗是節省能源)，開機時以 NTP 同步就夠了。安裝 <emphasis role="pkg">ntpdate</emphasis> 套件就可以。需要更換 NTP 伺服器時，再修改 <filename>/etc/default/ntpdate</filename> 檔案即可。</para>
+        <indexterm><primary><filename>ntpdate</filename></primary></indexterm>
+        <indexterm><primary><filename>/etc/default/ntpdate</filename></primary></indexterm>
+      </section>
+      <section id="sect.ntp-on-servers">
+        <title>供伺服器</title>
+
+        
+	<para>伺服器很少重開機，系統時間必須絕對精準。為了永久維持時間的正確性，必須安裝由 <emphasis role="pkg">ntp</emphasis> 套件提供的 NPT 伺服器。預設的組態方式係與 <emphasis>pool.ntp.org</emphasis> 同步，且回應在地網路的請求。可以編輯 <filename>/etc/ntp.conf</filename> 檔案改變原來的組態，NTP 伺服器依照該檔案的內容而變更。若有多個伺服器，最好有一個在地時間伺服器與公共的伺服器同步，並做為在地網路其他伺服器的同步的依據。</para>
+        <indexterm><primary><emphasis role="pkg">ntp</emphasis></primary></indexterm>
+        <indexterm><primary>伺服器</primary><secondary>NTP</secondary></indexterm>
+        <indexterm><primary>NTP</primary><secondary>伺服器</secondary></indexterm>
+
+        <sidebar>
+          <title><emphasis>進一步</emphasis> GPS 模組與其他時間來源</title>
+          <indexterm><primary>GPS</primary></indexterm>
+          <indexterm><primary>DCF-77</primary></indexterm>
+
+	  <para>如果網路對時間同步極為敏感，最好在伺服器安裝 GPS 模組 (which will use the time from GPS satellites) 或 DCF-77 模組 (which will sync time with the atomic clock near Frankfurt, Germany)。在這種情況下，NTP 伺服器的組態就有點複雜，必須參照文件辦理。</para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.rotation-logs">
+      <title>輪轉日誌檔</title>
+      <indexterm><primary>檔案</primary><secondary>日誌，輪轉</secondary></indexterm>
+      <indexterm><primary>日誌</primary><secondary>檔案，輪轉</secondary></indexterm>
+      <indexterm><primary>輪轉日誌檔案</primary></indexterm>
+      <indexterm><primary><command>logrotate</command></primary></indexterm>
+
+      <para>日誌檔成長的速度很快，需要典藏它。最常的做法是循環典藏：祗保留最新的 <replaceable>X</replaceable> 部份。<command>logrotate</command> 是負責循環的程式，根據 <filename>/etc/logrotate.conf</filename> 檔案內的組態，把日誌檔儲存在 <filename>/etc/logrotate.d/</filename> 資料夾內。管理者可以修改該等檔案，修改 Debian 預設的循環政策。<citerefentry><refentrytitle>logrotate</refentrytitle> <manvolnum>1</manvolnum></citerefentry> 手冊頁面描述該組態可用的選項。可以在循環的過程中，增加典藏的檔案數，或把檔案移至指定的資料夾而不是刪除它們。也可以電子郵件方式寄到別的地方。</para>
+
+      <para><command>logrotate</command> 程式每日執行 <command>cron</command> 排程的要求 (詳情見 <xref linkend="sect.task-scheduling-cron-atd" />)。</para>
+    </section>
+    <section id="sect.sharing-admin-rights">
+      <title>共享管理員權限</title>
+      <indexterm><primary>帳號</primary><secondary>管理員帳號</secondary></indexterm>
+      <indexterm><primary>根</primary></indexterm>
+      <indexterm><primary><command>sudo</command></primary></indexterm>
+
+      <para>數個管理者共同在同個伺服器工作。共用同個根使用者密碼不是好主意，匿名引發的誤用很麻煩。解決方案是使用 <command>sudo</command> 程式，允許使用者對特定命令擁有專門的權力。在多數情況下，<command>sudo</command> 允許受信任的使用者以根的權限執行命令。使用者祗需執行 <command>sudo <replaceable>command</replaceable></command> 並以個人的密碼通過認證。</para>
+
+      <para>安裝的時候，<emphasis role="pkg">sudo</emphasis> 套件把完整的 root 權限授權給 <literal>sudo</literal> Unix 群組。管理者必須使用 <command>visudo</command> 命令授予其他權利，該命令允許使用者修改 <filename>/etc/sudoers</filename> 組態檔 (當然，必須啟用 <command>vi</command> 編輯器，或在 <varname>EDITOR</varname> 環境變數指定的編輯器)。新增一列 <literal><replaceable>username</replaceable> ALL=(ALL) ALL</literal> 就能允許該使用者以 root 的授權執行命令。</para>
+      <indexterm><primary><command>visudo</command></primary></indexterm>
+      <indexterm><primary><filename>sudoers</filename></primary></indexterm>
+      <indexterm><primary><filename>/etc/sudoers</filename></primary></indexterm>
+
+      <para>還有較複雜的組態，祗允許特定使用者執行部份命令。詳情在 <citerefentry><refentrytitle>sudoers</refentrytitle> <manvolnum>5</manvolnum></citerefentry> 手冊頁面。</para>
+    </section>
+    <section id="sect.fstab-mount-points">
+      <title>掛載點清單</title>
+      <indexterm><primary>點，掛載</primary></indexterm>
+      <indexterm><primary>掛載點</primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>基本</emphasis> 掛載與卸載</title>
+
+	<para>在 Debian 這類的 Unix-like 系統裡，檔案以樹狀的資料夾階層組織。<filename>/</filename> 資料夾稱為 “根資料夾”；其他的資料夾都是此根資料夾的次資料夾。“掛載” 是把週邊設備 (通常是磁碟) 納入系統檔案樹的作業。如果以其他磁碟儲存使用者個人的資料，將 “掛載” 於 <filename>/home/</filename> 資料夾。根檔案系統由核心永遠掛載於根；其他設備則稍後再透過啟動順序或以 <command>mount</command> 命令掛載進來。</para>
+        <indexterm><primary><command>mount</command></primary></indexterm>
+
+	<para>有些移動式裝置在連結時系統自動掛載，尤其在 GNOME、KDE 或其他圖形桌面環境。有些情況就需要使用者手動掛載。同樣的，也需要卸載 (從檔案樹移除)。標準的使用者權限不允許執行掛載 <command>mount</command> 與卸載 <command>umount</command> 命令。祗有管理者才能夠設定 <literal>user</literal> 選項於 <filename>/etc/fstab</filename> 檔案內，授權使用者執行該等命令 (獨立於每個掛載點)。</para>
+
+	<para><command>mount</command> 命令可以直接使用不需參數 (列出所有已掛載的檔案系統)。以下參數為掛載或卸載設備所必需。完整的參數，請參見對應的手冊頁面，<citerefentry><refentrytitle>mount</refentrytitle> <manvolnum>8</manvolnum></citerefentry> 與 <citerefentry><refentrytitle>umount</refentrytitle> <manvolnum>8</manvolnum></citerefentry>。單純個案的語法也簡單：例如，掛載使用 ex3 檔案系統的 <filename>/dev/sdc1</filename> 分區入 <filename>/mnt/tmp/</filename> 資料夾時，需執行 <command>mount -t ext3 /dev/sdc1 /mnt/tmp/</command> 命令。</para>
+      </sidebar>
+
+      <para><filename>/etc/fstab</filename> 檔案列出所有開機自動掛載或手動掛載的移動儲存裝置。每個掛載點由一列文字描述，包括若干空格區隔的欄位：<indexterm><primary><filename>fstab</filename></primary></indexterm> <indexterm><primary><filename>/etc/fstab</filename></primary></indexterm></para>
+      <itemizedlist>
+        <listitem>
+	  <para>待掛載的設備：可以是在地分區 (硬碟、CD-ROM) 或遠端的檔案系統 (如 NFS)。</para>
+
+	  <para>此欄位通常以檔案系統的 ID 取代 (可以用 <command>blkid <userinput>device</userinput></command>) 前置及 <literal>UUID=</literal>。此種方式可以應付新增或移除磁碟設備名稱的情況，或者以其他順序偵測到的磁碟。</para>
+        </listitem>
+        <listitem>
+	  <para>掛載點：這是把設備、遠端系統，或分區掛載於在地檔案系統的位置。</para>
+        </listitem>
+        <listitem>
+	  <para>類型：這個欄位定義掛載設備使用的檔案系統。<literal>ext4</literal>、<literal>ext3</literal>、<literal>vfat</literal>、<literal>ntfs</literal>、<literal>btrfs</literal>、<literal>xfs</literal> 等。</para>
+
+          <sidebar>
+            <title><emphasis>基本</emphasis> NFS，網路檔案系統</title>
+
+	    <para>NFS 是一種 Linux  環境下的網路檔案系統，把遠端的檔案以透明方式納入在地的檔案系統內。</para>
+          </sidebar>
+
+	  <para>知名的檔案系統清單在 <citerefentry><refentrytitle>mount</refentrytitle> <manvolnum>8</manvolnum></citerefentry> 手冊頁面。特殊值 <literal>swap</literal> 係供交換分區使用；特殊值 <literal>auto</literal> 告訴<command>mount</command> 程式自動偵測檔案系統 (對讀卡機與 USB 磁碟機特別有用，因為它們可能使用不同的檔案系統)；</para>
+        </listitem>
+        <listitem>
+	  <para>選項：依檔案系統的不同，而有多種選項，詳情見 <command>mount</command> 手冊頁面。最常用的是</para>
+          <itemizedlist>
+            <listitem>
+	      <para><literal>rw</literal> 或 <literal>ro</literal>，表示該設備掛載後可以讀/寫，或祗有讀取的權限。</para>
+            </listitem>
+            <listitem>
+	      <para><literal>noauto</literal> 開機時關閉自動掛載。</para>
+            </listitem>
+            <listitem>
+              <para><literal>nofail</literal> 允許在啟動時處理設備，即使該設備不存在。確認啟動時，該外接磁碟機可能未插入，因為 <command>systemd</command> 將確認所有掛載點在啟動完成前必須自動掛載。可將此與 <literal>x-systemd.device-timeout=5s</literal> 併用，告訴 <command>systemd</command> 不必等 5 秒以上的時間，直接進入下個作業階段 (見 <citerefentry><refentrytitle>systemd.mount</refentrytitle><manvolnum>5</manvolnum></citerefentry>)。</para>
+            </listitem>
+            <listitem>
+	      <para><literal>user</literal> 授權所有的使用者均可掛載此檔案系統 (若無此選項，則祗有根使用者才有此權限)。</para>
+            </listitem>
+            <listitem>
+	      <para><literal>defaults</literal> 表示預設的選項群組為：<literal>rw</literal>、<literal>suid</literal>、<literal>dev</literal>、<literal>exec</literal>、<literal>auto</literal>、<literal>nouser</literal> 與 <literal>async</literal>，使用了 <literal>defaults</literal> 之後，還可以用 <literal>nosuid</literal> 命令、<literal>nodev</literal> 及其他類似的命令，中止 <literal>suid</literal>、<literal>dev</literal> 等作用。加入 <literal>user</literal> 選項可再啟用它，因為 <literal>defaults</literal> 包括 <literal>nouser</literal>。</para>
+            </listitem>
+          </itemizedlist>
+        </listitem>
+        <listitem>
+	  <para>備份：此欄位幾乎都設為 <literal>0</literal>。當它是 <literal>1</literal> 時，告訴 <command>dump</command> 工具將備份有資料的分區。</para>
+        </listitem>
+        <listitem>
+	  <para>檢查順序：最後一個欄位告知系統在啟動時，或其他時機，檢查檔案系統的完整性。若設為 <literal>0</literal>，則不檢查。根檔案系統的值為 <literal>1</literal>，其他固定檔案系統的值為 <literal>2</literal>。</para>
+        </listitem>
+      </itemizedlist>
+
+      <example id="example.fstab">
+        <title>範例 <filename>/etc/fstab</filename> 檔案</title>
+
+        <programlisting>
+# /etc/fstab: static file system information.
+#
+# &lt;file system&gt; &lt;mount point&gt;   &lt;type&gt;  &lt;options&gt;       &lt;dump&gt;  &lt;pass&gt;
+proc            /proc           proc    defaults        0       0
+# / was on /dev/sda1 during installation
+UUID=c964222e-6af1-4985-be04-19d7c764d0a7 / ext3 errors=remount-ro 0 1
+# swap was on /dev/sda5 during installation
+UUID=ee880013-0f63-4251-b5c6-b771f53bd90e none swap sw  0       0
+/dev/scd0       /media/cdrom0   udf,iso9660 user,noauto 0       0
+/dev/fd0        /media/floppy   auto    rw,user,noauto  0       0
+arrakis:/shared /shared         nfs     defaults        0       0</programlisting>
+      </example>
+
+      <para>此例的最後一個款目對應於網路檔案系統 (NFS)：<filename>/shared/</filename> 資料夾位於 <emphasis>arrakis</emphasis> 伺服器掛載於本地機器的 <filename>/shared/</filename>。<filename>/etc/fstab</filename> 檔案格式位於 <citerefentry><refentrytitle>fstab</refentrytitle><manvolnum>5</manvolnum></citerefentry> 手冊頁面。</para>
+
+      <sidebar>
+        <title><emphasis>下一步</emphasis> 自動掛載</title>
+
+        
+	<para><emphasis>am-utils</emphasis> 套件提供 <command>amd</command> 自動載入公用程式，使月手者近用其慣用的掛載點時，可在需要時掛載移動式媒體。無法在不用時自動卸載該等設備。</para>
+        <indexterm><primary><emphasis>am-utils</emphasis></primary></indexterm>
+        <indexterm><primary><command>amd</command></primary></indexterm>
+        <indexterm><primary><command>automount</command></primary></indexterm>
+        <indexterm><primary><emphasis>autofs</emphasis></primary></indexterm>
+        <indexterm><primary>automounter</primary></indexterm>
+
+	<para>還有其他自動掛載公用程式，諸如 <command>automount</command> 位在 <emphasis>autofs</emphasis> 套件中。</para>
+
+	<para>與 GNOME、KDE 及其他圖形桌面環境一起工作的 <emphasis>udisks</emphasis>，在連結移動媒體時，也可自動掛載。</para>
+      </sidebar>
+    </section>
+    <section id="sect.locate-updatedb">
+      <title><command>locate</command> 與 <command>updatedb</command></title>
+      <indexterm><primary><command>locate</command></primary></indexterm>
+      <indexterm><primary><command>updatedb</command></primary></indexterm>
+      <indexterm><primary><command>mlocate</command></primary></indexterm>
+
+      
+      <para>可以用 <command>locate</command> 命令找尋已知名稱的檔案。幾乎即時送回結果，因為它搜尋的資料庫儲存系統內所有檔案的位置；此資料庫由 <command>updatedb</command> 命令每日更新。<command>locate</command> 命令還有其他用途，Debian 選擇 <emphasis role="pkg">mlocate</emphasis> 做為其標準系統。</para>
+
+      <para><command>mlocate</command> 很聰明，祗送回該命令使用者能夠近用的檔案，不會顯示系統內其他符合條件的檔案 (因為它以根權限執行 <command>updatedb</command> 命令)。為了提供額外的安全保護，管理者可以使用 <varname>PRUNEDPATHS</varname> 位於 <filename>/etc/updatedb.conf</filename>，排除已經索引的其他資料夾。</para>
+    </section>
+  </section>
+  <section id="sect.kernel-compilation">
+    <title>編譯核心</title>
+    <indexterm><primary>編譯</primary><secondary>核心</secondary></indexterm>
+    <indexterm><primary>核心</primary><secondary>編譯</secondary></indexterm>
+
+    <para>Debian 的核心儘量納入所有的功能，以及最多的驅動程式，以便涵蓋現在的硬體組態。所以，有些使用者寧願自行編譯祗包括所需的核心。這麼做有兩個理由。第一，記憶體用量較小，核心程式碼，即使未用到，也佔有記憶體的空間 (而且永遠不 “離開” 置換記憶體，因為它用到實際的 RAM)，降低系統的整體效能。在地自行編譯的核心也限制了安全問題的範圍，因為祗編譯與執行部份核心碼。</para>
+
+    <sidebar>
+      <title><emphasis>說明</emphasis> 安全更新</title>
+
+      <para>決定編譯自己的核心後，必須接受一個事實：Debian 不能確認客製化核心的安全更新。使用 Debian 的核心，可以使用 Debian 計畫提供的更新。</para>
+    </sidebar>
+
+    <para>使用祗在補丁內的功能 (不在標準的核心內) 時，就必須重新編譯核心。</para>
+
+    <sidebar>
+      <title><emphasis>進一步</emphasis> The Debian Kernel Handbook</title>
+      <indexterm><primary><emphasis role="pkg">debian-kernel-handbook</emphasis></primary></indexterm>
+
+      <para>Debian 核心團隊維護的 “Debian Kernel Handbook” (全文見 <emphasis role="pkg">debian-kernel-handbook</emphasis> 套件) 詳述核心相關的工作與 Debian 核心套件的處理方式。欲知可節所述事宜的詳情，請參見此網址。<ulink type="block" url="http://kernel-handbook.alioth.debian.org" /></para>
+    </sidebar>
+
+    <section id="sect.kernel-compilation-prerequisites">
+      <title>簡介和先決條件</title>
+
+      <para>Debian 以套件方式管理核心，與傳統的編譯安裝不同調。核心還是在套件系統的控制下，可以被完整移除，或布建在多個機器上。與該等套件有關的腳本自動與啟動程式和 initrd 產生器互動。</para>
+
+      <para>上游的 Linux 原始碼包括建置 Debian 核心套件所需的一切。但是仍可再安裝 <emphasis role="pkg">build-essential</emphasis> 以確保擁有建立 Debian 套件所需的所有工具。而且，組態核心時需要 <emphasis role="pkg">libncurses5-dev</emphasis> 套件。最後，<emphasis role="pkg">fakeroot</emphasis> 套件將在不使用管理者權限的前提下，啟用新增 Debian 套件。</para>
+
+      
+      <sidebar>
+        <title><emphasis>文化</emphasis> <emphasis role="pkg">kernel-package</emphasis> 的美好歲月</title>
+        <indexterm><primary><emphasis role="pkg">kernel-package</emphasis></primary></indexterm>
+
+	<para>以 Linux 布建系統能夠建立適當的 Debian 套件前，使用 <command>make-kpkg</command>，來自 <emphasis role="pkg">kernel-package</emphasis> 套件。</para>
+	
+      </sidebar>
+
+    </section>
+    <section id="sect.kernel-sources">
+      <title>取得原始碼</title>
+      <indexterm><primary>Linux 核心原始碼</primary></indexterm>
+      <indexterm><primary>核心</primary><secondary>原始碼</secondary></indexterm>
+      <indexterm><primary>原始碼</primary><secondary> Linux 核心</secondary></indexterm>
+
+      <para>就像 Debian 系統內其他有用的東西，Linux 核心原始碼也位在套件內。祗要安裝 <emphasis role="pkg">linux-source-<replaceable>version</replaceable></emphasis> 套件，就能取得全部的原始碼。<command>apt-cache search ^linux-source</command> 命令列出 Debian 內各種版本的核心套件。最新的版本在 <emphasis role="distribution">Unstable</emphasis> 發行版內：可以毫不費力的取得 (尤其是把 APT 根據 <xref linkend="sect.apt-mix-distros" /> 的指示組態後)。這些套件內的原始碼並未完全吻合 Linus Torvalds 與其他核心發展者釋出的內容；如同其他的發行版，Debian 以一系列的補丁搭配，這些補丁可能 (或不可能) 以自己的方法納入 Linux 上游的版本。包括從較新核心版本的 fixes/features/drivers 反向移殖，功能較新但尚未 (全部) 合併入上游的Linux 樹，甚至 Debian 特別的改變。</para>
+
+      <para>本節其他內容以 Linux 核心 3.16 版為準，範例則不以此為限，可以調整為特定的核心版本。</para>
+
+      <para>假設 <emphasis role="pkg">linux-source-3.16</emphasis> 套件已安裝好了。包括 <filename>/usr/src/linux-source-3.16.tar.xz</filename>，核心原始碼的壓縮檔。在另個資料夾解縮 (不能直接在 <filename>/usr/src/</filename> 之下，因為不需特別的授權就可以重新編譯 Linux 核心)：<filename>~/kernel/</filename> 是個不錯的選擇。</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>mkdir ~/kernel; cd ~/kernel</userinput>
+<computeroutput>$ </computeroutput><userinput>tar -xaf /usr/src/linux-source-3.16.tar.xz</userinput></screen>
+
+      <sidebar>
+        <title><emphasis>文化</emphasis> 核心原始碼的位置</title>
+
+	<para>傳統上，Linux 核心原始碼置於 <filename>/usr/src/linux/</filename>，需要根權限才能編譯。然而，管理者的權限就夠了。<literal>src</literal> 群組的成員也可以使用該資料夾，但是應避免使用 <filename>/usr/src/</filename>。把核心原始碼置於個人資料夾時，應把安全置於第一位：在 <filename>/usr/</filename> 內的檔案都應明確其在套件系統內的作用，試圖聚集使用核心的資訊時，不能在讀取 <filename>/usr/src/linux</filename> 時誤導程式。</para>
+      </sidebar>
+    </section>
+    <section id="sect.config-kernel">
+      <title>組態核心</title>
+      <indexterm><primary>核心</primary><secondary>組態</secondary></indexterm>
+      <indexterm><primary>組態</primary><secondary>核心</secondary></indexterm>
+      <indexterm><primary><filename>.config</filename></primary></indexterm>
+
+      <para>下個步驟是根據需要組態核心。確切的程序視需要而訂。</para>
+
+      <para>重新編譯較新版本的核心 (可能連同其補丁) 時，應儘量採用 Debian 建議的組態。在此情況下，與其從最基本開始重新編譯，不妨複製 <filename>/boot/config-<replaceable>version</replaceable></filename> 檔案 (核心正在使用的版本，可以 <command>uname -r</command> 命令查看) 進入核心原始所在資料夾內的 <filename>.config</filename> 檔案。</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>cp /boot/config-3.16.0-4-amd64 ~/kernel/linux-source-3.16/.config</userinput></screen>
+
+      <para>需要改變組態的話，就跳至 <xref linkend="sect.kernel-build" />。或者從基本開始重新組態，就需花時間組態核心。在核心原始碼的資料夾內有很多專屬介面，供呼叫 <command>make <replaceable>target</replaceable></command> 命令，讓 <replaceable>target</replaceable> 是下列的其中一個值。</para>
+
+      <para><command>make menuconfig</command> 編譯並執行文字模式介面 (即 <emphasis role="pkg">libncurses5-dev</emphasis> 套件必備) 以階層結構瀏覽可用的選項。按 <keycap>空格</keycap> 鍵改變選定的值，並按螢幕下方的 <keycap>Enter</keycap> 鈕；<guibutton>Select</guibutton> 送回選定的次選單；<guibutton>Exit</guibutton> 關閉當前的螢幕並回到上個階層；<guibutton>Help</guibutton> 顯示選項的詳細資訊。箭頭鍵在選項及按鈕清單內動。按主選單的 <guibutton>Exit</guibutton> 鈕，就可離開組態程式。此程式可儲存改變的組態；接受改變後的組態。</para>
+
+      <para>其他的介面也有類似的功能，但在現代化的圖形介面運作；諸如 <command>make xconfig</command> 使用 Qt 圖形介面，而 <command>make gconfig</command> 使手 GTK+。前者用到 <emphasis role="pkg">libqt4-dev</emphasis>，後者依賴 <emphasis role="pkg">libglade2-dev</emphasis> 與 <emphasis role="pkg">libgtk2.0-dev</emphasis>。</para>
+
+      <para>使用這些組態介面時，建議從合理的預設組態開始。提供該等組態的核心在 <filename>arch/<replaceable>arch</replaceable>/configs/*_defconfig</filename>，然後可將選定的組態置於像 <command>make x86_64_defconfig</command> (64 位元電腦) 或 <command>make i386_defconfig</command> (32 位元電腦) 這樣的命令。</para>
+
+      <sidebar>
+        <title><emphasis>秘訣</emphasis> 處理過時的 <filename>.config</filename> 檔案</title>
+
+	<para>使用其他 (通常是較舊的) 核心版本的 <filename>.config</filename> 檔案時，需要先更新它。可以使用 <command>make oldconfig</command> 命令，以互動方式詢問對新組態的選擇。可以用 <command>make olddefconfig</command> 命令使用問題預設的答案。以 <command>make oldnoconfig</command> 命令，可以對問題提供預設的負面答案。</para>
+      </sidebar>
+    </section>
+    <section id="sect.kernel-build">
+      <title>編譯與建立套件</title>
+      <indexterm><primary><command>make deb-pkg</command></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>說明</emphasis> 建立前先清除</title>
+
+	<para>若已在資料夾內編譯過，希望從基礎重新建立 (或許更換核心組態)，需執行 <command>make clean</command> 命令移除已編譯的檔案。<command>make distclean</command> 命令可移除更多的檔案，包括客製的 <filename>.config</filename> 檔案，別忘了先備份。</para>
+      </sidebar>
+
+      <para>核心組態完成後，<command>make deb-pkg</command> 命令可產生至多 5 個 Debian 套件：<emphasis role="pkg">linux-image-<replaceable>version</replaceable></emphasis> 包括核心映像與相關的模組，<emphasis role="pkg">linux-headers-<replaceable>version</replaceable></emphasis> 包括建立外部模組所需的標頭檔案，<emphasis role="pkg">linux-firmware-image-<replaceable>version</replaceable></emphasis> 包括某些驅動程式所需的韌體 (由 Debian 提供的核心原始檔建立時，可能沒有該套件)，<emphasis role="pkg">linux-image-<replaceable>version</replaceable>-dbg</emphasis> 包括供套件映像及其模組的除錯符號，以及<emphasis role="pkg">linux-libc-dev</emphasis> 包括 GNU glibc 之類與使用者程式庫相關的標頭。</para>
+
+      <para><replaceable>version</replaceable> 由並列的上游版本決定 (如同變數 <literal>VERSION</literal>、<literal>PATCHLEVEL</literal>、<literal>SUBLEVEL</literal> 與 <literal>EXTRAVERSION</literal> 在 <filename>Makefile</filename> 內所定)、並列的 <literal>LOCALVERSION</literal> 組態參數、以及並列的 <literal>LOCALVERSION</literal> 環境變數。套件版本使用同版本字串以及新增的附加版本 (並儲存在 <filename>.version</filename>)，除非以 <literal>KDEB_PKGVERSION</literal> 環境變數覆寫它們。</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>make deb-pkg LOCALVERSION=-falcot KDEB_PKGVERSION=$(make kernelversion)-1
+</userinput><computeroutput>[...]
+$ </computeroutput><userinput>ls ../*.deb
+</userinput><computeroutput>../linux-headers-3.16.7-ckt4-falcot_3.16.7-1_amd64.deb
+../linux-image-3.16.7-ckt4-falcot_3.16.7-1_amd64.deb
+../linux-image-3.16.7-ckt4-falcot-dbg_3.16.7-1_amd64.deb
+../linux-libc-dev_3.16.7-1_amd64.deb
+</computeroutput></screen>
+    </section>
+    <section id="sect.modules-build">
+      <title>編譯外部模組</title>
+      <indexterm><primary>核心</primary><secondary>外部模組</secondary></indexterm>
+      <indexterm><primary>模組</primary><secondary>外部核心模組</secondary></indexterm>
+      <indexterm><primary><command>dkms</command></primary></indexterm>
+
+      <para>部份模組由 Linux 官方核心之外維護。使用時，必須與匹配的核心一起編譯。若干常見的第三方模組由 Debian 指定套件提供，諸如 <emphasis role="pkg">xtables-addons-source</emphasis> (iptables 的外部模組) 或 <emphasis role="pkg">oss4-source</emphasis> (Open Sound System，某些額外的音效驅動程式)。</para>
+
+      <para>這些外部套件極多且雜，在此無法全部列舉；<command>apt-cache search source$</command> 命令可縮小搜尋的範圍。然而，完整的清單沒什麼用處，祗有明確知道需要時，才會編譯特定的外部模組。在這個情況下，設備的文件會詳述 Linux 環境所需的模組。</para>
+
+      <para>以 <emphasis role="pkg">xtables-addons-source</emphasis> 套件為例：安裝之後，模組原始檔 <filename>.tar.bz2</filename> 儲存在 <filename>/usr/src/</filename>。可以手動解開該壓縮檔並建立模組，也可用 DKMS 自動做它。大部份模組提供必要的 DKMS 以 <literal>-dkms</literal> 後置文字整合入套件。在本例中，安裝 <emphasis role="pkg">xtables-addons-dkms</emphasis> 就是為當前核心編譯核心模組，前提是有匹配已安裝核心的 <emphasis role="pkg">linux-headers-*</emphasis> 套件。例如，使用 <emphasis role="pkg">linux-image-amd64</emphasis>，則應同時安裝 <emphasis role="pkg">linux-headers-amd64</emphasis>。</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>sudo apt install xtables-addons-dkms</userinput>
+<computeroutput>
+[...]
+Setting up xtables-addons-dkms (2.6-1) ...
+Loading new xtables-addons-2.6 DKMS files...
+First Installation: checking all kernels...
+Building only for 3.16.0-4-amd64
+Building initial module for 3.16.0-4-amd64
+Done.
+
+xt_ACCOUNT:
+Running module version sanity check.
+ - Original module
+   - No original module exists within this kernel
+ - Installation
+   - Installing to /lib/modules/3.16.0-4-amd64/updates/dkms/
+[...]
+DKMS: install completed.
+$ </computeroutput><userinput>sudo dkms status</userinput>
+<computeroutput>xtables-addons, 2.6, 3.16.0-4-amd64, x86_64: installed
+$ </computeroutput><userinput>sudo modinfo xt_ACCOUNT</userinput>
+<computeroutput>filename:       /lib/modules/3.16.0-4-amd64/updates/dkms/xt_ACCOUNT.ko
+license:        GPL
+alias:          ipt_ACCOUNT
+author:         Intra2net AG &lt;opensource@intra2net.com&gt;
+description:    Xtables: per-IP accounting for large prefixes
+[...]
+</computeroutput></screen>
+
+      <sidebar>
+        <title><emphasis>其他</emphasis> module-assistant</title>
+        <indexterm><primary><emphasis role="pkg">module-assistant</emphasis></primary></indexterm>
+
+	<para>DKMS 出現以前，<emphasis role="pkg">module-assistant</emphasis> 是建立與布署核心模組的最簡單解決方案。目前還能用，特別是缺少 DKMS 整合的情況：以 <command>module-assistant auto-install xtables-addons</command> (或較短的 <command>m-a a-i xtables-addons</command>) 命令，就能編譯出給當前核心使用的模繻，置於新的 Debian 套件，讓該套件可以即時安裝。</para>
+      </sidebar>
+    </section>
+    <section id="sect.kernel-patch">
+      <title>使用核心補丁</title>
+      <indexterm><primary>核心</primary><secondary>補丁</secondary></indexterm>
+      <indexterm><primary>核心的補丁</primary></indexterm>
+
+      <para>因為不夠成熟或核心維護者意見不一致，很多功能未列入標準的核心。這種功能就以補丁的型式發行，任何人都可以自由地把它維入核心原始碼。</para>
+
+      <para>Debian 以 <emphasis role="pkg">linux-patch-*</emphasis> 或 <emphasis role="pkg">kernel-patch-*</emphasis> 方式散布這些套件 (例如，<emphasis role="pkg">linux-patch-grsecurity2</emphasis>，可以緊縮核心的安全政策)。這些套件安裝的檔案在 <filename>/usr/src/kernel-patches/</filename> 資料夾內。</para>
+
+      <para>在原始檔資料夾內，以 <command>patch</command> 命令編譯核心，就能夠納入前述安裝的補丁。</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>cd ~/kernel/linux-source-3.16</userinput>
+<computeroutput>$ </computeroutput><userinput>make clean</userinput>
+<computeroutput>$ </computeroutput><userinput>zcat /usr/src/kernel-patches/diffs/grsecurity2/grsecurity-3.0-3.17.1-201410250027.patch.gz | patch -p1</userinput></screen>
+
+      <para>有些補丁不見得適用於每個核心版本；以 <command>patch</command> 可能無法應用於核心原始碼。將出現錯誤訊息且提示錯誤的原因；在此情況下，參照 Debian 補丁套件的文件 (位於 <filename>/usr/share/doc/linux-patch-*/</filename> 資料夾)。大部份的情況下，維護者會指出其補丁適用的核心版本。</para>
+    </section>
+  </section>
+  <section id="sect.kernel-installation">
+    <title>安裝核心</title>
+    <indexterm><primary>安裝</primary><secondary>核心</secondary></indexterm>
+    <indexterm><primary>核心</primary><secondary>安裝</secondary></indexterm>
+    <section id="sect.kernel-package">
+      <title>Debian 核心套件的特色</title>
+
+      <indexterm><primary><filename>vmlinuz</filename></primary></indexterm>
+
+      <para>Debian 核心套件安裝核心映像 (<filename>vmlinuz-<replaceable>version</replaceable></filename>)、其組態 (<filename>config-<replaceable>version</replaceable></filename>) 與符號表 (<filename>System.map-<replaceable>version</replaceable></filename>) 於 <filename>/boot/</filename> 內。符號表協助發展者瞭解核心錯誤訊息的意義；少了心，核心 “oopses” (“oops” 是相當於給使用者程式的核心區段錯誤，換句話說，訊息加上錯誤指標) 祗有數字記憶體位址，沒有符號表對映該等位址至符號與功能的話，本身是無意義的。該等模組安裝在 <filename>/lib/modules/<replaceable>version</replaceable>/</filename> 資料夾。</para>
+
+      <para>套件的組態腳本自動產生 initrd 映像，此為由啟動程式載入記憶體的迷你系統 (其名稱源自於此，表示為 “init ramdisk”)，被 Linux 核心專用於載入包括完整 Debian 系統設備的模組 (例如，SATA 磁碟機的驅動程式)。最後，安裝後腳本更新符號連結 <filename>/vmlinuz</filename>、<filename>/vmlinuz.old</filename>、<filename>/initrd.img</filename> 與 <filename>/initrd.img.old</filename>，讓它們分別指向最新的兩個核心， 以及對映的 initrd 映像。</para>
+
+      <para>大部份的這些工作卸載至 <filename>/etc/kernel/*.d/</filename> 資料夾內的腳本。例如，當已安裝或移除核心時，整合 <command>grub</command> 於 <filename>/etc/kernel/postinst.d/zz-update-grub</filename> 和 <filename>/etc/kernel/postrm.d/zz-update-grub</filename> 呼叫 <command>update-grub</command>。</para>
+    </section>
+    <section id="sect.kernel-installation-with-dpkg">
+      <title>與 <command>dpkg</command> 整合</title>
+
+      <para>使用 <command>apt</command> 極為便利，以致常忘記它是極為低階的工具，但是安裝被編譯的核心可使用更簡單的工具，諸如 <command>dpkg -i <replaceable>package</replaceable>.deb</command>，<literal><replaceable>package</replaceable>.deb</literal> 是 <emphasis role="pkg">linux-image</emphasis> 套件的名稱，例如 <filename>linux-image-3.16.7-ckt4-falcot_1_amd64.deb</filename>。</para>
+
+      <para>本章描述供伺服器系統或工作站的基本組態，可以用半自動的方式大量複製。然而，本身還不足以提供完整的組態系統。還有若干部份需要進一步的組態，從 “Unix 服務” 之類的低階程式開始。</para>
+    </section>
+  </section>
+</chapter>
