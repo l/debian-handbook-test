@@ -33,7 +33,7 @@
     <title>Systemoppstart</title>
     <indexterm><primary>oppstart</primary><secondary>systemet</secondary></indexterm>
 
-    <para>Når du starter datamaskinen, vises mange meldinger på konsollskjermen at mange automatiske initialiseringer og konfigurasjoner blir utført. Noen ganger kan du ønske å endre litt på hvordan dette stadiet fungerer, noe som betyr at du må forstå det godt. Det er hensikten med denne seksjonen.</para>
+    <para>Når du starter datamaskinen, vises mange meldinger på konsollskjermen at det utføres mye oppsett og mange initialiseringer automatisk. Noen ganger kan du ønske å endre litt på hvordan dette stadiet fungerer, noe som betyr at du må forstå det godt. Det er hensikten med denne seksjonen.</para>
 
     
     <para>Først tar BIOS kontroll over datamaskinen, registrerer diskene, laster<emphasis>Master Boot Record</emphasis>, og starter oppstartslasteren. Oppstartslasteren tar over, finner kjernen på disken, laster og kjører den. Kjernen blir så initialisert, og begynner å søke etter, og montere partisjonen som  inneholder rotfilsystemet, og til slutt utfører det første programmet - <command>init</command>. Ofte er, faktisk, denne «rotpartisjonen» og denne <command>init</command> plassert i et virtuelt filsystem som bare finnes i RAM (derav navnet, «initramfs», tidligere kalt «initrd» for «initialisering RAM disk»). Dette filsystem er lastet inn i minnet av oppstartslasteren, ofte fra en fil på en harddisk, eller fra nettverket. Den inneholder bare et minimum som kreves av kjernen for å laste det «sanne» rotfilsystemet: Dette kan være drivermoduler for harddisken, eller andre enheter uten noe som systemet ikke kan starte opp, eller oftere, initialiseringsskript og moduler for montering av RAID matriser, åpne krypterte partisjoner, for å aktivere LVM, etc. Når rotpartisjonen er montert, overlater initramfs kontrollen til den virkelige init-en, og maskinen går tilbake til standard oppstartsprosess.</para>
@@ -62,7 +62,7 @@
 
       <para>Denne boken beskriver oppstartssystemet som brukes som standard i Debian <emphasis role="distribution">Jessie</emphasis> (som implementert av <emphasis role="pkg">systemd</emphasis>-pakken), så vel som den tidligere standarden, <emphasis role="pkg">sysvinit</emphasis>, som er avledet og arvet fra <emphasis>System V</emphasis> Unix-systemer; det er andre.</para>
 
-      <para><emphasis role="pkg">file-rc</emphasis> er et oppstartssystem med en veldig enkel prosess. Det holder prinsippet om kjørenivå, men erstatter mapper og symbolske lenker med en konfigurasjonsfil, som viser til <command>init</command> - prosessene som må startes, og lanseringsrekkefølgen deres.</para>
+      <para><emphasis role="pkg">file-rc</emphasis> er et oppstartssystem med en veldig enkel prosess. Det beholder prinsippet om kjørenivå, men erstatter mapper og symbolske lenker med en oppsettfil, som forteller <command>init</command> hvilke prosesser som må startes, og oppstartrekkefølgen deres.</para>
 
       <para><command>upstart</command>-systemet er fortsatt ikke testet helt ut på Debian. Det er hendelsesbasert: init-skripter utføres ikke lenger i en sekvensiell rekkefølge, men som respons til hendelser som for eksempel fullføring av et annet skript som de er avhengige av. Dette systemet, startet av Ubuntu, er med i Debian <emphasis role="distribution">Jessie</emphasis>, men er ikke i standarden. Det kommer faktisk som en erstatning for <emphasis role="pkg">sysvinit</emphasis>, og en av oppgavene kjørt av <command>upstart</command> er å kjøre de prosedyrer som er skrevet for tradisjonelle systemer, spesielt de fra <emphasis role="pkg">sysv-rc</emphasis>-pakken.</para>
 
@@ -72,7 +72,7 @@
     <sidebar>
       <title><emphasis>SPESIFIKK SAK</emphasis> Oppstart fra nettverket</title>
 
-      <para>I noen konfigurasjoner kan BIOS bli konfigurert til ikke å utføre MBR, men å søke tilsvarende i nettverket, noe som gjør det mulig å bygge datamaskiner uten en harddisk, eller som blir helt reinstallert ved hver oppstart. Dette alternativet er ikke tilgjengelig for alle maskinvarer, og det krever vanligvis en egnet kombinasjon av BIOS og nettverkskort.</para>
+      <para>I noen oppsett kan BIOS bli satt opp til ikke å kjøre MBR, men å hente tilsvarende blokk fra nettverket, noe som gjør det mulig å lage datamaskiner uten en harddisk, eller som blir installert helt på nytt ved hver oppstart. Dette alternativet er ikke tilgjengelig for alle maskintyper, og det krever vanligvis en egnet kombinasjon av BIOS og nettverkskort.</para>
 
       <para>Oppstart fra nettverket kan bli brukt til å kjøre <command>debian-installer</command> eller FAI (se <xref linkend="sect.installation-methods" />).</para>
     </sidebar>
@@ -199,7 +199,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
            └─1222 /usr/sbin/sshd -D
 # </computeroutput></screen>
 
-<para>Etter å ha sjekket status på tjenesten (feilet), gikk vi videre til å sjekke loggene. De indikerer en feil i konfigurasjonsfilen. Etter å ha redigert konfigurasjonsfilen og fikset feilen, starter vi tjenesten, og kontroller så at den faktisk kjører.</para>
+<para>Etter å ha sjekket status på tjenesten (feilet), gikk vi videre til å sjekke loggene. De indikerer en feil i oppsettfilen. Etter å ha endret på oppsettfilen og fikset feilen, starter vi tjenesten, og kontroller så at den faktisk kjører.</para>
 
 <sidebar><title><emphasis>GÅR VIDERE</emphasis> Andre typer enhetsfiler</title>
 
@@ -211,7 +211,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
 
 <listitem><para>timere: en «timer»-enhetsfil beskriver hendelser som inntreffer med en fast frekvens eller på bestemte tider. Når en tjeneste er knyttet til en slik timer, vil den tilsvarende oppgaven bli utført når tiden er inne. Dette gjør det mulig å kopiere en del av <command>cron</command>s egenskaper. Se <citerefentry><refentrytitle>systemd.timer</refentrytitle><manvolnum>5</manvolnum></citerefentry>.</para></listitem>
 
-<listitem><para>nettverk: et «nettverk»s enhetsfil beskriver et nettverksgrensesnitt som gjør det mulig å konfigurere slike grensesnitt, samt uttrykke at en tjeneste er avhengig av at et bestemt grensesnitt er oppe.</para></listitem>
+<listitem><para>nettverk: enhetsfil av type «network» beskriver et nettverksgrensesnitt som gjør det mulig å sette opp slike grensesnitt, samt uttrykke at en tjeneste er avhengig av at et bestemt grensesnitt er oppe.</para></listitem>
 
 </itemizedlist>
 </sidebar>
@@ -247,9 +247,9 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
       <title><emphasis>DET GRUNNLEGGENDE</emphasis> Kildemoduler og valgmuligheter</title>
       <indexterm><primary>moduler</primary><secondary>kjernemoduler</secondary></indexterm>
 
-      <para>Kjernemoduler har også valgmuligheter som kan konfigureres ved å sette noen filer i <filename>/etc/modprobe.d/</filename>. Disse alternativene er definert med direktiver som dette: <literal>options <replaceable>modulnavn</replaceable> <replaceable>opsjonsnavn</replaceable>=<replaceable>opsjonsverdi</replaceable></literal>. Flere alternativer kan spesifiseres med ett eneste direktiv om nødvendig.</para>
+      <para>Kjernemoduler har også valgmuligheter som kan settes opp ved å sette noen filer i <filename>/etc/modprobe.d/</filename>. Disse alternativene er definert med direktiver som dette: <literal>options <replaceable>modulnavn</replaceable> <replaceable>opsjonsnavn</replaceable>=<replaceable>opsjonsverdi</replaceable></literal>. Flere alternativer kan spesifiseres med ett eneste direktiv om nødvendig.</para>
 
-      <para>Disse konfigurasjonsfiler er beregnet for <command>modprobe</command> - programmet som laster en kjernemodul med dets avhengigheter (moduler kan faktisk påkalle andre moduler). Dette programmet blir levert av <emphasis role="pkg">kmod</emphasis>-pakken.</para>
+      <para>Disse oppsettfilene er beregnet for <command>modprobe</command> — programmet som laster en kjernemodul med dets avhengigheter (moduler kan faktisk påkalle andre moduler). Dette programmet blir levert av <emphasis role="pkg">kmod</emphasis>-pakken.</para>
       <indexterm><primary><command>modprobe</command></primary></indexterm>
       <indexterm><primary><emphasis role="pkg">kmod</emphasis></primary></indexterm>
     </sidebar>
@@ -279,7 +279,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
       </listitem>
     </itemizedlist>
 
-    <para>Andre nivåer finnes, spesielt 3 til 5. Som standard er de konfigurert til å operere på samme måte som nivå 2, men administratoren kan endre dem (ved å legge til eller slette skript i de tilsvarende <filename>/etc/rc<replaceable>X</replaceable>.d</filename> kataloger) for å tilpasse dem til spesielle behov.</para>
+    <para>Andre nivåer finnes, spesielt 3 til 5. Som standard er de satt opp til å operere på samme måte som nivå 2, men administratoren kan endre dem (ved å legge til eller slette skript i de tilsvarende <filename>/etc/rc<replaceable>X</replaceable>.d</filename> kataloger) for å tilpasse dem til spesielle behov.</para>
 
     <figure id="figure.boot-process-sysvinit">
       <title>Oppstartssekvens for en datamaskin som kjører Linux med System V init</title>
@@ -291,7 +291,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
     </figure>
     <indexterm><primary>initialiseringsskript</primary></indexterm>
 
-    <para>Alle skriptene som inngår i de ulike <filename>/etc/rc<replaceable>X</replaceable>.d</filename>-kataloger er egentlig bare symbolske lenker - opprettet ved pakkeinstallasjon av <command>update-rc.d</command>-programmet - som peker til selve skriptet som er lagret i<filename>/etc/init.d/</filename>. Administratoren kan finjustere tjenestene som er tilgjengelige i hvert kjørenivå ved å kjøre <command>update-rc.d</command> igjen med justerte parametre. Manualsiden <citerefentry><refentrytitle>update-rc.d</refentrytitle><manvolnum>1</manvolnum></citerefentry> beskriver syntaksen i detalj. Vær oppmerksom på at å fjerne alle symbolske lenker (med <literal>remove</literal>-parameteret) ikke er noen god metode for å deaktivere en tjeneste. I stedet bør du bare konfigurere den til ikke å starte i det ønskede kjørenivået (mens man skjermer de samsvarende påkallinger for å stoppe den i det tilfelle tjenesten bruker det forrige kjørenivået. Siden <command>update-rc.d</command> har et noe innfløkt grensesnitt, kan du foretrekke å bruke <command>rcconf</command> (fra <emphasis role="pkg">rcconf</emphasis>-pakken som gir et mer brukervennlig grensesnitt.</para>
+    <para>Alle skriptene som inngår i de ulike <filename>/etc/rc<replaceable>X</replaceable>.d</filename>-kataloger er egentlig bare symbolske lenker - opprettet ved pakkeinstallasjon av <command>update-rc.d</command>-programmet - som peker til selve skriptet som er lagret i<filename>/etc/init.d/</filename>. Administratoren kan finjustere tjenestene som er tilgjengelige i hvert kjørenivå ved å kjøre <command>update-rc.d</command> igjen med justerte parametre. Manualsiden <citerefentry><refentrytitle>update-rc.d</refentrytitle><manvolnum>1</manvolnum></citerefentry> beskriver syntaksen i detalj. Vær oppmerksom på at å fjerne alle symbolske lenker (med <literal>remove</literal>-parameteret) ikke er noen god metode for å deaktivere en tjeneste. I stedet bør du bare sette den opp til ikke å starte i det ønskede kjørenivået (mens man skjermer de samsvarende påkallinger for å stoppe den i det tilfelle tjenesten bruker det forrige kjørenivået. Siden <command>update-rc.d</command> har et noe innfløkt grensesnitt, kan du foretrekke å bruke <command>rcconf</command> (fra <emphasis role="pkg">rcconf</emphasis>-pakken som gir et mer brukervennlig grensesnitt.</para>
     <indexterm><primary><command>update-rc.d</command></primary></indexterm>
 
     <sidebar>
@@ -388,7 +388,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
         <sidebar>
           <title><emphasis>SIKKERHET</emphasis> Beskyttelse av den private nøkkelen</title>
 
-	  <para>Den som har den private nøkkelen, kan logge seg på den kontoen som er konfigurert for det. Dette er grunnen til tilgang til den private nøkkelen er beskyttet av en «adgangsfrase» («passphrase»). Noen som får en kopi av en privat nøkkelfil (for eksempel <filename>~/.ssh/id_rsa</filename>), må fremdeles kjenne denne frasen for å kunne bruke den. Denne ekstra beskyttelse er imidlertid ikke uangripelig, og hvis du tror at denne filen har blitt kompromittert, er det best å deaktivere den nøkkelen på datamaskinene der den har blitt installert (ved å fjerne den fra <filename>authorized_keys</filename> filer), og erstatte den med en nylig generert nøkkel.</para>
+	  <para>Den som har den private nøkkelen, kan logge seg på den kontoen som er satt opp for det. Dette er grunnen til tilgang til den private nøkkelen er beskyttet av en «adgangsfrase» («passphrase»). Noen som får en kopi av en privat nøkkelfil (for eksempel <filename>~/.ssh/id_rsa</filename>), må fremdeles kjenne denne frasen for å kunne bruke den. Denne ekstra beskyttelse er imidlertid ikke uangripelig, og hvis du tror at denne filen har blitt kompromittert, er det best å deaktivere den nøkkelen på datamaskinene der den har blitt installert (ved å fjerne den fra <filename>authorized_keys</filename> filer), og erstatte den med en nylig generert nøkkel.</para>
         </sidebar>
 
         <sidebar>
@@ -407,7 +407,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
       <section id="sect.ssh-x11">
         <title>Ved hjelp av Remote X11-programmer</title>
 
-	<para>SSH-protokollen tillater videresending av grafiske data («X11» sesjon, fra navnet på det mest utbredte grafiske systemet i Unix); tjeneren holder da en egen kanal for disse dataene. Spesielt kan et grafisk program, kjørt eksternt, vises på X.org-tjeneren til den lokale skjermen, og hele økten (inndata og visning) vil være sikker. Ettersom denne funksjonen tillater at eksterne programmer forstyrrer det lokale systemet, er det deaktivert som standard. Du kan aktivere det ved å angi <literal>X11Forwarding yes</literal> i tjenerkonfigurasjonsfilen (<filename>/etc/ssh/sshd_config</filename>). Avslutningsvis må brukeren også be om det ved å legge <literal>-X</literal>-valget til <command>ssh</command>-kommandolinjen.</para>
+	<para>SSH-protokollen tillater videresending av grafiske data («X11» sesjon, fra navnet på det mest utbredte grafiske systemet i Unix); tjeneren holder da en egen kanal for disse dataene. Spesielt kan et grafisk program, kjørt eksternt, vises på X.org-tjeneren til den lokale skjermen, og hele økten (inndata og visning) vil være sikker. Ettersom denne funksjonen tillater at eksterne programmer forstyrrer det lokale systemet, er det deaktivert som standard. Du kan aktivere det ved å angi <literal>X11Forwarding yes</literal> i tjeneroppsettfilen (<filename>/etc/ssh/sshd_config</filename>). Avslutningsvis må brukeren også be om det ved å legge <literal>-X</literal>-valget til <command>ssh</command>-kommandolinjen.</para>
       </section>
       <section id="sect.ssh-port-forwarding">
         <title>Å lage krypterte tunneler med portvideresending (Port Forwarding)</title>
@@ -465,7 +465,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
       <indexterm><primary><emphasis role="pkg">krfb</emphasis></primary></indexterm>
       <indexterm><primary><emphasis role="pkg">x11vnc</emphasis></primary></indexterm>
 
-      <para>Først må brukeren autorisere deling av sin sesjon. GNOMEs grafiske skrivebordsmiljø i <emphasis role="distribution">Jessie</emphasis> omfatter dette alternativet i sitt konfigurasjonspanel (i motsetning til tidligere versjoner av Debian, der brukeren måtte installere og kjøre <command>vino</command>). KDE krever fortsatt at <command>krfb</command> brukes for å tillate deling av en eksisterende økt over VNC. For andre grafiske skrivebordsmiljøer tjener <command>x11vnc</command>-kommandoen (fra Debian-pakken med samme navn) samme formål: Du kan gjøre det tilgjengelig for brukeren med et eksplisitt ikon.</para>
+      <para>Først må brukeren autorisere deling av sin sesjon. GNOMEs grafiske skrivebordsmiljø i <emphasis role="distribution">Jessie</emphasis> omfatter dette alternativet i sitt oppsettpanel (i motsetning til tidligere versjoner av Debian, der brukeren måtte installere og kjøre <command>vino</command>). KDE krever fortsatt at <command>krfb</command> brukes for å tillate deling av en eksisterende økt over VNC. For andre grafiske skrivebordsmiljøer tjener <command>x11vnc</command>-kommandoen (fra Debian-pakken med samme navn) samme formål: Du kan gjøre det tilgjengelig for brukeren med et eksplisitt ikon.</para>
 
       <indexterm><primary><emphasis role="pkg">vinagre</emphasis></primary></indexterm>
       <indexterm><primary><emphasis role="pkg">tsclient</emphasis></primary></indexterm>
@@ -497,11 +497,11 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
 	<para><command>gdm3</command>, <command>kdm</command>, <command>lightdm</command>, og <command>xdm</command> er Display Managere. De tar kontroll over det grafiske grensesnittet kort etter oppstart for å gi brukeren et innloggingsbilde. Når brukeren har logget inn, kjøres de programmene som trengs for å starte en grafisk arbeidsøkt .</para>
       </sidebar>
 
-      <para>VNC fungerer også for mobile brukere, eller næringslivsledere, som av og til trenger å logge inn hjemmefra for å få tilgang til et eksternt skrivebord lik det de bruker på jobben. Konfigurasjonen av en slik tjeneste er mer komplisert: Du må først installere<emphasis role="pkg">vnc4server</emphasis>-pakken, endre oppsettet på skjermviseren til å godta <literal>XDMCP Query</literal>-forespørsler (for <command>gdm3</command>. Dette kan gjøres ved å legge til <literal>Enable=true</literal> i «xdmcp»-seksjonen til <filename>/etc/gdm3/daemon.conf</filename>), og til slutt, starte VNC-tjeneren med <command>inetd</command> slik at en økt starter automatisk når en bruker prøver å logge seg inn. For eksempel kan du legge til denne linjen til <filename>/etc/inetd.conf</filename>:</para>
+      <para>VNC fungerer også for mobile brukere, eller næringslivsledere, som av og til trenger å logge inn hjemmefra for å få tilgang til et eksternt skrivebord lik det de bruker på jobben. Oppsettet av en slik tjeneste er mer komplisert: Du må først installere<emphasis role="pkg">vnc4server</emphasis>-pakken, endre oppsettet på skjermviseren til å godta <literal>XDMCP Query</literal>-forespørsler (for <command>gdm3</command>. Dette kan gjøres ved å legge til <literal>Enable=true</literal> i «xdmcp»-seksjonen til <filename>/etc/gdm3/daemon.conf</filename>), og til slutt, starte VNC-tjeneren med <command>inetd</command> slik at en økt starter automatisk når en bruker prøver å logge seg inn. For eksempel kan du legge til denne linjen til <filename>/etc/inetd.conf</filename>:</para>
 
       <programlisting>5950  stream  tcp  nowait  nobody.tty  /usr/bin/Xvnc Xvnc -inetd -query localhost -once -geometry 1024x768 -depth 16 securitytypes=none</programlisting>
 
-      <para>Å omdirigere innkomne forbindelser til skjermhåndterer, løser problemet med autentisering, fordi bare brukere med lokale kontoer vil passere innloggingsskjermen <command>gdm3</command> login screen (eller tilsvarende <command>kdm</command>, <command>xdm</command>, etc.). Ettersom denne operasjonen tillater flere samtidige pålogginger uten problem (forutsatt at serveren er kraftig nok), kan den også brukes til å tilby komplette skrivebord til mobile brukere (eller til mindre kraftige stasjonære systemer, konfigurert som tynne klienter). Brukere logger bare inn på serverens skjerm med <command>vncviewer <replaceable>server</replaceable>:50</command>, fordi den benyttede porten er 5950.</para>
+      <para>Å omdirigere innkomne forbindelser til skjermhåndterer, løser problemet med autentisering, fordi bare brukere med lokale kontoer vil passere innloggingsskjermen <command>gdm3</command> login screen (eller tilsvarende <command>kdm</command>, <command>xdm</command>, etc.). Ettersom denne operasjonen tillater flere samtidige pålogginger uten problem (forutsatt at tjenermaskinen er kraftig nok), kan den også brukes til å tilby komplette skrivebord til mobile brukere (eller til mindre kraftige stasjonære systemer, satt opp som tynne klienter). Brukere logger bare inn på tjenermaskinens skjerm med <command>vncviewer <replaceable>server</replaceable>:50</command>, fordi den benyttede porten er 5950.</para>
       <indexterm><primary><emphasis role="pkg">vnc4server</emphasis></primary></indexterm>
     </section>
   </section>
@@ -628,11 +628,11 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
     <indexterm><primary>grensesnitt</primary><secondary>administrasjonsgrensesnitt</secondary></indexterm>
     <indexterm><primary>administrasjon, grensesnitt</primary></indexterm>
 
-    <para>Å bruke et grafisk administrasjonsgrensesnitt er interessant i ulike situasjoner. En administrator kjenner ikke nødvendigvis alle konfigurasjonsdetaljer for alle sine tjenester, og har ikke alltid tid til å gå igjennom dokumentasjonen i saken. Et grafisk administrasjonsgrensesnitt kan dermed akselerere utplassering av en ny tjeneste. Det kan også forenkle oppsettet av tjenester som er vanskelige å konfigurere.</para>
+    <para>Å bruke et grafisk administrasjonsgrensesnitt er interessant i ulike situasjoner. En administrator kjenner ikke nødvendigvis alle oppsettdetaljer for alle sine tjenester, og har ikke alltid tid til å gå igjennom dokumentasjonen i saken. Et grafisk administrasjonsgrensesnitt kan dermed akselerere utplassering av en ny tjeneste. Det kan også forenkle oppsettet av tjenester som er vanskelige å sette opp.</para>
 
     <para>Et slikt grensesnitt er bare et hjelpemiddel, og ikke et mål i seg selv. I alle tilfeller må administratoren beherske hvordan det virker for å forstå og løse mulige problemer.</para>
 
-    <para>Siden ingen grensesnitt er perfekte, kan du bli fristet til å prøve ulike løsninger. Dette bør så mye som mulig unngås, siden arbeidsmetodikken til ulike verktøy ofte er uforenlige. Selv om alle har som mål å være svært fleksible, og prøve å adoptere konfigurasjonsfilen som en eneste referanse, er de ikke alltid i stand til å integrere eksterne endringer.</para>
+    <para>Siden ingen grensesnitt er perfekte, kan du bli fristet til å prøve ulike løsninger. Dette bør så mye som mulig unngås, siden arbeidsmetodikken til ulike verktøy ofte er uforenlige. Selv om alle har som mål å være svært fleksible, og prøve å adoptere oppsettfilen som en eneste referanse, er de ikke alltid i stand til å integrere eksterne endringer.</para>
     <section id="sect.webmin">
       <title>Å administrere med et nettbrukergrensesnitt: <command>webmin</command></title>
       <indexterm><primary><emphasis>webmin</emphasis></primary></indexterm>
@@ -641,7 +641,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
 
       <para>Trist nok, <command>webmin</command> er ikke lenger en del av Debian. Debian vedlikeholder - Jaldhar H. Vyas - fjernet pakkene han hadde laget fordi han ikke lenger hadde den tiden som er nødvendig for å vedlikeholde dem på et akseptabelt kvalitetsnivå. Ingen har offisielt tatt over, så <emphasis role="distribution">Jessie</emphasis> har ikke med <command>webmin</command>-pakken.</para>
 
-      <para>Det er imidlertid en uoffisiell pakke fordelt på <literal>webmin.com</literal>-nettsiden. Til forskjell fra den opprinnelige Debian-pakken, er denne pakken monolittisk; alle konfigurasjonsmodulene installeres og aktiveres som standard, selv om den tilsvarende tjenesten ikke er installert på maskinen.</para>
+      <para>Det er imidlertid en uoffisiell pakke tilgjengelig fra nettsiden <literal>webmin.com</literal>. Til forskjell fra den opprinnelige Debian-pakken, er denne pakken monolittisk; alle oppsettmodulene installeres og aktiveres som standard, selv om den tilsvarende tjenesten ikke er installert på maskinen.</para>
 
       <sidebar>
         <title><emphasis>SIKKERHET</emphasis> Endre rotpassordet</title>
@@ -684,28 +684,28 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
         </listitem>
       </itemizedlist>
 
-      <para>Administrasjonsgrensesnittet er tilgjengelig i en nettleser på <literal>https://localhost:10000</literal>. Pass opp! Ikke alle modulene kan brukes direkte. Noen ganger må de konfigureres ved å angi plasseringen av de tilhørende konfigurasjonsfiler og noen kjørbare filer (programmer). Ofte vil systemet høflig be deg når det ikke klarer å aktivere en modulen det er bedt om.</para>
+      <para>Administrasjonsgrensesnittet er tilgjengelig i en nettleser på <literal>https://localhost:10000</literal>. Pass opp! Ikke alle modulene kan brukes direkte. Noen ganger må de settes opp ved å angi plasseringen av de tilhørende oppsettfiler og noen kjørbare filer (programmer). Ofte vil systemet høflig stille deg spørsmål når det ikke klarer å aktivere den modulen det er bedt om.</para>
 
       <sidebar>
         <title><emphasis>ALTERNATIV</emphasis> GNOME kontrollsenter</title>
         <indexterm><primary><emphasis role="pkg">gnome-control-center</emphasis></primary></indexterm>
 
-	<para>GNOME-prosjektet gir også flere administrasjonsgrensesnitt som vanligvis er tilgjengelig via «Innstillinger»-elementet i brukermenyen øverst til høyre.   <command>gnome-control-center</command> er hovedprogrammet som bringer dem alle sammen, men mange av de brede systemomfattende konfigurasjonsverktøy er effektivt levert av andre pakker (<emphasis role="pkg">accountsservice</emphasis>, <emphasis role="pkg">system-config-printer</emphasis>, etc.). Selv om de er enkle å bruke, dekker disse programmene kun et begrenset antall basetjenester: Brukeradministrasjon, tidsoppsett, nettverksoppsett, skriveroppsett, og så videre.</para>
+	<para>GNOME-prosjektet gir også flere administrasjonsgrensesnitt som vanligvis er tilgjengelig via «Innstillinger»-elementet i brukermenyen øverst til høyre.   <command>gnome-control-center</command> er hovedprogrammet som bringer dem alle sammen, men mange av de brede systemomfattende oppsettverktøy er effektivt levert av andre pakker (<emphasis role="pkg">accountsservice</emphasis>, <emphasis role="pkg">system-config-printer</emphasis>, etc.). Selv om de er enkle å bruke, dekker disse programmene kun et begrenset antall basetjenester: Brukeradministrasjon, tidsoppsett, nettverksoppsett, skriveroppsett, og så videre.</para>
       </sidebar>
     </section>
     <section id="sect.debconf">
-      <title>Konfigurering av pakker: <command>debconf</command></title>
+      <title>Oppsett av pakker: <command>debconf</command></title>
       <indexterm><primary><command>debconf</command></primary></indexterm>
       <indexterm><primary><command>dpkg-reconfigure</command></primary></indexterm>
 
-      <para>Mange pakker blir automatisk konfigurert etter å ha spurt noen spørsmål under installasjon via Debconf-verktøyet. Disse pakkene kan konfigureres ved å kjøre <command>dpkg-reconfigure <replaceable>pakke</replaceable></command>.</para>
+      <para>Mange pakker blir automatisk konfigurert etter å ha spurt noen spørsmål under installasjon via Debconf-verktøyet. Disse pakkene kan settes opp ved å kjøre <command>dpkg-reconfigure <replaceable>pakke</replaceable></command>.</para>
 
-      <para>I de fleste tilfeller er disse innstillingene veldig enkle; bare noen få viktige variabler i konfigurasjonsfilen er endret. Disse variablene er ofte gruppert mellom to «avgrensnings»-linjer slik at ny konfigurering av pakken bare påvirker dette avgrensede området. I andre tilfeller vil ikke en ny konfigurering endre noe om skriptet oppdager en manuell endring i konfigurasjonsfilen, for å kunne bevare disse manuelle inngrepene (fordi skriptet ikke kan sikre at egne tilpasninger ikke vil forstyrre eksisterende innstillinger).</para>
+      <para>I de fleste tilfeller er disse innstillingene veldig enkle; bare noen få viktige variabler i oppsettfilen er endret. Disse variablene er ofte gruppert mellom to «avgrensnings»-linjer slik at nytt oppsett av pakken bare påvirker dette avgrensede området. I andre tilfeller vil ikke et nytt oppsett endre noe om skriptet oppdager en manuell endring i oppsettfilen, for å kunne bevare disse manuelle inngrepene (fordi skriptet ikke kan sikre at egne tilpasninger ikke vil forstyrre eksisterende innstillinger).</para>
 
       <sidebar>
         <title><emphasis>DEBIAN POLICY</emphasis> Ta vare på forandringer</title>
 
-	<para>Debian Policy fastslår uttrykkelig at alt skal gjøres for å bevare manuelle endringer i en konfigurasjonsfil, slik at flere og flere skript tar forholdsregler når du redigerer konfigurasjonsfiler. Det generelle prinsippet er enkelt: Skriptet vil bare gjøre endringer hvis den kjenner statusen til konfigurasjonsfilen, som er bekreftet ved å sammenligne kontrollsummen til filen mot den til den siste automatisk generert filen. Hvis de er de samme, er skriptet autorisert til å endre konfigurasjonsfilen. Ellers bestemmer det at filen er blitt endret, og spør hvilke tiltak det skal ta (installere den nye filen, lagre den gamle filen, eller prøve å integrere de nye endringene med den eksisterende filen). Dette føre var-prinsippet har lenge vært unikt for Debian, men andre distribusjoner har gradvis begynt å omfavne det.</para>
+	<para>Debian-retningslinjene fastslår uttrykkelig at alt skal gjøres for å bevare manuelle endringer i en oppsettfil, slik at flere og flere skript tar forholdsregler når du redigerer oppsettfiler. Det generelle prinsippet er enkelt: Skriptet vil bare gjøre endringer hvis den kjenner statusen til oppsettfilen, som er bekreftet ved å sammenligne kontrollsummen til filen mot den til den siste automatisk generert filen. Hvis de er de samme, er skriptet autorisert til å endre oppsettfilen. Ellers bestemmer det at filen er blitt endret, og spør hvilke tiltak det skal ta (installere den nye filen, lagre den gamle filen, eller prøve å integrere de nye endringene med den eksisterende filen). Dette føre var-prinsippet har lenge vært unikt for Debian, men andre distribusjoner har gradvis begynt å omfavne det.</para>
 
 	<para>Programmet <command>ucf</command> (fra Debian-pakken med samme navn) kan brukes til å få til at det skjer.</para>
         <indexterm><primary><command>ucf</command></primary></indexterm>
@@ -720,7 +720,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
     <section id="sect.syslog-principe">
       <title>Prinsipp og mekanisme</title>
 
-      <para><command>rsyslogd</command>-nissen er ansvarlig for innsamling av servicemeldinger som kommer fra programmer og kjernen, og deretter ekspedere dem til loggfiler (vanligvis lagret i <filename>/var/log/</filename>-mappen). Den adlyder konfigurasjonsfilen <filename>/etc/rsyslog.conf</filename>.</para>
+      <para><command>rsyslogd</command>-nissen er ansvarlig for innsamling av servicemeldinger som kommer fra programmer og kjernen, og deretter ekspedere dem til loggfiler (vanligvis lagret i <filename>/var/log/</filename>-mappen). Den adlyder oppsettfilen <filename>/etc/rsyslog.conf</filename>.</para>
 
       <para>Hver loggmelding er forbundet med en delsystemapplikasjon (kalt «facility» i dokumentasjonen):</para>
       <itemizedlist>
@@ -791,7 +791,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
       </itemizedlist>
     </section>
     <section id="sect.syslog-config">
-      <title>Konfigurasjonsfilen</title>
+      <title>Oppsettfilen</title>
 
       <para>Syntaksen til <filename>/etc/rsyslog.conf</filename>-filen er beskrevet detaljert i <citerefentry><refentrytitle>rsyslog.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>-manualsiden, men det er også HTML-dokumentasjon tilgjengelig i <emphasis role="pkg">rsyslog-doc</emphasis>-pakken (<filename>/usr/share/doc/rsyslog-doc/html/index.html</filename>). Det gjennomgående prinsippet er å skrive «selector» og «action»-par. «Selector» definerer alle relevante meldinger, og handlingene beskriver hvordan man skal håndtere dem.</para>
       <section id="sect.syslog-selector-syntax">
@@ -842,7 +842,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
 
 	  <para>Det er en god idé å spille inn de viktigste loggene på en annen maskin (kanskje avsatt til dette formålet), siden dette vil hindre enhver mulig inntrenger fra å fjerne sporene av inntrengningen deres (med mindre, selvfølgelig, de også kompromitterer denne andre tjeneren). Videre har du, ved et stort problem (for eksempel et kjernekrasj), logger tilgjengelig på en annen maskin, noe som øker dine sjanser til å bestemme rekkefølgen av hendelser som forårsaket ulykken.</para>
 
-	  <para>For å godta loggmeldinger sendt fra andre maskiner må du konfigurere <emphasis>rsyslog</emphasis>: I praksis, er det tilstrekkelig å aktivere de ferdig-til-bruk oppføringene i <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad imudp</literal> og <literal>$UDPServerRun 514</literal>).</para>
+	  <para>For å godta loggmeldinger sendt fra andre maskiner må du sette opp <emphasis>rsyslog</emphasis>: I praksis, er det tilstrekkelig å aktivere de ferdig-til-bruk oppføringene i <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad imudp</literal> og <literal>$UDPServerRun 514</literal>).</para>
         </sidebar>
       </section>
     </section>
@@ -859,7 +859,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
     <sidebar>
       <title><emphasis>DEBIAN POLICY</emphasis> Å registrere en tjener i <filename>inetd.conf</filename></title>
 
-      <para>Pakker ønsker ofte å registrere en ny tjener i <filename>/etc/inetd.conf</filename>-filen, men Debian Policy forhindrer alle pakker fra å modifisere en konfigurasjonsfil som den ikke eier. Dette er grunnen til at <command>update-inetd</command>-skriptet (i pakken med samme navn) ble opprettet: Den håndterer konfigurasjonsfilen, og andre pakker kan dermed bruke den til å registrere en ny tjener i super-tjenerens konfigurasjon.</para>
+      <para>Pakker ønsker ofte å registrere en ny tjener i <filename>/etc/inetd.conf</filename>-filen, men Debian Policy forhindrer alle pakker fra å modifisere en konfigurasjonsfil som den ikke eier. Dette er grunnen til at <command>update-inetd</command>-skriptet (i pakken med samme navn) ble opprettet: Den håndterer oppsettfilen, og andre pakker kan dermed bruke den til å registrere en ny tjener i super-tjenerens oppsett.</para>
     </sidebar>
 
     <para>Hver viktige linje i <filename>/etc/inetd.conf</filename>-filen beskriver en tjener med syv felt (atskilt med mellomrom):</para>
@@ -898,7 +898,7 @@ ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlistin
     </example>
     <indexterm><primary><command>tcpd</command></primary></indexterm>
 
-    <para>Programmet <command>tcpd</command> er ofte brukt i <filename>/etc/inetd.conf</filename>-filen. Det lar deg begrense innkommende tilkoblinger ved å bruke regler for adgangskontroll, dokumentert på manualsiden <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry>, og som er konfigurert i <filename>/etc/hosts.allow</filename> og <filename>/etc/hosts.deny</filename>-filene. Når det er fastslått at tilkoblingen er autorisert, <command>tcpd</command> kjøres den virkelige tjeneren (som <command>in.fingerd</command> i vårt eksempel). Det er ikke verd noe at <command>tcpd</command> støtter seg til det navnet det ble aktivert med (som er det første argumentet, <literal>argv[0]</literal>) for å identifisere det virkelige programmet som skal kjøres. Så du bør ikke starte argumentslisten med <literal>tcpd</literal>, men med det omgivende programmet.</para>
+    <para>Programmet <command>tcpd</command> er ofte brukt i <filename>/etc/inetd.conf</filename>-filen. Det lar deg begrense innkommende tilkoblinger ved å bruke regler for adgangskontroll, dokumentert på manualsiden <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry>, og som er satt opp i <filename>/etc/hosts.allow</filename> og <filename>/etc/hosts.deny</filename>-filene. Når det er fastslått at tilkoblingen er autorisert, <command>tcpd</command> kjøres den virkelige tjeneren (som <command>in.fingerd</command> i vårt eksempel). Det er ikke verd noe at <command>tcpd</command> støtter seg til det navnet det ble aktivert med (som er det første argumentet, <literal>argv[0]</literal>) for å identifisere det virkelige programmet som skal kjøres. Så du bør ikke starte argumentslisten med <literal>tcpd</literal>, men med det omgivende programmet.</para>
 
     <sidebar>
       <title><emphasis>SAMFUNNET</emphasis> Wietse Venema</title>
@@ -913,7 +913,7 @@ ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlistin
 
       <para>Mens Debian installerer <emphasis role="pkg">openbsd-inetd</emphasis> ved oppstart, mangler det ikke alternativer. Vi kan nevne <emphasis role="pkg">inetutils-inetd</emphasis>, <emphasis role="pkg">micro-inetd</emphasis>, <emphasis role="pkg">rlinetd</emphasis> og <emphasis role="pkg">xinetd</emphasis>.</para>
 
-      <para>Denne siste utgaven av en super-tjener tilbyr svært interessante muligheter. Først og fremst kan konfigurasjonen deles opp i flere filer (lagret, selvfølgelig, i <filename>/etc/xinetd.d/</filename>-mappen), noe som kan gjøre en administrators liv lettere.</para>
+      <para>Denne siste utgaven av en super-tjener tilbyr svært interessante muligheter. Først og fremst kan oppsettet deles opp i flere filer (lagret, selvfølgelig, i <filename>/etc/xinetd.d/</filename>-mappen), noe som kan gjøre en administrators liv lettere.</para>
 
       <para>Sist, men ikke minst, er det også mulig å etterligne <command>inetd</command>s virke med <command>systemd</command>s socket-akiveringsmekanisme (se <xref linkend="sect.systemd" />).</para>
     </sidebar>
@@ -1150,7 +1150,7 @@ job 31 at Mon Jul 27 09:00:00 2015</computeroutput></screen>
     <sidebar>
       <title><emphasis>FORDYPNING</emphasis> Å sette en utgangskvote for nye brukere</title>
 
-      <para>For å sette opp en kvote til nye brukere automatisk må du konfigurere en brukermal (med <command>edquota</command>, eller <command>setquota</command>), og indikere brukernavnet deres i <varname>QUOTAUSER</varname>-variabelen i <filename>/etc/adduser.conf</filename>-filen. Denne kvotekonfigurasjonen vil da automatisk bli brukt på hver nye bruker som opprettes med <command>adduser</command>-kommandoen.</para>
+      <para>For å sette opp en kvote til nye brukere automatisk må du sette opp en brukermal (med <command>edquota</command>, eller <command>setquota</command>), og indikere brukernavnet deres i <varname>QUOTAUSER</varname>-variabelen i <filename>/etc/adduser.conf</filename>-filen. Dette kvoteoppsettet vil da automatisk bli brukt på hver nye bruker som opprettes med <command>adduser</command>-kommandoen.</para>
     </sidebar>
   </section>
   <section id="sect.backup">
@@ -1160,7 +1160,7 @@ job 31 at Mon Jul 27 09:00:00 2015</computeroutput></screen>
     <indexterm><primary>sikkerhetskopi</primary></indexterm>
     <indexterm><primary>restaurering</primary></indexterm>
 
-    <para>Mange programmer finnes, slike som <command>amanda</command>, <command>bacula</command>, <command>BackupPC</command>. De er klient/server-systemer med mange muligheter, men konfigurasjonen er ganske vanskelig. Noen av dem har brukervennlige nett-grensesnitt for å redusere denne. Men Debian inneholder dusinvis av andre backup-programvarer som dekker alle mulige bruksmåter, som du enkelt kan bekrefte med<command>apt-cache search backup</command>.</para>
+    <para>Mange programmer finnes, slike som <command>amanda</command>, <command>bacula</command>, <command>BackupPC</command>. De er klient/server-systemer med mange muligheter, men oppsettet er ganske vanskelig. Noen av dem har brukervennlige nett-grensesnitt for å redusere denne. Men Debian inneholder dusinvis av andre backup-programvarer som dekker alle mulige bruksmåter, som du enkelt kan bekrefte med<command>apt-cache search backup</command>.</para>
     <indexterm><primary><command>amanda</command></primary></indexterm>
     <indexterm><primary><command>bacula</command></primary></indexterm>
     <indexterm><primary><command>BackupPC</command></primary></indexterm>
@@ -1191,7 +1191,7 @@ job 31 at Mon Jul 27 09:00:00 2015</computeroutput></screen>
 
       <para>Denne sikkerhetskopi-mekanismen kan lett implementeres med <command>dirvish</command>-programmet. Den bruker en sikkerhetskopi-lagringsplass («bank» i sitt vokabular) hvor det plasserer tidsmerkede kopier av settene med sikkerhetskopi-filer (disse settene er kalt «vaults» i dirvish-dokumentasjon).</para>
 
-      <para>Hovedoppsettet er i <filename>/etc/dirvish/master.conf</filename>-filen. Den definerer plasseringen av lagringsplassen for sikkerhetskopien, listen over «vaults» for å administere, og standardverdier for utløpstidspunktet for sikkerhetskopier. Resten av konfigurasjonen er plassert i <filename><replaceable>bank</replaceable>/<replaceable>vault</replaceable>/dirvish/default.conf</filename>-filer, og inneholder det spesifikke oppsettet for det tilsvarende settet med filer.</para>
+      <para>Hovedoppsettet er i <filename>/etc/dirvish/master.conf</filename>-filen. Den definerer plasseringen av lagringsplassen for sikkerhetskopien, listen over «vaults» for å administere, og standardverdier for utløpstidspunktet for sikkerhetskopier. Resten av oppsettet er plassert i <filename><replaceable>bank</replaceable>/<replaceable>vault</replaceable>/dirvish/default.conf</filename>-filer, og inneholder det spesifikke oppsettet for det tilsvarende settet med filer.</para>
 
       <example id="example.dirvish-master">
         <title>Filen <filename>/etc/dirvish/master.conf</filename></title>
@@ -1238,7 +1238,7 @@ exclude:
 
       <para>Eksempelet ovenfor spesifiserer settet med filer som skal sikkerhetskopieres: Dette er filer på maskinen <emphasis>rivendell.falcot.com</emphasis> (for lokal sikkerhetskopiering av data, ganske enkelt angi navnet på den lokale maskinen som angitt av <command>hostname</command>), særlig de i rot-treet (<literal>tree: /</literal>), untatt de som er listet i <literal>exclude</literal>. Sikkerhetskopien vil være avgrenset til innholdet i ett filsystem (<literal>xdev: 1</literal>). Den vil ikke inkludere filer fra andre monteringspunkter. En indeks over lagrede filer vil generes (<literal>index: gzip</literal>), og bildet blir navngitt med dagens dato (<literal>image-default: %Y%m%d</literal>).</para>
 
-      <para>Det er mange alternativer tilgjengelig, alle dokumentert i manualsiden <citerefentry><refentrytitle>dirvish.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>. Når disse konfigurasjonsfiler er opprettet, må du starte hvert filsett med <command>dirvish --vault <replaceable>vault</replaceable> --init</command>-kommandoen. Fra da av vil den daglige påkallelsen fra <command>dirvish-runall</command> automatisk opprette en ny sikkerhetskopi like etter å ha slettet de som er utløpt.</para>
+      <para>Det er mange alternativer tilgjengelig, alle dokumentert i manualsiden <citerefentry><refentrytitle>dirvish.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>. Når disse oppsettfilene er opprettet, må du starte hvert filsett med <command>dirvish --vault <replaceable>vault</replaceable> --init</command>-kommandoen. Fra da av vil den daglige påkallelsen fra <command>dirvish-runall</command> automatisk opprette en ny sikkerhetskopi like etter å ha slettet de som er utløpt.</para>
 
       <sidebar>
         <title><emphasis>I PRAKSIS</emphasis> Ekstern sikkerhetskopiering via SSH</title>
@@ -1249,7 +1249,7 @@ exclude:
     <section>
       <title>Å gjenopprette maskiner uten sikkerhetskopier</title>
 
-      <para>Stasjonære datamaskiner, som ikke er sikkerhetskopiert, kan enkelt installeres fra tilpassede DVD-ROM-er klargjort med <emphasis>Simple-CDD</emphasis> (se <xref linkend="sect.simple-cdd" />). Siden dette lager en installasjon fra bunnen av, mistes noe tilpasning som kan ha blitt gjort etter den første installasjonen. Dette er greit, siden systemene alle er koblet til en sentral LDAP-katalog for kontoer, og de fleste skrivebordsprogrammer er forhåndskonfigurert takket være dconf (se <xref linkend="sect.gnome-desktop" /> for mer informasjon om dette).</para>
+      <para>Stasjonære datamaskiner, som ikke er sikkerhetskopiert, kan enkelt installeres fra tilpassede DVD-ROM-er klargjort med <emphasis>Simple-CDD</emphasis> (se <xref linkend="sect.simple-cdd" />). Siden dette lager en installasjon fra bunnen av, mistes noe tilpasning som kan ha blitt gjort etter den første installasjonen. Dette er greit, siden systemene alle er koblet til en sentral LDAP-katalog for kontoer, og de fleste skrivebordsprogrammer er forhåndsoppsatt takket være dconf (se <xref linkend="sect.gnome-desktop" /> for mer informasjon om dette).</para>
 
       <para>Falcot Corp administratorer er klar over begrensningene i sin sikkerhetskopi-politikk. Siden de ikke kan beskytte sikkerhetskopi-tjeneren samt et bånd (tape) i en brannsikker safe, har de  installert det i et eget rom, slik at hendelser, for eksempel en brann i tjenerrommet, ikke  ødelegger sikkerhetskopier sammen med alt annet. Videre lager de en trinnvis sikkerhetskopiering på DVD-ROM en gang per uke - kun de filer som er endret siden siste sikkerhetskopiering er inkludert.</para>
 
@@ -1300,12 +1300,12 @@ exclude:
       <sidebar>
         <title><emphasis>I PRAKSIS</emphasis> Håndtering av nettverkskort</title>
 
-	<para>Mange datamaskiner har flere nettverkskort (noen ganger to kablede grensesnitt og et wifi-grensesnitt), og med <emphasis>hotplug</emphasis>-støtte til de fleste busstyper,garanterer ikke Linux-kjernen fast navngiving av nettverksgrensesnitt . Men brukere som ønsker å konfigurere sine nettverk i <filename>/etc/network/interfaces</filename> trenger et fast navn!</para>
+	<para>Mange datamaskiner har flere nettverkskort (noen ganger to kablede grensesnitt og et wifi-grensesnitt), og med <emphasis>hotplug</emphasis>-støtte til de fleste busstyper,garanterer ikke Linux-kjernen fast navngiving av nettverksgrensesnitt . Men brukere som ønsker å sette opp sine nettverk i <filename>/etc/network/interfaces</filename> trenger et fast navn!</para>
 
-	<para>Det ville være vanskelig å be hver bruker om å lage sine egne <emphasis>udev</emphasis>-regler for å løse dette problemet. Dette er grunnen til at <emphasis>udev</emphasis> ble konfigurert på en heller spesiell måte. Ved første oppstart (og, mer generelt, hver gang et nytt nettverkskortet vises) bruker den navnet på nettverksgrensesnittet og dets MAC-adresse for å lage nye regler som vil tilordne samme navn på de påfølgende oppstartene. Disse reglene er lagret i <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>.</para>
+	<para>Det ville være vanskelig å be hver bruker om å lage sine egne <emphasis>udev</emphasis>-regler for å løse dette problemet. Dette er grunnen til at <emphasis>udev</emphasis> ble satt opp på en heller spesiell måte. Ved første oppstart (og, mer generelt, hver gang et nytt nettverkskortet vises) bruker den navnet på nettverksgrensesnittet og dets MAC-adresse for å lage nye regler som vil tilordne samme navn på de påfølgende oppstartene. Disse reglene er lagret i <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>.</para>
 
         
-	<para>Denne mekanismen har noen sidevirkninger som du bør vite om. La oss vurdere hvordan på en datamaskin som bare har ett PCI-nettverkskort. Nettverkets grensesnitt heter <literal>eth0</literal>, logisk. Nå, si at kortet bryter sammen, og administratoren erstatter det; det nye kortet vil ha en ny MAC-adresse. Siden det gamle kortet ble gitt navnet, <literal>eth0</literal>, vil det nye bli tildelt <literal>eth1</literal>, selv om <literal>eth0</literal>-kortet er borte for godt (og nettverket vil ikke være funksjonelt fordi <filename>/etc/network/interfaces</filename> sannsynligvis konfigurerer et <literal>eth0</literal>-grensesnitt). I dette tilfellet er det nok å bare slette <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>-filen før maskinen restartes. Det nye kortet vil da bli gitt det forventede <literal>eth0</literal>-navnet.</para>
+	<para>Denne mekanismen har noen sidevirkninger som du bør vite om. La oss vurdere hvordan på en datamaskin som bare har ett PCI-nettverkskort. Nettverkets grensesnitt heter <literal>eth0</literal>, logisk. Nå, si at kortet bryter sammen, og administratoren erstatter det; det nye kortet vil ha en ny MAC-adresse. Siden det gamle kortet ble gitt navnet, <literal>eth0</literal>, vil det nye bli tildelt <literal>eth1</literal>, selv om <literal>eth0</literal>-kortet er borte for godt (og nettverket vil ikke være funksjonelt fordi <filename>/etc/network/interfaces</filename> sannsynligvis satte opp et <literal>eth0</literal>-grensesnitt). I dette tilfellet er det nok å bare slette <filename>/etc/udev/rules.d/70-persistent-net.rules</filename>-filen før maskinen restartes. Det nye kortet vil da bli gitt det forventede <literal>eth0</literal>-navnet.</para>
       </sidebar>
     </section>
     <section>
@@ -1457,7 +1457,7 @@ KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+
       <para>Når disse reglene er satt i en fil, som for eksempel er døpt <filename>/etc/udev/rules.d/010_local.rules</filename>, kan du enkelt fjerne og koble til USB-minnepennen. Deretter kan du se at <filename>/dev/usb_key/disk</filename> representerer disken knyttet til USB-minnepennen, og <filename>/dev/usb_key/part1</filename> er dens første partisjon.</para>
 
       <sidebar>
-        <title><emphasis>GÅR VIDERE</emphasis> Feilsøking i <emphasis>udev</emphasis> sin konfigurasjon</title>
+        <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Feilsøking i oppsettet til <emphasis>udev</emphasis></title>
 
 	<para>Som for mange nisser, lagrer <command>udevd</command> logger i <filename>/var/log/daemon.log</filename>. Men det er ikke veldig detaljert som standard, og det er som regel ikke nok til å forstå hva som skjer. Kommandoen <command>udevadm control --log-priority=info</command> øker detaljnivået, og løser dette problemet. <command>udevadm control --log-priority=err</command> returnerer til standard detaljnivå.</para>
       </sidebar>
@@ -1468,7 +1468,7 @@ KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+
     <indexterm><primary>strømstyring</primary></indexterm>
     <indexterm><primary>styring, strømstyring</primary></indexterm>
 
-    <para>Emnet strømstyring er ofte problematisk. Faktisk, riktig hvilemodus for maskinen krever at alle datamaskinens enhetsdrivere vet hvordan de settes i ventemodus, og at de skal konfigurere enhetene ved oppvåkning. Dessverre er det fortsatt noen få enheter som ikke kan sove godt under Linux, fordi produsentene deres ikke har gitt de nødvendige spesifikasjonene.</para>
+    <para>Emnet strømstyring er ofte problematisk. Faktisk, riktig hvilemodus for maskinen krever at alle datamaskinens enhetsdrivere vet hvordan de settes i ventemodus, og at de skal sette opp enhetene igjen ved oppvåkning. Dessverre er det fortsatt noen få enheter som ikke kan sove godt under Linux, fordi produsentene deres ikke har gitt de nødvendige spesifikasjonene.</para>
 
     <para>Linux støtter ACPI (Advanced Configuration and Power Interface) - den nyeste standarden for strømstyring. Pakken <emphasis role="pkg">acpid</emphasis> har en nisse som ser etter strømstyringsrelaterte hendelser (veksling mellom AC og batteristrøm på en bærbar PC, etc.) og som kan utføre ulike kommandoer som svar.</para>
 
