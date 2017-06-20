@@ -1,0 +1,2119 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="basic-configuration" lang="nb-NO">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>Oppsett</keyword>
+			 <keyword>Lokalisering</keyword>
+			 <keyword>Localer</keyword>
+			 <keyword>Nettverk</keyword>
+			 <keyword>Navneoppslag</keyword>
+			 <keyword>Brukere</keyword>
+			 <keyword>Grupper</keyword>
+			 <keyword>Kontoer</keyword>
+			 <keyword>Kommandolinjetolker</keyword>
+			 <keyword>Skall</keyword>
+			 <keyword>Utskrift</keyword>
+			 <keyword>Oppstartslaster</keyword>
+			 <keyword>Kjernekompilering</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Grunnleggende oppsett: Nettverk, kontoer, utskrift ...</title>
+	 <highlights> <para>
+		En datamaskin med en ny installasjon laget med <command>debian-installer</command> er ment å være så funksjonell som mulig, men mange tjenester må fortsatt settes opp. Videre er det alltid godt å vite hvordan du kan endre visse oppsettelementer etter den første installasjonen.
+	</para>
+	 </highlights> <para>
+		Dette kapitlet gjennomgår alt medregnet i det vi kan kalle den «grunnleggende oppsett»: Nettverk, språk og steder (locales), brukere og grupper, utskrift, monteringspunkter, etc.
+	</para>
+	 <section id="sect.config-language-support">
+		<title>Å sette opp systemet for et annet språk</title>
+		 <indexterm>
+			<primary>Fransk oversettelse</primary>
+		</indexterm>
+		 <para>
+			Hvis systemet ble installert på fransk, vil maskinen sannsynligvis allerede ha fransk satt som standardspråk. Men det er godt å vite hva den som installerer gjør for å angi språk, slik at du senere, hvis behovet oppstår, kan endre det.
+		</para>
+		 <sidebar> <title><emphasis>VERKTØY</emphasis> <command>locale</command>-kommandoen for å vise gjeldende oppsett</title>
+		 <para>
+			<command>locale</command>-kommandoen lister opp et sammendrag av gjeldende oppsett med ulike lokale parametere (datoformat, tallformat, etc.), presentert i form av en gruppe med standard miljøvariabler dedikert til dynamiske endring av disse innstillingene.
+		</para>
+		 </sidebar> <section id="sect.default-language">
+			<title>Sette standardspråket</title>
+			 <indexterm>
+				<primary>locales</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>språk</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>locale-gen</command></primary>
+			</indexterm>
+			 <para>
+				En lokalisering er en gruppe av regionale innstillinger. Den omfatter ikke bare språket for teksten, men også hvordan tall, datoer, klokkeslett og pengesummer, samt alfabetiske sammenligningsregler (for å ta høyde for høyde for aksenttegn). Selv om hver av disse parametrene kan velges uavhengig av de andre, bruker vi vanligvis en lokalisering, som er et sammenhengende sett av verdier for disse parametrene tilsvarende en «region» i videste forstand. Disse steder (locales) er vanligvis angitt i form, <literal><replaceable>språkkode</replaceable>_<replaceable>LANDSKODE</replaceable></literal>, noen ganger med et suffiks for å angi tegnsett og koding som skal brukes. Dette muliggjør å ta hensyn til idiomatiske eller typografiske forskjeller mellom ulike regioner med et felles språk.
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> Tegnsett</title>
+			 <indexterm>
+				<primary>tegnsett</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>koding</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>ISO-8859-1</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>ISO-8859-15</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Latin 1</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Latin 9</primary>
+			</indexterm>
+			 <para>
+				Historisk har hvert sted (locale) et tilhørende tilpasset «tegnsett» (gruppe av kjente tegn), og en foretrukket «encoding» (en intern representasjon for tegn i datamaskinen).
+			</para>
+			 <para>
+				De mest populære kodinger for latin-baserte språk ble begrenset til 256 tegn, fordi de valgte å bruke en enkelt byte for hvert tegn. Siden 256 tegn ikke var nok til å dekke alle europeiske språk, ble flere kodinger nødvendig, og det er slik vi endte opp med fra <emphasis>ISO-8859-1</emphasis> (også kjent som «Latin 1») til <emphasis>ISO-8859-15</emphasis> (også kjent som «Latin 9»), blant flere.
+			</para>
+			 <para>
+				Å arbeide med fremmedspråk medfører ofte å regelmessig skifte mellom ulike kodinger og tegnsett. Videre; å skrive flerspråklige dokumenter fører til ytterligere, nesten uløselige problemer. Unicode (en super-katalog av nesten alle skriftsystemer fra alle verdens språk) ble opprettet for å omgå dette problemet. En av Unicodes kodinger, UTF-8, beholder alle 128 ASCII-symboler (7-bits koder), men håndterer andre tegn på en annen måte. De innledes med en spesifikk sekvens på noen bit, som implisitt definerer lengden på tegnet. Dette gjør det mulig å kode alle Unicode-tegn på en sekvens med en eller flere bytes. Bruken har blitt populært på grunn av det faktum at det er standardkoding i XML-dokumenter.
+			</para>
+			 <indexterm>
+				<primary>ASCII</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>UTF-8</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Unicode</primary>
+			</indexterm>
+			 <para>
+				Dette er kodingen som i alminnelighet bør brukes, og er dermed standarden på Debian-systemer.
+			</para>
+			 </sidebar> <para>
+				<emphasis role="pkg">locales</emphasis>-pakken inneholder alle elementene som kreves for at «lokaltilpasning» av ulike applikasjoner skal fungere riktig. Under installasjonen vil denne pakken be om valg av et sett med språk som støttes. Dette settet kan endres når som helst ved å kjøre <command>dpkg-reconfigure locales</command> som rot.
+			</para>
+			 <para>
+				Det første spørsmålet ber deg til å velge «lokaliseringer» som skal støttes. Å velge alle engelske lokaliseringer (som betyr de som begynner med «<literal>en_</literal>») er et fornuftig valg. Ikke nøl med å også aktivere andre lokaliseringer hvis maskinen vil være vert for brukere fra andre land. Listen over lokaltilpasninger i systemet er lagret i <filename>/etc/locale.gen</filename>-filen. Det er mulig å redigere denne filen for hånd, men du bør kjøre <command>locale-gen</command> etter eventuelle endringer. Den vil generere de nødvendige filene til de ekstra lokaltilpasningene, og eventuelt fjerne utdaterte filer.
+			</para>
+			 <para>
+				Det andre spørsmålet, med tittelen «Default locale for systemmiljøet», ber om en standard lokaltilpasning. Det anbefalte valget for USA er «<literal>en_US.UTF-8</literal>». Britisk-engelsk-språklige vil foretrekke «<literal>en_GB.UTF-8</literal>», og kanadiere vil foretrekke enten «<literal>en_CA.UTF-8</literal>» eller, for fransk, «<literal>fr_CA.UTF-8</literal>». <filename>/etc/default/locale</filename>-filen vil da bli endret for å lagre dette valget. Derfra blir det plukket opp av alle brukersesjoner, siden PAM vil sette inn innholdet i miljøvariabelen <varname>LANG</varname>.
+			</para>
+			 <indexterm>
+				<primary>miljø</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>locale (omgivelser)</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><varname>LANG</varname></primary>
+			</indexterm>
+			 <sidebar id="sidebar.intro-pam"> <title><emphasis>BAK KULISSENE</emphasis> <filename>/etc/environment</filename> og <filename>/etc/default/locale</filename></title>
+			 <para>
+				<filename>/etc/environment</filename>-filen gir <command>login</command>, <command>gdm</command>, eller til og med <command>ssh</command>-programmer slik at de riktige miljøvariablene kan lages.
+			</para>
+			 <para>
+				Disse programmene lager ikke disse variablene direkte, men gjerne via en PAM (<filename>pam_env.so</filename>)-modul. PAM (Pluggable Authentication Module) er et modulbasert bibliotek som sentraliserer autentiseringsmekanismer, starter sesjoner, og håndterer passord. Se <xref linkend="sect.config-pam" /> for et eksempel på oppsett av PAM.
+			</para>
+			 <para>
+				<filename>/etc/default/locale</filename>-filen arbeider på samme måte, men inneholder bare <varname>LANG</varname> miljøvariabelen. Takket være denne forskjellen, kan noen PAM-brukere arve et komplett miljø uten lokalisering. Det er imidlertid frarådet å kjøre tjenerprogrammer med lokalisering aktivert. På den annen side er lokalisering og regionale innstillinger anbefalt for programmer som åpner brukersesjoner.
+			</para>
+			 <indexterm>
+				<primary>PAM</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>pam_env.so</filename></primary>
+			</indexterm>
+			 </sidebar>
+		</section>
+		 <section id="sect.keyboard-config">
+			<title>Å sette opp tastaturet</title>
+			 <indexterm>
+				<primary>tastaturutlegg</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>utlegg, tastatur</primary>
+			</indexterm>
+			 <para>
+				Selv om tastaturoppsett forvaltes ulikt i konsollen og i grafisk modus, tilbyr Debian ett oppsettgrensesnitt som fungerer for begge: Det bygger på debconf, og er implementert i <emphasis role="pkg">keyboard-configuration</emphasis>-pakken. Dermed kan <command>dpkg-reconfigure keyboard-configuration</command>-kommandoen bli brukt når som helst til å resette (gjenopprette) tastaturoppsettet.
+			</para>
+			 <indexterm>
+				<primary><emphasis>console-data</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>console-tools</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>keyboard-configuration</emphasis></primary>
+			</indexterm>
+			 <para>
+				<indexterm><primary><literal>azerty</literal></primary></indexterm> Spørsmålene gjelder det fysiske tastaturoppsettet (et standard PC-tastatur i USA vil være en «Generic 104 key»), deretter oppsettet for å velge (vanligvis «US»), og deretter posisjonen til AltGr (høyre Alt). Til slutt kommer spørsmålet om nøkkelen som skal brukes for «Compose key», som åpner for å legge inn spesialtegn ved å kombinere tastetrykk. Skriv i rekkefølge <keycombo action="seq"><keycap>Compose</keycap><keycap>'</keycap><keycap>e</keycap></keycombo>, og det lages en e-acute («é»). Alle disse kombinasjonene er beskrevet i <filename>/usr/share/X11/locale/en_US.UTF-8/Compose</filename>-filen (eller en annen fil, målt i henhold til gjeldende lokaltilpasning, angitt med <filename>/usr/share/X11/locale/compose.dir</filename>).
+			</para>
+			 <indexterm>
+				<primary><literal>Compose</literal>, tast</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Meta</literal>, tast</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>tast</primary>
+				<secondary><literal>Meta</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>tast</primary>
+				<secondary><literal>Compose</literal></secondary>
+			</indexterm>
+			 <para>
+				Legg merke til at tastaturoppsettet for grafisk modus, beskrevet her, bare påvirker standardoppsettet. GNOME og KDE-miljøene, blant andre, gir et tastaturkontrollpanel i sine preferanser, slik at hver enkelt bruker får mulighet til å ha sitt eget oppsett. Noen flere alternativer for hvordan noen spesielle taster skal virke, er også tilgjengelige i disse kontrollpanelene.
+			</para>
+
+		</section>
+		 <section id="sect.utf8-migration">
+			<title>Å migrere til UTF-8</title>
+			 <para>
+				Generaliseringen av UTF-8-kodingen har vært en etterlengtet løsning på flere problemer med interoperabilitet, ettersom det letter internasjonal utveksling, og fjerner de vilkårlige begrensninger på tegn som kan brukes i et dokument. En ulempe er at den måtte gå gjennom en ganske vanskelig overgangsfase. Siden den ikke kan være helt gjennomsiktig (det vil si, det kan ikke skje samtidig over hele verden), kreves to konverteringsoperasjoner; en for filinnholdet, og den andre på filnavnet. Heldigvis er mesteparten av denne migreringen fullført, og vi diskuterer dette hovedsakelig for referansen.
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> <foreignphrase>Mojibake</foreignphrase> og tolkningsfeil</title>
+			 <para>
+				Når en tekst blir sendt (eller lagret) uten koding av informasjon, er det ikke alltid mulig for mottakeren å vite med sikkerhet hvilken konvensjon som skal brukes for å bestemme meningen for et sett byte. Du kan vanligvis få en idé ved å få statistikk på fordelingen av verdiene i teksten, men det gir ikke alltid et klart svar. Når kodesystemet som er valgt for lesing skiller seg fra den som brukes for skriving til fil, er bytene feiltolket, og du får i beste fall feil for enkelte tegn, eller i verste fall noe som er helt uleselig.
+			</para>
+			 <para>
+				Dermed, hvis en fransk tekst synes normal med unntak av aksentbokstaver og visse symboler som ser ut til å ha blitt erstattet med sekvenser av tegn som «Ã ©» eller «Ã¨» eller «Â§», er det sannsynligvis en fil kodet som UTF-8 som er tolket som ISO-8859-1 eller ISO-8859-15. Dette er et uttrykk for at en lokal installasjon ennå ikke er overført til UTF-8. Hvis du i stedet ser spørsmålstegn i stedet for bokstaver med aksenter - selv om disse spørsmålstegnene også ser ut til å erstatte en karakter som burde ha fulgt bokstaven med aksent - er det sannsynlig at installasjonen er ferdig oppsatt for UTF-8, og at du har blitt sendt et dokument som er kodet i Vest-ISO.
+			</para>
+			 <para>
+				Nok om «enkle» saker. Så enkelt er det bare i vestlig kultur, siden Unicode (og UTF-8) er designet for å maksimere kompatibilitet med historiske kodinger for vestlige språk basert på det latinske alfabetet, noe som gjør det mulig å gjenkjenne deler av teksten selv når noen tegn mangler.
+			</para>
+			 <para>
+				I mer komplekse oppsett, som for eksempel involverer to miljøer som tilsvarer to forskjellige språk som ikke bruker det samme alfabetet, får du ofte helt uleselige resultater – en serie abstrakte symboler som ikke har noe å gjøre med hverandre. Dette er spesielt vanlig med asiatiske språk på grunn av sine mange språk og skriftsystemer. Det japanske ordet<foreignphrase>mojibake</foreignphrase> er tatt i bruk for å beskrive dette fenomenet. Når det vises, er diagnosen mer kompleks, og den enkleste løsningen er ofte bare å gå over til UTF-8 på begge sider.
+			</para>
+			 </sidebar> <para>
+				Når det gjelder filnavn, kan migrasjonen være relativt enkel. <command>convmv</command>-verktøyet (i pakken med samme navn) er laget spesielt for dette formålet; det kan døpe om filer fra en tegnkoding til en annen. Bruken av verktøyet er relativt enkelt, men vi anbefaler å gjøre det i to trinn for å unngå overraskelser. Følgende eksempel viser et UTF-8-miljø med katalognavn kodet i ISO-8859-15, og bruken av <command>convmv</command> til å gi dem nye navn.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>ls travail/</userinput>
+<computeroutput>Ic?nes  ?l?ments graphiques  Textes
+$ </computeroutput><userinput>convmv -r -f iso-8859-15 -t utf-8 travail/</userinput>
+<computeroutput>Starting a dry run without changes...
+mv "travail/�l�ments graphiques"        "travail/Éléments graphiques"
+mv "travail/Ic�nes"     "travail/Icônes"
+No changes to your files done. Use --notest to finally rename the files.
+$ </computeroutput><userinput>convmv -r --notest -f iso-8859-15 -t utf-8 travail/</userinput>
+<computeroutput>mv "travail/�l�ments graphiques"        "travail/Éléments graphiques"
+mv "travail/Ic�nes"     "travail/Icônes"
+Ready!
+$ </computeroutput><userinput>ls travail/</userinput>
+<computeroutput>Éléments graphiques  Icônes  Textes</computeroutput></screen>
+			 <para>
+				For filinnholdet er konverteringsprosedyrer mer kompliserte på grunn av det enorme utvalg av eksisterende filformater. Noen filformater inkluderer kodeinformasjon som forenkler oppgavene for programvaren som brukes til å behandle dem. Da er det tilstrekkelig å åpne disse filene, og lagre dem igjen, og spesifisere UTF-8-koding. I andre tilfelle må du spesifisere den originale kodingen (ISO-8859-1, eller «Western», eller ISO-8859-15, eller «Western (Euro)», i henhold til formuleringene) når du åpner filen.
+			</para>
+			 <para>
+				For enkle tekstfiler kan man bruke <command>recode</command> (i pakken med samme navn) som muliggjør automatisk omkoding. Dette verktøyet har mange alternativer som gjør at man kan leke med hvordan det virker; vi anbefaler å se i dokumentasjonen, manualsiden <citerefentry> <refentrytitle>recode</refentrytitle>
+				 <manvolnum>1</manvolnum> </citerefentry> eller infosiden <citerefentry> <refentrytitle>recode</refentrytitle>
+				 </citerefentry>.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.network-config">
+		<title>Å sette opp nettverket</title>
+		 <sidebar id="sidebar.networking-basics"> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Viktige nettverkskonsepter (Ethernet, IP-adresse, subnett, kringkasting)</title>
+		 <indexterm>
+			<primary>Ethernet</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>10BASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>100BASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>1000BASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>10GBASE-T</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>kontakt, RJ45</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>RJ45-kontakt</primary>
+		</indexterm>
+		 <para>
+			De fleste moderne lokale nettverk bruker Ethernet-protokollen, der data deles inn i små blokker kalt rammer, som sendes over ledningen én om gangen. Datahastigheten varierer fra 10 Mb/s for eldre Ethernet-kort til 10 Gb/s i de nyeste kortene (med den vanligste hastigheten for tiden økende fra 100 Mb/s til 1 Gb/s). De mest brukte kablene kalles 10BASE-T, 100BASE-T, 1000BASE-T eller 10GBASE-T, avhengig av hastigheten de med sikkerhet kan gi (T står for «twisted pair»). Disse kablene ender i en RJ45-kontakt. Det finnes andre kabeltyper, som mest brukes for hastigheter på 1 Gb/s og oppover.
+		</para>
+		 <indexterm>
+			<primary>adresse, IP-adresse</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>IP-adresse</primary>
+		</indexterm>
+		 <para>
+			En IP-adresse er et nummer som brukes til å identifisere en datamaskins nettverksgrensesnitt, enten på et lokalt nettverk eller Internett. I den nå mest utbredte versjonen av IP (IPv4) består dette tallet av 32 bit, vanligvis skrevet som 4 tall atskilt med punktum (f.eks<literal>192.168.0.1</literal>), hvert tall mellom 0 og 255 (inklusivt, som tilsvarer 8 bit data). Den neste versjonen av protokollen utvider dette adresserommet til 128 bit, og disse adressene skrives som en serie av heksadesimale tall atskilt med kolon (for eksempel 2001:0db8:13bb:0002:0000:0000:0000:0020, eller forkortet, 2001:db8:13bb:2::20).
+		</para>
+		 <indexterm>
+			<primary>subnett</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>maske</primary>
+			<secondary>subnettmaske</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>nettverk</primary>
+			<secondary>adresse</secondary>
+		</indexterm>
+		 <para>
+			I sin binærkode definerer en nettverksmaske (nettmaske) hvilken del av en IP-adresse som samsvarer med nettverket, resten spesifiserer maskinen. I eksemplet med å sette opp en statisk IPv4-adresse gitt her, nettverksmaske <literal>255.255.255.0</literal> (binært med 24 «1»-ere fulgt av 8 «0»-er) indikerer at de første 24 bit av IP-adressen tilsvarer nettverksadressen, og de andre 8 er spesifikke for maskinen. I IPv6, for lesbarheten, er bare antallet «1»-ere angitt; nettmasken for et IPv6-nettverk kan dermed være <literal>64</literal>.
+		</para>
+		 <para>
+			Nettverksadressen er en IP-adresse der den delen som beskriver maskinens nummer er 0. Området for IPv4-adresser i et fullstendig nett er ofte angitt med syntaksen <emphasis>a.b.c.d/e</emphasis>, der <emphasis>a.b.c.d</emphasis> er nettverksadressen og, <emphasis>e</emphasis> er det antall bit som berører nettverksdelen i en IP-adresse. Eksempel-nettverket skal da skrives <literal>192.168.0.0/24</literal>. Syntaksen er tilsvarende i IPv6: <literal>2001:db8:13bb:2::/64</literal>.
+		</para>
+		 <indexterm>
+			<primary>ruter</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>bro (bridge)</primary>
+		</indexterm>
+		 <para>
+			En ruter er en maskin som forbinder flere nettverk med hverandre. All trafikk som kommer via en ruter blir guidet til riktig nettverk. For å gjøre dette analyserer ruteren innkommende pakker, og viderekobler dem ut fra IP-adressen til bestemmelsesstedet. Ruteren er ofte kjent som en innfallsport; med dette oppsettet fungerer den som en maskin som bidrar til å nå utover et lokalt nettverk (mot et utvidet nettverk, slik som Internett).
+		</para>
+		 <indexterm>
+			<primary>kringkasting</primary>
+		</indexterm>
+		 <para>
+			Den spesielle kringkastingsadressen forbinder alle stasjonene i et nettverk. Nesten aldri «rutet», funger den bare på det aktuelle nettverket. Nærmere bestemt betyr dette at en datapakke adressert til kringkastingsadressen aldri passerer gjennom ruteren.
+		</para>
+		 <para>
+			Dette kapittelet fokuserer på IPv4-adresser, siden de er de mest vanlige i dag. Vi går nærmere inn på detaljene i IPv6-protokollen i <xref linkend="sect.ipv6" />, men begrepene forblir de samme.
+		</para>
+		 </sidebar> <para>
+			Siden nettverket settes opp automatisk under installasjonen, vil <filename>/etc/network/interfaces</filename>-filen allerede inneholde et gyldig oppsett. En linje som starter med <literal>auto</literal> angir hvilke grensesnitt som skal settes opp automatisk ved oppstart av <emphasis role="pkg">ifupdown</emphasis> og dens <filename>/etc/init.d/networking</filename>-init-skript. Dette vil typisk være <literal>eth0</literal>, altså det første Ethernet-kortet.
+		</para>
+		 <indexterm>
+			<primary>nettverk</primary>
+			<secondary>oppsett</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>oppsett</primary>
+			<secondary>av nettverket</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>grensesnitt</primary>
+			<secondary>nettverksgrensesnitt interface</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><literal>eth0</literal></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>ALTERNATIV</emphasis> NetworkManager</title>
+		 <indexterm>
+			<primary><emphasis role="pkg">network-manager</emphasis></primary>
+		</indexterm>
+		 <para>
+			Hvis NetworkManager spesielt er anbefalt i roaming-oppsettene (se <xref linkend="sect.roaming-network-config" />), er den også helt brukbar som standard styringsverktøy for nettverk. Du kan lage «systemtilkoblinger» som brukes så snart datamaskinen starter enten manuelt med en <filename>.ini</filename>-lik fil i <filename>/etc/NetworkManager/system-connections/</filename>, eller med et grafisk verktøy (<command>nm-connection-editor</command>). Bare husk å deaktivere alle oppføringer i <filename>/etc/network/interfaces</filename> hvis du vil at NetworkManager skal håndtere dem. <ulink type="block" url="https://wiki.gnome.org/Projects/NetworkManager/SystemSettings/jessie" /> <ulink type="block" url="https://developer.gnome.org/NetworkManager/0.9/ref-settings.html" />
+		</para>
+		 </sidebar> <section id="sect.interface-ethernet">
+			<title>Ethernet-grensesnitt</title>
+			 <para>
+				Hvis datamaskinen har et Ethernet-kort, må det IP-nettet som er forbundet med det, bli satt opp ved å velge blant en av to metoder. Den enkleste metoden er dynamisk oppstet med DHCP, og det krever en DHCP-tjenermaskin i det lokale nettverket. Det kan indikere et ønsket vertsnavn, tilsvarende <literal>hostname</literal>-innstillingen i eksempelet nedenfor. DHCP-tjeneren sender deretter oppsettsinnstillinger for det aktuelle nettverket.
+			</para>
+			 <indexterm>
+				<primary>Ethernet</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>DHCP</primary>
+			</indexterm>
+			 <example id="example.config-dhcp">
+				<title>Oppsett av DHCP</title>
+				 
+<programlisting>
+auto eth0
+iface eth0 inet dhcp
+  hostname arrakis</programlisting>
+
+			</example>
+			 <para>
+				Et «statisk» oppsett må angi nettverksinnstillinger på en bestemt måte. Dette inkluderer minst IP-adressen og nettverksmasken, og noen ganger er også kringkastingsadresser oppført. En ruter som kobler til omverdenen blir spesifisert som en port (gateway).
+			</para>
+			 <example id="example.static-network">
+				<title>Statisk oppsett</title>
+				 
+<programlisting>
+auto eth0
+iface eth0 inet static
+  address 192.168.0.3
+  netmask 255.255.255.0
+  broadcast 192.168.0.255
+  network 192.168.0.0
+  gateway 192.168.0.1</programlisting>
+
+			</example>
+			 <sidebar> <title><emphasis>NOTE</emphasis> Flere adresser</title>
+			 <para>
+				Det er ikke bare mulig å knytte flere grensesnitt til et enkelt, fysisk nettverkskort, men også flere IP-adresser til et enkelt grensesnitt. Merk deg også at en IP-adresse kan tilsvare hvilket som helst antall navn via DNS, og at et navn også kan tilsvare et hvilket som helst antall numeriske IP-adresser.
+			</para>
+			 <para>
+				Som du sikkert gjetter, kan oppsett være nokså kompleks, men disse alternativene er kun brukt i helt spesielle tilfeller. Eksemplene nevnt her er typiske for vanlige oppsett.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.ppp-rtc">
+			<title>Forbinde PPP gjennom et PSTN modem</title>
+			 <indexterm>
+				<primary>PPP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>punkt til punkt</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>tilkobling</primary>
+				<secondary>av PSTN-modem</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>modem</primary>
+				<secondary>PSTN</secondary>
+			</indexterm>
+			 <para>
+				Et punkt til punkt (PPP) etablerer en periodisk forbindelse. Dette er den mest vanlige løsning for tilkoblinger med et telefonmodem («PSTN-modem», ettersom forbindelsen går over det offentlige, svitsjede telefonnettet).
+			</para>
+			 <para>
+				En tilkobling via telefonmodem krever en konto med en aksessleverandør, inkludert et telefonnummer, brukernavn, passord, og noen ganger skal det brukes en autentiseringsprotokoll. En slik forbindelse er satt opp ved hjelp av verktøyet <command>pppconfig</command> i Debian-pakken med samme navn. Som standard setter det opp en forbindelse som heter <literal>provider</literal> (som i Internett-leverandør). Når du er i tvil om autentiseringsprotokollen, velg <emphasis>PAP</emphasis>: Den tilbys av de fleste Internett-leverandører.
+			</para>
+			 <indexterm>
+				<primary><command>pppconfig</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>PAP</primary>
+			</indexterm>
+			 <para>
+				Etter å ha satt opp blir det mulig å koble til med kommandoen <command>pon</command> (gi den navnet på tilkoblingen som et parameter, når standardverdien <literal>provider</literal> ikke er hensiktsmessig). Forbindelsen blir koblet fra med kommandoen <command>poff</command>. Disse to kommandoer kan utføres av root-brukeren, eller av en annen bruker, forutsatt at de er medlem i gruppen <literal>dip</literal>.
+			</para>
+			 <indexterm>
+				<primary><command>pon</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>poff</command></primary>
+			</indexterm>
+
+		</section>
+		 <section id="sect.adsl">
+			<title>Tilkobling med et ADSL-modem</title>
+			 <indexterm>
+				<primary>tilkobling</primary>
+				<secondary>med ADSL-modem</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>modem</primary>
+				<secondary>ADSL</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>ADSL, modem</primary>
+			</indexterm>
+			 <para>
+				Fellesbetegnelsen «ADSL-modem» dekker en rekke enheter med svært ulike oppgaver. Enklest å bruke med Linux er modemene som har et Ethernet-grensesnitt (og ikke bare et USB-grensesnitt). Disse pleier å være populære. De fleste ADSL Internett-leverandører låner ut (eller leaser) en «boks» med Ethernet-grensesnitt. Avhengig av typen modem, er det stor variasjon i oppsettet som kreves.
+			</para>
+			 <section id="sect.adsl-pppoe">
+				<title>Modemer som støtter PPPOE</title>
+				 <indexterm>
+					<primary>PPPOE</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>pppoeconf</command></primary>
+				</indexterm>
+				 <para>
+					Noen Ethernet-modemer arbeider med PPPoE-protokollen (Point to Point Protocol over Ethernet). Verktøyet <command>pppoeconf</command> (fra pakken med samme navn) vil sette opp tilkoblingen. For å gjøre dette endrer den filen <filename>/etc/ppp/peers/dsl-provider</filename> med innstillingene gitt, og registrerer påloggingsinformasjonen i filene <filename>/etc/ppp/pap-secrets</filename> og <filename>/etc/ppp/chap-secrets</filename>. Det anbefales å godta alle endringer som foreslås.
+				</para>
+				 <para>
+					Så snart dette oppsettet er fullført, kan du åpne ADSL-tilkobling med kommandoen, <command>pon dsl-provider</command>, og koble den fra med <command>poff dsl-provider</command>.
+				</para>
+				 <indexterm>
+					<primary><literal>dsl-provider</literal></primary>
+				</indexterm>
+				 <sidebar> <title><emphasis>TIPS</emphasis> som starter <command>ppp</command> ved oppstart</title>
+				 <indexterm>
+					<primary><command>systemd</command></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>init</command></primary>
+				</indexterm>
+				 <para>
+					PPP-forbindelser over ADSL er, per definisjon, periodiske. Siden de vanligvis ikke faktureres etter tidsbruk, er det få motforestillinger mot å alltid holde dem åpne. Standardmåtene å gjøre det på, er å bruke init-systemet.
+				</para>
+				 <para>
+					Standard init-systemet på <emphasis role="distribution">Jessie</emphasis> er <command>systemd</command>. Å legge til en automatisk omstartsoppgave for ADSL-tilkoblingen er en så enkel sak som å lage en «unit file» (enhetsfil), slik som <filename>/etc/systemd/system/adsl-connection.service</filename>, med innhold som det følgende:
+				</para>
+				 
+<programlisting>[Unit]
+Description=ADSL connection
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/pppd call dsl-provider
+Restart=always
+
+[Install]
+WantedBy=multi-user.target</programlisting>
+				 <para>
+					Så snart denne unit-filen er definert, må den aktiveres med <command>systemctl enable adsl-connection</command>. Så kan sløyfen startes manuelt med <command>systemctl start adsl-connection</command>. Den vil også bli startet automatisk ved oppstart.
+				</para>
+				 <para>
+					På systemer som ikke bruker <command>systemd</command> (medregnet <emphasis role="distribution">Wheezy</emphasis> og tidligere versjoner av Debian), fungerer standard SystemV init annerledes. I slike systemer er alt som er nødvendig å legge til en linje som følgende ved slutten av <filename>/etc/inittab</filename>-filen; så, hver gang forbindelsen blir frakoblet, vil <command>init</command> åpne den igjen.
+				</para>
+				 
+<programlisting>
+adsl:2345:respawn:/usr/sbin/pppd call dsl-provider</programlisting>
+				 <para>
+					For ADSL-forbindelser som daglig auto-frakobler, reduserer metoden varigheten av avbruddet.
+				</para>
+				 </sidebar>
+			</section>
+			 <section id="sect.adsl-pptp">
+				<title>Modemer som støtter PPTP</title>
+				 <indexterm>
+					<primary>PPTP</primary>
+				</indexterm>
+				 <para>
+					Protokollen PPTP (Point-to-Point Tunneling Protocol) ble opprettet av Microsoft. I begynnelsen utplassert av ADSL, og ble raskt erstattet av PPPOE. Hvis denne protokollen er tvunget på deg, se <xref linkend="sect.pptp" />.
+				</para>
+
+			</section>
+			 <section id="sect.adsl-dhcp">
+				<title>Modemer som støtter DHCP</title>
+				 <para>
+					Når et modem er koblet til datamaskinen med en Ethernet-kabel (krysset kabel), setter du vanligvis opp en nettverkstilkobling med DHCP på datamaskinen. Modemet fungerer automatisk som en standard systemport, og tar seg av ruting (som betyr at den håndterer nettverkstrafikk mellom datamaskinen og Internett).
+				</para>
+				 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Krysset kabel for en direkte Ethernet-forbindelse</title>
+				 <indexterm>
+					<primary>crossover kabel (krysskabel)</primary>
+				</indexterm>
+				 <para>
+					Datamaskinenes nettverkskort forventes å motta data fra bestemte ledninger i kabelen, og sende sine data på andre. Når du kobler en datamaskin til et lokalt nettverk, kobler du vanligvis en kabel (rett eller i kryss) mellom nettverkskortet og en nettverksveksler eller svitsj. Men hvis du vil koble to datamaskiner direkte (uten mellomliggende svitsj eller nettverksbryter), må du rute signalet fra ett kort til mottakersiden av det andre kortet, og vice versa. Dette er hensikten med en krysset kabel, og grunnen til at den brukes.
+				</para>
+				 <para>
+					Merk at dette skillet er blitt nesten irrelevant over tid, ettersom moderne nettverkskort er i stand til å oppdage type kabel, presentere og tilpasse seg etter det. Så det vil ikke være uvanlig at begge typer kabel vil virke på et gitt sted.
+				</para>
+				 </sidebar> <para>
+					De fleste «ADSL-rutere» på markedet kan brukes slik, som de fleste av ADSL-modemene som leveres fra Internett-leverandørene.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.roaming-network-config">
+			<title>Automatisk nettverksoppsett for roaming-brukere</title>
+			 <indexterm>
+				<primary><emphasis role="pkg">network-manager</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>nettverk</primary>
+				<secondary>roamingoppsett</secondary>
+			</indexterm>
+			 <para>
+				Mange Falcot-ingeniører har en bærbar datamaskin for profesjonell bruk, som de også bruke hjemme. Nettverksoppsettet avhenger av hvor den befinner seg. Hjemme kan det være et wifi-nettverk (beskyttet av en WPA-nøkkel), mens arbeidsplassen bruker et kablet nettverk for større sikkerhet og mer båndbredde.
+			</para>
+			 <para>
+				For å unngå å koble manuelt til eller fra det tilhørende nettverksgrensesnittet installerte administratorene pakken <emphasis role="pkg">network-manager</emphasis> på disse flyttbare maskinene. Denne programvaren gjør at brukeren kan enkelt bytte fra ett nettverk til et annet ved hjelp av et lite ikon i systemstatusfeltet på det grafiske skrivebordet. Ved å klikke på dette ikonet vises en liste over tilgjengelige nettverk (både kablet og trådløst), slik at de rett og slett kan velge nettverket de ønsker å bruke. Programmet lagrer oppsett for nettverkene som brukeren allerede har koblet til, og bytter automatisk til det beste tilgjengelige nettverket når den gjeldende tilkoblingen faller ut.
+			</para>
+			 <para>
+				For å gjøre dette er programmet strukturert i to deler: En nisse som kjører som root håndterer aktivering og oppsett av nettverksgrensesnitt, og et brukergrensesnitt kontroller denne nissen. PolicyKit håndterer de nødvendige fullmakter til å styre dette programmet, og Debian satte opp PolicyKit på en slik måte at medlemmer i netdev-gruppen kan legge til eller endre Network Manager-tilkoblinger.
+			</para>
+			 <para>
+				NetworkManager vet hvordan man skal håndtere ulike typer tilkoblinger (DHCP, manuelt oppsett, lokale nettverk), men bare hvis programmet selv har vært brukt til å sette opp. Dette er grunnen til at det systematisk vil ignorere alle nettverksgrensesnitt i <filename>/etc/network/interfaces</filename> som det ikke passer for. Ettersom NetworkManager ikke gir detaljer når ingen nettverkstilkoblinger vises, er den enkle måten å slette alt oppsett for grensesnitt som må håndteres av NetworkManager fra <filename>/etc/network/interfaces</filename>.
+			</para>
+			 <para>
+				Merk at dette programmet er installert som standard når «Desktop Environment»-oppgaven er valgt ved den første installasjonen.
+			</para>
+			 <sidebar> <title><emphasis>ALTERNATIV</emphasis> Oppsett med «nettverksprofil»</title>
+			 <indexterm>
+				<primary><emphasis role="pkg">guessnet</emphasis></primary>
+			</indexterm>
+			 <para>
+				Mer avanserte brukere kan ønske å prøve <emphasis role="pkg">guessnet</emphasis>-pakken for automatisk nettverksoppsett. En gruppe testskript bestemmer hvilken nettverksprofil som skal aktiveres, og setter det opp fortløpende.
+			</para>
+			 <para>
+				Brukere som vil velge en nettverksprofil manuelt vil foretrekke <emphasis role="pkg">netenv</emphasis>-programmet, som finnes i pakken med samme navn.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.hostname-name-service">
+		<title>Sette vertsnavnet, og sette opp navntjenesten</title>
+		 <indexterm>
+			<primary>navn</primary>
+			<secondary>attribusjon og oppløsning</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>tildeling av navn</primary>
+		</indexterm>
+		 <para>
+			Formålet med å tildele navn til IP-numre er å gjøre dem lettere for folk å huske. I virkeligheten identifiserer en IP-adresse et nettverksgrensesnitt tilknyttet en enhet, for eksempel et nettverkskort. Siden hver maskin kan ha flere nettverkskort, og flere grensesnitt på hvert kort, kan en enkelt datamaskin ha en rekke navn i domenenavnsystemet.
+		</para>
+		 <para>
+			Hver maskin er imidlertid identifisert av et hovednavn (eller «kanonisk») navn, som er lagret i<filename>/etc/hostname</filename>-filen, og kommunisert til Linux-kjernen ved initialiseringsskripter med <command>hostname</command>-kommandoen. Den aktuelle verdien er tilgjengelig i et virtuelt filsystem, og du kan få det med <command>cat /proc/sys/kernel/hostname</command>-kommandoen.
+		</para>
+		 <indexterm>
+			<primary><command>hostname</command></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> <filename>/proc/</filename> og <filename>/sys/</filename>, virtuelle filsystemer</title>
+		 <indexterm>
+			<primary><filename>/proc/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>proc</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/sys/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>sys</filename></primary>
+		</indexterm>
+		 <para>
+			<filename>/proc/</filename> og <filename>/sys/</filename>-trevisninger er generert av «virtuelle» filsystemer. Dette er en praktisk måte å gjenopprette informasjon fra kjernen (ved å liste virtuelle filer) og kommunisere dem til den (ved å skrive til virtuelle filer).
+		</para>
+		 <para>
+			<filename>/sys/</filename> er spesielt utformet for å gi tilgang til interne kjerneobjekter, spesielt de som representerer de forskjellige enhetene i systemet. Kjernen kan dermed dele ulike typer informasjon: Status for hver enhet (for eksempel hvis den er i energisparemodus), enten den er en flyttbar enhet, etc. Merk at <filename>/sys/</filename> bare har eksistert siden kjerneversjon 2.6.
+		</para>
+		 </sidebar> <para>
+			Overraskende nok, domenenavnet håndteres ikke på samme måte, men kommer fra det komplette navnet på maskinen, skaffet gjennom navneoppslag. Du kan endre det i <filename>/etc/hosts</filename>-filen, skriv bare et komplett navn på maskinen i begynnelsen av listen over navn som er knyttet til maskinens adresse, som i følgende eksempel:
+		</para>
+		 <informalexample> 
+<programlisting>
+127.0.0.1     localhost
+192.168.0.1   arrakis.falcot.com arrakis</programlisting>
+		 </informalexample> <indexterm>
+			<primary><filename>hosts</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/hosts</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>domene</primary>
+			<secondary>navn</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>navn</primary>
+			<secondary>domene</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>NSS</primary>
+		</indexterm>
+		 <section id="sect.name-resolution">
+			<title>Navneoppløsning</title>
+			 <indexterm>
+				<primary>oppløsning</primary>
+				<secondary>navn</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>navn</primary>
+				<secondary>oppløsning</secondary>
+			</indexterm>
+			 <para>
+				Mekanismen for navneoppløsning i Linux er modulbasert, og kan bruke ulike kilder til informasjon som vises i <filename>/etc/nsswitch.conf</filename>-filen. Oppføringen som gjelder vertsnavnoppløsning er <literal>hosts</literal>. Som standard inneholder den <literal>files dns</literal>, som betyr at systemet konsulterer <filename>/etc/hosts</filename>-filen først, deretter DNS-servere. NIS/NIS+ eller LDAP-servere er andre mulige kilder.
+			</para>
+			 <sidebar> <title><emphasis>NOTE</emphasis> NSS og DNS</title>
+			 <para>
+				Vær oppmerksom på at kommandoene spesielt beregnet til å spørre DNS (spesielt <command>host</command>) ikke bruker den standard navnoppløsningsmekanismen (NSS). Som en konsekvens, tar de ikke hensyn til <filename>/etc/nsswitch.conf</filename>, og dermed heller ikke <filename>/etc/hosts</filename>.
+			</para>
+			 </sidebar> <section id="sect.dns-server-configuration">
+				<title>Oppsett av DNS-tjenere</title>
+				 <indexterm>
+					<primary>DNS</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>Domene navneservice (Domain Name Service)</primary>
+				</indexterm>
+				 <para>
+					DNS (Domain Name Service) er en distribuert og hierarkisk tjeneste som kartlegging av navn til IP-adresser, og vice versa. Spesielt kan det forandre et menneskevennlig navn som <literal>www.eyrolles.com</literal> til en en faktisk IP-adresse, <literal>213.244.11.247</literal>.
+				</para>
+				 <para>
+					For å få tilgang til DNS-informasjon, må en DNS-server være tilgjengelig for å videresende forespørsler. Falcot Corp har sin egen, men en enkeltbruker vil sannsynligvis bruke DNS-tjenere levert av deres ISP.
+				</para>
+				 <indexterm>
+					<primary><filename>resolv.conf</filename></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>nameserver</literal></primary>
+				</indexterm>
+				 <para>
+					DNS-serverne som skal brukes, er angitt i <filename>/etc/resolv.conf</filename>, en per linje, med <literal>nameserver</literal> nøkkelordet foran en IP-adresse, som i følgende eksempel:
+				</para>
+				 
+<programlisting>
+nameserver 212.27.32.176
+nameserver 212.27.32.177
+nameserver 8.8.8.8</programlisting>
+				 <para>
+					Merk at <filename>/etc/resolv.conf</filename>-filen kan håndteres automatisk (og overskrives) når nettverket håndteres av NetworkManager, eller settes opp med DHCP.
+				</para>
+
+			</section>
+			 <section id="sect.etc-hosts">
+				<title>Filen <filename>/etc/hosts</filename></title>
+				 <indexterm>
+					<primary><filename>hosts</filename></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><filename>/etc/hosts</filename></primary>
+				</indexterm>
+				 <para>
+					Hvis det ikke er noen navnetjener i det lokale nettverket, er det fortsatt mulig å etablere et lite bord som kartlegger IP-adresser og maskinvertsnavn i <filename>/etc/hosts</filename>-filen, vanligvis reservert for lokale nettverkstasjoner. Syntaksen til denne filen er veldig enkel: Hver linje angir en bestemt IP-adresse etterfulgt av listen over eventuelle andre berørte navn (er den første «fullstendig kvalifisert», betyr at den inkluderer domenenavnet).
+				</para>
+				 <para>
+					Denne filen er tilgjengelig selv under nettverksbrudd, eller når DNS-servere ikke kan nås, men vil egentlig bare være nyttig når den dupliseres på alle maskiner på nettverket. Den minste endring i korrespondansene vil krever at filen oppdateres overalt. Dette er grunnen til at <filename>/etc/hosts</filename> generelt bare inneholder de aller viktigste inngangene.
+				</para>
+				 <para>
+					Denne filen vil være tilstrekkelig for et lite nettverk som ikke er koblet til Internett, men med 5 maskiner eller mer, anbefales det å installere en skikkelig DNS- server.
+				</para>
+				 <sidebar> <title><emphasis>TIPS</emphasis> Å komme forbi DNS</title>
+				 <para>
+					Ettersom applikasjoner sjekker <filename>/etc/hosts</filename>-filen før DNS spørres, er det mulig å ha med informasjon her som er forskjellig fra hva DNS vil returnere, og derfor å omgå en normal DNS-basert navneoppløsning.
+				</para>
+				 <para>
+					Dette gjør det mulig, i tilfelle DNS-endringer ennå ikke spredt, å teste tilgangen til et nettsted med det tiltenkte navn, selv om dette navnet ikke er skikkelig formidlet til den riktige IP-adressen.
+				</para>
+				 <para>
+					En annen mulig bruk er å omdirigere trafikk beregnet for en bestemt vert til lokalverten, og dermed hindre all kommunikasjon med den gitte verten. For eksempel kan vertsnavnet til tjenere som er dedikert til annonsering omkobles, slik at disse annonsene blir omgått, noe som resulterer i en mer flytende og mindre distrahert navigasjon.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.user-group-databases">
+		<title>Bruker og gruppers databaser</title>
+		 <indexterm>
+			<primary>bruker</primary>
+			<secondary>database</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>gruppe</primary>
+			<secondary>database</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>database</primary>
+			<secondary>av brukerne</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>database</primary>
+			<secondary>av grupper</secondary>
+		</indexterm>
+		 <para>
+			Listen av brukere er vanligvis lagret i <filename>/etc/passwd</filename>-filen, mens <filename>/etc/shadow</filename>-filen lagrer krypterte passord. Begge er tekstfiler, i et relativt enkelt format, som kan leses og modifiseres med en tekstredigerer. Hver bruker er oppført der på en linje med flere felt atskilt med et kolon («<literal>:</literal>»).
+		</para>
+		 <sidebar> <title><emphasis>NOTE</emphasis> Redigere systemfiler</title>
+		 <para>
+			Systemfilene, som er nevnt i dette kapitlet, er alle rene tekstfiler, og kan redigeres med en tekstredigerer. Tatt i betraktning betydningen deres for kjernesystemets funksjonalitet, er det alltid en god idé å ta ekstra forholdsregler når du redigerer systemfiler. Først, lag alltid en kopi eller backup av en systemfil før du åpner eller endrer den. For det andre, på tjenere eller maskiner der mer enn én person som potensielt kan få tilgang til samme fil samtidig, ta ekstra forholdsregler for å beskytte filen mot å bli ødelagt.
+		</para>
+		 <para>
+			For dette formålet er det nok å bruke <command>vipw</command>-kommandoen for å redigere <filename>/etc/passwd</filename>-filen, eller <command>vigr</command> for å redigere <filename>/etc/group</filename>. Disse kommandoene låser den aktuelle filen før du kjører tekstredigereren,(<command>vi</command> som standard, om ikke <varname>EDITOR</varname> miljøvariabelen har blitt endret). <literal>-s</literal>-valget i disse kommandoene tillater redigering av den overensstemmende <foreignphrase>shadow</foreignphrase>-filen.
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Crypt, en enveisfunksjon</title>
+		 <indexterm>
+			<primary>crypt</primary>
+		</indexterm>
+		 <para>
+			<command>crypt</command> er en enveisfunksjon som endrer en streng (<varname>A</varname>) til en annen streng (<varname>B</varname>) på en måte som <varname>A</varname> ikke kan avledes fra <varname>B</varname>. Den eneste måten å identifisere <varname>A</varname> på er å teste alle mulige verdier, og sjekke hver og en for å avgjøre om funksjonsendringen vil produsere <varname>B</varname> eller ikke. Den bruker opp til 8 karakterer som inndata (streng <varname>A</varname>), og genererer en streng på 13, utskriftsbare, ASCII-karakterer (streng <varname>B</varname>).
+		</para>
+		 </sidebar> <section id="sect.etc-passwd">
+			<title>Brukerliste: <filename>/etc/passwd</filename></title>
+			 <para>
+				Her er listen med feltene i <filename>/etc/passwd</filename>-filen:
+			</para>
+			 <indexterm>
+				<primary><command>passwd</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/passwd</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>uid</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>gid</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>GECOS</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>login</literal></primary>
+			</indexterm>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						login, for eksempel <literal>rhertzog</literal>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						passord: Dette er et passord kryptert med en enveis funksjon (<command>crypt</command>), som støtter seg på <literal>DES</literal>, <literal>MD5</literal>, <literal>SHA-256</literal>, eller <literal>SHA-512</literal>. Spesialverdien «<literal>x</literal>» indikerer at det krypterte passordet er lagret i <filename>/etc/shadow</filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>uid</literal>: unikt nummer som identifiserer hver bruker;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>gid</literal>: unikt nummer for brukerens hovedgruppe (Debian lager en bestemt gruppe for hver bruker som standard);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>GECOS</literal>: datafelt som vanligvis inneholder brukerens fulle navn;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						innloggingsmappe, tildelt til brukeren for oppbevaring av sine personlige filer (miljøvariabelen <varname>$HOME</varname> peker generelt hit);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						program som skal kjøres ved pålogging. Dette er vanligvis en kommandofortolker (skall), som gir brukeren frie hender. Hvis du angir <command>/bin/false</command> (som ikke gjør noe, og returnerer kontrollen umiddelbart), kan ikke brukeren logge inn.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Unix-gruppe</title>
+			 <indexterm>
+				<primary>gruppe</primary>
+			</indexterm>
+			 <para>
+				En Unix-gruppe er en enhet som omfatter flere brukere slik at de enkelt kan dele filer ved hjelp av det integrerte tillatelsesystemet (ved å dra nytte av de samme rettigheter). Man kan også begrense bruken av visse programmer til en bestemt gruppe.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.etc-shadow">
+			<title>Den skjulte og krypterte passordfilen: <filename>/etc/shadow</filename></title>
+			 <indexterm>
+				<primary><filename>shadow</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/shadow</filename></primary>
+			</indexterm>
+			 <para>
+				<filename>/etc/shadow</filename>-filen inneholder de følgende feltene:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						login;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						krypterte passord;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						flere felt håndterer passordopphør.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <sidebar> <title><emphasis>DOKUMENTASJON</emphasis> <filename>/etc/passwd</filename>, <filename>/etc/shadow</filename> og <filename>/etc/group</filename>-filformater</title>
+			 <para>
+				Disse formatene er dokumentert i de følgende manualsidene: <citerefentry><refentrytitle>passwd</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>, <citerefentry><refentrytitle>shadow</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>, og <citerefentry><refentrytitle>group</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>SIKKERHET</emphasis> <filename>/etc/shadow</filename>-filsikkerhet</title>
+			 <para>
+				<filename>/etc/shadow</filename>, ulikt dets alter ego, <filename>/etc/passwd</filename>, kan ikke leses av vanlige brukere. Et hvilket som helst kryptert passord lagret i <filename>/etc/passwd</filename> kan leses av hvem som helst; en cracker (knekker) kan forsøke å «bryte» (eller avsløre) et passord ved en av flere «brutale» metoder som, enkelt sagt, å gjette på vanlig brukte kombinasjoner av tegn. Dette angrepet - kalt «ordbokangrep» - er ikke lenger mulig på systemer som bruker <filename>/etc/shadow</filename>.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.account-modification">
+			<title>Å modifisere en eksisterende konto eller passord</title>
+			 <indexterm>
+				<primary><command>chsh</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>chfn</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>passwd</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>chage</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>passord</primary>
+			</indexterm>
+			 <para>
+				Følgende kommandoer tillater endring av informasjonen som er lagret i bestemte felt i brukerdatabasen: <command>passwd</command> tillater en vanlig bruker å endre passordet sitt, som igjen oppdaterer <filename>/etc/shadow</filename>-filen; <command>chfn</command> (CHange Full Name), er reservert for superbrukeren (rot), modifiserer <literal>GECOS</literal>-feltet. <command>chsh</command> (CHange SHell) lar brukeren endre sitt innloggingsskall, men tilgang til valgene vil være begrenset til dem som er oppført i <filename>/etc/shells</filename>; administratoren, på den annen side, er ikke bundet av denne begrensningen, og kan sette skallet til et hvilket som helst program de velger.
+			</para>
+			 <para>
+				Til slutt, <command>chage</command> (CHange AGE)-kommandoen tillater administratoren å endre passordets utløpsinnstillinger (<literal>-l <replaceable>brukeer</replaceable></literal>-valget vil liste de gjeldende innstillingene). Du kan også tvinge utløpet for et passord ved å bruke <command>passwd -e <replaceable>bruker</replaceable></command>-kommandoen, som vil kreve at brukerne endrer sitt passord neste gang de logger inn.
+			</para>
+
+		</section>
+		 <section id="sect.disabling-account">
+			<title>Deaktivere en konto</title>
+			 <indexterm>
+				<primary>Deaktiver en konto</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>konto</primary>
+				<secondary>deaktiver</secondary>
+			</indexterm>
+			 <para>
+				Du trenger kanskje å «deaktivere en konto» (låse ut en bruker), som disiplinærtiltak, i forbindelse med en undersøkelse, eller rett og slett i tilfelle av en langvarig eller definitivt fravær fra en bruker. En deaktivert konto betyr at brukeren ikke kan logge inn eller få tilgang til maskinen. Kontoen er fortsatt intakt på maskinen, og ingen filer eller data blir slettet; Den er simpelthen utilgjengelig. Dette oppnås ved hjelp av kommandoen <command>passwd -l <replaceable>bruker</replaceable></command> (lock). Å reetablere kontoen er gjort på samme måte, med <literal>-u</literal>-valget (unlock).
+			</para>
+			 <sidebar id="sidebar.intro-nss"> <title><emphasis>GÅR VIDERE</emphasis> NSS og systemdatabaser</title>
+			 <indexterm>
+				<primary>NSS</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Name Service Switch (NSS) </primary>
+			</indexterm>
+			 <para>
+				I stedet for å bruke de vanlige filene for å administrere lister over brukere og grupper, kan du bruke andre typer databaser, for eksempel LDAP eller <command>db</command>, ved hjelp av en passende NSS (Name Service Switch)-modul. Modulene som brukes er oppført i <filename>/etc/nsswitch.conf</filename>-filen, under <literal>passwd</literal>, <literal>shadow</literal> og <literal>group</literal>-inngangene. Se <xref linkend="sect.config-nss" /> for et spesifikt eksempel på at LDAP bruker en NSS-modul.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.etc-group">
+			<title>Gruppeliste: <filename>/etc/group</filename></title>
+			 <para>
+				Grupper er listet i <filename>/etc/group</filename>-filen, en enkel tekstdatabase i et format som ligner det til <filename>/etc/passwd</filename>-filen, med de følgende feltene:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						gruppenavn;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						passord (valgfritt): Denne brukes bare til å bli med i en gruppe når man ikke er et vanlig medlem (med <command>newgrp</command>, eller <command>sg</command>-kommandoer, se sidestolpe <xref linkend="sidebar.working-with-several-groups" />);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>gid</literal>: unikt gruppeidentifikasjonsnummer;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						medlemsliste: liste over navn på brukere som er medlemmer av gruppen, atskilt med komma.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+			</para>
+			 <sidebar id="sidebar.working-with-several-groups"> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Å arbeide med flere grupper</title>
+			 <indexterm>
+				<primary><command>newgrp</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>sg</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>id</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>gruppe</primary>
+				<secondary>endring</secondary>
+			</indexterm>
+			 <para>
+				Hver bruker kan være medlem av mange grupper; en av dem er deres «hovedgruppe». En brukers hovedgruppe er, som standard, laget under det første brukeroppsettet. Som standard tilhører hver fil en bruker som oppretter dem, så vel som deres hovedgruppe. Dette er ikke alltid ønskelig; for eksempel når brukeren skal jobbe i en mappe som også deles av en annen enn sin egen hovedgruppe. I dette tilfellet må brukeren endre sin viktigste gruppe ved å bruke en av følgende kommandoer: <command>newgrp</command>, som starter en nytt skall, eller <command>sg</command>, som bare utfører en kommando ved å bruke den angitte alternative gruppen. Disse kommandoene tillater også brukeren å delta i en gruppe som de ikke hører hjemme i. Dersom gruppen er passordbeskyttet, vil må de oppgi det riktige passordet før kommandoen blir utført.
+			</para>
+			 <para>
+				Alternativt kan brukeren sette <literal>setgid</literal>-bit på katalogen, noe som fører til at filene som er opprettet i den mappen automatisk hører til den riktige gruppen. For mer informasjon, se sidestolpe <xref linkend="sidebar.setgid-dir" />.
+			</para>
+			 <para>
+				<command>id</command>-kommandoen viser brukerens nåværende tilstand med sin personlige identifikator (<varname>uid</varname>-variabel), nåværende hovedgruppe (<varname>gid</varname>-variabel), og listen med grupper som de hører til (<varname>groups</varname>-variabel).
+			</para>
+			 </sidebar> <indexterm>
+				<primary><filename>group</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/group</filename></primary>
+			</indexterm>
+			 <para>
+				Henholdsvis <command>addgroup</command> og <command>delgroup</command>-kommandoene legger til eller sletter en gruppe. <command>groupmod</command>-kommandoen modifiserer en gruppes informasjon (its <literal>gid</literal>, eller identifikator). Kommandoen <command>passwd -g <replaceable>group</replaceable></command> endrer passordet for gruppen, mens <command>passwd -r -g <replaceable>group</replaceable></command>-kommandoen sletter den.
+			</para>
+			 <indexterm>
+				<primary><command>addgroup</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>delgroup</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>groupmod</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>gruppe</primary>
+				<secondary>opprettelse</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>opprettelse</primary>
+				<secondary>av grupper</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>gruppe</primary>
+				<secondary>sletting</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>sletting av en gruppe</primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>TIPS</emphasis> <command>getent</command></title>
+			 <indexterm>
+				<primary><command>getent</command></primary>
+			</indexterm>
+			 <para>
+				Kommandoen <command>getent</command> (hent oppføringer) sjekker systemdatabasen på standardmåten, ved hjelp av de aktuelle bibliotekfunksjoner, som igjen kaller på NSS-moduler satt opp i <filename>/etc/nsswitch.conf</filename>-filen. Kommandoen tar ett eller to argumenter: Navnet på databasen som skal sjekkes, og en mulig søkenøkkel. Således vil kommandoen <command>getent passwd rhertzog</command> gi informasjon fra brukerdatabasen om brukeren <literal>rhertzog</literal>.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.creating-accounts">
+		<title>Å lage kontoer</title>
+		 <indexterm>
+			<primary>konto</primary>
+			<secondary>opprettelse</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>opprettelse</primary>
+			<secondary>av brukerkontoer</secondary>
+		</indexterm>
+		 <para>
+			En av de første handlingene en administrator må gjøre når en ny maskin settes opp, er å opprette brukerkontoer. Dette gjøres vanligvis ved hjelp av <command>adduser</command>-kommandoen som tar et brukernavn som skal opprettes for den nye brukeren, som et argument.
+		</para>
+		 <indexterm>
+			<primary><command>adduser</command></primary>
+		</indexterm>
+		 <para>
+			Kommandoen <command>adduser</command> stiller noen spørsmål før du oppretter kontoen, men bruken er ganske grei. Oppsettfilen, <filename>/etc/adduser.conf</filename>, omfatter alle de interessante innstillingene: Den kan brukes til å automatisk sette en kvote for hver nye bruker ved å opprette en brukermal, eller til å endre plasseringen av brukerkontoer. Sistnevnte er sjelden nyttig, men er hendig, for eksempel når du har et stort antall brukere, og ønsker å dele kontoene deres over flere disker. Du kan også velge et annet skall.
+		</para>
+		 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Quota</title>
+		 <indexterm>
+			<primary>quota</primary>
+		</indexterm>
+		 <para>
+			Betegnelsen «kvote» refererer til en grense for maskinressurser som en bruker har lov til å bruke. Dette refererer ofte til diskplass.
+		</para>
+		 </sidebar> <para>
+			Opprettelsen av en konto fyller brukerens hjemmekatalog med innholdet i <filename>/etc/skel/</filename>-malen. Dette gir brukeren et sett med standardkataloger og oppsettfiler.
+		</para>
+		 <indexterm>
+			<primary>gruppe</primary>
+			<secondary>legg til en bruker</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>legge til en bruker til en gruppe</primary>
+		</indexterm>
+		 <para>
+			I noen tilfeller vil det være nyttig å legge til en bruker til en gruppe (annet enn dennes standard «hoved»-gruppe) for å gi dem ytterligere tillatelser. For eksempel kan en bruker som er inkludert i <emphasis>audio</emphasis>-gruppen få tilgang til lydenheter (se sidestolpe <xref linkend="sidebar.special-files" />). Dette kan oppnås med en kommando som <command>adduser <replaceable>bruker</replaceable> <replaceable>gruppe</replaceable></command>.
+		</para>
+		 <sidebar id="sidebar.special-files"> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Tilgangstillatelser for enheter</title>
+		 <indexterm>
+			<primary>enhet</primary>
+			<secondary>tilgangstillatelser </secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>fil</primary>
+			<secondary>spesiell</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>modus</primary>
+			<secondary>tegn</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>modus</primary>
+			<secondary>blokk</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>blokk, modus</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>tegn, modus</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>spesiell, fil</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>mknod</command></primary>
+		</indexterm>
+		 <para>
+			Hver eksterne maskinvareenhet er representert i Unix med en spesiell fil, vanligvis lagret i filtreet under <filename>/dev/</filename> (DEVices). Det er to typer spesialfiler som forholder seg til hvordan enheten er konstruert: «Tegnmodus»- og «blokk modus»-filer, begge modi tillater bare et begrenset antall operasjoner. Mens tegnmodus begrenser samhandlingen med lese/skriveoperasjoner, tillater blokkmodus også å søke i tilgjengelige data. Til slutt, hver spesialfil er knyttet til to tall («større» og «mindre») som identifiserer enheten til kjernen på en unik måte. En slik fil, laget av <command>mknod</command>-kommandoen, inneholder rett og slett et symbolsk (og mer menneskevennlig) navn.
+		</para>
+		 <para>
+			Rettighetene til en spesialfil reflekterer rettighetene som trengs for å få tilgang til selve enheten. Dermed vil en fil som <filename>/dev/mixer</filename>, som representerer lydmikser, kun ha lese/skrivetilgang for root-brukeren og medlemmer av <literal>audio</literal>-gruppen. Bare disse brukerne kan betjene lydmikseren.
+		</para>
+		 <para>
+			Merk at kombinasjonen av <emphasis role="pkg">udev</emphasis>, <emphasis role="pkg">consolekit</emphasis>, og <emphasis role="pkg">policykit</emphasis> kan legge til flere tillatelser for å tillate brukere som er fysisk koblet til konsollet (og ikke gjennom nettverket) å få tilgang til visse enheter.
+		</para>
+		 </sidebar>
+	</section>
+	 <section id="sect.shell-environment">
+		<title>Skallomgivelser</title>
+		 <para>
+			Kommandotolker (eller skjell) kan være en brukers første kontaktpunkt med datamaskinen, og de må derfor være ganske vennlige. De fleste av dem bruker initialiseringsskript som tillater oppsett av hvordan de virker (automatisk fullføring, ledetekst, etc.).
+		</para>
+		 <indexterm>
+			<primary>kommandolinjegrensesnitt</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>kommandotolk</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>skall</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>bash</command></primary>
+		</indexterm>
+		 <para>
+			<command>bash</command>, standardskjellet bruker <filename>/etc/bash.bashrc</filename>-initialiseringskriptet «interaktive» skall, og <filename>/etc/profile</filename> for «login» skall.
+		</para>
+		 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Innloggingsskall og (ikke) interaktive skall</title>
+		 <para>
+			Enkelt sagt, et innloggingsskall startes når du logger på til konsollen enten lokalt eller eksternt via <command>ssh</command>, eller når du kjører en eksplisitt <command>bash --login</command>-kommando. Uansett om det er en login skall eller ikke, kan et skall være interaktivt (i en for eksempel <command>xterm</command>-type terminal); eller ikke-interaktivt (ved å kjøre et skript).
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>OPPDAGELSE</emphasis> Andre skall, andre skript</title>
+		 <para>
+			Hver kommandotolk har en bestemt syntaks og egne oppsettfiler. <command>zsh</command> bruker dermed <filename>/etc/zshrc</filename> og <filename>/etc/zshenv</filename>; <command>csh</command> bruker <filename>/etc/csh.cshrc</filename>, <filename>/etc/csh.login</filename> og <filename>/etc/csh.logout</filename>. Manualsidene for disse programmene dokumenterer hvilke filer de bruker.
+		</para>
+		 <indexterm>
+			<primary><command>zsh</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>csh</command></primary>
+		</indexterm>
+		 </sidebar> <para>
+			For <command>bash</command> er det nyttig å aktivisere «automatisk fullføring» i <filename>/etc/bash.bashrc</filename>-filen (ganske enkelt avkommentere noen få linjer).
+		</para>
+		 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Automatisk fullføring</title>
+		 <indexterm>
+			<primary>automatisk fullføring</primary>
+		</indexterm>
+		 <para>
+			Mange kommandotolker har en fullføringsfunksjon, som gjør at skallet automatisk fullfører et delvis skrevet kommandonavn eller argument når brukeren treffer <keycap>Tab</keycap>-tasten. Dette lar brukerne arbeide mer effektivt, og være mindre utsatt for feil.
+		</para>
+		 <para>
+			Denne funksjonen er veldig kraftig og fleksibel. Det er mulig å sette opp atferden i henhold til hver kommando. Dermed blir det første argumentet som følger etter <command>apt-get</command> foreslått i henhold til syntaksen til denne kommandoen, selv om den ikke passer til noen fil (i dette tilfellet er de mulige valgene <literal>install</literal>, <literal>remove</literal>, <literal>upgrade</literal>, etc.).
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Tilde (tilde-tegnet), en snarvei til HOME</title>
+		 <indexterm>
+			<primary>~</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>tilde</primary>
+		</indexterm>
+		 <para>
+			Tilden er ofte brukt for å indikere katalogen som miljøvariabelen peker til <varname>HOME</varname>, (som brukerens hjemmekatalog, for eksempel <filename>/home/rhertzog/</filename>). Kommandotolker lager automatisk erstatningen: <filename>~/hello.txt</filename> blir til <filename>/home/rhertzog/hello.txt</filename>.
+		</para>
+		 <para>
+			Tilden gir også tilgang til en annen brukers hjemmekatalog. Dermed er <filename>~rmas/bonjour.txt</filename> synonymt med <filename>/home/rmas/bonjour.txt</filename>.
+		</para>
+		 </sidebar> <para>
+			I tillegg til disse vanlige skriptene, kan hver bruker opprette sin egen <filename>~/.bashrc</filename>, og <filename>~/.bash_profile</filename> for å sette opp sine skall. De mest vanlige endringer er å tilføye aliaser. Det er ord som automatisk erstattes når en kommando utføres, som gjør det raskere å bruke den kommandoen. For eksempel kan du opprette <literal>la</literal>-aliaset for kommandoen <command>ls -la | less</command>. Så trenger du bare å skrive <command>la</command> for å se igjennom innholdet i en mappe i detalj.
+		</para>
+		 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Miljøvariabler</title>
+		 <indexterm>
+			<primary>miljø</primary>
+			<secondary>miljøvarabel</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>variabel, miljø</primary>
+		</indexterm>
+		 <para>
+			Miljøvariabler tillater lagring av globale innstillinger for skall, eller diverse andre brukte programmer. De er kontekstuelle (hver prosess har sitt eget sett med miljøvariabler), men kan arves. Denne siste karakteristikken gir muligheten for et innloggingsskall å angi variabler som vil bli formidlet videre til alle programmer den kjører.
+		</para>
+		 </sidebar> <para>
+			Å sette standard miljøvariabler er en viktig del av skalloppsett. Når vi ser bort fra variablene som er spesifikke for et skall, er det best å plassere dem i <filename>/etc/environment</filename>-filen, siden den brukes av de ulike programmene som sannsynligvis starter en skalløkt. Variabler som vanligvis er angitt der, inkluderer <varname>ORGANIZATION</varname>, som vanligvis inneholder navnet på et kompani eller en organisasjon, og <varname>HTTP_PROXY</varname>, som indikerer eksistensen og plasseringen av en HTTP-mellomtjener.
+		</para>
+		 <sidebar> <title><emphasis>TIPS</emphasis> Alle skall er satt opp på samme måte</title>
+		 <para>
+			Brukere ønsker ofte å sette opp innloggingen sin og interaktive skjell på samme måte. For å gjøre dette velger de å tolke (eller «hente inn») innholdet fra <filename>~/.bashrc</filename> i <filename>~/.bash_profile</filename>-filen. Det er mulig å gjøre det samme med filer som er felles for alle brukere (ved å kalle på <filename>/etc/bash.bashrc</filename> fra <filename>/etc/profile</filename>).
+		</para>
+		 </sidebar>
+	</section>
+	 <section id="sect.config-printing">
+		<title>Skriveroppsett</title>
+		 <indexterm>
+			<primary>oppsett</primary>
+			<secondary>utskrift</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>utskrift</primary>
+			<secondary>configuration</secondary>
+		</indexterm>
+		 <para>
+			Skriveroppsettet bruker å forårsake mye hodepine for administratorer og brukere. Denne hodepinen er nå stort sett en ting fra fortiden, takket være <emphasis role="pkg">cups</emphasis>, den frie printertjeneren som bruker IPP-protokollen (Internet Printing Protocol).
+		</para>
+		 <indexterm>
+			<primary>IPP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Internett skriverprotokoll (Internet Printing Protocol)</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>cups</command></primary>
+		</indexterm>
+		 <para>
+			Dette programmet er fordelt over flere Debian-pakker: <emphasis role="pkg">cups</emphasis> er den sentrale skrivertjeneren; <emphasis role="pkg">cups-bsd</emphasis> er et kompatibilitetslag, slik at bruk av kommandoer fra det tradisjonelle BSD-utskriftssystemet (<command>lpd</command>-daemon (nisse), <command>lpr</command>, og <command>lpq</command>-kommandoer, etc.); <emphasis role="pkg">cups-client</emphasis> inneholder en gruppe programmer til å samhandle med tjeneren (blokkere eller gjenåpne en skriver, vise eller slette utskriftsjobber som pågår, etc.), og til slutt inneholder <emphasis role="pkg">cups-driver-gutenprint</emphasis> en samling med flere skriverdrivere for <command>cups</command>.
+		</para>
+		 <indexterm>
+			<primary><command>lpr</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>lpd</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>lpq</command></primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>FELLESSKAP</emphasis> CUPS</title>
+		 <indexterm>
+			<primary>CUPS</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Common Unix Printing System</primary>
+		</indexterm>
+		 <para>
+			CUPS (Common Unix Printing System) er et prosjekt (og et varemerke) administrert av Apple, Inc. <ulink type="block" url="http://www.cups.org/" />
+		</para>
+		 </sidebar> <para>
+			Etter installasjon av disse forskjellige pakkene, er <command>cups</command> enkelt administrert via et nettgrensesnitt som er tilgjengelig fra den lokale adressen:<literal>http://localhost:631/</literal>. Der kan du legge til, fjerne og administrere skrivere (inkludert nettverksskrivere). Du kan også administrere <command>cups</command> med grafiske grensesnitt i skrivebordsmiljøet. Til slutt er det også det grafiske grensesnittet <command>system-config-printer</command> (fra Debian pakken med samme navn).
+		</para>
+		 <indexterm>
+			<primary><command>cups</command></primary>
+			<secondary>administrasjon</secondary>
+		</indexterm>
+		 <sidebar> <title><emphasis>NOTE</emphasis> foreldelse av<filename>/etc/printcap</filename></title>
+		 <para>
+			<emphasis>cups</emphasis> bruker ikke lenger <filename>/etc/printcap</filename>-filen, som nå er foreldet. Programmer som er avhengige av denne filen for å få en liste over tilgjengelige skrivere, vil dermed mislykkes. For å unngå dette problemet slett denne filen, og gjør den til en symbolsk lenke (se sidefelt <xref linkend="sidebar.symbolic-link" />) til <filename>/var/run/cups/printcap</filename>, som er vedlikeholdt av <emphasis>cups</emphasis> for å sikre samsvar.
+		</para>
+		 <indexterm>
+			<primary><filename>printcap</filename></primary>
+		</indexterm>
+		 </sidebar>
+	</section>
+	 <section id="sect.config-bootloader">
+		<title>Oppsett av oppstartslaster (bootloader)</title>
+		 <indexterm>
+			<primary>laster</primary>
+			<secondary>oppstartslaster (bootloader)</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>oppstartslaster (bootloader)</primary>
+		</indexterm>
+		 <para>
+			Det virker sannsynligvis allerede, men det er alltid godt å vite hvordan du setter opp og installerer oppstartslasteren i tilfelle den forsvinner fra Master Boot Record. Dette kan skje etter installasjon av et annet operativsystem, for eksempel Windows. Følgende informasjon kan også hjelpe deg å endre oppstartslasterens oppsett hvis nødvendig.
+		</para>
+		 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Master boot record</title>
+		 <indexterm>
+			<primary>MBR</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Master Boot Record</primary>
+		</indexterm>
+		 <para>
+			Master Boot Record (MBR) inntar de første 512 bytene av den første harddisken, og er det første BIOS laster for å overlate kontrollen til et program som kan starte det ønskede operativsystemet. Vanligvis, når en oppstartslaster installeres i MBR, fjernes det tidligere innholdet.
+		</para>
+		 </sidebar> <section id="sect.identify-disks">
+			<title>Identifisere diskene</title>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> <emphasis>udev</emphasis> og <filename>/dev/</filename></title>
+			 <para>
+				<filename>/dev/</filename>-mappen omfatter vanligvis såkalte «spesial»-filer, ment å representere systemets tilleggsutstyr (se sidestolpe <xref linkend="sidebar.special-files" />). Det var en gang, da det pleide å inneholde alle spesialfiler som potensielt kunne brukes. Denne tilnærmingen hadde en rekke ulemper, blant annet det faktum at det er begrenset hvor mange enheter som man kunne bruke (på grunn av den hardkodede listen med navn), og at det var umulig å vite hvilke spesielle filer som faktisk var nyttige.
+			</para>
+			 <para>
+				I dag er håndteringen av spesielle filer helt dynamisk, og bedre egnet for «hot swap»-funksjonen (rasktvekslende) av eksterne datamaskinenheter. Kjernen samarbeider med <emphasis>udev</emphasis> for å opprette og slette dem etter behov når de tilsvarende enhetene kommer og forsvinner. Av denne grunn trenger ikke <filename>/dev/</filename> å være varig, og er dermed et RAM-basert filsystem som starter tomt, og kun inneholder de relevante oppføringer.
+			</para>
+			 <para>
+				Kjernen kommuniserer mye informasjon om eventuell nylig tillagt enhet, og deler ut et par større/mindre tall for å identifisere den. Med <command>udevd</command> kan en lage spesialfilen med navn, og med de tillatelsene som den ønsker. Den kan også opprette aliaser, og utføre flere handlinger (som initialisering eller registreringsoppgaver). <command>udevd</command>-ens virke drives med et større sett med (egendefinerte) regler.
+			</para>
+			 <para>
+				Med dynamisk tildelte navn kan du dermed holde på samme navn for en gitt enhet, uavhengig av koblingen som brukes, eller rekkefølgen på forbindelsen, noe som er spesielt nyttig når du bruker forskjellig USB-utstyr. Den første partisjonen på den første harddisken kan da bli kalt <filename>/dev/sda1</filename> for samsvar bakover, eller <filename>/dev/root-partition</filename> hvis du foretrekker det, eller til og med begge samtidig, fordi <command>udevd</command> kan settes opp til å automatisk lage en symbolsk lenke.
+			</para>
+			 <para>
+				I gamle dager var det noen kjernemoduler som ble lastet automatisk når du prøvde å få tilgang til den tilsvarende filen for enheten. Dette er ikke lenger tilfelle, og tilleggsenhetens spesielle fil finnes ikke lenger før lasting av modulen. Dette er ikke noe stort poeng, fordi de fleste moduler er lastet på fra oppstart takket være automatisk gjenkjenning av maskinvare. Men for ikke oppsporbare enheter (som svært gamle disker eller PS/2-mus), fungerer dette ikke. Vurder å legge til modulene, <literal>floppy</literal>, <literal>psmouse</literal> og <literal>mousedev</literal> til <filename>/etc/modules</filename> for å tvinge at de lastes ved oppstart.
+			</para>
+			 </sidebar> <indexterm>
+				<primary>harddisk, navn</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>navn</primary>
+				<secondary>på harddisken</secondary>
+			</indexterm>
+			 <para>
+				Oppsettet av oppstartslasteren må identifisere de ulike harddisker og deres partisjoner. Linux bruker «blokk» spesialfiler lagret i <filename>/dev/</filename>-mappen til dette formålet. Etter Debian <emphasis role="distribution">Squeeze</emphasis>, har skjemaet for navngiving for harddisker blitt forent av Linux-kjernen, og alle harddisker (IDE/PATA, SATA, SCSI, USB, IEEE 1394) er nå representert av <filename>/dev/sd*</filename>.
+			</para>
+			 <para>
+				Hver partisjon er representert med sitt nummer på disken der den ligger, for eksempel er <filename>/dev/sda1</filename> den første partisjonen på den første disken, og <filename>/dev/sdb3</filename> er den tredje partisjonen på den andre disken.
+			</para>
+			 <indexterm>
+				<primary>partisjon</primary>
+				<secondary>primær</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>partisjon</primary>
+				<secondary>utvidet</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>partisjon</primary>
+				<secondary>sekundær</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>partisjonstabellen</primary>
+				<secondary>MS-DOS format</secondary>
+			</indexterm>
+			 <para>
+				PC-arkitekturen (eller «i386», inkludert sin yngre fetter «AMD64») har lenge vært begrenset til å bruke «MS-DOS» partisjonstabellformatet, som bare tillater fire «primære» partisjoner per disk. Å gå utover denne begrensningen under denne ordningen, må en av dem lages som en «utvidet» partisjon, og kan da inneholde flere «sekundære» partisjoner. Disse sekundære partisjonene er nummerert fra 5. Dermed kan den første sekundærpartisjonen være <filename>/dev/sda5</filename>, fulgt av <filename>/dev/sda6</filename>, etc.
+			</para>
+			 <para>
+				En annen begrensning i partisjonstabellformat MS-DOS, er at det bare tillater disker opp til 2 TiB størrelse, som blir et reelt problem med nyere disker.
+			</para>
+			 <indexterm>
+				<primary>GPT</primary>
+				<secondary>partisjonstabellformat</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>partisjonstabell</primary>
+				<secondary>GPT-format</secondary>
+			</indexterm>
+			 <para>
+				Et nytt partisjonstabellformat, kalt GPT, løsner disse begrensningene på antall partisjoner (det tillater opp til 128 partisjoner når du bruker standardinnstillingene), og på størrelsen på diskene (opp til 8 ZiB, som er mer enn 8 milliarder terabyte). Hvis du har tenkt å lage mange fysiske partisjoner på samme disk, bør du derfor sørge for at du oppretter partisjonstabellen i GPT-format når disken partisjoneres.
+			</para>
+			 <para>
+				Det er ikke alltid lett å huske hvilken disk som er koblet til hvilken SATA-kontroller, eller i tredje posisjon i SCSI-kjeden, spesielt når navngivingen av harddisker med høye ytelser (som inkluderer blant annet de fleste SATA-disker og eksterne disker) kan endre seg fra en oppstart til en annen. Heldigvis lager <command>udev</command>, i tillegg til <filename>/dev/sd*</filename>, symbolske lenker med et fast navn, som du deretter kan bruke hvis du ønsket å identifisere en harddisk på en ikke-tvetydig måte. Disse symbolske lenkene er lagret i <filename>/dev/disk/by-id</filename>. På en maskin med to fysiske disker, for eksempel, kan man finne følgende:
+			</para>
+			 
+<screen><computeroutput>mirexpress:/dev/disk/by-id# </computeroutput><userinput>ls -l
+</userinput><computeroutput>total 0
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP-part1 -&gt; ../../sda1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-STM3500418AS_9VM3L3KP-part2 -&gt; ../../sda2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697 -&gt; ../../sdb
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697-part1 -&gt; ../../sdb1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 ata-WDC_WD5001AALS-00L3B2_WD-WCAT00241697-part2 -&gt; ../../sdb2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP-part1 -&gt; ../../sda1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_STM3500418AS_9VM3L3KP-part2 -&gt; ../../sda2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697 -&gt; ../../sdb
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697-part1 -&gt; ../../sdb1
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 scsi-SATA_WDC_WD5001AALS-_WD-WCAT00241697-part2 -&gt; ../../sdb2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0 -&gt; ../../sdc
+lrwxrwxrwx 1 root root 10 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0-part1 -&gt; ../../sdc1
+lrwxrwxrwx 1 root root 10 23 jul. 16:48 usb-LaCie_iamaKey_3ed00e26ccc11a-0:0-part2 -&gt; ../../sdc2
+[...]
+lrwxrwxrwx 1 root root  9 23 jul. 08:58 wwn-0x5000c50015c4842f -&gt; ../../sda
+lrwxrwxrwx 1 root root 10 23 jul. 08:58 wwn-0x5000c50015c4842f-part1 -&gt; ../../sda1
+[...]
+mirexpress:/dev/disk/by-id# </computeroutput></screen>
+			 <para>
+				Merk at noen disker er oppført flere ganger (fordi de oppfører seg samtidig som ATA-disker og SCSI-disker), men den relevante informasjonen er hovedsakelig i diskenes modell og serienumre, der du kan finne den perifere filen.
+			</para>
+			 <para>
+				Oppsettfilene som brukes som eksempler i de neste avsnittene er basert på det samme oppsettet: En enkelt SATA-disk, der den første partisjonen er en gammel Windows-installasjon, og den andre inneholder Debian GNU/Linux.
+			</para>
+
+		</section>
+		 <section id="sect.config-lilo">
+			<title>Oppsett av LILO</title>
+			 <indexterm>
+				<primary>LILO</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Linux Loader</primary>
+			</indexterm>
+			 <para>
+				<emphasis>LILO</emphasis> (LInux LOader) er den eldste oppstartslasteren - solid men rustikk. Den skriver den fysiske adressen til kjernen for å starte på MBR, og det er derfor hver oppdatering til LILO (eller dens oppsettfil) må etterfølges av kommandoen<command>lilo</command>. Å glemme å gjøre dette, vil gi et system som ikke kan starte hvis den gamle kjernen ble fjernet eller erstattet, ettersom den nye ikke vil være på samme sted på disken.
+			</para>
+			 <para>
+				LILOs oppsettfil er <filename>/etc/lilo.conf</filename>. En enkel fil for standardoppsett er illustrert i eksempelet nedenfor.
+			</para>
+			 <example id="example.lilo.conf">
+				<title>Oppsettfil for LILO</title>
+				 
+<programlisting>
+# The disk on which LILO should be installed.
+# By indicating the disk and not a partition.
+# you order LILO to be installed on the MBR.
+boot=/dev/sda
+# the partition that contains Debian
+root=/dev/sda2
+# the item to be loaded by default
+default=Linux
+
+# the most recent kernel image
+image=/vmlinuz
+  label=Linux
+  initrd=/initrd.img
+  read-only
+
+# Old kernel (if the newly installed kernel doesn't boot)
+image=/vmlinuz.old
+  label=LinuxOLD
+  initrd=/initrd.img.old
+  read-only
+  optional
+
+# only for Linux/Windows dual boot
+other=/dev/sda1
+  label=Windows</programlisting>
+
+			</example>
+
+		</section>
+		 <section id="sect.config-grub">
+			<title>Oppsett av GRUB 2</title>
+			 <indexterm>
+				<primary>GRUB</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>GRUB 2</primary>
+			</indexterm>
+			 <para>
+				<emphasis>GRUB</emphasis> (GRand Unified Bootloader) er nyere. Det er ikke nødvendig å ta den i bruk etter hver oppdatering av kjernen;<emphasis>GRUB</emphasis> vet hvordan filsystemene skal leses, og selv finne posisjonen til kjernen på disken. For å installere den på MBR i den første disken, skriv bare <command>grub-install /dev/sda</command>. <indexterm><primary><command>grub-install</command></primary></indexterm>
+			</para>
+			 <sidebar> <title><emphasis>NOTE</emphasis> Disknavn for GRUB</title>
+			 <para>
+				GRUB kan bare identifisere harddisker basert på opplysninger fra BIOS. <literal>(hd0)</literal> samsvarer med den første disken som oppdages, <literal>(hd1)</literal> den andre, etc. I de fleste tilfeller tilsvarer dette nøyaktig til den vanlige rekkefølgen av disker under Linux, men problemer kan oppstå når du forbinder SCSI- og IDE-disker. GRUB lagrer overensstemmelser som den avdekker i filen <filename>/boot/grub/device.map</filename>. Hvis du finner feil der (fordi du vet at din BIOS oppdager stasjoner i en annen rekkefølge), korriger dem manuelt og kjør <command>grub-install</command> igjen. <command>grub-mkdevicemap</command> kan hjelpe til med å lage en <filename>device.map</filename>-fil som det kan startes fra.
+			</para>
+			 <para>
+				Partisjoner har også et bestemt navn i GRUB. Når du bruker «klassiske» partisjoner i MS-DOS-format, er den første partisjonen på den første disken merket <literal>(hd0,msdos1)</literal>, den andre <literal>(hd0,msdos2)</literal>, osv.
+			</para>
+			 </sidebar> <para>
+				Oppsett av GRUB 2 er lagret i <filename>/boot/grub/grub.cfg</filename>, men denne filen (i Debian) er generert fra andre. Vær forsiktig med å endre det for hånd, siden slike lokale endringer vil gå tapt neste gang <command>update-grub</command> kjøres (som kan skje ved oppdatering av ulike pakker). De vanligste modifikasjoner av <filename>/boot/grub/grub.cfg</filename>-filen (for å legge kommandolinjeparametere til kjernen, eller endre hvor lenge menyen vises, for eksempel) er gjort gjennom variabler i <filename>/etc/default/grub</filename>. For å legge til oppføringer i menyen kan du enten lage en <filename>/boot/grub/custom.cfg</filename>-fil, eller modifisere <filename>/etc/grub.d/50_custom</filename>-filen. For mer komplekse oppsett kan du endre andre filer i <filename>/etc/grub.d</filename>, eller legge til. Disse skriptene skal returnere oppsettsnutter, muligens ved å bruke eksterne programmer. Disse skriptene er de som vil oppdatere listen over kjerner som kan startes: <filename>10_linux</filename> tar hensyn til installerte Linux-kjerner; <filename>20_linux_xen</filename> tar i betraktning Xen virtuelle systemer, og <filename>30_os-prober</filename> lister andre operativsystemer (Windows, OS X, Hurd).
+			</para>
+
+		</section>
+		 <section id="sect.config-yaboot">
+			<title>For Macintosh Computers (PowerPC): Oppsett av Yaboot</title>
+			 <indexterm>
+				<primary><command>yaboot</command></primary>
+			</indexterm>
+			 <para>
+				Yaboot er oppstartslasteren som gamle Macintosh-maskiner med PowerPC-prosessorer bruker. De starter ikke som PC-er, men er avhengige av en partisjon med en «oppstartsprosedyre», som BIOS (eller Open Firmware) starter lasteren fra, og der <command>ybin</command>-programmet installerer <command>yaboot</command> med oppsettfilen. Du trenger bare å kjøre denne kommandoen på nytt hvis <filename>/etc/yaboot.conf</filename> er endret (den er duplisert på oppstartsfrekevensen, og <command>yaboot</command> vet å finne posisjonen til kjernene på diskene).
+			</para>
+			 <para>
+				Før <command>ybin</command> kjøres, må du først ha et gyldig <filename>/etc/yaboot.conf</filename>. Her følger et eksempel på et lite oppsett. <indexterm><primary><command>ybin</command></primary></indexterm>
+			</para>
+			 <example id="example.yaboot.conf">
+				<title>Oppsettfil for Yaboot</title>
+				 
+<programlisting>
+# bootstrap partition
+boot=/dev/sda2
+# the disk
+device=hd:
+# the Linux partition
+partition=3
+root=/dev/sda3
+# boot after 3 seconds of inactivity
+# (timeout is in tenths of seconds)
+timeout=30
+
+install=/usr/lib/yaboot/yaboot
+magicboot=/usr/lib/yaboot/ofboot
+enablecdboot
+
+# last kernel installed
+image=/vmlinux
+        label=linux
+        initrd=/initrd.img
+        read-only
+
+# old kernel
+image=/vmlinux.old
+        label=old
+        initrd=/initrd.img.old
+        read-only
+
+# only for Linux/Mac OSX dual-boot
+macosx=/dev/sda5
+
+# bsd=/dev/sdaX and macos=/dev/sdaX
+# are also possible</programlisting>
+
+			</example>
+
+		</section>
+
+	</section>
+	 <section id="sect.config-misc">
+		<title>Andre oppsett: Synkronisering av tid, logger, dele tilgang…</title>
+		 <para>
+			De mange delene som er listet i denne seksjonen, er nyttig å kjenne til for alle som ønsker å mestre alle aspekter ved oppsett av GNU/Linux-systemet. De er imidlertid behandlet i korthet, og referer ofte til dokumentasjonen.
+		</para>
+		 <section id="sect.timezone">
+			<title>Tidssone</title>
+			 <indexterm>
+				<primary>tidssone</primary>
+			</indexterm>
+			 <sidebar id="sidebar.symbolic-link"> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Symbolske lenker</title>
+			 <indexterm>
+				<primary>lenke</primary>
+				<secondary>symbolsk</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>symbolsk lenke</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>ln</command></primary>
+			</indexterm>
+			 <para>
+				En symbolsk lenke er en peker til en annen fil. Når du åpner den, vil filen som den peker til åpnes. Fjerning av linken vil ikke slette filen den peker til. Likeledes har den ikke sitt eget sett med tillatelser, men beholder heller rettighetene til sitt mål. Endelig kan den peke til alle typer filer: Kataloger, spesialfiler (kontakter, navnede kanaler, enhetsfiler, etc.), og til og med andre symbolske lenker.
+			</para>
+			 <para>
+				<command>ln -s <replaceable>mål</replaceable> <replaceable>lenkenavn</replaceable></command>-kommandoen lager en symbolsk lenke, kalt <replaceable>lenkenavn</replaceable>, som peker til <replaceable>mål</replaceable>.
+			</para>
+			 <para>
+				Hvis målet ikke eksisterer, er koblingen «ødelagt», og forsøke å få tilgang til det vil resultere i en feilmelding om at målfilen ikke eksisterer. Hvis koblingen peker til en annen link, får du en «kjede» av lenker som blir til en «syklus» der ett av målene peker på de foregående. I dette tilfellet vil tilgangen til en av lenkene i syklusen resultere i en bestemt feil («for mange nivåer med symbolske lenker»). Dette betyr at kjernen gir opp etter flere runder med syklusen.
+			</para>
+			 </sidebar> <para>
+				Tidssonen som ble satt opp ved den første installasjonen, er et oppsettelement for <emphasis role="pkg">tzdata</emphasis>-pakken. For å endre den bruk <command>dpkg-reconfigure tzdata</command>-kommandoen, som lar deg velge tidssonen som skal brukes interaktivt. Oppsettet er lagret i <filename>/etc/timezone</filename>-filen. I tillegg er den tilsvarende filen i <filename>/usr/share/zoneinfo</filename>-mappen kopiert til <filename>/etc/localtime</filename>. Denne filen inneholder reglene som styrer datoene for sommertid, for land som bruker det.
+			</para>
+			 <indexterm>
+				<primary><filename>timezone</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/timezone</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>zoneinfo</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/usr/share/zoneinfo/</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>DST</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>sommertid</primary>
+			</indexterm>
+			 <para>
+				Når du trenger å endre tidssonen midlertidig, bruk miljøvariabelen <varname>TZ</varname>, som tar prioritet over systemstandarden som er satt:
+			</para>
+			 <indexterm>
+				<primary><varname>TZ</varname></primary>
+			</indexterm>
+			 
+<screen id="screen.tz">
+<computeroutput>$ </computeroutput><userinput>date</userinput>
+<computeroutput>Thu Feb 19 11:25:18 CET 2015</computeroutput>
+<computeroutput>$ </computeroutput><userinput>TZ="Pacific/Honolulu" date</userinput>
+<computeroutput>Thu Feb 19 00:25:21 HST 2015</computeroutput></screen>
+			 <sidebar> <title><emphasis>NOTE</emphasis> Systemklokke, maskinvareklokke</title>
+			 <para>
+				Det er to tidskilder i en datamaskin. Datamaskinenes hovedkort har en maskinvareklokke, kalt «CMOS klokke». Denne klokken er ikke veldig presis, og gir heller trege aksesstider. Operativsystemkjernen har sin egen programvareklokke, som selv holder seg oppdatert (muligens med hjelp av tidstjenere, se <xref linkend="sect.time-synchronization" />). Denne systemklokken er generelt mer nøyaktig, spesielt siden den ikke trenger tilgang til maskinvarevariabler. Men siden den bare finnes i et påslått minne, er den nullet ut når maskinen startes opp. I motsetning til en CMOS-klokke, som har et batteri, og derfor «overlever» omstart, eller når maskinen er stanset. Systemklokken er derfor satt fra CMOS-klokken under oppstart, og CMOS-klokken oppdateres når maskinen stanses (for å ta hensyn til mulige endringer eller korreksjoner hvis den er feil justert).
+			</para>
+			 <para>
+				I praksis er det et problem, fordi CMOS-klokken er noe mer enn en teller, og ikke inneholder informasjon om tidssonen. Det er et valg av som skal gjøres om denne tolkningen: Enten kan systemet anse at det kjører i universell tid (UTC, tidligere GMT), eller i lokal tid. Dette valget kan virke enkelt, men ting er faktisk mer kompliserte: Som et resultat av sommertid, er dette ikke konstant. Resultatet er at systemet ikke har mulighet til å finne ut om forskyvningen er riktig, spesielt i perioder med tidsendringer. Siden det er alltid mulig å rekonstruere lokal tid fra universell tid og tidssoneinformasjon, anbefaler vi på det sterkeste å sette CMOS-klokken i universell tid.
+			</para>
+			 <para>
+				Dessverre ignorerer Windows-systemer med standardinnstillinger denne anbefalingen. De holder CMOS-klokken på lokal tid, og bruker tidsendringer ved oppstart av datamaskinen, ved å prøve å gjette under tidsendringer om endringen allerede er tatt i bruk eller ikke. Dette fungerer forholdsvis godt så lenge systemet bare kjører på Windows. Men når en datamaskin har flere systemer (enten det er et «dual-boot»-oppsett, eller kjører andre systemer via virtuell maskin), blir det kaos, uten verktøy til å avgjøre om tiden er riktig. Hvis du absolutt må beholde Windows på en datamaskin, bør du enten sette den opp til å holde CMOS-klokke som UTC (sette registernøkkelen <literal>HKLM\SYSTEM\CurrentControlSet\Control\TimeZoneInformation\RealTimeIsUniversal</literal> til «1» som et DWORD), eller bruke <command>hwclock --localtime --set</command> fra Debian-systemet for å sette maskinvareklokken, og merke det sporing av lokal tid (og sørge for å sjekke klokken manuelt vår og høst).
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.time-synchronization">
+			<title>Tidssynkronisering</title>
+			 <indexterm>
+				<primary>tidssynkronisering</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>klokke</primary>
+				<secondary>synkronisering</secondary>
+			</indexterm>
+			 <para>
+				Tidssynkronisering som kan virke overflødig på en datamaskin, er meget viktig i et nettverk. Siden brukerne ikke har adgang til å endre dato og tid, er det viktig at denne informasjonen er nøyaktig for å unngå forvirring. Videre, å ha synkronisert alle datamaskiner i et nettverk gir bedre kryssreferanseinformasjon fra loggene på forskjellige maskiner. Dermed, i tilfelle av angrep, er det lettere å rekonstruere den kronologiske rekkefølge av handlinger på de forskjellige maskinene som er kompromittert. Data som samles inn på flere maskiner for statistiske formål vil ikke gjøre mye nytte hvis de ikke er synkronisert.
+			</para>
+			 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> NTP</title>
+			 <indexterm>
+				<primary>NTP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>nettverk</primary>
+				<secondary>tidsprotokoll</secondary>
+			</indexterm>
+			 <para>
+				NTP (Network Time Protocol / Nettverk tidsprotokoll) gjør det mulig for en maskin å synkronisere seg med andre ganske nøyaktig, tatt i betraktning forsinkelser forårsaket av overføring av informasjon over nettverket, og andre mulige forskyvninger.
+			</para>
+			 <para>
+				Mens det er mange NTP-servere på Internett, kan de mer populære bli overbelastet . Det er derfor anbefaler vi å bruke <emphasis>pool.ntp.org</emphasis>-NTP-tjener, som i realiteten er en gruppe maskiner som har blitt enige om å tjene som offentlige NTP-tjenere. Du kan til og med begrense bruken til en under-gruppe som er spesifikk for et land, for eksempel med <emphasis>us.pool.ntp.org</emphasis> for United States, eller <emphasis>ca.pool.ntp.org</emphasis> for Canada, etc.
+			</para>
+			 <para>
+				Men hvis du klarer et stort nettverk, anbefales det at du installerer din egen NTP-tjener, noe som vil gi synkronisering med offentlige servere. I dette tilfellet kan alle de andre maskinene på nettverket bruke din interne NTP-tjener i stedet for å øke belastningen på de offentlige tjenerne. Du vil også øke homogeniteten med dine klokker, ettersom alle maskinene blir synkronisert fra samme kilde, og denne kilden er svært nær når en tenker på nettverkets overføringstid.
+			</para>
+			 </sidebar> <section id="sect.ntp-on-workstations">
+				<title>For arbeidsstasjoner</title>
+				 <para>
+					Ettersom arbeidsstasjonene regelmessig blir omstartet (selv om det bare er for å spare energi), er det nok å synkronisere dem med NTP ved oppstart. For å gjøre dette, kan du installere <emphasis role="pkg">ntpdate</emphasis>-pakken. Du kan om nødvendig endre NTP-tjeneren som brukes ved å endre <filename>/etc/default/ntpdate</filename>-filen.
+				</para>
+				 <indexterm>
+					<primary><filename>ntpdate</filename></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><filename>/etc/default/ntpdate</filename></primary>
+				</indexterm>
+
+			</section>
+			 <section id="sect.ntp-on-servers">
+				<title>For tjenere</title>
+				 <para>
+					Tjenere er bare sjelden restartet, og det er svært viktig at tidssystemet deres er korrekt. For å opprettholde riktig klokkeslett permanent må du installere en lokal NTP-tjener, en tjeneste som tilbys i <emphasis role="pkg">ntp</emphasis>-pakken. Med standardinnstillinger vil serveren synkroniseres med <emphasis>pool.ntp.org</emphasis>, og gi tid som svar på forespørsler som kommer fra det lokale nettverket. Du kan sette den opp ved å redigere <filename>/etc/ntp.conf</filename>-filen. Den viktigste endringen er NTP-tjeneren som den viser til. Hvis nettverket har mange tjenere, kan det være nyttig å ha en lokal tidstjener som synkroniseres med offentlige tjenere, og brukes som en tidskilde av de andre tjenerne i nettverket.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">ntp</emphasis></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>server</primary>
+					<secondary>NTP</secondary>
+				</indexterm>
+				 <indexterm>
+					<primary>NTP</primary>
+					<secondary>-tjener</secondary>
+				</indexterm>
+				 <sidebar> <title><emphasis>GÅR VIDERE</emphasis> GPS-moduler og andre tidsressurser</title>
+				 <indexterm>
+					<primary>GPS</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>DCF-77</primary>
+				</indexterm>
+				 <para>
+					Hvis tidssynkronisering er spesielt viktig for nettverket ditt, er det mulig å utstyre en tjener med en GPS-modul (som vil bruke tiden fra GPS-satellitter), eller en DCF-77-modul (som vil synkronisere tid med atomuret nær Frankfurt, Tyskland). I dette tilfellet er oppsettet av NTP-tjeneren litt mer komplisert, og en forutgående gjennomgang av dokumentasjonen er helt nødvendig.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.rotation-logs">
+			<title>Roterende loggfiler</title>
+			 <indexterm>
+				<primary>fil</primary>
+				<secondary>logger, rotasjon</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>logger</primary>
+				<secondary>filer, rotasjon</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>rotasjon av loggfiler</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>logrotate</command></primary>
+			</indexterm>
+			 <para>
+				Loggfiler kan vokse, raskt, og det er nødvendig å arkivere dem. Den vanligste ordningen er et roterende arkiv: Loggfilen blir regelmessig arkivert, og bare de siste <replaceable>X</replaceable>-arkivene beholdes. <command>logrotate</command>, programmet som er ansvarlig for disse rotasjonene, følger retningslinjer gitt i <filename>/etc/logrotate.conf</filename>-filen, og alle filene i <filename>/etc/logrotate.d/</filename>-mappen. Administratoren kan endre disse filene hvis de ønsker å innrette seg etter loggrotasjonsopplegget som Debian definerer. Manualsiden <citerefentry><refentrytitle>logrotate</refentrytitle>
+				 <manvolnum>1</manvolnum></citerefentry> beskriver alle de tilgjengelige valgene i disse oppsettfilene. Du kan, om du ønsker det, øke antall filer som beholdes i loggrotasjonen, eller flytte loggfilene til en bestemt mappe øremerket til å arkivere dem, i stedet for å slette dem. Du kan også sende dem via e-post for å arkivere dem andre steder.
+			</para>
+			 <para>
+				<command>logrotate</command>-programmet kjøres daglig av <command>cron</command>-kjøreplanprogram (beskrevet i <xref linkend="sect.task-scheduling-cron-atd" />).
+			</para>
+
+		</section>
+		 <section id="sect.sharing-admin-rights">
+			<title>Å dele administratorrettigheter</title>
+			 <indexterm>
+				<primary>konto</primary>
+				<secondary>administratorkonto</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>rot</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>sudo</command></primary>
+			</indexterm>
+			 <para>
+				Ofte arbeider flere administratorer på det samme nettverket. Å dele rotpassordet er ikke veldig elegant, og åpner døren for misbruk på grunn av anonymitet slik deling medfører. Løsningen på dette problemet er <command>sudo</command>-programmet, som tillater visse brukere å utføre visse kommandoer med spesielle rettigheter. I det vanligste tilfelle lar <command>sudo</command> en klarert bruker å utføre enhver kommando som rot. For å gjøre dette kjører brukeren bare <command>sudo <replaceable>command</replaceable></command>, og autentiserer ved å bruke sitt personlige passord.
+			</para>
+			 <para>
+				Etter installasjonen gir <emphasis role="pkg">sudo</emphasis>-pakken fulle root-rettigheter til medlemmer av <literal>sudo</literal> Unix-gruppe. For å delegere andre rettigheter må administratoren bruke <command>visudo</command>-kommandoen som tillater dem å modifisere oppsettfilen <filename>/etc/sudoers</filename> (her igjen, dette tar i bruk <command>vi</command>-redigereren, eller hvilken som helst annen redigerer, indikert i <varname>EDITOR</varname>-miljøvariabelen). Å legge til en linje med <literal><replaceable>brukernavn</replaceable> ALL=(ALL) ALL</literal> lar den aktuelle brukeren utføre enhver kommando som root.
+			</para>
+			 <indexterm>
+				<primary><command>visudo</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>sudoers</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/sudoers</filename></primary>
+			</indexterm>
+			 <para>
+				Mer avanserte oppsett tillater bare godkjenning av bestemte kommandoer til bestemte brukere. Alle detaljene i de forskjellige mulighetene er gitt i manualsiden <citerefentry><refentrytitle>sudoers</refentrytitle>
+				 <manvolnum>5</manvolnum></citerefentry>.
+			</para>
+
+		</section>
+		 <section id="sect.fstab-mount-points">
+			<title>Liste med monteringspunkter</title>
+			 <indexterm>
+				<primary>punkter, montering</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>monteringspunkt</primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> Montering og avmontering</title>
+			 <para>
+				I et Unix-lignende system som Debian, blir filer organisert i en enkelt tre-lignende hierarki av kataloger. <filename>/</filename>-mappen kalles «rotkatalogen»; alle andre kataloger er underkataloger innenfor denne roten. «Montering» er handlingen å inkludere innholdet i en ekstern enhet (ofte en harddisk) inn i systemets generelle fil-tre. Som en konsekvens, hvis du bruker en egen harddisk til å lagre brukernes personlige data, må denne disken være «montert» i <filename>/home/</filename>-mappen. Rotfilsystemet er alltid montert ved oppstart av kjernen. Andre enheter blir ofte montert senere under oppstart, eller manuelt med <command>mount</command>-kommandoen.
+			</para>
+			 <indexterm>
+				<primary><command>mount</command></primary>
+			</indexterm>
+			 <para>
+				Noen flyttbare enheter blir montert automatisk ved tilkobling, spesielt når du bruker GNOME, KDE eller andre grafiske skrivebordsmiljøer . Andre må monteres manuelt av brukeren. Likeledes må de være demontert (fjernet fra fil-treet). Vanlige brukere har vanligvis ikke tillatelse til å kjøre <command>mount</command> og <command>umount</command>-kommandoer. Administratoren kan imidlertid godkjenne disse operasjonene (individuelt for hvert monteringspunkt) ved å inkludere <literal>user</literal>-valget i <filename>/etc/fstab</filename>-filen.
+			</para>
+			 <para>
+				Kommandoen <command>mount</command> kan brukes uten argumenter (den lister da alle monterte filsystemer). Følgende parametere er nødvendige for å montere eller avmontere en enhet. For den komplette listen, se gjerne de tilsvarende manualsider,<citerefentry><refentrytitle>mount</refentrytitle>
+				 <manvolnum>8</manvolnum></citerefentry> og <citerefentry><refentrytitle>umount</refentrytitle>
+				 <manvolnum>8</manvolnum></citerefentry>. For enkle tilfeller er syntaksen enkel også. For eksempel å montere <filename>/dev/sdc1</filename>-partisjonen, som har et ext3 filsystem, til <filename>/mnt/tmp/</filename>-mappen, kan du greit kjøre <command>mount -t ext3 /dev/sdc1 /mnt/tmp/</command>.
+			</para>
+			 </sidebar> <para>
+				Filen <filename>/etc/fstab</filename> gir en liste over alle mulige fester som skjer enten automatisk ved oppstart, eller manuelt for flyttbare lagringsenheter. Hvert monteringspunkt er beskrevet av en linje med flere felter atskilt med mellomrom: <indexterm><primary><filename>fstab</filename></primary></indexterm> <indexterm><primary><filename>/etc/fstab</filename></primary></indexterm>
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						enheten for å montere: Dette kan være en lokal partisjon (harddisk, CD-ROM), eller et eksternt filsystem (for eksempel NFS).
+					</para>
+					 <para>
+						Dette feltet er ofte erstattet med den unike ID-en til filsystemet (som du kan fastslå med <command>blkid <userinput>enhet</userinput></command>) med prefiksen <literal>UUID=</literal>. Dette beskytter mot endring av navnet på enheten i tilfelle disker legges til eller fjernes, eller hvis disker blir funnet i en annen rekkefølge.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						monteringspunkt: Dette er plasseringen i det lokale filsystemet der enheten, eksternt system, eller partisjonen vil bli montert.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						skrive: Dette feltet definerer filsystemet som brukes på den monterte enheten.<literal>ext4</literal>, <literal>ext3</literal>, <literal>vfat</literal>, <literal>ntfs</literal>, <literal>btrfs</literal>, <literal>xfs</literal> er noen få eksempler.
+					</para>
+					 <sidebar> <title><emphasis>DET GRUNNLEGGENDE</emphasis> NFS, et filsystem i nettverk</title>
+					 <para>
+						NFS er et nettverksfilsystem. Under Linux tillater det transparent tilgang til eksterne filer ved å inkludere dem i det lokale filsystemet.
+					</para>
+					 </sidebar> <para>
+						En fullstendig liste over kjente filsystemer er tilgjengelig i manualsiden <citerefentry><refentrytitle>mount</refentrytitle>
+						 <manvolnum>8</manvolnum></citerefentry>. <literal>swap</literal>-spesialverdien for partisjonsbytte; <literal>auto</literal>-spesialverdien ber <command>mount</command>-programmet om å finne filsystemet automatisk (som er spesielt nyttig for disklesere og USB-minnepenner, siden hver og en kan ha et annet filsystem);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						alternativer: det er mange av dem, avhengig av filsystemet, og de er dokumentert i manualsiden <command>mount</command>. De vanligste er
+					</para>
+					 <itemizedlist>
+						<listitem>
+							<para>
+								<literal>rw</literal> eller <literal>ro</literal>, som respektivt betyr at enheten vil bli montert med lese/skrive eller skrivebeskyttede tillatelser.
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>noauto</literal> deaktiverer automatisk montering ved oppstart.
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>nofail</literal> tillater oppstarten å fortsette selv når enheten ikke er til stede. Sørg for å sette dette alternativet for eksterne harddisker som kan være koblet fra når du starter, fordi <command>systemd</command> virkelig sikrer at alle monteringspunkter som må være automatisk montert , faktisk er montert før oppstartsprosessen blir ferdigstilt. Merk at du kan kombinere dette med <literal>x-systemd.device-timeout=5s</literal> for å be <command>systemd</command> om ikke å vente mer enn 5 sekunder før enheten vises (se <citerefentry><refentrytitle>systemd.mount</refentrytitle>
+								<manvolnum>5</manvolnum></citerefentry>).
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>user</literal> autoriserer alle brukere til å montere dette filsystemet (en operasjon som ellers ville være begrenset til rotbrukeren).
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								<literal>defaults</literal> betyr gruppen av standardvalg: <literal>rw</literal>, <literal>suid</literal>, <literal>dev</literal>, <literal>exec</literal>, <literal>auto</literal>, <literal>nouser</literal> og <literal>async</literal>, som hver individuelt kan bli deaktivert etter <literal>defaults</literal> ved å legge til <literal>nosuid</literal>, <literal>nodev</literal> og så videre for å blokkere <literal>suid</literal>, <literal>dev</literal> og så videre. Å legge til <literal>user</literal>-valget reaktiverer den, da <literal>defaults</literal> inkluderer <literal>nouser</literal>.
+							</para>
+
+						</listitem>
+
+					</itemizedlist>
+
+				</listitem>
+				 <listitem>
+					<para>
+						backup: Dette feltet er nesten alltid satt til <literal>0</literal>. Når det er <literal>1</literal>, formidler den til <command>dump</command>-verktøyet at partisjonen inneholder data som skal sikkerhetskopieres.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						sjekke rekkefølge: Dette siste feltet indikerer om integriteten til filsystemet bør sjekkes ved oppstart, og i hvilken rekkefølge denne sjekken skal utføres. Hvis det er <literal>0</literal>, blir ingen sjekk utført. Rotfilsystemet skal ha verdien <literal>1</literal>, mens andre permanente filsystemer får verdien <literal>2</literal>.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <example id="example.fstab">
+				<title>Eksempel <filename>/etc/fstab</filename> fil</title>
+				 
+<programlisting>
+# /etc/fstab: static file system information.
+#
+# &lt;file system&gt; &lt;mount point&gt;   &lt;type&gt;  &lt;options&gt;       &lt;dump&gt;  &lt;pass&gt;
+proc            /proc           proc    defaults        0       0
+# / was on /dev/sda1 during installation
+UUID=c964222e-6af1-4985-be04-19d7c764d0a7 / ext3 errors=remount-ro 0 1
+# swap was on /dev/sda5 during installation
+UUID=ee880013-0f63-4251-b5c6-b771f53bd90e none swap sw  0       0
+/dev/scd0       /media/cdrom0   udf,iso9660 user,noauto 0       0
+/dev/fd0        /media/floppy   auto    rw,user,noauto  0       0
+arrakis:/shared /shared         nfs     defaults        0       0</programlisting>
+
+			</example>
+			 <para>
+				Den siste posten i dette eksempelet tilsvarer et nettverk filsystem (NFS): <filename>/shared/</filename>-mappen på <emphasis>arrakis</emphasis> -tjeneren er montert på <filename>/shared/</filename> på den lokale maskinen. Formatet på <filename>/etc/fstab</filename>-filen er dokumentert i manualsiden <citerefentry><refentrytitle>fstab</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>.
+			</para>
+			 <sidebar> <title><emphasis>GÅR VIDERE</emphasis> Auto-montering</title>
+			 <para>
+				Pakken <emphasis>am-utils</emphasis> gir <command>amd</command> auto-monteringsvertøy, som kan montere flyttbare medier etter ønske når en bruker forsøker å få tilgang til sitt vanlige monteringspunkt. Det vil avmontere disse enhetene når ingen prosess bruker dem lenger.
+			</para>
+			 <indexterm>
+				<primary><emphasis>am-utils</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>amd</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>automount</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>autofs</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>auto-montering</primary>
+			</indexterm>
+			 <para>
+				Andre verktøy for auto-montering finnes, slik som <command>automount</command> i <emphasis>autofs</emphasis>-pakken.
+			</para>
+			 <para>
+				Merk også at GNOME, KDE, og andre grafiske skrivebordsmiljøer samarbeider med <emphasis>udisks</emphasis>, og kan automatisk montere flyttbare medier mens de er tilkoblet.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.locate-updatedb">
+			<title><command>locate</command> og <command>updatedb</command></title>
+			 <indexterm>
+				<primary><command>locate</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>updatedb</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>mlocate</command></primary>
+			</indexterm>
+			 <para>
+				<command>locate</command>-kommandoen kan finne plasseringen av en fil når du bare kjenner en del av navnet. Det sender et resultat nesten umiddelbart, siden det konsulterer en database som lagrer plasseringen av alle filene i systemet. Denne databasen oppdateres daglig av <command>updatedb</command>-kommandoen. Det er flere implementeringer for <command>locate</command>-kommandoen, og Debian valgte <emphasis role="pkg">mlocate</emphasis> som sitt standard system.
+			</para>
+			 <para>
+				<command>mlocate</command> er smart nok til å bare å gi tilbake filer som er tilgjengelige for brukeren som kjører kommandoen selv om den bruker en database som kjenner til alle filer på systemet (fordi <command>updatedb</command>-gjennomføringen kjører med rotrettigheter). For ekstra sikkerhet kan administratoren bruke <varname>PRUNEDPATHS</varname> i <filename>/etc/updatedb.conf</filename> til å utelukke kataloger fra å bli indeksert.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.kernel-compilation">
+		<title>Å kompilere en kjerne</title>
+		 <indexterm>
+			<primary>kompilering</primary>
+			<secondary>av en kjerne</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>kjerne</primary>
+			<secondary>kompilering</secondary>
+		</indexterm>
+		 <para>
+			Kjernene som Debian leverer har med flest mulig funksjoner, samt et maksimalt antall drivere, for å dekke det bredeste spekteret av eksisterende maskinvareoppsett. Dette er grunnen til at noen brukere foretrekker å rekompilere kjernen for bare å ta med det de spesifikt trenger. Det er to grunner for dette valget. For det første kan det være å optimalisere minneforbruk, ettersom kjernekoden, selv om den aldri blir brukt, opptar minne uten nytteverdi (og aldri «går ned» til vekselminne, siden det er selve RAM den bruker), som kan redusere den totale systemytelsen. En lokalt utarbeidet kjerne kan også begrense risikoen for sikkerhetsproblemer siden bare en brøkdel av kjernekoden er kompilert og kjører.
+		</para>
+		 <sidebar> <title><emphasis>NOTE</emphasis> Sikkerhetsoppdateringer</title>
+		 <para>
+			Hvis du velger å kompilere din egen kjerne, må du akseptere konsekvensene: Debian kan ikke sørge for sikkerhetsoppdateringer for din tilpassede kjerne. Ved å beholde kjernen Debian leverer, har du fordelen av oppdateringer utarbeidet av Debian-prosjektets sikkerhetsteam.
+		</para>
+		 </sidebar> <para>
+			Rekompilering av kjernen er også nødvendig hvis du ønsker å bruke bestemte funksjoner som bare er tilgjengelig som programfikser (og ikke er med i standardversjonen av kjernen).
+		</para>
+		 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Debian-kjerne-håndboken</title>
+		 <indexterm>
+			<primary><emphasis role="pkg">debian-kernel-handbook</emphasis></primary>
+		</indexterm>
+		 <para>
+			Debian kjerneteam vedlikeholder «Debian Kernel Handbook» (også tilgjengelig i <emphasis role="pkg">debian-kernel-handbook</emphasis>-pakken) med omfattende dokumentasjon om de fleste oppgaver som gjelder kjernen, og om hvordan offisielle Debian kjerne-pakker håndteres. Dette er det første stedet du bør se nærmere på hvis du trenger mer informasjon enn det som er gitt i dette avsnittet. <ulink type="block" url="http://kernel-handbook.alioth.debian.org" />
+		</para>
+		 </sidebar> <section id="sect.kernel-compilation-prerequisites">
+			<title>Introduksjon og forutsetninger</title>
+			 <para>
+				Ikke overraskende håndterer Debian kjernen i form av en pakke, som ikke er hvordan kjerner tradisjonelt har blitt kompilert og installert. Siden kjernen forblir under kontroll av pakkesystemet, kan den således fjernes rent, eller utplasseres på flere maskiner. Videre, skriptene knyttet til disse pakkene automatiserer samspillet med oppstartslasteren og initrd-generatoren.
+			</para>
+			 <para>
+				Oppstrøms Linux-kilder inneholder alt som trengs for å bygge en Debian-pakke fra kjernen, men du trenger fortsatt å installere <emphasis role="pkg">build-essential</emphasis> for å sikre at du har de verktøyene som kreves for å bygge en Debian-pakke. Videre, oppsettsteget for kjernen krever pakken <emphasis role="pkg">libncurses5-dev</emphasis>. Til slutt vil pakken <emphasis role="pkg">fakeroot</emphasis> se til at Debian-pakken lages uten at administratorrettigheter benyttes.
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> De gode gamle dager med <emphasis role="pkg">kernel-package</emphasis></title>
+			 <indexterm>
+				<primary><emphasis role="pkg">kernel-package</emphasis></primary>
+			</indexterm>
+			 <para>
+				Før Linux-byggesystemet fikk muligheten til å bygge ordentlige Debian-pakker, var den anbefalte måten å bygge slike pakker å bruke<command>make-kpkg</command> fra <emphasis role="pkg">kernel-package</emphasis>-pakken.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.kernel-sources">
+			<title>Å skaffe kildene</title>
+			 <indexterm>
+				<primary>Linux-kjernen kilder</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>kjernen</primary>
+				<secondary>kilder</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>kilde</primary>
+				<secondary>av Linux-kjernen</secondary>
+			</indexterm>
+			 <para>
+				Som alt som kan være nyttig i et Debian-system, er Linux-kjernens kilder tilgjengelig i en pakke. For å hente dem bare installer <emphasis role="pkg">linux-source-<replaceable>version</replaceable></emphasis>-pakken. <command>apt-cache search ^linux-source</command>-kommando viser de ulike kjerneversjoner pakket av Debian. Den nyeste versjonen er tilgjengelig i <emphasis role="distribution">Unstable</emphasis>-distribusjonen. Du kan hente dem uten mye risiko (spesielt hvis APT er satt opp i henhold til instruksjonene fra <xref linkend="sect.apt-mix-distros" />). Merk at kildekoden som finnes i disse pakkene ikke samsvarer nøyaktig med det som er publisert av Linus Torvalds og kjerneutviklere. Som alle distribusjoner, bruker Debian en rekke programfikser, som kan (eller kanskje ikke) finner sin vei inn i oppstrømsversjoner av Linux. Disse endringene omfatter tilbakeporter (backports) av rettinger/funksjoner/drivere fra nyere kjerneversjoner, nye funksjoner som ikke ennå er (helt) fusjonert inn i oppstrøms Linux-treet, og noen ganger til og med konkrete endringer i Debian.
+			</para>
+			 <para>
+				Resten av dette avsnittet fokuserer på 3.16-versjonen av Linux-kjernen, men eksemplene kan selvsagt tilpasses den spesielle versjonen av kjernen som du ønsker.
+			</para>
+			 <para>
+				Vi går ut fra at <emphasis role="pkg">linux-source-3.16</emphasis>-pakken er blitt installert. Den inneholder <filename>/usr/src/linux-source-3.16.tar.xz</filename>, et komprimert arkiv av kjernens kilder. Du må pakke ut disse filene i en ny katalog (ikke direkte under <filename>/usr/src/</filename>, siden det ikke er behov for spesielle tillatelser for å lage en Linux-kjerne): <filename>~/kernel/</filename> er hensiktsmessig.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>mkdir ~/kernel; cd ~/kernel</userinput>
+<computeroutput>$ </computeroutput><userinput>tar -xaf /usr/src/linux-source-3.16.tar.xz</userinput></screen>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> Lokalisering av kjernens kilder</title>
+			 <para>
+				Tradisjonelt ville Linux-kjernens kilder bli plassert i <filename>/usr/src/linux/</filename>, og dermed krever rot tillatelser for kompilering. Men å jobbe med administratorrettigheter bør unngås, når du ikke trenger det. Det er en <literal>src</literal>-gruppe som tillater medlemmer å arbeide i denne katalogen, men å arbeide i <filename>/usr/src/</filename> bør likevel unngås. Ved å holde kjernens kilder i en personlig mappe, får du sikkerhet på alle punkter: Ingen filer i <filename>/usr/</filename> som er ukjent for pakkesystemet, og ingen risiko for villedende programmer som leser <filename>/usr/src/linux</filename> når du prøver å samle informasjon på den kjernen som brukes.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.config-kernel">
+			<title>Å konfiguere kjernen</title>
+			 <indexterm>
+				<primary>kjerne</primary>
+				<secondary>oppsett</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>oppsett</primary>
+				<secondary>av kjernen</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>.config</filename></primary>
+			</indexterm>
+			 <para>
+				Det neste steget består i å sette opp kjernen etter dine behov. Den nøyaktige fremgangsmåten avhenger av målene.
+			</para>
+			 <para>
+				Ved rekompilering til en nyere versjon av kjernen (muligens med en ytterligere programfiks), vil oppsettet mest sannsynlig bli holdt så nær som mulig opptil det som er foreslått av Debian. I dette tilfellet, og i stedet for å sette opp alt fra bunnen av, er det tilstrekkelig å kopiere <filename>/boot/config-<replaceable>version</replaceable></filename>-filen (som er versjonen til den kjernen som brukes i dag, som kan finnes med <command>uname -r</command>-komandoen) til en <filename>.config</filename>-fil i mappen som inneholder kjernekildekoden.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>cp /boot/config-3.16.0-4-amd64 ~/kernel/linux-source-3.16/.config</userinput></screen>
+			 <para>
+				Hvis du ikke trenger å endre oppsettet, kan du stoppe her og gå til <xref linkend="sect.kernel-build" />. Hvis du på den andre siden trenger å endre den, eller hvis du bestemmer deg for å endre oppsettet alt fra bunnen av, må du ta deg tid til å sette opp kjernen. Det finnes ulike egne grensesnitt i kjernens kildekatalog som kan brukes med <command>make <replaceable>target</replaceable></command>-kommandoen, der <replaceable>mål</replaceable> er en av verdiene beskrevet nedenfor.
+			</para>
+			 <para>
+				<command>make menuconfig</command> kompilerer og starter opp et tekst-grensesnitt (det er derfor <emphasis role="pkg">libncurses5-dev</emphasis>-pakken er nødvendig) som gjør det mulig å navigere mellom de tilgjengelige alternativene i en hierarkisk struktur. Å trykke på <keycap>Space</keycap>-tasten endrer verdien for det valgte alternativet, og <keycap>Enter</keycap> validerer knappen som er valgt nederst på skjermen; <guibutton>Select</guibutton> returnerer til den valgte undermenyen; <guibutton>Exit</guibutton> lukker den aktuelle skjermen og flytter tilbake opp i hierarkiet; <guibutton>Help</guibutton> vil vise mer detaljert informasjon om rollen til det valgte alternativet. Piltastene lar deg flytte rundt i listen over alternativer og knapper. For å gå ut av oppsettprogrammet velger du <guibutton>Exit</guibutton> fra hovedmenyen. Programmet tilbyr deg så å lagre endringene du har gjort; Godta hvis du er fornøyd med dine valg.
+			</para>
+			 <para>
+				Andre grensesnitt har lignende funksjoner, men de arbeider innenfor mer moderne grafiske grensesnitt; slik som <command>make xconfig</command> som bruker et Qt grafisk brukergrensesnitt, og <command>make gconfig</command> som bruker GTK+. Det første krever <emphasis role="pkg">libqt4-dev</emphasis>, mens det andre er avhengig av <emphasis role="pkg">libglade2-dev</emphasis>, og <emphasis role="pkg">libgtk2.0-dev</emphasis>.
+			</para>
+			 <para>
+				Når du bruker et av disse oppsettgrensesnittene, er det alltid en god idé å starte fra et fornuftig standardoppsett. Kjernen gir slike oppsett i <filename>arch/<replaceable>arch</replaceable>/configs/*_defconfig</filename>, og du kan sette inn dit valgte oppsett med en kommando som <command>make x86_64_defconfig</command> (for en 64-bit PC), eller <command>make i386_defconfig</command> (for en 32-bit PC).
+			</para>
+			 <sidebar> <title><emphasis>TIPS</emphasis> Å håndtere utdaterte <filename>.config</filename>-filer</title>
+			 <para>
+				Når du tar hensyn til en <filename>.config</filename>-fil som er generert med en annen (vanligvis eldre) kjerneversjon, må du oppdatere den. Du kan gjøre det med <command>make oldconfig</command>. Den vil interaktivt stille deg spørsmål ut fra valgene i det nye oppsettet. Hvis du vil bruke standardsvaret på alle disse spørsmålene, kan du bruke <command>make olddefconfig</command>. Med <command>make oldnoconfig</command>, vil den forutsette et negativt svar på alle spørsmål.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.kernel-build">
+			<title>Kompilere og bygge pakken</title>
+			 <indexterm>
+				<primary><command>make deb-pkg</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>NOTE</emphasis> Opprydding før ombygging</title>
+			 <para>
+				Hvis du allerede har kompilert en gang i mappen, og ønsker å bygge alt fra bunnen av (for eksempel fordi du har endret kjerneoppsettet vesentlig), må du kjøre <command>make clean</command> for å fjerne de kompilerte filene. <command>make distclean</command> fjerner også de mer genererte filene, også medregnet <filename>.config</filename>-filen, så sørg for å ta backup først.
+			</para>
+			 </sidebar> <para>
+				Når kjerneoppsettet er klart, vil en enkel <command>make deb-pkg</command> generere opptil 5 Debian-pakker: <emphasis role="pkg">linux-image-<replaceable>versjon</replaceable></emphasis> som inneholder kjernebildet med tilhørende moduler, <emphasis role="pkg">linux-headers-<replaceable>versjon</replaceable></emphasis> som inneholder headerfilene som er nødvendig for å bygge eksterne moduler, <emphasis role="pkg">linux-firmware-image-<replaceable>versjon</replaceable></emphasis> som inneholder fastvarefilene som trengs av noen drivere (kanskje mangler denne pakken når du bygger fra Debians kildekode), <emphasis role="pkg">linux-image-<replaceable>versjon</replaceable>-dbg</emphasis> med feilsøkingsymboler for kjernebildet og dets moduler, og <emphasis role="pkg">linux-libc-dev</emphasis> som inneholder headere som er aktuelle for noen brukerland-biblioteker slik som GNU glibc.
+			</para>
+			 <para>
+				<replaceable>versjon</replaceable> er definert av sammenkjeding av oppstrøms versjonen (som definert av variablene <literal>VERSION</literal>, <literal>PATCHLEVEL</literal>, <literal>SUBLEVEL</literal>, og <literal>EXTRAVERSION</literal> i <filename>Makefile</filename>), fra <literal>LOCALVERSION</literal>- konfiguasjonsparameteret, og fra <literal>LOCALVERSION</literal>-miljøvariabel. Pakkeversjonen gjenbruker samme versjonsstreng med en tilføyd revisjon som regelmessig økes (og lagres i <filename>.version</filename>), bortsett fra hvis du overstyrer den med <literal>KDEB_PKGVERSION</literal>-miljøvariablen.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>make deb-pkg LOCALVERSION=-falcot KDEB_PKGVERSION=$(make kernelversion)-1
+</userinput><computeroutput>[...]
+$ </computeroutput><userinput>ls ../*.deb
+</userinput><computeroutput>../linux-headers-3.16.7-ckt4-falcot_3.16.7-1_amd64.deb
+../linux-image-3.16.7-ckt4-falcot_3.16.7-1_amd64.deb
+../linux-image-3.16.7-ckt4-falcot-dbg_3.16.7-1_amd64.deb
+../linux-libc-dev_3.16.7-1_amd64.deb
+</computeroutput></screen>
+
+		</section>
+		 <section id="sect.modules-build">
+			<title>Å kompilere eksterne moduler</title>
+			 <indexterm>
+				<primary>kjerne</primary>
+				<secondary>eksterne moduler</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>moduler</primary>
+				<secondary>eksterne kjernemoduler</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>dkms</command></primary>
+			</indexterm>
+			 <para>
+				Noen moduler er holdt utenfor den offisielle Linux-kjernen. Hvis du vil bruke dem, må de kompileres sammen med den tilhørende kjernen. En rekke vanlige tredjepartsmoduler leveres av Debian i egne pakker, for eksempel <emphasis role="pkg">xtables-addons-source</emphasis> (ekstra moduler for iptables), eller <emphasis role="pkg">oss4-source</emphasis> (Open Sound System, noen alternative lyd-drivere).
+			</para>
+			 <para>
+				Disse eksterne pakkene er mange og varierte, og vi vil ikke liste dem alle her. Med <command>apt-cache search source$</command>-kommandoen kan innskrenke søkeområdet. Imidlertid er en komplett liste ikke spesielt nyttig siden det ikke er noen spesiell grunn for å kompilere eksterne moduler, unntatt når du vet at du trenger det. I slike tilfeller vil enhetens dokumentasjon vanligvis gi detaljene for de spesifikke modulen(e) det er behov for, for å virke under Linux.
+			</para>
+			 <para>
+				La oss for eksempel se på <emphasis role="pkg">xtables-addons-source</emphasis>-pakken: Etter installasjonen, blir en <filename>.tar.bz2</filename> fra modulens kildekode lagret i <filename>/usr/src/</filename>. Mens vi manuelt kan trekke ut tar-pakken (tarball) og bygge modulen, foretrekker vi i praksis å automatisere alt dette ved hjelp av DKMS. De fleste moduler gir den nødvendige DKMS-integrering i en pakke som slutter med en <literal>-dkms</literal>-endelse. I vårt tilfelle er å installere <emphasis role="pkg">xtables-addons-dkms</emphasis> alt som trengs for å kompilere kjernemodulen til den nåværende kjernen, forutsatt at vi har <emphasis role="pkg">linux-headers-*</emphasis>-pakken som samsvarer med den installerte kjernen. For eksempel, hvis du bruker <emphasis role="pkg">linux-image-amd64</emphasis>, ville du også installere <emphasis role="pkg">linux-headers-amd64</emphasis>.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>sudo apt install xtables-addons-dkms</userinput>
+<computeroutput>
+[...]
+Setting up xtables-addons-dkms (2.6-1) ...
+Loading new xtables-addons-2.6 DKMS files...
+First Installation: checking all kernels...
+Building only for 3.16.0-4-amd64
+Building initial module for 3.16.0-4-amd64
+Done.
+
+xt_ACCOUNT:
+Running module version sanity check.
+ - Original module
+   - No original module exists within this kernel
+ - Installation
+   - Installing to /lib/modules/3.16.0-4-amd64/updates/dkms/
+[...]
+DKMS: install completed.
+$ </computeroutput><userinput>sudo dkms status</userinput>
+<computeroutput>xtables-addons, 2.6, 3.16.0-4-amd64, x86_64: installed
+$ </computeroutput><userinput>sudo modinfo xt_ACCOUNT</userinput>
+<computeroutput>filename:       /lib/modules/3.16.0-4-amd64/updates/dkms/xt_ACCOUNT.ko
+license:        GPL
+alias:          ipt_ACCOUNT
+author:         Intra2net AG &lt;opensource@intra2net.com&gt;
+description:    Xtables: per-IP accounting for large prefixes
+[...]
+</computeroutput></screen>
+			 <sidebar> <title><emphasis>ALTERNATIV </emphasis> modul-assistent</title>
+			 <indexterm>
+				<primary><emphasis role="pkg">module-assistant (modulassistent)</emphasis></primary>
+			</indexterm>
+			 <para>
+				Før DKMS var <emphasis role="pkg">module-assistant</emphasis> den enkleste løsningen å bygge og distribuere kjernemoduler. Det kan fortsatt gjøres, spesielt for pakker som mangler DKMS-integrering: Med en enkel kommando som <command>module-assistant auto-install xtables-addons</command> (eller <command>m-a a-i xtables-addons</command> i korthet), er modulene kompilert for den gjeldende kjernen, satt inn i en ny Debian-pakke, og så blir denne pakken installert umiddelbart.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.kernel-patch">
+			<title>Å bruke en kjernefiks</title>
+			 <indexterm>
+				<primary>kjerne</primary>
+				<secondary>fiks (patch)</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>fikse (patch) kjernen</primary>
+			</indexterm>
+			 <para>
+				Enkelte funksjoner er ikke inkludert i standard-kjernen på grunn av mangel på modenhet, eller noe uenighet mellom vedlikeholdere av kjernen. Slike funksjoner kan deles ut som programfikser som man så fritt kan anvende i kildekoden.
+			</para>
+			 <para>
+				Debian distribuerer noen av disse programfiksene i <emphasis role="pkg">linux-patch-*</emphasis>, eller <emphasis role="pkg">kernel-patch-*</emphasis>-pakker (for eksempel, <emphasis role="pkg">linux-patch-grsecurity2</emphasis>, som strammer inn noen av kjernens sikkerhetspolicyer). Disse pakkene installerer filer i <filename>/usr/src/kernel-patches/</filename>-mappen.
+			</para>
+			 <para>
+				Hvis du vil bruke en eller flere av disse installerte programfikser, bruker du <command>patch</command>-kommandoen i kildekatalogen, og starter deretter kompilering av kjernen som beskrevet ovenfor.
+			</para>
+			 
+<screen>
+<computeroutput>$ </computeroutput><userinput>cd ~/kernel/linux-source-3.16</userinput>
+<computeroutput>$ </computeroutput><userinput>make clean</userinput>
+<computeroutput>$ </computeroutput><userinput>zcat /usr/src/kernel-patches/diffs/grsecurity2/grsecurity-3.0-3.17.1-201410250027.patch.gz | patch -p1</userinput></screen>
+			 <para>
+				Merk at en gitt programfiks kanskje ikke nødvendigvis fungerer med alle versjoner av kjernen; Det er mulig for <command>patch</command> å mislykkes når du bruker dem til kildekode. En feilmelding vises, og gir noen detaljer om feilen. I dette tilfellet kan du se om dokumentasjonen om denne oppdateringen er tilgjengelig i Debian-pakken (i <filename>/usr/share/doc/linux-patch-*/</filename> directory). I de fleste tilfeller indikerer vedlikeholderen hvilke kjerneversjoner som programfiksen er tiltenkt.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.kernel-installation">
+		<title>Å installere en kjerne</title>
+		 <indexterm>
+			<primary>installering</primary>
+			<secondary>av en kjerne</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>kjerne</primary>
+			<secondary>installering</secondary>
+		</indexterm>
+		 <section id="sect.kernel-package">
+			<title>Egenskapene til en Debian kjernepakke</title>
+			 <indexterm>
+				<primary><filename>vmlinuz</filename></primary>
+			</indexterm>
+			 <para>
+				En Debian kjernepakke installerer kjernebildet (<filename>vmlinuz-<replaceable>versjon</replaceable></filename>), oppsettet (<filename>config-<replaceable>versjon</replaceable></filename>), og kjernes symboltabell (<filename>System.map-<replaceable>versjon</replaceable></filename>) i <filename>/boot/</filename>. Symboloversikten hjelper utviklere å forstå betydningen av en melding om kjernefeil. Uten det, ville kjerne-«oopser» (en «oops» i en kjerne er tilsvarerende en segmenteringsfeil på brukernivå, med andre ord meldinger generert etter en ugyldig peker-deferanseoperasjon) bare inneholde numeriske minneadresser som er unyttig informasjon uten at tabellen viser disse adressene videre til symboler og funksjonsnavn. Modulene er installert i <filename>/lib/modules/<replaceable>versjon</replaceable>/</filename>s-mappen.
+			</para>
+			 <para>
+				Pakkens oppsettskript lager automatisk initrd-bildet, som er et mini-system utviklet for at oppstartslasteren skal legge det i minnet (derav navnet, som står for «init ramdisk»), og brukes av Linux-kjernen utelukkende for lasting av moduler som er nødvendige for å få tilgang til enheter som inneholder hele Debian-systemet (for eksempel driveren for SATA-disker). Til slutt oppdaterer installasjonsskriptene de symbolske lenkene <filename>/vmlinuz</filename>, <filename>/vmlinuz.old</filename>, <filename>/initrd.img</filename>, og <filename>/initrd.img.old</filename> slik at de peker til de to sist installerte kjernene, henholdsvis, så vel som de tilsvarende initrd-bildene.
+			</para>
+			 <para>
+				De fleste av disse oppgavene er lastet av for å koble skripter i <filename>/etc/kernel/*.d/</filename>-mappene. For eksempel, integrasjonen med <command>grub</command> er avhengig av <filename>/etc/kernel/postinst.d/zz-update-grub</filename>, og <filename>/etc/kernel/postrm.d/zz-update-grub</filename> for å påkalle <command>update-grub</command> når kjerner installeres eller fjernes.
+			</para>
+
+		</section>
+		 <section id="sect.kernel-installation-with-dpkg">
+			<title>Installere med <command>dpkg</command></title>
+			 <para>
+				Å bruke <command>apt</command> er så praktisk at det blir lett å glemme verktøyene på lavere nivå, men den enkleste måten å installere en kompilert kjerne er å bruke en kommando som <command>dpkg -i <replaceable>pakke</replaceable>.deb</command>, der <literal><replaceable>pakke</replaceable>.deb</literal> er navnet på en <emphasis role="pkg">linux-image</emphasis>-pakke, slik som <filename>linux-image-3.16.7-ckt4-falcot_1_amd64.deb</filename>.
+			</para>
+			 <para>
+				Oppsettstegene som beskrives i dette kapitlet, er grunnleggende, og kan føre både til et tjenersystem, eller en arbeidsstasjon, og det kan massivt dupliseres semi-automatisk. Det er imidlertid ikke tilstrekkelig i seg selv til å gi et ferdig oppsatt system. Et par ting trenger fortsatt oppsett, som starter med programmene på et lavere nivå, referert til som «Unix-tjenester».
+			</para>
+
+		</section>
+
+	</section>
+</chapter>
+
