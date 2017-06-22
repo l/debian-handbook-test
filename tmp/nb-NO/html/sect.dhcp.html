@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">10.7. DHCP</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="Nettverk, Innfallsport (gateway), TCP/IP, IPv6, DNS, Bind, DHCP, QoS" /><link
+        rel="home"
+        href="index.html"
+        title="Håndbok for Debian-administratoren" /><link
+        rel="up"
+        href="network-infrastructure.html"
+        title="Kapittel 10. Nettverksinfrastruktur" /><link
+        rel="prev"
+        href="sect.domain-name-servers.html"
+        title="10.6. Domenenavnetjenere (DNS)" /><link
+        rel="next"
+        href="sect.network-diagnosis-tools.html"
+        title="10.8. Diagnoseverktøy for nettverk" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.dhcp.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.domain-name-servers.html"><strong>Forrige</strong></a></li><li
+          class="home">Håndbok for Debian-administratoren</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.network-diagnosis-tools.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.dhcp"></a>10.7. DHCP</h2></div></div></div><div
+          class="para">
+			DHCP (for <span
+            class="emphasis"><em>Dynamic Host Configuration Protocol</em></span>) er en protokoll der en maskin automatisk kan få sitt nettverksoppsett når den starter. Dette gjør det mulig å sentralisere håndteringen av nettverksoppsett, og sikre at alle stasjonære maskiner får lignende innstillinger.
+		</div><a
+          id="id-1.13.10.3"
+          class="indexterm"></a><a
+          id="id-1.13.10.4"
+          class="indexterm"></a><a
+          id="id-1.13.10.5"
+          class="indexterm"></a><div
+          class="para">
+			En DHCP-tjener gir mange nettverksrelaterte parametere. Den vanligste av disse er en IP-adresse og nettverket der maskinen hører til, men den kan også gi andre opplysninger, som for eksempel om DNS-tjenere, WINS-tjenere, NTP-tjenere, og så videre.
+		</div><div
+          class="para">
+			Internet Software Consortium (også involvert i å utvikle <code
+            class="command">bind</code>) er hovedforfatter av DHCP-tjeneren. Den tilsvarende Debian-pakken er <span
+            class="pkg pkg">isc-dhcp-server</span>.
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.dhcp-config"></a>10.7.1. Oppsett</h3></div></div></div><div
+            class="para">
+				De første elementene som må redigeres i DHCP-tjenerens oppsettsfil (<code
+              class="filename">/etc/dhcp/dhcpd.conf</code>) er domenenavnet og DNS-tjenerne. Hvis denne tjeneren er alene på det lokale nettverket, må (som definert av den kringkastede utsendelsen) <code
+              class="literal">authoritative</code>-direktivet også aktiveres (eller være ukommentert). Man trenger også å lage en <code
+              class="literal">subnet</code>-seksjon som beskriver det lokale nettverket og oppsettsopplysningene som skal gis. Følgende eksempel passer et <code
+              class="literal">192.168.0.0/24</code> lokalt nettverk med en ruter på <code
+              class="literal">192.168.0.1</code> som tjener som port. Tilgjengelige IP-adresser er i området fra <code
+              class="literal">192.168.0.128</code> til <code
+              class="literal">192.168.0.254</code>.
+			</div><div
+            class="example"><a
+              xmlns=""
+              id="example.dhcp-dhcpd.conf"></a><p
+              class="title"><strong>Eksempel 10.15. Utdrag fra <code
+                  class="filename">/etc/dhcp/dhcpd.conf</code></strong></p><div
+              class="example-contents"><pre
+                class="programlisting">
+#
+# Sample configuration file for ISC dhcpd for Debian
+#
+
+# The ddns-updates-style parameter controls whether or not the server will
+# attempt to do a DNS update when a lease is confirmed. We default to the
+# behavior of the version 2 packages ('none', since DHCP v2 didn't
+# have support for DDNS.)
+ddns-update-style interim;
+
+# option definitions common to all supported networks...
+option domain-name "internal.falcot.com";
+option domain-name-servers ns.internal.falcot.com;
+
+default-lease-time 600;
+max-lease-time 7200;
+
+# If this DHCP server is the official DHCP server for the local
+# network, the authoritative directive should be uncommented.
+authoritative;
+
+# Use this to send dhcp log messages to a different log file (you also
+# have to hack syslog.conf to complete the redirection).
+log-facility local7;
+
+# My subnet
+subnet 192.168.0.0 netmask 255.255.255.0 {
+    option routers 192.168.0.1;
+    option broadcast-address 192.168.0.255;
+    range 192.168.0.128 192.168.0.254;
+    ddns-domainname "internal.falcot.com";
+}
+</pre></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.dhcp-dns"></a>10.7.2. DHCP og DNS</h3></div></div></div><a
+            id="id-1.13.10.9.2"
+            class="indexterm"></a><div
+            class="para">
+				En fin egenskap er er automatisk registrering av DHCP-klienter i DNS-sonen, slik at hver maskin får et eget navn (heller enn noe upersonlig som <code
+              class="literal">maskin-192-168-0-131.internal.falcot.com</code>). Å bruke denne funksjonen krever oppsett av DNS-tjeneren til å kunne godta oppdateringer til <code
+              class="literal">internal.falcot.com</code>-DNS-sonen fra DHCP-tjeneren, og sette opp den sistnevnte til å sende oppdateringer for hver registrering.
+			</div><div
+            class="para">
+				I tilfellet med <code
+              class="command">bind</code> må <code
+              class="literal">allow-update</code>-direktivet legges til hver av de soner som DHCP-tjeneren skal redigere (den ene for <code
+              class="literal">internal.falcot.com</code>-domenet og den reverserte sonen). Dette direktivet lister IP-adressene som har lov til å utføre disse oppdateringene; det skal derfor inneholde de mulige adressene til DHCP-tjeneren (både lokal adresse og offentlige adresse, hvis det er aktuelt).
+			</div><pre
+            class="programlisting">
+allow-update { 127.0.0.1 192.168.0.1 212.94.201.10 !any };</pre><div
+            class="para">
+				Pass opp! En sone som kan endres, <span
+              class="emphasis"><em>vil</em></span> bli endret av <code
+              class="command">bind</code>, og sistnevnte vil overskrive oppsettsfilene med jevne mellomrom. Siden denne automatiserte prosedyre produserer filer som er mindre lesbare enn manuelt skrevne, håndterer Falcot administratorer <code
+              class="literal">internal.falcot.com</code>-domenet med en delegert DNS-tjener; dette betyr at sonefilen <code
+              class="literal">falcot.com</code> forblir stående under deres manuelle kontroll.
+			</div><div
+            class="para">
+				DHCP-tjeneroppsettets utdrag ovenfor inneholder allerede direktivene som kreves for oppdatering av DNS-soner; de er <code
+              class="literal">ddns-update-style interim;</code>, og <code
+              class="literal">ddns-domain-name "internal.falcot.com";</code>-linjer i blokken som beskriver subnettet.
+			</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.domain-name-servers.html"><strong>Forrige</strong>10.6. Domenenavnetjenere (DNS)</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.network-diagnosis-tools.html"><strong>Neste</strong>10.8. Diagnoseverktøy for nettverk</a></li></ul></body></html>
