@@ -1,0 +1,536 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">12.3. Automatisert installasjon</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="RAID, LVM, FAI, Forhåndsutfylling (preseed.cfg), Overvåking, virtualisering, Xen, LXC" /><link
+        rel="home"
+        href="index.html"
+        title="Håndbok for Debian-administratoren" /><link
+        rel="up"
+        href="advanced-administration.html"
+        title="Kapittel 12. Avansert administrasjon" /><link
+        rel="prev"
+        href="sect.virtualization.html"
+        title="12.2. virtualisering" /><link
+        rel="next"
+        href="sect.monitoring.html"
+        title="12.4. Overvåking" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.automated-installation.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.virtualization.html"><strong>Forrige</strong></a></li><li
+          class="home">Håndbok for Debian-administratoren</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.monitoring.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.automated-installation"></a>12.3. Automatisert installasjon</h2></div></div></div><a
+          id="id-1.15.6.2"
+          class="indexterm"></a><a
+          id="id-1.15.6.3"
+          class="indexterm"></a><div
+          class="para">
+			Falcot Corp-administratorene trenger, som mange administratorer av store IT-tjenester, verktøy for å installere sine nye maskiner (eller installere på nytt) raskt, og automatisk hvis mulig.
+		</div><div
+          class="para">
+			Disse kravene kan bli møtt av et bredt spekter av løsninger. På den ene siden, generiske verktøy som SystemImager, håndterer dette ved å skape et bilde med en maskin som mal, deretter distribuere bildet dit det skal hos systemene. I den andre enden av spekteret, kan standard Debian-installeren bli forhåndsutfylt med en oppsettsfil som gir svarene på spørsmålene under installasjonsprosessen. Som en slags middelvei, installerer et hybridverktøy som FAI (<span
+            class="emphasis"><em>Fully Automatic Installer</em></span>) maskiner ved hjelp av pakkesystemet, men det bruker også sin egen infrastruktur for oppgaver som er mer spesifikke for massive distribusjoner (som å starte, partisjonering, oppsett og så videre).
+		</div><div
+          class="para">
+			Hver av disse løsningene har sine fordeler og ulemper: SystemImager fungerer uavhengig av et bestemt pakkesystem, som gjør det mulig å håndtere store sett med maskiner ved hjelp av flere forskjellige Linux-distribusjoner. Det inkluderer også et oppdateringssystem som ikke krever en reinstallasjon, men dette oppdateringssystemet kan bare være pålitelig hvis maskinene ikke endres hver for seg; med andre ord, brukeren må ikke oppdatere programvare på egen hånd, eller installere noen annen programvare. Tilsvarende sikkerhetsoppdateringer må ikke være automatisert, fordi de må gå gjennom det sentraliserte referansebildet som vedlikeholdes av SystemImager. Denne løsningen krever også at maskinene det gjelder er homogene, ellers må mange forskjellige bilder tas vare på og håndteres (et i386-bilde vil ikke passe på en PowerPC-maskin, og så videre).
+		</div><div
+          class="para">
+			På den annen side kan en automatisert installasjon som bruker Debian-installereren tilpasse seg de nærmere spesifikasjoner for hver maskin: Installereren vil hente den riktige kjernen og programvarepakker fra de aktuelle pakkebrønnene, oppdage tilgjengelig maskinvare, partisjonere hele harddisken for å dra nytte av all tilgjengelig plass, installere det tilsvarende Debian-systemet, og sette opp en passende oppstartslaster. Imidlertid vil standard-installereren bare installere standard Debian-versjoner, med basesystem og et sett forhåndsvalgte «oppgaver»; dette utelukker å installere et bestemt system med ikke-pakkede applikasjoner. Å oppfylle dette behovet krever tilpassing av installereren ... Heldigvis er installatøren veldig modulær, og det er verktøy for å automatisere det meste av arbeidet som kreves for denne tilpasningen, viktigst er enkle-CDD (simple-CDD) (CDD er en forkortelse av <span
+            class="emphasis"><em>Custom Debian Derivative</em></span>). Selv den enkle-CDD-løsningen håndterer imidlertid bare innledende installasjoner; dette er vanligvis ikke et problem siden APT-verktøyene gir effektiv utrulling av oppdateringer senere.
+		</div><div
+          class="para">
+			Vi vil bare gi en grov oversikt over FAI, og helt hoppe over SystemImager (som ikke lenger er i Debian), for å fokusere sterkere på Debian-installereren og simple-CDD (enkel-CDD), som er mer interessant bare i en Debian sammenheng.
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.fai"></a>12.3.1. Fully Automatic Installer (FAI)</h3></div></div></div><a
+            id="id-1.15.6.9.2"
+            class="indexterm"></a><div
+            class="para">
+				<span
+              class="foreignphrase"><em
+                class="foreignphrase">Fully Automatic Installer</em></span> er trolig det eldste automatisert utrullingssystemet for Debian, noe som forklarer dets status som en referanse, men den svært fleksible naturen kompenserer bare akkurat for den kompleksiteten det innebærer.
+			</div><div
+            class="para">
+				FAI krever et tjenersystem for å lagre utrullingsinformasjon, og tillate maskinene det gjelder å starte opp fra nettverket. Denne tjeneren krever <span
+              class="pkg pkg">fai-server</span>-pakken (eller <span
+              class="pkg pkg">fai-quickstart</span>, som også bringer med seg de nødvendige elementer for et standard oppsett).
+			</div><div
+            class="para">
+				FAI bruker en bestemt metode for å definere de ulike installerbare profilene. I stedet for ganske enkelt å bare kopiere en referanseinstallasjon, er FAI en fullverdig installerer, fullt oppsettbar via et sett med filer og skript som er lagret på tjeneren; standardplasseringen <code
+              class="filename">/srv/fai/config/</code> er ikke opprettet automatisk, slik at administrator må lage den sammen med de aktuelle filene. Mesteparten av tiden vil disse filene bli tilpasset fra eksempelfiler som er tilgjengelig i dokumentasjonen til <span
+              class="pkg pkg">fai-doc</span>-pakken, mer spesielt i <code
+              class="filename">/usr/share/doc/fai-doc/examples/simple/</code>-mappen.
+			</div><div
+            class="para">
+				Så snart profilene er definert, genererer <code
+              class="command">fai-setup</code>-kommandoen de elementene som kreves for å starte en FAI-installasjon; Dette betyr stort sett å forberede eller å oppdatere et minimalt system (NFS-root) som brukes under installasjonen. Et alternativ er å generere en dedikert oppstarts-CD med <code
+              class="command">fai-cd</code>.
+			</div><div
+            class="para">
+				Å opprette alle disse oppsettsfilene krever en viss forståelse for hvordan FAI fungerer. En typisk installasjonen gjøres i følgende trinn:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						å hente en kjerne fra nettverket, og starte den;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å montere rotfilssystemet fra NFS;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å kjøre <code
+                    class="command">/usr/sbin/fai</code>, som kontrollerer resten av prosessen (de neste trinnene er derfor initiert av dette skriptet);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å kopiere oppsettsplassen fra tjeneren til <code
+                    class="filename">/fai/</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å kjøre <code
+                    class="command">fai-class</code>. <code
+                    class="filename">/fai/class/[0-9][0-9]*</code>-skriptene blir så utført, og returnerer navnene på «klasser» som gjelder for maskinen som blir installert. Denne informasjonen vil tjene som et utgangspunkt for de neste trinnene. Dette åpner for en viss fleksibilitet i å definere hvilke tjenester som skal installeres og settes opp.
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å hente et antall oppsettsvariabler, avhengig av de aktuelle klasser;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å partisjonere diskene, og formatere partisjonene, ut fra informasjon i <code
+                    class="filename">/fai/disk_config/<em
+                      class="replaceable">klasse</em></code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						montere disse partisjoner
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å installere basesystemet;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å forhåndsutfylle Debconf-databasen med <code
+                    class="command">fai-debconf</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å hente listen over tilgjengelige pakker for APT;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å installere pakkene listet i <code
+                    class="filename">/fai/package_config/<em
+                      class="replaceable">klasse</em></code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å kjøre etteroppsettskriptene, <code
+                    class="filename">/fai/scripts/<em
+                      class="replaceable">klasse</em>/[0-9][0-9]*</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						å registrere installasjonsloggene, avmontere partisjonene, og omstart.
+					</div></li></ul></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.d-i-preseeding"></a>12.3.2. Å forhåndsutfylle Debian-Installer
+			<a
+                    id="id-1.15.6.10.1.1"
+                    class="indexterm"></a>
+			</h3></div></div></div><a
+            id="id-1.15.6.10.2"
+            class="indexterm"></a><a
+            id="id-1.15.6.10.3"
+            class="indexterm"></a><div
+            class="para">
+				Alt i alt skulle det beste verktøyet til å installere Debian-systemer logisk være den offisielle Debian-installereren. Dette er grunnen, helt fra begynnelsen, til at Debian-installereren er konstruert for automatisert bruk, og drar nytte av infrastrukturen levert av <span
+              class="pkg pkg">debconf</span>. Sistnevnte gjør det mulig, på den ene siden - å redusere antall spørsmål (skjulte spørsmål vil bruke de medfølgende standardsvar), og - på den anden siden - å gi standard svar separat, slik at installasjonen kan være ikke-interaktiv. Dette siste trekk er kjent som <span
+              class="emphasis"><em>forhåndsutfylling</em></span> (preseed).
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>FOR VIDEREKOMMENDE</em></span> Debconf med en sentralisert database</strong></p></div></div></div><a
+              id="id-1.15.6.10.5.2"
+              class="indexterm"></a><div
+              class="para">
+				Forhåndsutfylling, preseed.cfg, gjør det mulig å gi et sett av svar på Debconf-spørsmål på installasjonstidspunktet, men disse svarene er statiske, og utvikles ikke som tiden går. Siden allerede installerte maskiner kan trenge oppgradering, og nye svar kan bli nødvendige, kan <code
+                class="filename">/etc/debconf.conf</code>-oppsettsfilen settes opp slik at Debconf bruker eksterne datakilder (som en LDAP-katalogtjener, eller en ekstern fil som nås via NFS eller Samba). Flere eksterne datakilder kan defineres på samme tid, og de utfyller hverandre. Den lokale databasen brukes fortsatt (for lese- og skrivetilgang), men de eksterne databasene vanligvis er begrenset til lesing. Manualsiden <span
+                class="citerefentry"><span
+                  class="refentrytitle">debconf.conf</span>(5)</span> beskriver i detalj alle mulighetene (du trenger <span
+                class="pkg pkg">debconf-doc</span>-pakken).
+			</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.10.6"></a>12.3.2.1. Å bruke en forhåndsutfyllingsfil</h4></div></div></div><div
+              class="para">
+					Det er flere steder hvor installereren kan få en forhåndsutfyllingsfil:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							i initrd som brukes til å starte maskinen; i dette tilfellet skjer forhåndsutfyllingen helt i begynnelsen av installeringen, og alle spørsmålene kan unngås. Filen trenger bare å bli kalt <code
+                      class="filename">preseed.cfg</code>, og bli lagret i initrd-roten.
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							på oppstartmedia (CD eller USB-nøkkel); forhåndutfylling skjer så snart media er montert, noe som betyr rett etter spørsmålene om språk og tastaturoppsett. Oppstartsparameteren <code
+                      class="literal">preseed/file</code> kan brukes til å indikere plasseringen av filen for forhåndsutfylling (f.eks <code
+                      class="filename">/cdrom/preseed.cfg</code> når installasjonen er gjort fra en CD-ROM, eller <code
+                      class="filename">/hd-media/preseed.cfg</code> hvis fra en USB-minnepinne.
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							fra nettverket; forhåndsutfylling skjer da bare etter at nettverket er (automatisk) satt opp; det relevante oppstartsparameteret er <code
+                      class="literal">preseed/url=http://<em
+                        class="replaceable">server</em>/preseed.cfg</code>.
+						</div></li></ul></div><div
+              class="para">
+					Med et raskt øyekast, inkludert filen for forhåndsutfylling i initrd, ser den ut som den mest interessante løsningen; men den er imidlertid sjelden brukt i praksis, fordi å generere et installasjons-initrd er ganske komplisert. De to andre løsninger er mye mer vanlige, spesielt siden oppstartsparametere gir en annen måte til å forhåndsutfylle de første spørsmålene på i installasjonsprosessen. Den vanlige måten å spare bryet med å skrive disse oppstartsparametere for hånd på hver installasjon, er å lagre dem inn i oppsettet for <code
+                class="command">isolinux</code> (i CD-ROM tilfellet eller <code
+                class="command">syslinux</code> (ved USB-pinne).
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.10.7"></a>12.3.2.2. Å lage en forhåndsutfyllingsfil</h4></div></div></div><div
+              class="para">
+					En forhåndsutfyllingsfil, preseed.cfg, er en ren tekstfil, der hver linje inneholder svaret på et Debconf-spørsmål. En linje er delt i fire felt, atskilt med mellomrom (mellomrom eller tabulatorer), som i, for eksempel,<code
+                class="literal">d-i mirror/suite string stable</code>:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							det første feltet er «eieren» av spørsmålet; «d-i» brukes for spørsmål som er relevante for installasjonsprogrammet, men det kan også være et pakkenavn for spørsmål som kommer fra Debian-pakker;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							det andre feltet er en identifikasjon for spørsmålet;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							tredje type spørsmål;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							det fjerde og siste feltet inneholder verdien for svaret. Legg merke til at det må være atskilt fra det tredje felt med et mellomrom; hvis det er mer enn ett, regnes følgende mellomrom som en del av verdien.
+						</div></li></ul></div><div
+              class="para">
+					Den enkleste måten å skrive en forhåndsutfyllingsfil på, er å installere et system for hånd. Deretter vil <code
+                class="command">debconf-get-selections --installer</code> gi svar om installasjonsprogrammet. Svar om andre pakker kan oppnås med <code
+                class="command">debconf-get-selections</code>. Men det er en renere løsning å skrive forhåndsutfyllingsfilen for hånd, med start fra et eksempel og referansedokumentasjonen. Med en slik tilnærming trenger bare spørsmål der standardsvaret trenger å bli overstyrt, å bli forhåndsutfylt; å bruke <code
+                class="literal">priority=critical</code>-oppstartsparameter vil instruere Debconf om å bare stille kritiske spørsmål, og bruke standardsvarene for andre.
+				</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>DOKUMENTASJON</em></span> Tillegg til installasjonsveiledningen</strong></p></div></div></div><div
+                class="para">
+					Installasjonsveiledningen, som er tilgjengelig på nettet, inneholder i et appendiks en detaljert dokumentasjon om bruken av en forhåndsutfylt fil. Det har også med en detaljert og kommentert eksempelfil som kan tjene som basis for lokale tilpasninger. <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://www.debian.org/releases/jessie/amd64/apb.html">https://www.debian.org/releases/jessie/amd64/apb.html</a></div> <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://www.debian.org/releases/jessie/example-preseed.txt">https://www.debian.org/releases/jessie/example-preseed.txt</a></div>
+				</div></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.10.8"></a>12.3.2.3. Å lage et skreddersydd oppstartsmedium</h4></div></div></div><div
+              class="para">
+					Å vite hvor den forhåndsutfylte filen skal lagres er vel og bra, men plasseringen er ikke alt. På en eller annen måte må man få installasjonens oppstartsmedia til å endre oppstartsparametere, og legge til den forhåndsutfylte filen.
+				</div><div
+              class="section"><div
+                class="titlepage"><div><div><h5
+                      class="title"><a
+                        xmlns=""
+                        id="id-1.15.6.10.8.3"></a>12.3.2.3.1. Å starte opp fra nettverket</h5></div></div></div><div
+                class="para">
+						Når en datamaskin startes fra nettverket, vil tjeneren som sender oppstartselementene også definere oppstartsparametere. Dermed må endringene som skal lages, utføres i oppstartstjenerens PXE-oppsett; mer spesifikt, i dens <code
+                  class="filename">/tftpboot/pxelinux.cfg/default</code>-oppsettsfil. Å sette opp nettverksoppstart er en forutsetning, se installasjonsveiledningen for mer informasjon. <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://www.debian.org/releases/jessie/amd64/ch04s05.html">https://www.debian.org/releases/jessie/amd64/ch04s05.html</a></div>
+					</div></div><div
+              class="section"><div
+                class="titlepage"><div><div><h5
+                      class="title"><a
+                        xmlns=""
+                        id="id-1.15.6.10.8.4"></a>12.3.2.3.2. Å forberede en oppstartbar USB-pinne (Bootable USB Key)</h5></div></div></div><div
+                class="para">
+						Så snart en oppstartbar minnepenn er forberedt (se <a
+                  class="xref"
+                  href="installation.html#sect.install-usb">Seksjon 4.1.2, «Oppstart fra en USB-minnepenn»</a>), er noen ekstra operasjoner nødvendige. Anta at inneholdet er tilgjengelig under <code
+                  class="filename">/media/usbdisk/</code>:
+					</div><div
+                xmlns:d="http://docbook.org/ns/docbook"
+                class="itemizedlist"><ul><li
+                    class="listitem"><div
+                      class="para">
+								kopier den forhåndsutfylte filen til <code
+                        class="filename">/media/usbdisk/preseed.cfg</code>
+							</div></li><li
+                    class="listitem"><div
+                      class="para">
+								rediger <code
+                        class="filename">/media/usbdisk/syslinux.cfg</code>, og legg til de nødvendige oppstartsparametere (se eksempel nedenfor).
+							</div></li></ul></div><div
+                class="example"><a
+                  xmlns=""
+                  id="id-1.15.6.10.8.4.4"></a><p
+                  class="title"><strong>Eksempel 12.2. syslinux.cfg-file og forhåndsutfyllingsparametere</strong></p><div
+                  class="example-contents"><pre
+                    class="programlisting">default vmlinuz
+append preseed/file=/hd-media/preseed.cfg locale=nb_NO.UTF-8 keymap=no language=nb country=NO vga=788 initrd=initrd.gz  --</pre></div></div></div><div
+              class="section"><div
+                class="titlepage"><div><div><h5
+                      class="title"><a
+                        xmlns=""
+                        id="id-1.15.6.10.8.5"></a>12.3.2.3.3. Å lage et CD-ROM-bilde</h5></div></div></div><a
+                id="id-1.15.6.10.8.5.2"
+                class="indexterm"></a><div
+                class="para">
+						En USB-minnepenn er et lese-skrive-medium, så det var lett for oss å legge til en fil der, og endre noen parametere. I CD-ROM-tilfellet er operasjonen mer komplisert, siden vi trenger å fornye et fullt ISO-bilde. Denne oppgaven er håndtert av <span
+                  class="pkg pkg">debian-cd</span>, men dette verktøyet er ganske vanskelig å bruke. Det er behov for et lokalt speil, og det krever en forståelse av alle valgene som tilbys av <code
+                  class="filename">/usr/share/debian-cd/CONF.sh</code>; selv da må <code
+                  class="command">make</code> tas i bruk i flere omganger. <code
+                  class="filename">/usr/share/debian-cd/README</code> er derfor svært anbefalt å lese.
+					</div><div
+                class="para">
+						Når det er sagt, fungerer Debian-CD alltid på en lignende måte: en «bilde»-katalog med det eksakte innholdet på CD-ROM blir generert, og deretter konvertert til en ISO-fil med et verktøy som <code
+                  class="command">genisoimage</code>, <code
+                  class="command">mkisofs</code> eller <code
+                  class="command">xorriso</code>. Bildekatalogen er ferdig etter Debian-CD-ens <code
+                  class="command">make image-trees</code> skritt. På dette tidspunktet setter vi inn den forhåndsutfylte filen i den aktuelle mappen (vanligvis <code
+                  class="filename">$TDIR/$CODENAME/CD1/</code>, $TDIR og $CODENAME er parametre definert av oppsettsfilen <code
+                  class="filename">CONF.sh</code>). CD-ROM-en bruker <code
+                  class="command">isolinux</code> som sin oppstartslaster, og oppsett dens må tilpasses fra hva Debian-CD-en genererte, for å sette inn de nødvendige oppstartsparametere (den spesifikke filen er <code
+                  class="filename">$TDIR/$CODENAME/boot1/isolinux/isolinux.cfg</code>). Så kan «normal»-prosessen fortsette, og vi kan gå videre med å generere ISO-bildet med <code
+                  class="command">make image CD=1</code> (eller <code
+                  class="command">make images</code> hvis flere CD-ROM-er blitt generert).
+					</div></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.simple-cdd"></a>12.3.3. Simple-CDD: Alt i ett løsningen</h3></div></div></div><a
+            id="id-1.15.6.11.2"
+            class="indexterm"></a><div
+            class="para">
+				Å bare bruke en forhåndsklargjort fil er ikke nok til å oppfylle alle krav som kan komme i store distribusjoner. Selv om det er mulig å utføre noen få skript ved slutten av den normale installasjonsprosessen, er valget av settet av pakkene til installasjon likevel ikke helt fleksibelt (i utgangspunktet kan bare «tasks» (oppgaver) velges); og viktigere, det er bare dette som tillater å installere offisielle Debian-pakker, og utelukker de lokalt genererte.
+			</div><div
+            class="para">
+				På den annen side er Debian-CD i stand til å integrere eksterne pakker, og Debian-installereren kan utvides ved å sette inn nye trinn i installasjonsprosessen. Ved å kombinere disse egenskapene bør det være mulig å lage et tilpasset installasjonsprogram som oppfyller våre behov; det bør også kunne sette opp enkelte tjenester etter utpakking av de nødvendige pakkene. Heldigvis er dette ikke bare en hypotese, siden dette er nøyaktig det Simple-CDD (i <span
+              class="pkg pkg">simple-cdd</span>-pakken) gjør.
+			</div><div
+            class="para">
+				Hensikten med Simple-CDD er å gjøre det mulig for alle, på en enkel måte, å lage en distribusjon som stammer fra Debian, ved å velge et delsett av tilgjengelige pakker, forhåndsoppsette dem med Debconf, og legge til spesiell programvare, og kjøre tilpassede skript på slutten av installasjonen. Dette samsvarer med filosofien om «universelt operativsystem», siden alle kan tilpasse den til sine egne behov.
+			</div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.11.6"></a>12.3.3.1. Å lage profiler</h4></div></div></div><div
+              class="para">
+					Simple-CDD definerer «profiler» som tilsvarer begrepet «klasser» i FAI, og en maskin kan ha flere profiler (bestemt ved installasjonstidpunktet). En profil er definert ved et sett av <code
+                class="filename">profiles/<em
+                  class="replaceable">profil</em>.*</code> filer:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							<code
+                      class="filename">.description</code>filen inneholder en énlinjes beskrivelse av profilen;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							<code
+                      class="filename">.packages</code>-filen lister pakker som automatisk vil bli installert hvis profilen er valgt;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							<code
+                      class="filename">.downloads</code>-filen lister pakker som skal lagres på installasjonsmediet, men ikke nødvendigvis installeres;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							<code
+                      class="filename">.preseed</code>-filen inneholder forhåndsutfylt informasjon til Debconf-spørsmål (for installereren og/eller for pakker);
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							<code
+                      class="filename">.postinst</code>-filen inneholder et skript som blir kjørt ved slutten av installasjonen;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							til slutt lar <code
+                      class="filename">.conf</code>-filen deg endre noen Simple-CDD-parametere basert på profilene som skal inngå i et bilde.
+						</div></li></ul></div><div
+              class="para">
+					Profilen <code
+                class="literal">default</code> har en spesiell rolle, da den alltid er valgt; den inneholder det rene minimum som kreves for at Simple-CDD skal fungere. Det eneste som vanligvis blir tilpasset i denne profilen, er det forhåndsutfylte <code
+                class="literal">simple-cdd/profiles</code>-parameteret: Dette gjør at du unngår spørsmålet, introdusert av Simple-CDD, om hvilke profiler som skal installeres.
+				</div><div
+              class="para">
+					Merk også at kommandoene må startes fra den overordnede katalogen til <code
+                class="filename">profiles</code>-mappen.
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.11.7"></a>12.3.3.2. Å sette opp og bruke <code
+                      class="command">build-simple-cdd</code></h4></div></div></div><a
+              id="id-1.15.6.11.7.2"
+              class="indexterm"></a><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>HURTIGVISNING</em></span> Detaljert oppsettsfil</strong></p></div></div></div><div
+                class="para">
+					Et eksempel på en Simple-CDD oppsettsfil, med alle mulige parametere, er inkludert i pakken (<code
+                  class="filename">/usr/share/doc/simple-cdd/examples/simple-cdd.conf.detailed.gz</code>). Denne kan brukes som et utgangspunkt når du oppretter en egendefinert oppsettsfil.
+				</div></div><div
+              class="para">
+					Simple-CDD krever mange parametere for å operere fullt ut. De vil som oftest bli samlet i en oppsettsfil, som <code
+                class="command">build-simple-cdd</code> kan få oppgitt med <code
+                class="literal">--conf</code>-valget. Men de kan også spesifiseres via øremerkede parametere gitt til <code
+                class="command">build-simple-cdd</code>. Her er en oversikt over hvordan denne kommandoen oppfører seg, og hvordan dens parametere brukes:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							<code
+                      class="literal">profiles</code>-parameteret lister profiler som vil bli inkludert i det genererte CD-ROM-bildet;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							basert på listen over nødvendige pakker, laster Simple-CDD ned de nødvendige filene fra tjeneren nevnt i <code
+                      class="literal">server</code>, og samler dem i et del-speil (som senere blir gitt til Debian-CD);
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							de tilpassede pakkene som er nevnt i <code
+                      class="literal">local_packages</code> er også integrert i dette lokale speilet;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							så kjøres Ddebian-CD (innenfor standardplasseringen som kan settes opp med <code
+                      class="literal">debian_cd_dir</code>-variabelen), med listen med pakker til integrering;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							med en gang Debian-CD-en har forberedt sin katalog, bruker Simple-CDD noen endringer i denne katalogen:
+						</div><div
+                    class="itemizedlist"><ul><li
+                        class="listitem"><div
+                          class="para">
+									filer som inneholder profilene er lagt til i en <code
+                            class="filename">simple-cdd</code>-undermappe (som vil ende opp på CD-ROM-en);
+								</div></li><li
+                        class="listitem"><div
+                          class="para">
+									andre filer som er listet i <code
+                            class="literal">all_extras</code>-parameteret blir også lagt til;
+								</div></li><li
+                        class="listitem"><div
+                          class="para">
+									oppstartsparameterne er justert slik at det er mulig å aktivere forhåndsutfyllingen. Spørsmål om språk og land kan unngås hvis den aktuelle informasjonen er lagret i <code
+                            class="literal">language</code> og <code
+                            class="literal">country</code>-variablene.
+								</div></li></ul></div></li><li
+                  class="listitem"><div
+                    class="para">
+							deretter genererer debian-cd det endelige ISO-bildet.
+						</div></li></ul></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.11.8"></a>12.3.3.3. Å generere et ISO-bilde</h4></div></div></div><div
+              class="para">
+					Når vi har skrevet en oppsettsfil og definert våre profiler, er det resterende skritt å påkalle <code
+                class="command">build-simple-cdd --conf simple-cdd.conf</code>. Etter et par minutter, får vi det ønskede bildet i <code
+                class="filename">images/debian-8.0-amd64-CD-1.iso</code>.
+				</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.virtualization.html"><strong>Forrige</strong>12.2. virtualisering</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.monitoring.html"><strong>Neste</strong>12.4. Overvåking</a></li></ul></body></html>

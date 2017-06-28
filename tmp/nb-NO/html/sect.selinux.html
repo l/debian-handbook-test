@@ -1,0 +1,840 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">14.5. Introduksjon til SELinux</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="Brannmur, Nettfilter, IDS/NIDS" /><link
+        rel="home"
+        href="index.html"
+        title="Håndbok for Debian-administratoren" /><link
+        rel="up"
+        href="security.html"
+        title="Kapittel 14. Sikkerhet" /><link
+        rel="prev"
+        href="sect.apparmor.html"
+        title="14.4. Introduksjon til AppArmor" /><link
+        rel="next"
+        href="sect.other-security-considerations.html"
+        title="14.6. Andre sikkerhetsrelaterte overveielser" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.selinux.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.apparmor.html"><strong>Forrige</strong></a></li><li
+          class="home">Håndbok for Debian-administratoren</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.other-security-considerations.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.selinux"></a>14.5. Introduksjon til SELinux</h2></div></div></div><a
+          id="id-1.17.8.2"
+          class="indexterm"></a><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.selinux-principles"></a>14.5.1. Prinsipper</h3></div></div></div><div
+            class="para">
+				SELinux (<span
+              class="emphasis"><em>Security Enhanced Linux</em></span>) er et <span
+              class="emphasis"><em>Mandatory Access Control</em></span>-system som bygger på Linux sin LSM (<span
+              class="emphasis"><em>Linux Security Modules</em></span>)-grensesnitt. I praksis spør kjernen SELinux før hver systempåkalling for å vite om prosessen er autorisert til å gjøre den gitte operasjonen.
+			</div><div
+            class="para">
+				SELinux bruker et sett med regler - kollektivt kjent som en <span
+              class="emphasis"><em>policy</em></span> - for å godkjenne eller forby operasjoner. Disse reglene er vanskelige å lage. Heldigvis er to standardregler (<span
+              class="emphasis"><em>targeted (målrettet)</em></span> og <span
+              class="emphasis"><em>strict (strengt)</em></span>) laget for å unngå mesteparten av oppsettsarbeidet.
+			</div><div
+            class="para">
+				Med SELinux er håndteringen av rettighetene helt forskjellig fra tradisjonelle Unix-systemer. Rettighetene til en prosess er avhengig av sin <span
+              class="emphasis"><em>sikkerhetskontekst </em></span>. Denne konteksten er definert av <span
+              class="emphasis"><em>identitet</em></span> til brukeren som startet prosessen, <span
+              class="emphasis"><em>rolle</em></span> og <span
+              class="emphasis"><em>domene</em></span> som brukeren hadde med seg på det tidspunktet. Rettighetene er egentlig avhengig av domenet, men overgangene mellom domenene er kontrollert av rollene. Til slutt; de mulige overgangene mellom roller avhenger av identiteten.
+			</div><div
+            class="figure"><a
+              xmlns=""
+              id="id-1.17.8.3.5"></a><div
+              class="figure-contents"><div
+                class="mediaobject"><img
+                  src="images/selinux-context.png"
+                  alt="Sikkerhetskontekster og Unix-brukere" /></div></div><p
+              class="title"><strong>Figur 14.3. Sikkerhetskontekster og Unix-brukere</strong></p></div><div
+            class="para">
+				I praksis får brukeren, under innlogging, tildelt en standard sikkerhetskontekst (avhengig av hvilke roller de skal være i stand til å støtte). Dette definerer det gjeldende domenet, og dermed domenet som alle nye avleggerprosesser vil ha. Hvis du ønsker å endre nåværende rolle og tilhørende domene, må du påkalle <code
+              class="command">newrole -r <em
+                class="replaceable">rolle_r</em> -t <em
+                class="replaceable">domene_t</em></code> (det er vanligvis bare ett enkelt domene som er tillatt for en gitt rolle, <code
+              class="literal">-t</code>-parameteren kan derfor utelates). Denne kommandoen godkjenner du ved å be deg skrive inn passordet ditt. Denne funksjonen forbyr programmer å automatisk bytte roller. Slike endringer kan bare skje dersom de er uttrykkelig tillatt i SELinux-politikk.
+			</div><div
+            class="para">
+				Selvsagt gjelder ikke rettighetene for alle <span
+              class="emphasis"><em>objekter</em></span> (filer, kataloger, stikkontakter, enheter, etc.). De kan variere fra objekt til objekt. For å oppnå dette blir hvert objekt assosiert med en <span
+              class="emphasis"><em>type</em></span> (dette kalles merking). Domenene sine rettigheter er dermed uttrykt med sett av (ikke-)tillatte operasjoner for disse typene (og, indirekte, for alle objekter som er merket med den gitte typen).
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>EKSTRA</em></span> Domener og typer er er likeverdige</strong></p></div></div></div><div
+              class="para">
+				Internt er et domene bare en type, men en type som bare gjelder for prosesser. Det er derfor domener har suffikset <code
+                class="literal">_t</code>, akkurat likt objektenes typer.
+			</div></div><div
+            class="para">
+				Som standard arver et program sitt domene fra brukeren som startet det, men standard SELinux-politikk forventer at mange viktige programmer kjører i øremerkede domener. For å oppnå dette er disse kjørbare filer merket med en øremerket type (for eksempel er <code
+              class="command">ssh_t</code> merket med <code
+              class="literal">ssh_exec_t</code>, og når et program starter, skifter det automatisk til <code
+              class="literal">ssh_t</code>-domenet). Denne automatiske domene-overgangsmekanismen gjør det mulig å gi bare de rettigheter som kreves av hvert program. Dette er et grunnleggende prinsipp for SELinux.
+			</div><div
+            class="figure"><a
+              xmlns=""
+              id="id-1.17.8.3.10"></a><div
+              class="figure-contents"><div
+                class="mediaobject"><img
+                  src="images/selinux-transitions.png"
+                  alt="Automatiske overganger mellom domener" /></div></div><p
+              class="title"><strong>Figur 14.4. Automatiske overganger mellom domener</strong></p></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>I PRAKSIS </em></span> Å finne sikkerhetskonteksten</strong></p></div></div></div><a
+              id="id-1.17.8.3.11.2"
+              class="indexterm"></a><a
+              id="id-1.17.8.3.11.3"
+              class="indexterm"></a><a
+              id="id-1.17.8.3.11.4"
+              class="indexterm"></a><div
+              class="para">
+				For å finne sikkerhetskonteksten for en gitt prosess bør du bruke <code
+                class="literal">Z</code>-argumentet til <code
+                class="command">ps</code>.
+			</div><pre
+              class="screen"><code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>ps axZ | grep vstfpd</code></strong>
+<code
+                class="computeroutput">system_u:system_r:ftpd_t:s0   2094 ?    Ss  0:00 /usr/sbin/vsftpd</code></pre><div
+              class="para">
+				Det første feltet inneholder identitet, rolle, domenet og MCS-nivå, atskilt med kolon. MCS-nivået (<span
+                class="emphasis"><em>Multi-Category Security</em></span>) er et parameter som griper inn i oppsettet av en taushetsbeskyttelsespolitikk, som regulerer tilgang til filer basert på deres følsomhet. Denne funksjonen blir ikke forklart i denne boken.
+			</div><div
+              class="para">
+				For å finne den gjeldende sikkerhetskonteksten i et skall, bør du påkalle <code
+                class="command">id -Z</code>.
+			</div><pre
+              class="screen"><code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>id -Z</code></strong>
+<code
+                class="computeroutput">unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023</code></pre><div
+              class="para">
+				Til slutt, for å finne en type knyttet til en fil, kan du bruke <code
+                class="command">ls -Z</code>.
+			</div><pre
+              class="screen"><code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>ls -Z test /usr/bin/ssh</code></strong>
+<code
+                class="computeroutput">unconfined_u:object_r:user_home_t:s0 test
+     system_u:object_r:ssh_exec_t:s0 /usr/bin/ssh</code></pre><div
+              class="para">
+				Det er verdt å merke seg at identitet og rolle tilordnet til en fil, ikke har noen spesiell betydning (de er aldri brukt), men av hensyn til ensartetheten blir alle objekter tildelt en komplett sikkerhetskontekst.
+			</div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.selinux-setup"></a>14.5.2. Å sette opp SELinux</h3></div></div></div><div
+            class="para">
+				SELinux-støtte er innebygd i standardkjernene som følger med Debian. Kjernen i Unix-verktøyet støtter SELinux uten noen modifikasjoner. Det er dermed relativt enkelt å aktivere SELinux.
+			</div><div
+            class="para">
+				Kommandoen <code
+              class="command">apt install selinux-basics selinux-policy-default</code> vil automatisk installere de nødvendige pakkene til å sette opp et SELinux-system.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>VÆR VARSOM</em></span> Referansepolitikken er ikke i Jessie</strong></p></div></div></div><div
+              class="para">
+				Uheldigvis, vedlikeholderne av <span
+                class="pkg pkg">refpolicy</span>-kildepakken håndterte ikke utsending av kritiske feil i sin pakke, og pakken ble fjernet fra Jessie. Dette betyr at <span
+                class="pkg pkg">selinux-policy-*</span>-pakkene for øyeblikket ikke er installerbare i Jessie, og må hentes fra et annet sted. Forhåpentligvis vil de komme tilbake i en av punktversjonene, eller i Jessie-backports. I mellomtiden kan du hente dem fra ustabil-versjonen.
+			</div><div
+              class="para">
+				Denne triste situasjonen beviser i det minste at SELinux er ikke veldig populær i blant brukere/utviklere som kjører utviklingsversjoner av Debian. Dermed, hvis du velger å bruke SELinux, bør du forvente at standardregelen ikke fungerer perfekt, og at du blir nødt til å investere litt tid for å gjøre den egnet til dine spesifikke behov.
+			</div></div><div
+            class="para">
+				Pakken <span
+              class="pkg pkg">selinux-policy-default</span> inneholder et sett med vanlige regler. Som standard begrenser disse reglene kun tilgang til noen allment synlige tjenester. Brukersesjoner er ikke begrenset, og det er derfor usannsynlig at SELinux ville blokkere legitime brukeroperasjoner. Men dette forbedrer sikkerheten i systemtjenester som kjører på maskinen. For å sette opp et opplegg som tilsvarer de gamle «strenge» reglene, er det bare å deaktivere <code
+              class="literal">unconfined</code>-modulen (modulhåndtering er beskrevet nærmere i denne seksjonen).
+			</div><div
+            class="para">
+				Når opplegget er installert, bør du merke alle tilgjengelige filer (som betyr å tildele dem en type). Denne operasjonen må startes manuelt med <code
+              class="command">fixfiles relabel</code>.
+			</div><div
+            class="para">
+				SELinux-systemet er nå klart. For å aktivere det bør du legge <code
+              class="literal">selinux=1 security=selinux</code>-parameteret til Linux-kjernen. Parameteret <code
+              class="literal">audit=1</code> aktiverer SELinux-logging med registrering av alle de nektede operasjonene. Endelig tar <code
+              class="literal">enforcing=1</code>-parameteret reglene i bruk: Uten det virker SELinux i sin standard <span
+              class="emphasis"><em>permissive/givende</em></span>-modus der avviste handlinger logges, men fremdeles blir utført. Du bør derfor endre GRUBs oppsettsfil for oppstart ved å legge til de ønskede parametere. En enkel måte å gjøre dette på er å modifisere <code
+              class="literal">GRUB_CMDLINE_LINUX</code>-variabelen i <code
+              class="filename">/etc/default/grub</code>, og å kjøre <code
+              class="command">update-grub</code>. SELinux vil være aktivert etter en omstart.
+			</div><div
+            class="para">
+				Det er verdt å merke seg at <code
+              class="command">selinux-activate</code>-skriptet automatiserer disse operasjonene, og tvinger en merking ved neste oppstart (som unngår nye ikke-merkede filer som er opprettet mens SELinux ennå ikke var aktiv, og mens merking skjer).
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.selinux-management"></a>14.5.3. Å håndtere SELinux-system</h3></div></div></div><a
+            id="id-1.17.8.5.2"
+            class="indexterm"></a><a
+            id="id-1.17.8.5.3"
+            class="indexterm"></a><div
+            class="para">
+				SELinux-opplegget er et modulbasert sett med regler, og installasjonen oppdager og aktiverer automatisk alle relevante moduler basert på den allerede installerte tjenesten. Systemet er dermed umiddelbart i drift. Men når en tjeneste er installert etter SELinux-opplegget, må du klare å aktivere den tilsvarende modulen manuelt. Det er hensikten med <code
+              class="command">semodule</code>-kommandoen. Videre kan du klare å definere rollene som hver bruker kan slutte seg til, og dette kan gjøres med <code
+              class="command">semanage</code>-kommandoen.
+			</div><div
+            class="para">
+				De to kommandoer kan dermed brukes til å endre den gjeldende SELinux-oppsettet, lagret i <code
+              class="filename">/etc/selinux/default/</code>. I motsetning til andre oppsettfiler du finner i <code
+              class="filename">/etc/</code>, skal ikke alle disse filene endres for hånd. Du bør bruke programmer som er laget til dette formålet.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>FOR VIDEREKOMMENDE</em></span> Mer dokumentasjon</strong></p></div></div></div><div
+              class="para">
+				Ettersom NSA ikke gir noen offisiell dokumentasjon, har fellesskapet satt opp en Wiki for å kompensere. Den bringer sammen en masse informasjon, men du må være klar over at de fleste SELinux-bidragsytere er Fedora-brukere (der SELinux er aktivert som standard). Dokumentasjonen tenderer dermed til å håndtere spesielt denne distribusjonen. <div
+                xmlns=""
+                class="url">→ <a
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  href="http://www.selinuxproject.org">http://www.selinuxproject.org</a></div>
+			</div><div
+              class="para">
+				Du bør også ta en titt på den dedikerte Debian Wiki-siden, samt Russell Cokers blogg, som er en av de mest aktive Debian-utviklere som jobber med SELinux-støtte. <div
+                xmlns=""
+                class="url">→ <a
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  href="http://wiki.debian.org/SELinux">http://wiki.debian.org/SELinux</a></div> <div
+                xmlns=""
+                class="url">→ <a
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  href="http://etbe.coker.com.au/tag/selinux/">http://etbe.coker.com.au/tag/selinux/</a></div>
+			</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.17.8.5.7"></a>14.5.3.1. Å håndtere SELinux-moduler</h4></div></div></div><div
+              class="para">
+					Tilgjengelige SELinux-moduler er lagret i <code
+                class="filename">/usr/share/selinux/default/</code>-mappen. For å aktivere en av disse modulene i det gjeldende oppsettet bør du bruke <code
+                class="command">semodule -i <em
+                  class="replaceable">modul.pp.bz2</em></code>. Forlengelsen <span
+                class="emphasis"><em>pp.bz2</em></span> står for <span
+                class="emphasis"><em>policy package (pakke)</em></span> (komprimert med bzip2).
+				</div><div
+              class="para">
+					Å fjerne en modul fra det gjeldende oppsettet gjøres med <code
+                class="command">semodule -r <em
+                  class="replaceable">modul</em></code>. Til slutt, lister <code
+                class="command">semodule -l</code>-kommandoen modulene som er installert. De gir også sine versjonsnumre. Moduler kan selektivt aktiveres med <code
+                class="command">semodule -e</code>, og slås av med <code
+                class="command">semodule -d</code>.
+				</div><pre
+              class="screen"><code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -i /usr/share/selinux/default/abrt.pp.bz2</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -l</code></strong>
+<code
+                class="computeroutput">abrt    1.5.0   Disabled
+accountsd       1.1.0   
+acct    1.6.0   
+[...]</code>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -e abrt</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -d accountsd</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -l</code></strong>
+<code
+                class="computeroutput">abrt    1.5.0
+accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</code>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -r abrt</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semodule -l</code></strong>
+<code
+                class="computeroutput">accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</code></pre><div
+              class="para">
+					<code
+                class="command">semodule</code> laster umiddelbart det nye oppsettet om ikke du bruker dens <code
+                class="literal">-n</code>-valg. Det er verdt å merke seg at programmet er standard på det gjeldende oppsettet (som er angitt av <code
+                class="literal">SELINUXTYPE</code>-variabelen i <code
+                class="filename">/etc/selinux/config</code>), men at du kan endre en annen ved å spesifisere den med <code
+                class="literal">-s</code>-valget.
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.17.8.5.8"></a>14.5.3.2. Å håndtere identiteter</h4></div></div></div><div
+              class="para">
+					Hver gang en bruker logger inn, får de tildelt en SELinux-identitet. Denne identiteten definerer rollene de kan støtte. Disse to adressingene (fra brukeren til identiteten, og fra denne identiteten til roller) kan settes opp med <code
+                class="command">semanage</code>-kommandoen.
+				</div><div
+              class="para">
+					Du bør absolutt lese manualsiden <span
+                class="citerefentry"><span
+                  class="refentrytitle">semanage</span>(8)</span>, selv om kommando-syntaksen tenderer til å være lik for alle begrepene som håndteres. Du vil finne vanlige valg til alle underkommandoer:<code
+                class="literal">-a</code> for å legge til, <code
+                class="literal">-d</code> for å trekke fra (slette), <code
+                class="literal">-m</code> for å modifisere, <code
+                class="literal">-l</code> til å liste, og <code
+                class="literal">-t</code> for å indikere en type (eller et domene).
+				</div><div
+              class="para">
+					<code
+                class="command">semanage login -l</code> lister gjeldende adressering mellom brukeridentifikatorer og SELinux-identiteter. Brukere som ikke har noen eksplisitt inngang, får identiteten angitt i <code
+                class="literal">__default__</code>-inngangen. <code
+                class="command">semanage login -a -s user_u <em
+                  class="replaceable">bruker</em></code>-kommandoen vil knytte <span
+                class="emphasis"><em>user_u</em></span>-identiteten til den gitte brukeren. Tilslutt, <code
+                class="command">semanage login -d <em
+                  class="replaceable">bruker</em></code> dropper asdresseringsinngangen knyttet til denne brukeren.
+				</div><pre
+              class="screen"><code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semanage login -a -s user_u rhertzog</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semanage login -l</code></strong>
+<code
+                class="computeroutput">
+Login Name           SELinux User         MLS/MCS Range        Service
+
+__default__          unconfined_u         SystemLow-SystemHigh *
+rhertzog             user_u               SystemLow            *
+root                 unconfined_u         SystemLow-SystemHigh *
+system_u             system_u             SystemLow-SystemHigh *
+# </code><strong
+                class="userinput"><code>semanage login -d rhertzog</code></strong></pre><div
+              class="para">
+					<code
+                class="command">semanage user -l</code> viser adresseringen mellom SELinux-brukeridentiteter og tillatte roller. Å legge til en ny identitet krever å definere både de tilsvarende rollene og en merkingsforstavelse som brukes til å tilordne en type til personlige filer (<code
+                class="filename">/home/<em
+                  class="replaceable">bruker</em>/*</code>). Forstavelsen må velges mellom <code
+                class="literal">user</code>, <code
+                class="literal">staff</code>, og <code
+                class="literal">sysadm</code>. «<code
+                class="literal">staff</code>»-forstavelsen resulterer i filer av typen «<code
+                class="literal">staff_home_dir_t</code>». Å lage en ny SELinux-brukeridentitet gjøres med <code
+                class="command">semanage user -a -R <em
+                  class="replaceable">roller</em> -P <em
+                  class="replaceable">prefiks</em> <em
+                  class="replaceable">identitet</em></code>. Til slutt; du kan fjerne en SELinux-brukeridentitet med <code
+                class="command">semanage user -d <em
+                  class="replaceable">identitet</em></code>.
+				</div><pre
+              class="screen"><code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semanage user -a -R 'staff_r user_r' -P staff test_u</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>semanage user -l</code></strong>
+<code
+                class="computeroutput">
+                Labeling   MLS/       MLS/                          
+SELinux User    Prefix     MCS Level  MCS Range             SELinux Roles
+
+root            sysadm     SystemLow  SystemLow-SystemHigh  staff_r sysadm_r system_r
+staff_u         staff      SystemLow  SystemLow-SystemHigh  staff_r sysadm_r
+sysadm_u        sysadm     SystemLow  SystemLow-SystemHigh  sysadm_r
+system_u        user       SystemLow  SystemLow-SystemHigh  system_r
+test_u          staff      SystemLow  SystemLow             staff_r user_r
+unconfined_u    unconfined SystemLow  SystemLow-SystemHigh  system_r unconfined_r
+user_u          user       SystemLow  SystemLow             user_r
+# </code><strong
+                class="userinput"><code>semanage user -d test_u</code></strong></pre></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.17.8.5.9"></a>14.5.3.3. Å håndtere filkontekster, porter og boolske verdier</h4></div></div></div><div
+              class="para">
+					Hver SELinux-modul har et sett av filmerkingsregler, men det er også mulig å legge til egendefinerte regler for merking for å ta hensyn til et bestemt tilfelle. For eksempel, hvis du vil at nett-tjeneren, for å kunne lese filene i <code
+                class="filename">/srv/www/</code>-filhierarkiet, kan du kjøre <code
+                class="command">semanage fcontext -a -t httpd_sys_content_t "/srv/www(/.*)?"</code> fulgt av <code
+                class="command">restorecon -R /srv/www/</code>. Førstnevnte kommando registrerer nye regler for merking, og sistnevnte tilbakestiller filtypene etter gjeldende regler for merking.
+				</div><div
+              class="para">
+					Tilsvarende er TCP/UDP-portene merket på en måte som sikrer at bare de tilsvarende nissene kan lytte til dem. For eksempel, hvis du vil at nett-tjeneren skal kunne lytte på port 8080, bør du kjøre <code
+                class="command">semanage port -m -t http_port_t -p tcp 8080</code>.
+				</div><div
+              class="para">
+					Noen SELinux-moduler eksporterer boolske valg som du kan justere for å endre gjøremålene til standardreglene. <code
+                class="command">getsebool</code>-verktøyet kan brukes til å inspisere disse valgene (<code
+                class="command">getsebool <em
+                  class="replaceable">boolsk</em></code> viser ett valg, og <code
+                class="command">getsebool -a</code> alle). <code
+                class="command">setsebool <em
+                  class="replaceable">boolsk</em> <em
+                  class="replaceable">verdt</em></code>-kommandoen endrer den gjeldende verdien av et boolsk alternativ. <code
+                class="literal">-P</code>-valget gjør endringen permanent. Det betyr at den nye verdien blir standard, og blir beholdt etter restart. Eksempelet nedenfor gir nett-tjenere tilgang til hjemmeområder (dette er nyttig når brukerne har personlige nettsteder i <code
+                class="filename">~/public_html/</code>).
+				</div><pre
+              class="screen"><code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>getsebool httpd_enable_homedirs</code></strong>
+<code
+                class="computeroutput">httpd_enable_homedirs --&gt; off
+# </code><strong
+                class="userinput"><code>setsebool -P httpd_enable_homedirs on</code></strong>
+<code
+                class="computeroutput"># </code><strong
+                class="userinput"><code>getsebool httpd_enable_homedirs</code></strong> 
+<code
+                class="computeroutput">httpd_enable_homedirs --&gt; on</code></pre></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.selinux-custom-rules"></a>14.5.4. Å tilpasse reglene</h3></div></div></div><div
+            class="para">
+				Siden SELinux-opplegget er modulbasert, kan det være interessant å utvikle nye moduler for (muligens tilpassede) programmer som mangler dem. Disse nye modulene vil da komplettere <span
+              class="emphasis"><em>referanseregler</em></span>.
+			</div><div
+            class="para">
+				For å lage nye moduler kreves <span
+              class="pkg pkg">selinux-policy-dev</span>-pakken så vel som <span
+              class="pkg pkg">selinux-policy-doc</span>. Den siste inneholder dokumentasjonen om standardreglene (<code
+              class="filename">/usr/share/doc/selinux-policy-doc/html/</code>) og eksempelfiler som kan brukes som maler for å lage nye moduler. Installer disse filene, og studer dem nærmere:
+			</div><pre
+            class="screen"><code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>cp /usr/share/doc/selinux-policy-doc/Makefile.example Makefile</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>cp /usr/share/doc/selinux-policy-doc/example.fc ./</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>cp /usr/share/doc/selinux-policy-doc/example.if ./</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>cp /usr/share/doc/selinux-policy-doc/example.te ./</code></strong></pre><div
+            class="para">
+				Filen <code
+              class="filename">.te</code> er den viktigste. Den definerer reglene. Filen <code
+              class="filename">.fc</code> definerer «filkonteksten»; det er typene som er tilordnet filer knyttet til denne modulen. Dataene innenfor <code
+              class="filename">.fc</code>-filen brukes under filmerkingstrinnet. Endelig definerer <code
+              class="filename">.if</code>-filen modulens grensesnitt. Det er et sett med «offentlige funksjoner» som andre moduler kan bruke til en riktig samhandling med modulen du oppretter.
+			</div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.17.8.6.6"></a>14.5.4.1. Å skrive en <code
+                      class="filename">.fc</code>-fil</h4></div></div></div><div
+              class="para">
+					Å lese eksemplet nedenfor bør være tilstrekkelig til å forstå strukturen i en slik fil. Du kan bruke vanlige uttrykk for å tilordne den samme sikkerhetskonteksten til flere filer, eller til og med til et helt katalogtre.
+				</div><div
+              class="example"><a
+                xmlns=""
+                id="id-1.17.8.6.6.3"></a><p
+                class="title"><strong>Eksempel 14.2. <code
+                    class="filename">eksempel.fc</code>-file</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting scale"># myapp executable will have:
+# label: system_u:object_r:myapp_exec_t
+# MLS sensitivity: s0
+# MCS categories: &lt;none&gt;
+
+/usr/sbin/myapp         --      gen_context(system_u:object_r:myapp_exec_t,s0)</pre></div></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.17.8.6.7"></a>14.5.4.2. Å skrive en <code
+                      class="filename">.if</code>-fil</h4></div></div></div><div
+              class="para">
+					I eksemplet nedenfor kontrollerer det første grensesnittet (“<code
+                class="literal">myapp_domtrans</code>”) hvem som kan kjøre programmet. Det andre («<code
+                class="literal">myapp_read_log</code>») gir leserettigheter til programmets loggfiler.
+				</div><div
+              class="para">
+					Hvert grensesnitt må generere et gyldig sett med regler som kan legges inn i en <code
+                class="filename">.te</code>-fil. Du bør derfor formidle alle typene du bruker (med <code
+                class="literal">gen_require</code>-makro), og bruke standard direktiver for å gi rettigheter. Vær imidlertid oppmerksom på at du kan bruke grensesnitt som tilbys av andre moduler. Den neste seksjonen vil gi flere forklaringer om hvordan disse rettighetene skal uttrykkes.
+				</div><div
+              class="example"><a
+                xmlns=""
+                id="id-1.17.8.6.7.4"></a><p
+                class="title"><strong>Eksempel 14.3. <code
+                    class="filename">eksempel.if</code>-fil</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">## &lt;summary&gt;Myapp example policy&lt;/summary&gt;
+## &lt;desc&gt;
+##      &lt;p&gt;
+##              More descriptive text about myapp.  The &lt;desc&gt;
+##              tag can also use &lt;p&gt;, &lt;ul&gt;, and &lt;ol&gt;
+##              html tags for formatting.
+##      &lt;/p&gt;
+##      &lt;p&gt;
+##              This policy supports the following myapp features:
+##              &lt;ul&gt;
+##              &lt;li&gt;Feature A&lt;/li&gt;
+##              &lt;li&gt;Feature B&lt;/li&gt;
+##              &lt;li&gt;Feature C&lt;/li&gt;
+##              &lt;/ul&gt;
+##      &lt;/p&gt;
+## &lt;/desc&gt;
+#
+
+########################################
+## &lt;summary&gt;
+##      Execute a domain transition to run myapp.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to transition.
+## &lt;/param&gt;
+#
+interface(`myapp_domtrans',`
+        gen_require(`
+                type myapp_t, myapp_exec_t;
+        ')
+
+        domtrans_pattern($1,myapp_exec_t,myapp_t)
+')
+
+########################################
+## &lt;summary&gt;
+##      Read myapp log files.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to read the log files.
+## &lt;/param&gt;
+#
+interface(`myapp_read_log',`
+        gen_require(`
+                type myapp_log_t;
+        ')
+
+        logging_search_logs($1)
+        allow $1 myapp_log_t:file r_file_perms;
+')</pre></div></div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>DOKUMENTASJON</em></span> Forklaringer om <span
+                          class="emphasis"><em>referanseregler</em></span></strong></p></div></div></div><div
+                class="para">
+					<span
+                  class="emphasis"><em>Referanseregler</em></span> utvikler seg som alle fri programvareprosjekt: basert på frivillige bidrag. Tresys er vert for prosjektet, et av de mest aktive selskapene på SELinux-feltet. Wikien deres har forklaringer på hvordan reglene er strukturert, og hvordan du kan lage nye. <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted">https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted</a></div>
+				</div></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="sect.writing-a-te-file"></a>14.5.4.3. Å skrive en <code
+                      class="filename">.te</code>-fil</h4></div></div></div><div
+              class="para">
+					Se på <code
+                class="filename">eksempel.te</code>-filen:
+				</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>FOR VIDEREKOMMENDE</em></span> Med makrospråket <code
+                          class="command">m4</code></strong></p></div></div></div><div
+                class="para">
+					For å strukturere opplegget riktig brukte SELinux-utviklerne en makro-kommandoprosessor. I stedet for å duplisere mange lignende <span
+                  class="emphasis"><em>tillat</em></span>-direktiver, laget de «makrofunksjoner» for å bruke en høyere-nivå logikk, som også resulterer i et mye mer lesbart opplegg.
+				</div><div
+                class="para">
+					I praksis blir <code
+                  class="command">m4</code> brukt til å sette sammen disse reglene. Den gjør den motsatte operasjonen: Den utvider alle disse høyt-nivå direktivene inn i en stor database med <span
+                  class="emphasis"><em>allow</em></span>-direktiver.
+				</div><div
+                class="para">
+					SELinux-«grensesnittene» er bare makrofunksjoner som vil bli erstattet av et sett med regler på kompileringstidspunktet. På samme måte er noen rettigheter faktisk sett av rettigheter som er byttet ut med sine verdier på kompileringstidspunktet.
+				</div></div><pre
+              class="programlisting">policy_module(myapp,1.0.0) <span
+                id="example.te.module"><img
+                  class="callout"
+                  src="Common_Content/images/1.png"
+                  alt="1" /></span>
+
+########################################
+#
+# Declarations
+#
+
+type myapp_t; <span
+                id="example.te.type"><img
+                  class="callout"
+                  src="Common_Content/images/2.png"
+                  alt="2" /></span>
+type myapp_exec_t;
+domain_type(myapp_t)
+domain_entry_file(myapp_t, myappLikewise, some rights are in fact sets of rights which are replaced by their values at compilation time._exec_t) <span
+                id="example.te.domain"><img
+                  class="callout"
+                  src="Common_Content/images/3.png"
+                  alt="3" /></span>
+
+type myapp_log_t;
+logging_log_file(myapp_log_t) <span
+                id="example.te.interface"><img
+                  class="callout"
+                  src="Common_Content/images/4.png"
+                  alt="4" /></span>
+
+type myapp_tmp_t;
+files_tmp_file(myapp_tmp_t)
+
+########################################
+#
+# Myapp local policy
+#
+
+allow myapp_t myapp_log_t:file { read_file_perms append_file_perms }; <span
+                id="example.te.allow"><img
+                  class="callout"
+                  src="Common_Content/images/5.png"
+                  alt="5" /></span>
+
+allow myapp_t myapp_tmp_t:file manage_file_perms;
+files_tmp_filetrans(myapp_t,myapp_tmp_t,file)</pre><div
+              class="calloutlist"><table
+                border="0"
+                summary="Callout list"><tr><td
+                    width="5%"
+                    valign="top"
+                    align="left"><p><a
+                        href="#example.te.module"><img
+                          class="callout"
+                          src="Common_Content/images/1.png"
+                          alt="1" /></a> </p></td><td
+                    valign="top"
+                    align="left"><div
+                      class="para">
+							Modulen må identifiseres med navn og versjonsnummer. Dette direktivet er nødvendig.
+						</div></td></tr><tr><td
+                    width="5%"
+                    valign="top"
+                    align="left"><p><a
+                        href="#example.te.type"><img
+                          class="callout"
+                          src="Common_Content/images/2.png"
+                          alt="2" /></a> </p></td><td
+                    valign="top"
+                    align="left"><div
+                      class="para">
+							Hvis modulen introduserer nye typer, må den si ifra om dem med direktiver som dette. Ikke nøl med å lage så mange typer som kreves i stedet for å gi for mange ubrukelige rettigheter.
+						</div></td></tr><tr><td
+                    width="5%"
+                    valign="top"
+                    align="left"><p><a
+                        href="#example.te.domain"><img
+                          class="callout"
+                          src="Common_Content/images/3.png"
+                          alt="3" /></a> </p></td><td
+                    valign="top"
+                    align="left"><div
+                      class="para">
+							Disse grensesnittene definerer <code
+                        class="literal">myapp_t</code>-typen som et prosessdomene som skal brukes av alle kjørbare merket med <code
+                        class="literal">myapp_exec_t</code>. Implisitt legger de til en <code
+                        class="literal">exec_type</code>-attributt til disse objektene, som igjen tillater andre moduler å tildele rettigheter til å kjøre disse programmene, for eksempel tillater <code
+                        class="literal">userdomain</code>-modulen prosesser med domene <code
+                        class="literal">user_t</code>, <code
+                        class="literal">staff_t</code>, og <code
+                        class="literal">sysadm_t</code> til å kjøre dem. Domenene til andre avstengte programmer vil ikke ha rettigheter til å kjøre dem, med mindre reglene gir dem lignende rettigheter (dette er tilfelle, for eksempel, med <code
+                        class="command">dpkg</code> med sitt <code
+                        class="literal">dpkg_t</code>-domene).
+						</div></td></tr><tr><td
+                    width="5%"
+                    valign="top"
+                    align="left"><p><a
+                        href="#example.te.interface"><img
+                          class="callout"
+                          src="Common_Content/images/4.png"
+                          alt="4" /></a> </p></td><td
+                    valign="top"
+                    align="left"><div
+                      class="para">
+							<code
+                        class="literal">logging_log_file</code> er et grensesnitt som tilbys av referanseopplegget. Det indikerer at filene som er merket med den gitte typen er loggfiler¸ som burde dra nytte av de tilhørende reglene (for eksempel å gi rettigheter til <code
+                        class="command">logrotate</code> slik at den kan håndtere dem).
+						</div></td></tr><tr><td
+                    width="5%"
+                    valign="top"
+                    align="left"><p><a
+                        href="#example.te.allow"><img
+                          class="callout"
+                          src="Common_Content/images/5.png"
+                          alt="5" /></a> </p></td><td
+                    valign="top"
+                    align="left"><div
+                      class="para">
+							Direktivet <code
+                        class="literal">allow</code> er basen direktivet bruker til å godkjenne en operasjon. Den første parameteren er prosessdomenet som har lov til å utføre operasjonen. Det andre definerer objektet som en prosess som det tidligere domenet kan håndtere. Denne parameteren har formen «<em
+                        class="replaceable">type</em>:<em
+                        class="replaceable">klasse</em>» der <em
+                        class="replaceable">type</em> er dens SELinux-type, og <em
+                        class="replaceable">klasse</em> beskriver hva slags objekt (fil, mappe, socket, fifo, etc.). Til slutt beskriver den siste parameteren tillatelsene (de tillatte operasjonene).
+						</div><div
+                      class="para">
+							Tillatelser er definert som et sett av tillatte operasjoner, og følger denne malen: <code
+                        class="literal">{ <em
+                          class="replaceable">operasjon1</em> <em
+                          class="replaceable">operasjon2</em> }</code>. Men du kan også bruke makroer som representerer de nyttigste tillatelsene.<code
+                        class="filename">/usr/share/selinux/devel/include/support/obj_perm_sets.spt</code> lister/viser dem.
+						</div><div
+                      class="para">
+							Følgende nettside gir en relativt uttømmende liste over objektklasser og tillatelser som kan gis. <div
+                        xmlns=""
+                        class="url">→ <a
+                          xmlns="http://www.w3.org/1999/xhtml"
+                          href="http://www.selinuxproject.org/page/ObjectClassesPerms">http://www.selinuxproject.org/page/ObjectClassesPerms</a></div>
+						</div></td></tr></table></div><div
+              class="para">
+					Nå er det bare å finne det minimale settet med regler som kreves for å sikre at målprogrammet eller tjenesten fungerer som det skal. For å oppnå dette bør du ha god kunnskap om hvordan programmet fungerer, og hva slags data det styrer og/eller genererer.
+				</div><div
+              class="para">
+					Imidlertid er en empirisk tilnærming mulig. Etter at de relevante objektene er korrekt merket, kan du bruke programmet i tillatelsesmodus: Operasjonene som vil bli forbudt blir logget, men vil likevel lykkes. Ved å analysere loggene kan du nå identifisere operasjoner som skal tillates. Her er et eksempel på en slik loggoppføring :
+				</div><pre
+              class="programlisting">avc:  denied  { read write } for  pid=1876 comm="syslogd" name="xconsole" dev=tmpfs ino=5510 scontext=system_u:system_r:syslogd_t:s0 tcontext=system_u:object_r:device_t:s0 tclass=fifo_file permissive=1</pre><div
+              class="para">
+					For bedre å forstå dette budskapet, la oss studere det bit for bit.
+				</div><div
+              class="table"><a
+                xmlns=""
+                id="id-1.17.8.6.8.10"></a><p
+                class="title"><strong>Tabell 14.1. Analyse av et SELinux-spor</strong></p><div
+                class="table-contents"><table
+                  xmlns:d="http://docbook.org/ns/docbook"
+                  class="lt-4-cols gt-7-rows"
+                  summary="Analyse av et SELinux-spor"><colgroup><col /><col /></colgroup><thead><tr><th>Budskap</th><th>Beskrivelse</th></tr></thead><tbody><tr><td><code
+                          class="computeroutput">avc: denied</code></td><td>En operasjon er nektet.</td></tr><tr><td><code
+                          class="computeroutput">{ read write }</code></td><td>Denne operasjonen krevde <code
+                          class="literal">read</code> og <code
+                          class="literal">write</code>-tillatelsene.</td></tr><tr><td><code
+                          class="computeroutput">pid=1876</code></td><td>Prosessen med PID 1876 kjørte operasjonen (eller forsøkt å utføre den).</td></tr><tr><td><code
+                          class="computeroutput">comm="syslogd"</code></td><td>Prosessen var et tilfelle med <code
+                          class="literal">syslogd</code>-programmet.</td></tr><tr><td><code
+                          class="computeroutput">name="xconsole"</code></td><td>Målobjektet ble navngitt <code
+                          class="literal">xconsole</code>. Noen ganger kan du også ha en «sti»-variabel - med hele banen - i stedet.</td></tr><tr><td><code
+                          class="computeroutput">dev=tmpfs</code></td><td>Enheten som er vert for målobjektet er et <code
+                          class="literal">tmpfs</code> (et i-minne filsystem). Med en ekte disk kan du se at partisjonen er vert for objektet (for eksempel: «sda3»).</td></tr><tr><td><code
+                          class="computeroutput">ino=5510</code></td><td>Objektet er identifisert med inode-nummer 5510.</td></tr><tr><td><code
+                          class="computeroutput">scontext=system_u:system_r:syslogd_t:s0</code></td><td>Dette er sikkerhetskonteksten for prosessen som utførte operasjonen.</td></tr><tr><td><code
+                          class="computeroutput">tcontext=system_u:object_r:device_t:s0</code></td><td>Dette er sikkerhetskontektsen til målobjektet.</td></tr><tr><td><code
+                          class="computeroutput">tclass=fifo_file</code></td><td>Målobjektet er en FIFO-fil.</td></tr></tbody></table></div></div><div
+              class="para">
+					Ved å observere dette i loggen er det mulig å bygge en regel som ville tillate denne operasjonen. For eksempel: <code
+                class="literal">allow syslogd_t device_t:fifo_file { read write }</code>. Denne prosessen kan automatiseres, og det er akkurat hva <code
+                class="command">audit2allow</code>-kommandoen (i <span
+                class="pkg pkg">policycoreutils</span>-pakken) tilbyr. Denne tilnærmingen er bare nyttig hvis de ulike objektene allerede er korrekt merket med det som måtte være begrenset. I alle fall må du lese nøye gjennom de genererte reglene, og validere dem i henhold til dine kunnskaper om programmet. Faktisk tenderer denne tilnærmingen til å gi flere rettigheter enn det som virkelig er nødvendig. Den riktige løsningen er ofte å lage nye typer, og for å tildele rettigheter bare til disse typene. Det hender også at en nektet operasjon er fatalt for programmet, og da kan det være bedre å bare legge til «<code
+                class="literal">dontaudit</code>» en regel for å unngå loggoppføringen til tross for en effektiv nektelse.
+				</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>SUPPLEMENT</em></span> Ingen roller i retningslinjene</strong></p></div></div></div><a
+                id="id-1.17.8.6.8.12.2"
+                class="indexterm"></a><a
+                id="id-1.17.8.6.8.12.3"
+                class="indexterm"></a><div
+                class="para">
+					Det kan virke merkelig at rollene ikke dukker opp i det hele tatt når du oppretter nye regler. SELinux bruker kun domenene for å finne ut hvilke operasjoner som er tillatt. Rollen griper bare indirekte inn ved å tillate brukeren å bytte til et annet domene. SELinux er basert på en teori som kalles <span
+                  class="emphasis"><em>håndheving av type</em></span>, og typen er det eneste elementet som betyr noe når rettigheter tildeles.
+				</div></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.17.8.6.9"></a>14.5.4.4. Å kompilere filene</h4></div></div></div><div
+              class="para">
+					Så snart de 3 filene (<code
+                class="filename">eksempel.if</code>, <code
+                class="filename">eksempel.fc</code>, og <code
+                class="filename">eksempel.te</code>) svarer til dine forventninger for de nye reglene, er det bare å kjøre <code
+                class="command">make NAME=devel</code> for å generere en modul i <code
+                class="filename">eksempel.pp</code>-filen (du kan umiddelbart laste den med <code
+                class="command">semodule -i example.pp</code>). Hvis flere moduler er definert vil <code
+                class="command">make</code> lage alle de korresponderende <code
+                class="filename">.pp</code>-filene.
+				</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.apparmor.html"><strong>Forrige</strong>14.4. Introduksjon til AppArmor</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.other-security-considerations.html"><strong>Neste</strong>14.6. Andre sikkerhetsrelaterte overveielser</a></li></ul></body></html>
