@@ -559,7 +559,7 @@ body_checks = regexp:/etc/postfix/body_checks</programlisting>
 				<primary>grålisting</primary>
 			</indexterm>
 			 <para>
-				«Grålisting» («Greylisting») er en filtreringsteknikk der en melding som i utgangspunktet er avvist med en midlertidig feilkode, og bare aksepteres etter et ytterligere forsøk etter noen tid. Denne filtreringen er spesielt effektiv mot spam som sendes av de mange maskinene som er infisert av ormer og virus, fordi denne programvaren sjelden fungerer som en full SMTP-agent (ved å kontrollere feilkode ,og prøve meldinger som har feilet på nytt senere), spesielt fordi mange av de oppsamlede adressene virkelig er ugyldige, og prøve dem på nytt bare ville bety å miste tid.
+				«Grålisting» («Greylisting») er en filtreringsteknikk der en melding som i utgangspunktet er avvist med en midlertidig feilkode, og bare aksepteres etter et ytterligere forsøk etter noen tid. Denne filtreringen er spesielt effektiv mot spam som sendes av de mange maskinene som er infisert av ormer og virus, fordi denne programvaren sjelden fungerer som en full SMTP-agent (ved å kontrollere feilkode, og prøve meldinger som har feilet på nytt senere), spesielt fordi mange av de oppsamlede adressene virkelig er ugyldige, og prøve dem på nytt bare ville bety å miste tid.
 			</para>
 			 <para>
 				Postfix leverer ikke grålisting (greylisting) fritt, men det er en funksjon, der beslutningen om å godta eller forkaste en gitt melding, kan delegeres til et eksternt program. Pakken <emphasis role="pkg">postgrey</emphasis> inneholder akkurat et slikt program, laget for å være bindeleddet til denne delegerte adgangspolitikktjenesten.
@@ -573,14 +573,14 @@ smtpd_recipient_restrictions = permit_mynetworks,
     [...]
     check_policy_service inet:127.0.0.1:10023</programlisting>
 			 <para>
-				Hver gang Postfix treffer denne regelen i regelsettet, vil den koble til <command>postgrey</command>-nissen, og sende den informasjon om den aktuelle meldingen. På sin side, vurderer Postgrey trillingen/trippelen IP-«adresse/avsende/mottaker», og sjekker i sin database om det samme trillingen er sett i det siste. Hvis ja, svarer Postgrey at meldingen skal godtas; hvis ikke, indikerer svaret at meldingen skal avvises midlertidig, og trillingen blir registrert i databasen.
+				Hver gang Postfix treffer denne regelen i regelsettet, vil den koble til <command>postgrey</command>-nissen, og sende den informasjon om den aktuelle meldingen. På sin side, vurderer Postgrey trillingen/trippelen IP-«adresse/avsender/mottaker», og sjekker i sin database om den samme trillingen er sett i det siste. Hvis ja, svarer Postgrey at meldingen skal godtas; hvis ikke, indikerer svaret at meldingen skal avvises midlertidig, og trillingen blir registrert i databasen.
 			</para>
 			 <para>
 				Den største ulempen med grålisting er at legitime meldinger bli forsinket, noe som ikke alltid er akseptabelt. Det øker også belastningen på tjenerne som sender mange legitime e-poster.
 			</para>
 			 <sidebar> <title><emphasis>I PRAKSIS</emphasis> Svakhetene i grålisting</title>
 			 <para>
-				Teoretisk bør grålisting bare forsinke den første posten fra en gitt sender til en gitt mottaker, og den typiske forsinkelsen er i størrelsesorden minutter. Virkeligheten kan, imidlertid, avvike noe. Noen store ISP-er bruker klynger av SMTP-tjenere, og når en melding innledningsvis er avslått, er kanskje den tjeneren som prøver å gjenoppta overføringen, ikke den samme som den opprinnelige. Når det skjer, får den andre tjeneren også en midlertidig feilmelding på grunn av grålisting, og så videre. Det kan ta flere timer før overføringen er forsøkt av en tjener som allerede har vært involvert, ettersom SMTP-tjenere ved hver feil vanligvis øke forsinkelsen.
+				Teoretisk bør grålisting bare forsinke den første posten fra en gitt sender til en gitt mottaker, og den typiske forsinkelsen er i størrelsesorden minutter. Virkeligheten kan, imidlertid, avvike noe. Noen store ISP-er bruker klynger av SMTP-tjenere, og når en melding innledningsvis er avslått, er kanskje den tjeneren som prøver å gjenoppta overføringen, ikke den samme som den opprinnelige. Når det skjer, får den andre tjeneren også en midlertidig feilmelding på grunn av grålisting, og så videre. Det kan ta flere timer før overføringen er forsøkt av en tjener som allerede har vært involvert, ettersom SMTP-tjenere ved hver feil vanligvis øker forsinkelsen.
 			</para>
 			 <para>
 				Som en konsekvens kan den innkommende IP-adressen variere i tid, selv for en enkelt sender. Men det går videre; selv avsenderadressen kan endres. For eksempel; mange postlistetjenere koder inn ekstra informasjon i avsenderadressen, for å være i stand til å håndtere feilmeldinger (kjent som <emphasis>bounces</emphasis>). Hver ny melding sendt til en adresseliste kan så trenge å gå gjennom grålisting, noe som betyr at den må lagres (midlertidig) på senderens tjener. For svært store e-postlister (med titusenvis av abonnenter), kan dette fort bli et problem.
@@ -593,7 +593,7 @@ smtpd_recipient_restrictions = permit_mynetworks,
 				Ulempene med grålisting kan reduseres ved å bruke grålisting bare på undergruppen av klienter som allerede regnes som sannsynlige kilder til spam (fordi de er oppført i en DNS-svarteliste). Dette er ikke mulig med <emphasis role="pkg">postgrey</emphasis> men <emphasis role="pkg">milter-greylist</emphasis> kan anvendes på en slik måte.
 			</para>
 			 <para>
-				I dette scenariet, ettersom DNS-svartelister aldri utløser en endelig avvisning, blir det naturlig å bruke aggressive svartelister, medregnet de som viser alle dynamiske IP-adresser fra ISP-klienter (for eksempel<literal>pbl.spamhaus.org</literal>, eller <literal>dul.dnsbl.sorbs.net</literal>).
+				I dette scenariet, ettersom DNS-svartelister aldri utløser en endelig avvisning, blir det naturlig å bruke aggressive svartelister, medregnet de som viser alle dynamiske IP-adresser fra ISP-klienter (for eksempel <literal>pbl.spamhaus.org</literal>, eller <literal>dul.dnsbl.sorbs.net</literal>).
 			</para>
 			 <para>
 				Siden milter-grålisting bruker Sendmails milter-grensesnitt, er postfix-siden av oppsettet begrenset til «<literal>smtpd_milters = unix:/var/run/milter-greylist/milter-greylist.sock</literal>». Manualsiden <citerefentry><refentrytitle>greylist.conf</refentrytitle>
@@ -666,7 +666,7 @@ falcot.com             greylisting
 			 <para>
 				Oppgaven med å koble sammen antivirus og e-postserveren legges til <command>clamav-milter</command>. Et <emphasis>milter</emphasis> (kort for <emphasis>postfilter (mail filter)</emphasis>) er et filterprogram spesielt utviklet for å kommunisere med e-posttjenere. Et milter bruker et standard programmeringsgrensesnitt (API) som gir mye bedre ytelse enn eksterne e-posttjenerfiltre. Milters ble først introdusert av <emphasis>Sendmail</emphasis>, men <emphasis>Postfix</emphasis> kom snart etter.
 			</para>
-			 <sidebar> <title><emphasis>HURTIGVISNING</emphasis> Et milter for Spamassassin</title>
+			 <sidebar> <title><emphasis>RASK TITT</emphasis> Et milter for Spamassassin</title>
 			 <indexterm>
 				<primary><emphasis role="pkg">spamass-milter</emphasis></primary>
 			</indexterm>
@@ -676,12 +676,12 @@ falcot.com             greylisting
 			 </sidebar> <para>
 				Så snart pakken <emphasis role="pkg">clamav-milter</emphasis> er installert, skal milter settes opp til å kjøre på en TCP-port i stedet for på standarden som heter socket. Dette kan oppnås med <command>dpkg-reconfigure clamav-milter</command>. Når du blir bedt om «Communication interface with Sendmail», svar «<literal>inet:10002@127.0.0.1</literal>».
 			</para>
-			 <sidebar> <title><emphasis>MERK</emphasis> Ekte TCP port vs navngitt socket</title>
+			 <sidebar> <title><emphasis>MERK</emphasis> Ekte TCP-port vs navngitt socket</title>
 			 <para>
 				Grunnen til at vi bruker en ekte TCP-port i stedet for den navngitte socketen, er at postfix-nisser ofte kjører chroot, og ikke har tilgang til katalogen som er vertskap for den navngitte socketen. Du kan også velge å fortsette å bruke en navngitt socket, og velge et sted i chroot (<filename>/var/spool/postfix/</filename>).
 			</para>
 			 </sidebar> <para>
-				Standard ClamAV-oppsettet passer til de fleste situasjoner, men noen viktige parametere kan fortsatt tilpasses med <command>dpkg-reconfigure clamav-base</command>.
+				Standard ClamAV-oppsettet passer til de fleste situasjoner, men noen viktige parametre kan fortsatt tilpasses med <command>dpkg-reconfigure clamav-base</command>.
 			</para>
 			 <para>
 				Det siste trinnet er å be Postfix å bruke det nettopp oppsatte filteret. Det er en enkel sak å legge følgende direktiv til <filename>/etc/postfix/main.cf</filename>:
@@ -767,7 +767,7 @@ relay_host = [mail.falcot.com]</programlisting>
 	 <section id="sect.http-web-server">
 		<title>Nett-tjener (HTTP)</title>
 		 <para>
-			Falcot Corp-administrtatorene besluttet å bruke Apache HTTP-tjeneren, inkludert i Debian <emphasis role="distribution">Jessie</emphasis> med versjon 2.4.10.
+			Falcot Corp-administratorene besluttet å bruke Apache HTTP-tjeneren, inkludert i Debian <emphasis role="distribution">Jessie</emphasis> med versjon 2.4.10.
 		</para>
 		 <indexterm>
 			<primary><command>apache</command></primary>
@@ -827,7 +827,7 @@ relay_host = [mail.falcot.com]</programlisting>
 			 <para>
 				En annen mulighet er å bruke en dedikert MPM, slik som den som tilbys i <emphasis role="pkg">libapache2-mpm-itk</emphasis>. Akkurat denne har en litt annen oppførsel: Den tillater å «isolere» virtuelle verter (faktisk, sett med sider), slik at hver av dem kjører som en ulik bruker. En sårbarhet i en nettside kan derfor ikke kompromittere filer som tilhører eieren av et annet nettsted.
 			</para>
-			 </sidebar> <sidebar> <title><emphasis>HURTIGVISNING</emphasis> Liste over moduler</title>
+			 </sidebar> <sidebar> <title><emphasis>RASK TITT</emphasis> Liste over moduler</title>
 			 <para>
 				Den fullstendige listen med Apache-standardmoduler finnes på nettet. <ulink type="block" url="http://httpd.apache.org/docs/2.4/mod/index.html" />
 			</para>
@@ -873,7 +873,7 @@ relay_host = [mail.falcot.com]</programlisting>
 			 <para>
 				Standardoppsettet for Apache 2 gir navn-baserte virtuelle verter. I tillegg er en standard virtuell vert definert i <literal>/etc/apache2/sites-enabled/000-default.conf</literal>-filen; Denne virtuelle verten vil bli brukt hvis det ikke finnes en vert som matcher anmodningen fra klienten.
 			</para>
-			 <sidebar> <title><emphasis>VÆR VARSOM</emphasis> Første virtuelle vert</title>
+			 <sidebar> <title><emphasis>PASS PÅ</emphasis> Første virtuelle vert</title>
 			 <para>
 				Forespørsler om ukjente virtuelle verter vil alltid bli betjent med den først definerte virtuelle verten. Det er derfor vi her har definert <literal>www.falcot.com</literal> først.
 			</para>
