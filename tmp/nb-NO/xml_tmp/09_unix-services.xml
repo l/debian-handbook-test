@@ -397,7 +397,7 @@ Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
 	  <para>OpenSSL-biblioteket, som i utgangspunktet er tilgjengelig i Debian <emphasis role="distribution">Etch</emphasis>, hadde et alvorlig problem i sin generator for tilfeldige tall (RNG). Faktisk hadde Debians vedlikeholder gjort en endring slik at programmer som bruker den ikke lenger ville generere advarsler når den ble analysert av et testverktøy for minnet som <command>valgrind</command>. 
 Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde som korresponderer med prosessantallet (PID), der 32 000 mulige verdier ikke gir tilstrekkelig tilfeldighet. <ulink type="block" url="http://www.debian.org/security/2008/dsa-1571" /></para>
 
-	  <para>Spesielt når OpenSSL ble brukt til å generere en nøkkel, produserte den alltid en nøkkel i løpet av et visst sett av hundretusener av nøkler (32 000 multiplisert med et lite antall nøkkellengder). Dette påvirket SSH-nøkler, SSL-nøkler og X.509-sertifikater som brukes av mange programmer, som OpenVPN. En inntrenger trengte bare å prøve alle nøklene for å få uautorisert tilgang. For å redusere virkningen av problemet ble SSH-nissen modifisert til å nekte problematiske nøkler som er oppført i <emphasis role="pkg">openssh-blacklist</emphasis>- og <emphasis role="pkg">openssh-blacklist-extra</emphasis>-pakkene. I tillegg tillater <command>ssh-vulnkey</command>-kommandoen identifisering av mulige kompromitterte nøkler i systemet.</para>
+	  <para>Spesielt når OpenSSL ble brukt til å generere en nøkkel, produserte den alltid en nøkkel i løpet av et visst sett av hundretusener av nøkler (32 000 multiplisert med et lite antall nøkkellengder). Dette påvirket SSH-nøkler, SSL-nøkler og X.509-sertifikater som brukes av mange programmer, som OpenVPN. En inntrenger trengte bare å prøve alle nøklene for å få uautorisert tilgang. For å redusere virkningen av problemet ble SSH-bakgrunnsprosessen modifisert til å nekte problematiske nøkler som er oppført i <emphasis role="pkg">openssh-blacklist</emphasis>- og <emphasis role="pkg">openssh-blacklist-extra</emphasis>-pakkene. I tillegg tillater <command>ssh-vulnkey</command>-kommandoen identifisering av mulige kompromitterte nøkler i systemet.</para>
 
 	  <para>En grundigere analyse av denne hendelsen bringer frem i lyset at det er et resultat av flere (små) problemer, både i OpenSSL-prosjektet og med Debian-pakkevedlikeholderen. Et mye brukt bibliotek som OpenSSL skal - uten endringer - ikke generere advarsler under testing av <command>valgrind</command>. Videre bør koden (spesielt de delene som er så følsomme som RNG) bli bedre kommentert for å forhindre slike feil. På Debians side, ønsket vedlikeholderen å validere modifikasjonene med OpenSSLs utviklere, men forklarte ganske enkelt endringene, uten å legge ut den korresponderende programfiksen til gjennomgang, og unnlot å nevne sin rolle i Debian. Endelig, vedlikeholdsvalgene var sub-optimale: Endringene i den opprinnelige koden ble ikke klart dokumentert; alle modifikasjoner ble effektivt lagret i en Subversjon kildebrønn, men de endte opp med alt samlet i en enkelt programfiks under oppretting av kildepakken.</para>
 
@@ -720,7 +720,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
     <section id="sect.syslog-principe">
       <title>Prinsipp og mekanisme</title>
 
-      <para><command>rsyslogd</command>-nissen er ansvarlig for innsamling av servicemeldinger som kommer fra programmer og kjernen, og deretter ekspedere dem til loggfiler (vanligvis lagret i <filename>/var/log/</filename>-mappen). Den adlyder oppsettsfilen <filename>/etc/rsyslog.conf</filename>.</para>
+      <para><command>rsyslogd</command>-bakgrunnsprosessenn er ansvarlig for innsamling av servicemeldinger som kommer fra programmer og kjernen, og deretter ekspedere dem til loggfiler (vanligvis lagret i <filename>/var/log/</filename>-mappen). Den adlyder oppsettsfilen <filename>/etc/rsyslog.conf</filename>.</para>
 
       <para>Hver loggmelding er forbundet med en delsystemapplikasjon (kalt «facility» i dokumentasjonen):</para>
       <itemizedlist>
@@ -731,7 +731,7 @@ Dessverre, denne endringen betydde også at RNG-en bare anvender en entropikilde
 	  <para><literal>cron</literal>: kommer fra aktivitetsplanleggingstjenester,<command>cron</command> og <command>atd</command>;</para>
         </listitem>
         <listitem>
-	  <para><literal>daemon</literal>: påvirker en nisse uten noen spesiell klassifisering (DNS, NTP, etc.);</para>
+	  <para><literal>daemon</literal>: påvirker en bakgrunnsprosessen uten noen spesiell klassifisering (DNS, NTP, etc.);</para>
         </listitem>
         <listitem>
 	  <para><literal>ftp</literal>: gjelder FTP-tjeneren;</para>
@@ -925,7 +925,7 @@ ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlistin
     <indexterm><primary>planlagte kommandoer</primary></indexterm>
     <indexterm><primary>kommandoplanlegging</primary></indexterm>
 
-    <para><command>cron</command> er nissen som kjører planlagte og gjentatte kommandoer (hver dag, hver uke, etc.); <command>atd</command> håndterer kommandoer som skal utføres en eneste gang, på et bestemt tidspunkt i fremtiden.</para>
+    <para><command>cron</command> er bakgrunnsprosessen som kjører planlagte og gjentatte kommandoer (hver dag, hver uke, etc.); <command>atd</command> håndterer kommandoer som skal utføres en eneste gang, på et bestemt tidspunkt i fremtiden.</para>
 
     <para>I et Unix-system er mange oppgaver planlagt for regelmessig gjennomføring:</para>
     <itemizedlist>
@@ -1087,7 +1087,7 @@ job 31 at Mon Jul 27 09:00:00 2015</computeroutput></screen>
   <section id="sect.asynchronous-task-scheduling-anacron">
     <title>Å planlegge asynkrone oppgaver: <command>anacron</command></title>
 
-    <para><command>anacron</command> er nissen som fullfører <command>cron</command> for datamaskiner som ikke er på hele tiden. Siden vanlige oppgaver vanligvis er planlagt midt på natten, vil de aldri bli kjørt hvis maskinen er slått av på den tiden. Meningen med <command>anacron</command> er å utføre dem, når det tas hensyn til perioder når datamaskinen ikke er på.</para>
+    <para><command>anacron</command> er bakgrunnsprosessen som fullfører <command>cron</command> for datamaskiner som ikke er på hele tiden. Siden vanlige oppgaver vanligvis er planlagt midt på natten, vil de aldri bli kjørt hvis maskinen er slått av på den tiden. Meningen med <command>anacron</command> er å utføre dem, når det tas hensyn til perioder når datamaskinen ikke er på.</para>
     <indexterm><primary><command>anacron</command></primary></indexterm>
 
     <para>Noter gjerne at <command>anacron</command> ofte vil utføre slik aktivitet noen få minutter etter oppstart av maskinen, noe som kan gjøre datamaskinen mindre tilgjengelig. Dette er grunnen til at oppgavene i <filename>/etc/anacrontab</filename>-filen er startet med <command>nice</command>-kommandoen, noe som reduserer kjøreprioriteten deres, og dermed begrenser innvirkningen deres på resten av systemet. Vær klar over at formatet på denne filen ikke er det samme som for <filename>/etc/crontab</filename>. Har du bestemte behov for <command>anacron</command>, se manualsiden <citerefentry><refentrytitle>anacrontab</refentrytitle> <manvolnum>5</manvolnum></citerefentry>.</para>
@@ -1459,7 +1459,7 @@ KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+
       <sidebar>
         <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Feilsøking i oppsettet til <emphasis>udev</emphasis></title>
 
-	<para>Som for mange nisser, lagrer <command>udevd</command> logger i <filename>/var/log/daemon.log</filename>. Men det er ikke veldig detaljert som standard, og det er som regel ikke nok til å forstå hva som skjer. Kommandoen <command>udevadm control --log-priority=info</command> øker detaljnivået, og løser dette problemet. <command>udevadm control --log-priority=err</command> returnerer til standard detaljnivå.</para>
+	<para>Som for mange bakgrunnsprosesser, lagrer <command>udevd</command> logger i <filename>/var/log/daemon.log</filename>. Men det er ikke veldig detaljert som standard, og det er som regel ikke nok til å forstå hva som skjer. Kommandoen <command>udevadm control --log-priority=info</command> øker detaljnivået, og løser dette problemet. <command>udevadm control --log-priority=err</command> returnerer til standard detaljnivå.</para>
       </sidebar>
     </section>
   </section>
@@ -1470,7 +1470,7 @@ KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+
 
     <para>Emnet strømstyring er ofte problematisk. Faktisk, riktig hvilemodus for maskinen krever at alle datamaskinens enhetsdrivere vet hvordan de settes i ventemodus, og at de skal sette opp enhetene igjen ved oppvåkning. Dessverre er det fortsatt noen få enheter som ikke kan sove godt under Linux, fordi produsentene deres ikke har gitt de nødvendige spesifikasjonene.</para>
 
-    <para>Linux støtter ACPI (Advanced Configuration and Power Interface) - den nyeste standarden for strømstyring. Pakken <emphasis role="pkg">acpid</emphasis> har en nisse som ser etter strømstyringsrelaterte hendelser (veksling mellom AC og batteristrøm på en bærbar PC, etc.) og som kan utføre ulike kommandoer som svar.</para>
+    <para>Linux støtter ACPI (Advanced Configuration and Power Interface) - den nyeste standarden for strømstyring. Pakken <emphasis role="pkg">acpid</emphasis> har en bakgrunnsprosess som ser etter strømstyringsrelaterte hendelser (veksling mellom AC og batteristrøm på en bærbar PC, etc.) og som kan utføre ulike kommandoer som svar.</para>
 
     <indexterm><primary>ACPI</primary></indexterm>
     <indexterm><primary>Advanced Configuration and Power Interface</primary></indexterm>
