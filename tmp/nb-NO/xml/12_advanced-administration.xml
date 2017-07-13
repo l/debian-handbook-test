@@ -7,7 +7,7 @@
 			<keyword>RAID</keyword>
 			 <keyword>LVM</keyword>
 			 <keyword>FAI</keyword>
-			 <keyword>Forhåndsutfylling (preseed.cfg)</keyword>
+			 <keyword>Forhåndsutfylling</keyword>
 			 <keyword>Overvåking</keyword>
 			 <keyword>Virtualisering</keyword>
 			 <keyword>Xen</keyword>
@@ -18,25 +18,25 @@
 	</chapterinfo>
 	 <title>Avansert administrasjon</title>
 	 <highlights> <para>
-		Dette kapittelet tar opp igjen noen aspekter vi allerede har beskrevet, med et annet perspektiv: I stedet for å installere en enkelt datamaskin, vil vi studere masseutrullingssystemer; i stedet for å sette opp RAID eller LVM ved nye installasjoner, vil vi lære å gjøre det for hånd, slik at vi senere kan endre våre første valg. Til slutt vil vi diskutere monitoreringsverktøy og virtualiseringsteknikker. Som en konsekvens, er dette kapittelet mer spesielt rettet mot profesjonelle administratorer, og fokuserer litt mindre på personer med ansvar for sine hjemmenettverk.
+		Dette kapittelet tar opp igjen noen aspekter vi allerede har beskrevet, med et annet perspektiv: I stedet for å installere en enkelt datamaskin, vil vi studere masseutrullingssystemer; i stedet for å sette opp RAID eller LVM under installasjonen, vil vi lære å gjøre det for hånd, slik at vi senere kan endre våre første valg. Til slutt vil vi diskutere monitoreringsverktøy og virtualiseringsteknikker. Som en konsekvens, er dette kapitlet mest rettet mot profesjonelle administratorer, og fokuserer litt mindre på personer med ansvar for sine hjemmenettverk.
 	</para>
 	 </highlights> <section id="sect.raid-and-lvm">
 		<title>RAID og LVM</title>
 		 <para>
-			<xref linkend="installation" /> har vist disse teknologiene fra installeringssynspunkt, og hvordan de kan integreres til å gjøre utplasseringen lett fra start. Etter den første installasjonen, må en administrator kunne håndtere utvikling av lagringsplassbehov uten å måtte ty til en kostbar reinstallasjon. De må derfor forstå de nødvendige verktøy for å håndtere RAID- og LVM-volumer.
+			<xref linkend="installation" /> presenterte disse teknologiene slik de ser ut fra installasjonsprogrammet, og hvordan de kan integreres til å gjøre utrullingen lett å komme igang med. Etter den første installasjonen, må en administrator kunne håndtere endring av lagringsplassbehov uten å måtte ty til en kostbar reinstallasjon. En må derfor forstå verktøyene som trengs for å håndtere RAID- og LVM-volumer.
 		</para>
 		 <para>
-			RAID og LVM er begge teknikker til å trekke ut de monterte volumene fra sine fysiske motstykker (faktiske harddisker eller partisjoner); den første sikrer data mot maskinvarefeil ved å innføre redundans, sistnevnte gjør volumadministrasjon mer fleksibel og uavhengig av den faktiske størrelsen på de underliggende disker. I begge tilfeller ender systemet opp med nye blokk-enheter, som kan brukes til å lage filsystemer eller vekselfiler, uten nødvendigvis å ha dem tilordnet til en fysisk disk. RAID og LVM kommer fra helt forskjellige bakgrunner, men funksjonaliteten kan overlappe noe, de er derfor ofte nevnt sammen.
+			RAID og LVM er begge teknikker til å trekke ut de monterte volumene fra sine fysiske motstykker (faktiske harddisker eller partisjoner); den første sikrer data mot maskinvarefeil ved å innføre redundans, sistnevnte gjør volumadministrasjon mer fleksibel og uavhengig av den faktiske størrelsen på de underliggende disker. I begge tilfeller ender systemet opp med nye blokk-enheter, som kan brukes til å lage filsystemer eller vekselminnefiler, uten nødvendigvis å ha dem direktekoblet til en fysisk disk. RAID og LVM har vidt forskjellig bakgrunn, men funksjonaliteten kan overlappe noe, de er derfor ofte omtalt sammen.
 		</para>
 		 <sidebar> <title><emphasis>PERSPEKTIV</emphasis> Btrfs kombinerer LVM og RAID</title>
 		 <para>
-			Mens LVM og RAID er to forskjellige kjerne-delsystemer som ligger mellom disk blokk-enheter og filsystemene deres, <emphasis>btrfs</emphasis> er et nytt filsystem, opprinnelig utviklet i Oracle, som skal kombinere kjennetegnsettene til LVM og RAID, og mye mer. Det er for det meste funksjonelt, og selv om det fremdeles er merket «eksperimentell» fordi utviklingsstadiet er ufullstendig (noen funksjoner er ikke implementert ennå), er det allerede sett i bruk i produksjonsmiljøer. <ulink type="block" url="http://btrfs.wiki.kernel.org/" />
+			Mens LVM og RAID er to forskjellige kjerne-delsystemer som ligger mellom disk blokk-enheter og filsystemene deres, er <emphasis>btrfs</emphasis> et nytt filsystem, opprinnelig utviklet i Oracle, som skal kombinere egenskapene til LVM og RAID, og mye mer. Det er for det meste funksjonelt, og selv om det fremdeles er merket «eksperimentell» fordi det ennå ikke er ferdig utviklet (noen funksjoner er ikke implementert ennå), er det allerede observert brukt i produksjonsmiljøer. <ulink type="block" url="http://btrfs.wiki.kernel.org/" />
 		</para>
 		 <para>
-			Blant funksjonene verdt å legge merke til, er muligheten til på ethvert tidspunkt å ta et øyeblikksbilde av et filsystemtre. Denne øyeblikksbildekopien vil i utgangspunktet ikke bruke diskplass, data blir bare duplisert når en av kopiene blir endret. Filsystemet håndterer også gjennomsiktig komprimering av filer, og kontrollsummer sikrer integriteten til alle lagrede data.
+			Blant funksjonene verdt å legge merke til, er muligheten til på ethvert tidspunkt å ta et øyeblikksbilde av et filsystemtre. Denne øyeblikksbilde-kopien vil i utgangspunktet ikke bruke diskplass, data blir bare duplisert når en av kopiene blir endret. Filsystemet håndterer også gjennomsiktig komprimering av filer, og sjekksummer sikrer integriteten til alle lagrede data.
 		</para>
 		 </sidebar> <para>
-			Både for RAID og LVM gir kjernen en blokk-spesialfil, lik dem som svarer til en harddisk eller en partisjon. Når et program, eller en annen del av kjernen, krever tilgang til en blokk innrettet slik, ruter det aktuelle subsystem blokken til det aktuelle fysiske laget. Avhengig av oppsettet, kan denne blokken lagres på en eller flere fysiske disker, og den fysiske plasseringen kan ikke være direkte korrelert til plassering av blokken i den logiske enheten.
+			Både for RAID og LVM gir kjernen en blokk-enhetsfil, lik dem som refererer til en harddisk eller en partisjon. Når et program, eller en annen del av kjernen, krever tilgang til en blokk på en slik enhet, dirigerer det aktuelle delsystem blokken til det aktuelle fysiske laget. Avhengig av oppsettet, kan denne blokken lagres på en eller flere fysiske disker, og det trenger ikke være sammenheng mellom den fysiske plasseringen og plassering av blokken i den logiske enheten.
 		</para>
 		 <section id="sect.raid-soft">
 			<title>Programvare RAID</title>
@@ -44,32 +44,32 @@
 				<primary>RAID</primary>
 			</indexterm>
 			 <para>
-				RAID betyr <emphasis>Redundant Array of Independent Disks</emphasis>. Målet med dette systemet er å hindre tap av data i tilfelle feil på harddisken. Det generelle prinsippet er ganske enkelt: Data er lagret på flere fysiske disker i stedet for bare på én, med en grad av redundans som kan settes opp. Avhengig av denne redundansstørrelsen, og til og med i tilfelle av en uventet diskfeil, kan data uten tap bli rekonstruert fra de gjenværende disker.
+				RAID betyr <emphasis>Redundant Array of Independent Disks</emphasis>, dvs. redundant rekke av uavhengige disker. Målet med dette systemet er å hindre datatap hvis det blir feil på harddisken. Det generelle prinsippet er ganske enkelt: Data er lagret på flere fysiske disker i stedet for bare på én, med oppsatt grad av redundans. Avhengig av denne redundansmengden, og selv om det skjer en uventet diskfeil, kan data rekonstrueres uten tap fra de gjenværende disker.
 			</para>
 			 <sidebar> <title><emphasis>KULTUR</emphasis> <foreignphrase>Uavhengig</foreignphrase> eller <foreignphrase>billig</foreignphrase>?</title>
 			 <para>
-				I-en i RAID sto opprinnelig for <emphasis>inexpensive</emphasis> (billig), fordi RAID tillot en drastisk økning i datasikkerhet uten å kreve investering i dyre high-end disker. Sannsynligvis på grunn av bildehensyn, er det imidlertid nå en mer vanlig vurdering å stå for <emphasis>independent</emphasis> (uavhengig), som ikke har den uønskede smaken av å være billig.
+				I-en i RAID sto opprinnelig for <emphasis>inexpensive</emphasis> (billig), fordi RAID tillot en drastisk økning i datasikkerhet uten å kreve investering i dyre høykvalitetsdisker. Sannsynligvis på grunn av hvordan det oppfattes, er det imidlertid nå en mer vanlig å si at det står for <emphasis>independent</emphasis> (uavhengig), som ikke gir det uønskede inntrykket av å være billig.
 			</para>
 			 </sidebar> <para>
-				RAID kan implementeres enten ved øremerket maskinvare (RAID-moduler integrert i SCSI eller SATA-kontrollerkort), eller ved bruk av programvare-sammendrag (kjernen). Enten maskinvare eller programvare, et RAID-system kan, med nok reserve, transparent fortsette operativt når en disk svikter; de øvre lag av stabelen (applikasjoner) kan også beholde tilgangen til data tross feilen. Denne «degradert modus» kan selvfølgelig ha en innvirkning på ytelsen, og reservekapasiteten er redusert, slik at en ytterligere diskfeil kan føre til tap av data. I praksis vil en derfor bestrebe seg på å bli værende med denne reduserte driften bare så lenge som det tar å erstatte den ødelagte disken. Så snart den nye disken er på plass, kan RAID-systemet rekonstruere de nødvendige data, og gå tilbake til en sikker modus. Programmene vil ikke merke noe, bortsett fra en potensielt redusert tilgangshastighet, mens området er i redusert drift, eller under rekonstruksjonsfasen.
+				RAID kan implementeres enten ved øremerket maskinvare (RAID-moduler integrert i SCSI eller SATA-kontrollerkort), eller ved bruk av programvare-abstraksjoner (kjernen). Uansett om det er gjort i maskinvare eller programvare, kan et RAID-system, med nok redundans, fortsette å fungere når en disk feiler uten at brukeren oppdager problemer; de øvre lag av stabelen (applikasjoner) kan til og med fortsette å bruke dataene tross feilen. En slik «degradert modus» kan selvfølgelig ha en innvirkning på ytelsen, og redundansen er redusert, slik at en ytterligere diskfeil kan føre til tap av data. I praksis vil en derfor bestrebe seg på å bli værende med denne reduserte driften bare så lenge som det tar å erstatte den ødelagte disken. Så snart den nye disken er på plass, kan RAID-systemet rekonstruere de nødvendige data, og gå tilbake til en sikker modus. Programmene vil ikke merke noe, bortsett fra en potensielt redusert tilgangshastighet, mens området er i redusert drift, eller under rekonstruksjonsfasen.
 			</para>
 			 <para>
-				Når RAID implementeres av maskinvare, skjer oppsettet vanligvis innen BIOS oppsettsverktøy, og kjernen vil vurdere en RAID-tabell som en enkelt disk, som vil virke som en standard fysisk disk, selv om navnet på enheten kan være forskjellig (avhengig av driveren).
+				Når RAID implementeres i maskinvare, skjer oppsettet vanligvis i oppsettsverktøy i BIOS, og kjernen vil se på et RAID-sett som en enkelt disk, som vil virke som en standard fysisk disk, selv om navnet på enheten kan være forskjellig (avhengig av driveren).
 			</para>
 			 <para>
-				Vi fokuserer bare på programvare RAID i denne boken.
+				Vi fokuserer bare på programvare-RAID i denne boken.
 			</para>
 			 <section id="sect.raid-levels">
 				<title>Ulike RAID-nivåer</title>
 				 <para>
-					RAID er faktisk ikke et enkelt system, men et spekter av systemer som identifiseres av sine nivåer. Nivåene skiller seg ved sin utforming og mengden av reserve (redundans) de gir. Jo større overflødighet, jo sikrere mot feil, siden systemet vil være i stand til å fortsette arbeidet med flere disker som feiler. Motstykket er at plassen som kan brukes, krymper for et gitt sett med disker, eller med andre ord; flere disker vil være nødvendig for å lagre en gitt mengde data.
+					RAID er faktisk ikke et enkelt system, men et spekter av systemer som identifiseres av sine nivåer. Nivåene skiller seg ved sin utforming og mengden av redundans de gir. Jo mer redundans, jo mer feilsikkert, siden systemet vil være i stand til å fortsette arbeidet med flere disker som feiler. Ulempen er at plassen som kan brukes, krymper for et gitt sett med disker, eller med andre ord; flere disker vil være nødvendig for å lagre en gitt mengde data.
 				</para>
 				 <variablelist>
 					<varlistentry>
-						<term>Lineær RAID</term>
+						<term>Lineært RAID</term>
 						 <listitem>
 							<para>
-								Selv om kjernens RAID-delsystem kan lage «lineær RAID», er dette egentlig ikke en ekte RAID, siden dette oppsettet ikke gir redundans. Kjernen samler bare flere disker etter hverandre, og resulterer i et samlet volum som en virtuell disk (en blokkenhet). Det er omtrent dens eneste funksjon. Dette oppsettet brukes sjelden i seg selv (se senere for unntak), spesielt siden mangelen på redundans betyr at om en disk svikter, så feiler det samlede volumet, og gjør alle data utilgjengelige.
+								Selv om kjernens RAID-delsystem kan lage «lineært RAID», er dette egentlig ikke en ekte RAID, siden dette oppsettet ikke gir redundans. Kjernen samler bare flere disker etter hverandre, og resulterer i et samlet volum som en virtuell disk (en blokkenhet). Det er omtrent dens eneste funksjon. Dette oppsettet brukes sjelden i seg selv (se senere for unntak), spesielt siden mangelen på redundans betyr at om en disk svikter, så feiler det samlede volumet, og gjør alle data utilgjengelige.
 							</para>
 
 						</listitem>
@@ -79,10 +79,10 @@
 						<term>RAID-0</term>
 						 <listitem>
 							<para>
-								Dette nivået gir heller ikke redundans, men diskene blir ikke lagt sammen ende mot ende: De blir delt i <emphasis>striper</emphasis>, og blokkene på den virtuelle enheten er lagret på striper på alternerende fysiske disker. I et to-disk RAID-0 oppsett, for eksempel, vil partalls blokker på den virtuelle enheten bli lagret på den første fysiske disken, mens oddetalls blokker vil komme på den andre fysiske disken.
+								Dette nivået gir heller ikke redundans, men diskene blir ikke lagt sammen ende mot ende: De blir delt i <emphasis>striper</emphasis>, og blokkene på den virtuelle enheten er lagret på striper på alternerende fysiske disker. I et to-disk RAID-0 oppsett, for eksempel, vil partallsblokker på den virtuelle enheten bli lagret på den første fysiske disken, mens oddetallsblokker vil komme på den andre fysiske disken.
 							</para>
 							 <para>
-								Dette systemet har ikke som mål å øke pålitelighet, siden (som i det lineære tilfellet) tilgjengeligheten til alle data er i fare så snart en disk svikter, men å øke ytelsen: Under sekvensiell tilgang til store mengder sammenhengende data, vil kjernen være i stand til å lese fra begge disker (eller skrive til dem) i parallell, noe som øker hastigheten på dataoverføringen. Imidlertid krymper RAID-0-bruken når nisjen dens fylles med LVM (se senere).
+								Dette systemet har ikke som mål å øke pålitelighet, siden (som i det lineære tilfellet) tilgjengeligheten til alle data er i fare så snart en disk svikter, men å øke ytelsen: Under sekvensiell tilgang til store mengder sammenhengende data, vil kjernen være i stand til å lese fra begge disker (eller skrive til dem) i parallell, noe som øker hastigheten på dataoverføringen. Imidlertid krymper bruken av RAID-0, da nisjen dens fylles av LVM (se senere).
 							</para>
 
 						</listitem>
@@ -92,24 +92,24 @@
 						<term>RAID-1</term>
 						 <listitem>
 							<para>
-								Dette nivået, også kjent som "RAID-speiling", er både det enkleste og det mest brukte oppsettet. I standardformen bruker den to fysiske disker av samme størrelse, og gir et logisk volum av samme størrelse på nytt. Data er lagret identisk på begge disker, derav kallenavnet «speile». Når en disk svikter, finnes dataene fremdeles på den andre. For virkelig kritiske data, kan RAID-1 selvsagt settes opp på mer enn to disker, med direkte konsekvenser for forholdet mellom maskinvarekostnader opp mot tilgjengelig plass for nyttelast.
+								Dette nivået, også kjent som "RAID-speiling", er både det enkleste og det mest brukte oppsettet. I standardformen bruker den to fysiske disker av samme størrelse, og gir et tilsvarende logisk volum av samme størrelse. Data er lagret identisk på begge disker, derav kallenavnet «speiling». Når en disk svikter, er dataene fremdeles tilgjengelig på den andre. For virkelig kritiske data, kan RAID-1 selvsagt settes opp på mer enn to disker, med direkte konsekvenser for forholdet mellom maskinvarekostnader opp mot tilgjengelig plass for nyttelast.
 							</para>
 							 <sidebar> <title><emphasis>MERK</emphasis> Disk- og klyngestørrelser</title>
 							 <para>
-								Hvis to disker av forskjellige størrelse er satt opp i et speil, vil ikke den største bli brukt fullt ut, siden den vil inneholde de samme dataene som den minste og ingenting mer. Denne brukbare tilgjengelige plassen levert av et RAID-1-volum er dermed størrelsen på den minste disken i rekken. Dette gjelder også for RAID-volumer med høyere RAID-nivå, selv om redundansen er fordelt på en annen måte.
+								Hvis to disker av forskjellige størrelse er satt opp i et speil, vil ikke den største bli brukt fullt ut, siden den vil inneholde de samme dataene som den minste og ingenting mer. Den brukbare tilgjengelige plassen levert av et RAID-1-volum er dermed størrelsen på den minste disken i rekken. Dette gjelder også for RAID-volumer med høyere RAID-nivå, selv om redundansen er fordelt på en annen måte.
 							</para>
 							 <para>
-								Det er derfor viktig når du setter opp RAID-matriser (unntatt for RAID-0 og «lineær RAID»), å bare montere disker av identiske eller svært nære størrelser, for å unngå å sløse med ressurser.
+								Det er derfor viktig når du setter opp RAID-sett (unntatt for RAID-0 og «lineær RAID»), å bare sette sammen disker av identiske eller svært like størrelser, for å unngå å sløse med ressurser.
 							</para>
 							 </sidebar> <sidebar> <title><emphasis>MERK</emphasis> Reservedisker</title>
 							 <para>
-								RAID-nivåer som inkluderer redundans tillater tilordning av flere disker enn det som kreves til en rekke. De ekstra diskene blir brukt som reservedisker når en av hoveddiskene svikter. For eksempel, i et speil som består av to disker pluss en i reserve; dersom en av de to første diskene svikter, vil kjernen automatisk (og umiddelbart) rekonstruere speilet ved hjelp av reservedisken, slik at redundansen forblir sikret etter gjenoppbyggingstidspunktet. Dette kan brukes som en annen form for ekstra sikkerhet for kritiske data.
+								RAID-nivåer som inkluderer redundans tillater tilordning av flere disker enn det som kreves til et sett. De ekstra diskene blir brukt som reservedisker når en av hoveddiskene svikter. For eksempel, i et speil som består av to disker pluss en i reserve; dersom en av de to første diskene svikter, vil kjernen automatisk (og umiddelbart) rekonstruere speilet ved hjelp av reservedisken, slik at redundansen forblir sikret etter gjenoppbyggingstidspunktet. Dette kan brukes som en annen form for ekstra sikkerhet for kritiske data.
 							</para>
 							 <para>
-								Det er forståelig hvis du undrer deg på hvordan dette er bedre enn å ganske enkelt bare speile på tre disker. Fordelen med «reservedisk»-oppsettet er at en ekstra disk kan deles på tvers av flere RAID-volumer. For eksempel kan man ha tre speilende volumer, med redundans sikret også når en disk svikter med bare syv disker (tre par, pluss en felles i reserve), i stedet for de ni diskene som ville være nødvendig med tre rekker av tre disker.
+								Det er forståelig hvis du undrer deg på hvordan dette er bedre enn å ganske enkelt bare speile på tre disker. Fordelen med «reservedisk»-oppsettet er at en ekstra disk kan deles på tvers av flere RAID-volumer. For eksempel kan man ha tre speilende volumer, med redundans sikret også når en disk svikter med bare syv disker (tre par, pluss en felles i reserve), i stedet for de ni diskene som ville være nødvendig med tre sett med tre disker.
 							</para>
 							 </sidebar> <para>
-								Dette RAID-nivået, selv om det er dyrere (da bare halvparten av den fysiske lagringsplassen, i beste fall, er i bruk), er mye brukt i praksis. Det er enkelt å forstå, og det gir svært enkle sikkerhetskopier: Siden begge diskene har identisk innhold, kan en av dem bli midlertidig ekstrahert uten noen innvirkning på systemet ellers. Leseytelsen er ofte økt siden kjernen kan lese halvparten av dataene på hver disk parallelt, mens skriveytelsen ikke er altfor alvorlig svekket. I tilfelle med en RAID-matrise med N-disker, forblir data tilgjengelig selv med N-1 diskfeil.
+								Dette RAID-nivået, selv om det er dyrere (da bare halvparten av den fysiske lagringsplassen, i beste fall, er i bruk), er mye brukt i praksis. Det er enkelt å forstå, og det gjør det svært enkle å ta sikkerhetskopi: Siden begge diskene har identisk innhold, kan en av dem bli midlertidig tatt ut uten noen innvirkning på systemet ellers. Leseytelsen er ofte økt siden kjernen kan lese halvparten av dataene på hver disk parallelt, mens skriveytelsen ikke er altfor alvorlig svekket. I tilfelle med et RAID-sett med N-disker, forblir data tilgjengelig selv med N-1 diskfeil.
 							</para>
 
 						</listitem>
@@ -122,7 +122,7 @@
 								Dette RAID-nivået, ikke mye brukt, bruker N plater til å lagre nyttige data, og en ekstra disk til å lagre redundanssinformasjon. Hvis den disken svikter, kan systemet rekonstruere innholdet fra de andre N. Hvis en av de N datadiskene svikter, inneholder den gjenværende N-1 kombinert med «paritets»-disken nok informasjon til å rekonstruere de nødvendige dataene.
 							</para>
 							 <para>
-								RAID-4 er ikke for dyrt siden det bare omfatter en one-in-N økning i kostnader, og har ingen merkbar innvirkning på leseytelsen, men skriving går langsommere. Videre, siden et skript til hvilket som helst av N platene også omfatter et skript til paritetsdisken, ser den sistnevnte mange flere skriveoperasjoner enn den første, og dens levetid kan forkortes dramatisk som et konsekvens. Data på en RAID-4-matrise er bare trygg opp til en feilende disk (av de N + 1).
+								RAID-4 er ikke for dyrt siden det bare omfatter en en-av-N økning i kostnader, og har ingen merkbar innvirkning på leseytelsen, men skriving går langsommere. Videre, siden skriving til hvilket som helst av N platene også omfatter skriving til paritetsdisken, ser sistnevnte mange flere skriveoperasjoner enn førstnevnte, og paritetsdiskens levetid kan som konsekvens forkortes dramatisk. Data på et RAID-4-sett er bare trygg med en feilet disk (av de N + 1).
 							</para>
 
 						</listitem>
@@ -132,7 +132,7 @@
 						<term>RAID-5</term>
 						 <listitem>
 							<para>
-								RAID-5 løser asymmetrispørsmålet til RAID-4: Paritetsblokker er spredt over alle N + 1 disker, uten at en enkeltdisk har en bestemt rolle.
+								RAID-5 løser asymmetriutfordringen til RAID-4: Paritetsblokker er spredt over alle N + 1 disker, uten at en enkeltdisk har en bestemt rolle.
 							</para>
 							 <para>
 								Lese- og skrivehastighet er den samme som for RAID-4. Her igjen forblir systemet funksjonelt med opp til en disk som feiler (av de N+1), men ikke flere.
@@ -148,7 +148,7 @@
 								RAID-6 kan betraktes som en forlengelse av RAID-5, der hver serie med N blokker involverer to reserveblokker, og hver slik serie med N+2 blokker er spredt over N+2 disker.
 							</para>
 							 <para>
-								Dette RAID-nivået er litt dyrere enn de to foregående, men det bringer litt ekstra sikkerhet siden opptil to stasjoner (i N+2) kan svikte uten at det går ut over datatilgjengeligheten. Motstykket er at skriveoperasjoner nå innebærer å skrive ut på en datablokk og to reserveblokker, noe som gjør dem enda tregere.
+								Dette RAID-nivået er litt dyrere enn de to foregående, men det bringer litt ekstra sikkerhet siden opptil to disker (av N+2) kan svikte uten at det går ut over datatilgjengeligheten. Ulempen er at skriveoperasjoner nå innebærer å skrive ut på en datablokk og to reserveblokker, noe som gjør dem enda tregere.
 							</para>
 
 						</listitem>
@@ -158,17 +158,17 @@
 						<term>RAID-1+0</term>
 						 <listitem>
 							<para>
-								Dette er ikke strengt tatt et RAID-nivå, men en samling av to RAID-grupperinger. Med start fra 2×N disker, setter man dem først opp i parene i N RAID-1-volumer; Disse N volumene blir så samlet til ett, enten ved «lineær RAID», eller (i økende grad) av LVM. Dette siste tilfellet går lenger enn ren RAID, men det er ikke noe problem med det.
+								Dette er strengt tatt ikke et RAID-nivå, men en samling av to RAID-grupperinger. En starter med 2×N disker og setter dem først opp som par i N RAID-1-volumer; Disse N volumene blir så samlet til ett, enten ved «lineært RAID», eller (i økende grad) med LVM. Dette siste tilfellet gjør mer enn rent RAID, men det er ikke problematisk.
 							</para>
 							 <para>
-								RAID-1+0 kan overleve flere diskfeil: opp til N i 2xN matrisen som er beskrevet ovenfor, forutsatt at minst en disk fortsetter å virke i hver av RAID-1-parene.
+								RAID-1+0 kan overleve flere diskfeil: opp til N i 2xN-settet som er beskrevet ovenfor, forutsatt at minst en disk fortsetter å virke i hver av RAID-1-parene.
 							</para>
 							 <sidebar id="sidebar.raid-10"> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> RAID-10</title>
 							 <para>
-								RAID-10 er generelt ansett som synonym for RAID-1+0, men en spesiell funksjon (en særegenhet/spesifisitet) i Linux gjør det faktisk til en generalisering. Dette oppsettet gjør det mulig for et system, der hver blokk er lagret på to forskjellige disker, selv med et oddetall disker, at kopiene blir spredt ut i en modell som kan settes opp.
+								RAID-10 er generelt ansett som synonym for RAID-1+0, men en Linux-spesialitet gjør det faktisk til en generalisering. Dette oppsettet gjør det mulig med et system der hver blokk er lagret på to ulike disker, selv med et oddetall disker, der kopiene blir spredt ut i en modell som kan settes opp.
 							</para>
 							 <para>
-								Yteevnen vil variere avhengig av valgt repartisjonsmodell og reservenivå, og av arbeidsmengden til det det logiske volumet.
+								Ytelsen vil variere avhengig av valgt repartisjonsmodell og redundansnivå, og av arbeidsmengden til det det logiske volumet.
 							</para>
 							 </sidebar>
 						</listitem>
@@ -177,7 +177,7 @@
 
 				</variablelist>
 				 <para>
-					Selvfølgelig vil RAID-nivået velges ut fra begrensningene og kravene til hvert program. Merk at en enkelt datamaskin kan ha flere forskjellige RAID-matriser med forskjellige oppsett.
+					Selvfølgelig må RAID-nivået velges ut fra begrensningene og kravene til hvert program. Merk at en enkelt datamaskin kan ha flere ulike RAID-sett med forskjellige oppsett.
 				</para>
 
 			</section>
@@ -187,21 +187,21 @@
 					<primary><emphasis role="pkg">mdadm</emphasis></primary>
 				</indexterm>
 				 <para>
-					Oppsett av RAID-volumer krever <emphasis role="pkg">mdadm</emphasis>-pakken; den leverer <command>mdadm</command>-kommandoen, som gjør det mulig å lage og håndtere RAID-tabeller, samt prosedyrer og verktøy som integrerer den i resten av systemet, inkludert overvåkningssystemet.
+					Oppsett av RAID-volumer krever <emphasis role="pkg">mdadm</emphasis>-pakken; den leverer <command>mdadm</command>-kommandoen, som gjør det mulig å lage og håndtere RAID-tabeller, samt prosedyrer og verktøy som integrerer den i resten av systemet, inkludert monitoreringssystemet.
 				</para>
 				 <para>
-					Vårt eksempel vil være en tjener med en rekke disker, der noen er allerede brukt, og resten blir tilgjengelig til å sette opp RAID. Vi har i utgangspunktet følgende disker og partisjoner:
+					Vårt eksempel vil være en tjener med en rekke disker, der noen er allerede brukt, og resten er tilgjengelig til å sette opp RAID. Vi har i utgangspunktet følgende disker og partisjoner:
 				</para>
 				 <itemizedlist>
 					<listitem>
 						<para>
-							<filename>sdb</filename>-disken, 4 GB, er fullt tilgjengelig;
+							<filename>sdb</filename>-disken, 4 GB, er tilgjengelig i sin helhet;
 						</para>
 
 					</listitem>
 					 <listitem>
 						<para>
-							<filename>sdc</filename>-disken, 4 GB, er også fullt ut tilgjengelig;
+							<filename>sdc</filename>-disken, 4 GB, er også helt tilgjengelig;
 						</para>
 
 					</listitem>
@@ -224,7 +224,7 @@
 					Filen <filename>/proc/mdstat</filename> lister eksisterende volumer og tilstanden deres. Når du oppretter et nytt RAID-volum, bør man være forsiktig for å ikke gi det samme navnet som på et eksisterende volum.
 				</para>
 				 </sidebar> <para>
-					Vi kommer til å bruke disse fysiske elementer for å bygge to volumer, en RAID-0 og ett speil (RAID-1). La oss starte med RAID-0-volumet:
+					Vi kommer til å bruke disse fysiske elementene for å bygge to volumer, et RAID-0 og et speil (RAID-1). La oss starte med RAID-0-volumet:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc</userinput>
