@@ -743,14 +743,14 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
                   class="filename">sdf</code> er raskere enn de to andre.
 				</div><div
                 class="para">
-					Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB). De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhindrer bruk av partisjoner på egen hånd; å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
+					Målet vårt er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB). De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhindrer bruk av partisjoner på egen hånd; å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
 				</div><div
                 class="para">
-					De verktøy som kreves er i <span
-                  class="pkg pkg">lvm2</span>-pakken og det den krever. Når de er installert, skal det tre trinn til for å sette opp LVM som svarer til de tre konseptnivåene.
+					Verktøyene som kreves er i <span
+                  class="pkg pkg">lvm2</span>-pakken og dens avhengigheter. Når de er installert, skal det tre trinn til for å sette opp LVM som svarer til de tre konseptnivåene.
 				</div><div
                 class="para">
-					Først forbereder vi de fysiske volumene ved å bruke <code
+					Først gjør vi klare de fysiske volumene ved å bruke <code
                   class="command">pvcreate</code>:
 				</div><a
                 xmlns=""
@@ -796,14 +796,14 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
   /dev/sdf2       lvm2 ---  5.22g 5.22g
 </code></pre><div
                 class="para">
-					Så langt så bra. Vær oppmerksom på at en PV kan settes opp på en hel disk, samt på individuelle partisjoner på disken. Kommandoen <code
+					Alt bra så langt. Vær oppmerksom på at en PV kan settes opp på en hel disk, samt på individuelle partisjoner på disken. Kommandoen <code
                   class="command">pvdisplay</code>, som vist ovenfor, lister eksisterende PV-er, med to mulige utdataformater.
 				</div><div
                 class="para">
-					Nå la oss sette sammen disse fysiske elementer til VG-er ved å bruke <code
-                  class="command">vgcreate</code>. Vi vil samle bare PV-er fra de raske diskene inn i en <code
-                  class="filename">vg_critical</code>-VG. Den andre VG-en, <code
-                  class="filename">vg_normal</code>, vil også inkludere langsommere elementer.
+					Deretter setter vi sammen disse fysiske elementer til VG-er ved å bruke <code
+                  class="command">vgcreate</code>. Vi samler kun raske PV-er i VG-en <code
+                  class="filename">vg_critical</code>. Den andre VG-en, <code
+                  class="filename">vg_normal</code>, vil inneholde også langsommere enheter.
 				</div><a
                 xmlns=""
                 id="screen.vgcreate"></a><pre
@@ -852,13 +852,13 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
   vg_normal     3   0   0 wz--n- 12.30g 12.30g
 </code></pre><div
                 class="para">
-					Her igjen, kommandoer er ganske greie (og <code
-                  class="command">vgdisplay</code> foreslår to utdataformater). Merk at det er fullt mulig å bruke to partisjoner på samme fysiske disk i to forskjellige VG-er. Merk også at vi brukte en <code
-                  class="filename">vg_</code>-forstavelse til å navngi våre VG-er, men det er ikke noe mer enn en konvensjon.
+					Her ser vi igjen at kommandoene er ganske greie (og <code
+                  class="command">vgdisplay</code> foreslår to utdataformater). Merk at det er fullt mulig å bruke to partisjoner på samme fysiske disk i to forskjellige VG-er. Merk også at vi navnga våre VG-er med <code
+                  class="filename">vg_</code>-forstavelse. Dette er ikke noe mer enn en konvensjon.
 				</div><div
                 class="para">
-					Vi har nå to «virtuelle disker», med størrelse henholdsvis ca. 8 GB og 12 GB. La oss nå riste dem opp i «virtuelle partisjoner» (LV-er). Dette innbefatter <code
-                  class="command">lvcreate</code>-kommandoen, og en litt mer komplisert syntaks:
+					Vi har nå to «virtuelle disker», med størrelse henholdsvis ca. 8 GB og 12 GB. La oss nå dele dem opp i «virtuelle partisjoner» (LV-er). Dette innebærer bruk av kommandoen <code
+                  class="command">lvcreate</code>, og en litt mer komplisert syntaks:
 				</div><a
                 xmlns=""
                 id="screen.lvcreate"></a><pre
@@ -906,10 +906,10 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
   lv_files   vg_critical -wi-a---  5.00g                                           
   lv_backups vg_normal   -wi-a--- 12.00g</code></pre><div
                 class="para">
-					To parametere er nødvendig når du oppretter logiske volumer; de må sendes til <code
-                  class="command">lvcreate</code> som valgmuligheter. Navnet på LV som skal opprettes er angitt med alternativet <code
-                  class="literal">-n</code>, og størrelsen dens er generelt gitt ved å bruke <code
-                  class="literal">-L</code>-alternativet. Vi trenger også, selvfølgelig, å fortelle kommandoen hvilken VG som skal brukes, derav den siste parameteren på kommandolinjen.
+					To parameter er nødvendig når du oppretter logiske volumer; de må sendes til <code
+                  class="command">lvcreate</code> som tilvalg. Navnet på LV som skal opprettes er angitt med alternativet <code
+                  class="literal">-n</code>, og dens størrelse er generelt gitt ved å bruke <code
+                  class="literal">-L</code>-alternativet. Vi trenger også, selvfølgelig, å fortelle kommandoen hvilken VG som skal brukes, derav det siste parameteret på kommandolinjen.
 				</div><div
                 class="sidebar"><div
                   class="titlepage"><div><div><p
@@ -918,28 +918,28 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
                             class="command">lvcreate</code>-valgene</strong></p></div></div></div><div
                   class="para">
 					Kommandoen <code
-                    class="command">lvcreate</code> har flere alternativer for å tilpasse hvordan LV-en blir laget.
+                    class="command">lvcreate</code> har flere alternativer for å tilpasse hvordan LV-en opprettes.
 				</div><div
                   class="para">
 					La oss først beskrive <code
                     class="literal">-l</code>-valget, der LVs størrelse kan gis som et antall blokker (i motsetning til de «menneskelige» enheter vi brukte ovenfor). Disse blokkene (kalt PES, <span
-                    class="emphasis"><em>physical extents</em></span> (fysiske omfang), i LVM-termer) er sammenhengende enheter med lagringsplass i PV-er, og de kan ikke deles på tvers over LV-er. Når man ønsker å definere lagringsplass for en LV med noe presisjon, for eksempel å bruke hele det tilgjengelige rommet, vil <code
-                    class="literal">-l</code>-valget trolig bli foretrukket fremfor <code
+                    class="emphasis"><em>physical extents</em></span> (fysiske omfang), i LVM-termer) er sammenhengende enheter med lagringsplass i PV-er, og de kan ikke deles på tvers av LV-er. Når man ønsker å definere lagringsplass for en LV med noe presisjon, for eksempel å bruke hele den tilgjengelige plassen, vil <code
+                    class="literal">-l</code>-valget trolig foretrekkes fremfor <code
                     class="literal">-L</code>.
 				</div><div
                   class="para">
-					Det er også mulig å antyde den fysiske plasseringen for en LV, slik at dens omfang lagres på en bestemt PV (mens du selvfølgelig er innenfor den som er tildelt VG-en). Siden vi vet at <code
+					Det er også mulig å hinte om fysisk plassering for en LV, slik at dens omfang lagres på en bestemt PV (mens du selvfølgelig er innenfor den som er tildelt VG-en). Siden vi vet at <code
                     class="filename">sdb</code> er raskere enn <code
-                    class="filename">sdf</code>, kan vi ønske å lagre <code
-                    class="filename">lv_base</code> der hvis vi ønsker å gi en fordel til databasetjeneren i forhold til filtjeneren. Kommandolinjen blir: <code
-                    class="command">lvcreate -n lv_base -L 1G vg_critical /dev/sdb2</code>. Merk at denne kommandoen kan mislykkes hvis PV-en ikke har nok ledig plass. I vårt eksempel ville vi trolig måtte lage <code
+                    class="filename">sdf</code>, kan det hende vi ønsker å lagre <code
+                    class="filename">lv_base</code> der hvis vi ønsker å gi en fordel til databasetjeneren i forhold til filtjeneren. Da blir kommandolinjen: <code
+                    class="command">lvcreate -n lv_base -L 1G vg_critical /dev/sdb2</code>. Merk at denne kommandoen kan feile hvis PV-en ikke har nok ledig plass. I vårt eksempel ville vi trolig måtte lage <code
                     class="filename">lv_base</code> før <code
                     class="filename">lv_files</code> for å unngå denne situasjonen - eller frigjøre litt plass på <code
-                    class="filename">sdb2</code> med <code
-                    class="command">pvmove</code>-kommandoen.
+                    class="filename">sdb2</code> med kommandoen <code
+                    class="command">pvmove</code>.
 				</div></div><div
                 class="para">
-					Logiske volumer, en gang laget, ender opp som blokkenhetsfiler i <code
+					Logiske volumer, når de er opprettet, ender opp som blokkenhetsfiler i <code
                   class="filename">/dev/mapper/</code>:
 				</div><pre
                 class="screen"><code
@@ -961,15 +961,15 @@ brw-rw---- 1 root disk 253, 2 Jun 10 17:05 /dev/dm-2
                 class="sidebar"><div
                   class="titlepage"><div><div><p
                         class="title"><strong><span
-                            class="emphasis"><em>MERK</em></span> Automatisk gjenkjenning av LVM</strong></p></div></div></div><div
+                            class="emphasis"><em>MERK</em></span> Oppdag LVM-volumer automatisk</strong></p></div></div></div><div
                   class="para">
-					Når datamaskinen starter, kjører <code
-                    class="filename">lvm2-activation</code> systemd tjenesteenhet <code
-                    class="command">vgchange -aay</code> for å «aktivisere» volumgrupper. Den skanner de tilgjengelige enhetene; de som har blitt initialisert som fysiske volumer for LVM, er registrert i LVMs undersystem, de som tilhører volumgrupper monteres, og de aktuelle logiske volumer er startet og gjort tilgjengelige. Det er derfor ikke nødvendig å redigere oppsettsfiler når du oppretter eller endrer LVM-volumer.
+					Når datamaskinen starter, vil systemd-tjenesteenheten <code
+                    class="filename">lvm2-activation</code> kjøre <code
+                    class="command">vgchange -aay</code> for å «aktivisere» volumgrupper. Denne søker igjennom de tilgjengelige enhetene; de som har blitt initialisert som fysiske volumer for LVM, blir registrert i LVM-delsystemet, de som tilhører volumgrupper monteres, og de aktuelle logiske volumer startes og gjøres tilgjengelige. Det er derfor ikke nødvendig å endre på oppsettsfiler når du oppretter eller endrer LVM-volumer.
 				</div><div
                   class="para">
-					Merk imidlertid at utformingen av LVM-elementer (fysiske og logiske volumer, og volumgrupper) er sikkerhetskopiert i <code
-                    class="filename">/etc/lvm/backup</code>, som kan være nyttig i tilfelle av et problem (eller bare for å snike seg til en titt under panseret).
+					Merk imidlertid at utformingen av LVM-elementer (fysiske og logiske volumer, og volumgrupper) sikkerhetskopieres i <code
+                    class="filename">/etc/lvm/backup</code>, som er nyttig hvis det oppstår et problem (eller bare for å titte under panseret).
 				</div></div><div
                 class="para">
 					For å gjøre ting enklere er praktiske og egnede symbolske lenker også opprettet i kataloger som samsvarer med VG-er:
@@ -987,7 +987,7 @@ lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_files -&gt; ../dm-0
                   class="computeroutput">total 0
 lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_backups -&gt; ../dm-2</code></pre><div
                 class="para">
-					LV-er kan deretter brukes akkurat som standard partisjoner:
+					LV-ene kan deretter brukes akkurat som vanlige partisjoner:
 				</div><pre
                 class="screen"><code
                   class="computeroutput"># </code><strong
@@ -1022,7 +1022,7 @@ Writing superblocks and filesystem accounting information: done
 /dev/vg_critical/lv_files   /srv/files      ext4 defaults 0 2
 /dev/vg_normal/lv_backups   /srv/backups    ext4 defaults 0 2</code></pre><div
                 class="para">
-					Fra programenes synspunkt har de utallige små partisjonene nå blitt abstrahert til ett stort 12 GB volum, med et vennligere navn.
+					Fra programmenes synspunkt har de utallige små partisjonene nå blitt abstrahert til ett stort 12 GB volum, med et hyggeligere navn.
 				</div></div><div
               class="section"><div
                 class="titlepage"><div><div><h4
@@ -1030,10 +1030,10 @@ Writing superblocks and filesystem accounting information: done
                         xmlns=""
                         id="sect.lvm-over-time"></a>12.1.2.3. LVM over tid</h4></div></div></div><div
                 class="para">
-					Selv om muligheten til å aggregere partisjoner eller fysiske disker er praktisk, er dette ikke den viktigste fordelen LVM har brakt. Den fleksibiliteten den gir, er spesielt lagt merke til over tid, ettersom behovene utvikler seg. I vårt eksempel, la oss anta at nye store filer må lagres, og at LV øremerket til filtjeneren er for liten til å romme dem. Siden vi ikke har brukt hele plassen i <code
-                  class="filename">vg_critical</code>, kan vi øke <code
-                  class="filename">lv_files</code>. For det formålet bruker vi <code
-                  class="command">lvresize</code>-kommandoen, deretter <code
+					Selv om muligheten til å samle sammen partisjoner eller fysiske disker er praktisk, er dette ikke den viktigste fordelen LVM gir oss. Fleksibiliteten den gir, merkes spesielt over tid, etter som behovene utvikler seg. I vårt eksempel, la oss anta at nye store filer må lagres, og at LV øremerket til filtjeneren er for liten til å romme dem. Siden vi ikke har brukt hele plassen i <code
+                  class="filename">vg_critical</code>, kan vi gjøre <code
+                  class="filename">lv_files</code> større. Til det formålet bruker vi kommandoen <code
+                  class="command">lvresize</code>, deretter <code
                   class="command">resize2fs</code> for å tilpasse filsystemet tilsvarende:
 				</div><pre
                 class="screen"><code
@@ -1080,13 +1080,13 @@ The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
                         class="title"><strong><span
                             class="emphasis"><em>VÆR VARSOM</em></span> Endre størrelse på filsystemer</strong></p></div></div></div><div
                   class="para">
-					Ikke alle filsystemer kan endre størrelse mens de er i bruk; Å endre størrelse på et volum kan derfor kreve avmontering filsystemet først og oppmontering i etterkant. Selvfølgelig, hvis man ønsker å krympe plassen avsatt til en LV, må filsystemet krympes først;. Rekkefølgen reverseres når endring av størrelse går i motsatt retning: det logiske volumet må utvides før filsystemet det inneholder. Det er ganske enkelt, siden ikke på noe tidspunkt må filsystemets størrelse være større enn blokkenheten der den ligger (enten den enheten er en fysisk partisjon eller et logisk volum).
+					Ikke alle filsystemer kan endre størrelse mens de er i bruk; Å endre størrelse på et volum kan derfor kreve at filsystemet avmonteres først og monteres på nytt i etterkant. Naturligvis, hvis en ønsker å krympe plassen avsatt til en LV, må filsystemet krympes først;. Rekkefølgen reverseres når endring av størrelse går i motsatt retning: det logiske volumet må utvides før filsystemet det inneholder. Det er ganske enkelt, siden ikke på noe tidspunkt må filsystemets størrelse være større enn blokkenheten der den ligger (enten den enheten er en fysisk partisjon eller et logisk volum).
 				</div><div
                   class="para">
-					De ext3-, ext4- og xfs-filsystemer kan vokse på nettet, uten avmontering. Krymping krever avmontering. Reiserfs filsystem tillater online endring av størrelse i begge retninger. Den ærverdige ext2 gjør ingen av delene, og krever alltid demontering.
+					Filsystemene ext3, ext4 og xfs kan vokse mens de er i bruk, uten avmontering. Krymping krever avmontering. Reiserfs filsystem tillater endring av størrelse i begge retninger mens det er i bruk. Det ærverdige ext2 håndterer ingen av delene, og krever alltid avmontering.
 				</div></div><div
                 class="para">
-					Vi kunne fortsette på en lignende måte å utvide volumet som er vertskap for databasen, bare til vi har nådd VG-ens grense for tilgjengelig plass:
+					Vi kunne fortsette med på tilsvarende måte å utvide volumet som er vertskap for databasen, men vi har nådd VG-ens grense for tilgjengelig plass:
 				</div><pre
                 class="screen"><code
                   class="computeroutput"># </code><strong
@@ -1100,10 +1100,10 @@ The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
                   class="computeroutput">  VG          #PV #LV #SN Attr   VSize VFree 
   vg_critical   2   2   0 wz--n- 8.09g 92.00m</code></pre><div
                 class="para">
-					Det gjør ikke noe, ettersom LVM tillater å legge fysiske volumer til eksisterende volumgrupper. For eksempel, kanskje har vi lagt merke til at <code
+					Det gjør ikke noe, ettersom LVM lar en legge fysiske volumer til eksisterende volumgrupper. For eksempel, kanskje har vi lagt merke til at <code
                   class="filename">sdb1</code>-partisjonen, som så langt ble brukt utenfor LVM, bare inneholdt arkiver som kan flyttes til <code
-                  class="filename">lv_backups</code>. Vi kan nå resirkulere den, og ta den inn i volumgruppen , og dermed gjenvinne noen ledig plass. Dette er hensikten med <code
-                  class="command">vgextend</code>-kommandoen. Først må selvfølgelig partisjonen forberedes som et fysisk volum. Når VG er utvidet, kan vi bruke lignende kommandoer som tidligere for å utvide det logiske volumet, deretter filsystemets:
+                  class="filename">lv_backups</code>. Vi kan nå resirkulere den, og ta den inn i volumgruppen , og dermed gjenvinne noe ledig plass. Dette er hensikten med kommandoen <code
+                  class="command">vgextend</code>. Først må selvfølgelig partisjonen forberedes som et fysisk volum. Når VG er utvidet, kan vi bruke lignende kommandoer som tidligere for å utvide det logiske volumet, deretter filsystemets:
 				</div><pre
                 class="screen"><code
                   class="computeroutput"># </code><strong
@@ -1133,9 +1133,9 @@ The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
                         class="title"><strong><span
                             class="emphasis"><em>FOR VIDEREKOMMENDE</em></span> Avansert LVM</strong></p></div></div></div><div
                   class="para">
-					LVM åpner også for mer avansert bruk, der mange detaljer kan spesifiseres for hånd. For eksempel kan en administrator justere størrelsen på blokkene som utgjør fysiske og logiske volumer, samt deres fysiske utforminger. Det er også mulig å flytte blokker mellom PV-er, for eksempel for å finjustere ytelsen, eller på en mer triviell måte, å frigjøre en PV når man trenger å trekke ut den tilsvarende fysiske disken fra VG-en (om det skal knytte den til en annen VG eller å fjerne den fra LVM helt). Manualsidene som beskriver kommandoene er generelt klare og detaljerte. Et god inngangspunkt er <span
+					LVM åpner også for mer avansert bruk, der mange detaljer kan spesifiseres for hånd. For eksempel kan en administrator justere størrelsen på blokkene som utgjør fysiske og logiske volumer, samt deres fysiske utforminger. Det er også mulig å flytte blokker mellom PV-er, for eksempel for å finjustere ytelsen, eller mer hverdagslig, å frigjøre en PV når man trenger å trekke ut den tilsvarende fysiske disken fra VG-en (om den skal kobles til en annen VG eller å fjernes helt fra LVM). Manualsidene som beskriver kommandoene er generelt klare og detaljerte. Et god inngangspunkt er manualsiden<span
                     class="citerefentry"><span
-                      class="refentrytitle">lvm</span>(8)</span>-manualside.
+                      class="refentrytitle">lvm</span>(8)</span>.
 				</div></div></div></div><div
             class="section"><div
               class="titlepage"><div><div><h3
