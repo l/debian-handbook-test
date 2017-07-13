@@ -1162,15 +1162,15 @@ The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
 				Det tredje bemerkelsesverdige brukstilfellet er når man bare ønsker å samle to disker i ett volum, enten av ytelseshensyn, eller for å ha et enkelt filsystem som er større enn noen av de tilgjengelige diskene. Dette tilfellet kan adresseres både med en RAID-0 (eller til og med en lineær-RAID), og med et LVM-volum. Når du er i denne situasjonen, og ikke har øvrige begrensninger (for eksempel å måtte fungere likt med de andre datamaskinene hvis de bare bruker RAID), vil oppsettsvalget ofte være LVM. Første gangs oppsett er ikke spesielt mer komplekst, og den svake økning i kompleksitet mer enn gjør opp for LVMs ekstra fleksibilitet dersom kravene må endres, eller dersom nye disker må legges til.
 			</div><div
               class="para">
-				Så selvfølgelig er det det virkelig interessante brukereksempel, der lagringssystemet må gjøres både motstandsdyktig mot maskinvarefeil, og gi en fleksibel volumtildeling. Verken RAID eller LVM kan imøtekomme begge kravene på egen hånd. Uansett, det er her vi bruker begge samtidig - eller rettere sagt, den ene oppå den andre. Ordningen som har alt, men er blitt en standard siden RAID og LVM har nådd modenheten til å sikre datatallighet (dataredundans), først ved å gruppere disker i et lite antall store RAID-matriser, og å bruke disse RAID-matrisene som LVM fysiske volumer. Logiske partisjoner vil da bli meislet ut fra disse LV-ene for filsystemer. Salgspoenget med dette oppsettet er at når en disk svikter, vil bare et lite antall RAID-matriser trenge rekonstruering, og dermed begrense tiden administrator bruker for gjenoppretting.
+				Så er det selvfølgelig det virkelig interessante brukseksempel, der lagringssystemet må gjøres både motstandsdyktig mot maskinvarefeil, og gi en fleksibel volumtildeling. Verken RAID eller LVM kan imøtekomme begge kravene på egen hånd. Uansett, det er her vi bruker begge samtidig - eller rettere sagt, den ene oppå den andre. Ordningen som har alt, men er blitt en standard siden RAID og LVM har nådd modenheten til å sikre datatallighet (dataredundans), først ved å gruppere disker i et lite antall store RAID-sett, og å bruke disse RAID-settene som LVM fysiske volumer. Logiske partisjoner vil da bli meislet ut fra disse LV-ene for filsystemer. Salgsargumentet med dette oppsettet er at når en disk svikter, vil bare et lite antall RAID-sett trenge rekonstruksjon, og dermed begrense tiden administrator bruker for gjenoppretting.
 			</div><div
               class="para">
-				La oss ta et konkret eksempel: PR-avdelingen på Falcot Corp trenger en arbeidsstasjon for videoredigering, men avdelingens budsjett tillater ikke investere i dyr maskinvare fra bunnen av. Det er avgjort å favorisere maskinvaren som spesifikk for det grafiske arbeidets art (skjerm og skjermkort), og å fortsette med felles maskinvare for lagring. Men som viden kjent, har digital video noen spesielle krav til mengden av date for lagring, og gjennomstrømningshastighet for lesing og skriving er viktig for den generelle systemytelsen (mer enn vanlig aksesstid, for eksempel). Disse begrensningene må være imøtekommet med felles maskinvare, i dette tilfellet med 300 GB SATA-harddisker. Systemdata må også gjøres motstandsdyktige mot maskinvarefeil, og også noen brukerdata. Redigerte videoklipp må faktisk være trygge, men for videoer som venter på redigering er det mindre kritisk, siden de fortsatt er på videobånd, eller på opptaksutstyret.
+				La oss ta et konkret eksempel: PR-avdelingen på Falcot Corp trenger en arbeidsstasjon for videoredigering, men avdelingens budsjett tillater ikke investere i dyr maskinvare fra bunnen av. Det er bestemt at maskinvaren som er spesifikk for det grafiske arbeidets art (skjerm og skjermkort) skal prioriteres, og at en skal fortsette med felles maskinvare for lagring. Men som kjent har digital video noen særegne krav til lagringen sin, datamengden er stor og gjennomstrømmingshastigheten for lesing og skriving er viktig for systemets generelle ytelse (for eksempel mer enn typisk aksesstid). Disse begrensningene må imøtekommes med vanlig maskinvare, i dette tilfellet to 300 GB SATA-harddisker. Systemdata må også gjøres motstandsdyktig mot maskinvarefeil, det samme gjelder noe brukerdata. Ferdigredigerte videoklipp må være trygge, men for videoer som venter på redigering er det mindre kritisk, siden de fortsatt er på videobånd.
 			</div><div
               class="para">
-				RAID-1 og LVM kombineres for å tilfredsstille disse begrensningene. Diskene er knyttet til to forskjellige SATA-kontrollere for å optimalisere parallell tilgang, og redusere risikoen for samtidig svikt, og de synes derfor som <code
+				RAID-1 og LVM kombineres for å tilfredsstille disse begrensningene. Diskene er knyttet til to forskjellige SATA-kontrollere for å optimalisere parallell tilgang, og redusere risikoen for samtidig svikt, og de vises derfor som <code
                 class="filename">sda</code> og <code
-                class="filename">sdc</code>. De er partisjonert likt langs det følgende skjemaet:
+                class="filename">sdc</code>. De er partisjonert likt slik det vises under:
 			</div><pre
               class="screen"><code
                 class="computeroutput"># </code><strong
@@ -1195,14 +1195,14 @@ Device    Boot     Start       End   Sectors Size Id Type
               class="itemizedlist"><ul><li
                   class="listitem"><div
                     class="para">
-						De første partisjonene til begge disker (ca 1 GB) er satt sammen til ett RAID-1-volum <code
-                      class="filename">md0</code>. Dette speilet er direkte brukt til å lagre rotfilsystemet.
+						De første partisjonene på begge diskene (ca 1 GB) er satt sammen til ett RAID-1-volum <code
+                      class="filename">md0</code>. Dette speilet er brukt direkte til å lagre rotfilsystemet.
 					</div></li><li
                   class="listitem"><div
                     class="para">
 						Partisjonene <code
                       class="filename">sda2</code> og <code
-                      class="filename">sdc2</code> brukes som vekselminnepartisjoner, noe som gir et totalt 2 GB vekselminne. Med 1 GB RAM, har arbeidsstasjonen en komfortabel mengde tilgjengelig minne.
+                      class="filename">sdc2</code> brukes som vekselminnepartisjoner, noe som gir totalt 2 GB vekselminne. Med 1 GB RAM, har arbeidsstasjonen tilgjengelig en komfortabel mengde minne.
 					</div></li><li
                   class="listitem"><div
                     class="para">
@@ -1212,18 +1212,18 @@ Device    Boot     Start       End   Sectors Size Id Type
                       class="filename">sda6</code> og <code
                       class="filename">sdc6</code>, er samlet til to nye RAID-1-volumer på rundt 100 GB hver, <code
                       class="filename">md1</code> og <code
-                      class="filename">md2</code>. Begge disse speilene er internalisert som fysiske volumer for LVM, og knyttet til volumgruppen <code
-                      class="filename">vg_raid</code>. Denne VG-en inneholder derfor et trygt rom på 200 GB.
+                      class="filename">md2</code>. Begge disse speilene er satt opp som fysiske volumer for LVM, og knyttet til volumgruppen <code
+                      class="filename">vg_raid</code>. Denne VG-en inneholder dermed 200 GB sikker lagring.
 					</div></li><li
                   class="listitem"><div
                     class="para">
-						De gjenstående partisjoner, <code
+						De gjenværende partisjonene, <code
                       class="filename">sda7</code> og <code
                       class="filename">sdc7</code>, brukes direkte som fysiske volumer, og knyttet til en annen VG kalt <code
                       class="filename">vg_bulk</code>, som da ender opp med omtrent 200 GB lagringsplass.
 					</div></li></ul></div><div
               class="para">
-				Når VG-er er opprettet, kan de fordeles svært fleksibelt. Man må huske på at LV-er opprettet i <code
+				Når VG-ene er opprettet, kan de svært fleksibelt deles opp. Man må huske på at LV-er opprettet i <code
                 class="filename">vg_raid</code>, blir bevart selv om en av diskene svikter, noe som ikke vil være tilfelle for LV-er opprettet i <code
                 class="filename">vg_bulk</code>. På den annen side vil de sistnevnte fordeles i parallell på begge disker, som tillater høyere lese- eller skrivehastigheter for store filer.
 			</div><div
