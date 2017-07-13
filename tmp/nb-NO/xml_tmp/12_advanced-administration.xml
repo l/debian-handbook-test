@@ -223,9 +223,9 @@ Writing superblocks and filesystem accounting information: done
 /dev/md0        7.9G   18M  7.4G   1% /srv/raid-0
 </computeroutput></screen>
 
-	<para>Kommandoen <command>mdadm --create</command> krever flere parametre: Navnet på volumet som skal lages (<filename>/dev/md*</filename>, der MD står for <foreignphrase>Multiple Device</foreignphrase>), RAID-nivået, antall disker (som er obligatorisk til tross for at det er mest meningsfullt bare med RAID-1 og over), og de fysiske enhetene som skal brukes. Når enheten er opprettet, kan vi bruke den som vi ville bruke en vanlig partisjon, opprette et filsystem på den, montere dette filsystemet, og så videre. Vær oppmerksom på at vår etablering av et RAID-0-volum på <filename>md0</filename> ikke er et sammentreff, og nummereringen av tabellen ikke trenger å være korrelert til den valgte størrelsen på reservekapasiteten. Det er også mulig å lage navngitte RAID-arrays, ved å gi <command>mdadm</command> parametre slik som  <filename>/dev/md/linear</filename> i stedet for <filename>/dev/md0</filename>.</para>
+	<para>Kommandoen <command>mdadm --create</command> krever flere parametre: Navnet på volumet som skal lages (<filename>/dev/md*</filename>, der MD står for <foreignphrase>Multiple Device</foreignphrase>), RAID-nivået, antall disker (som er obligatorisk til tross for at det er mest meningsfylt bare med RAID-1 og over), og de fysiske enhetene som skal brukes. Når enheten er opprettet, kan vi bruke den som vi ville bruke en vanlig partisjon, opprette et filsystem på den, montere dette filsystemet, og så videre. Vær oppmerksom på at vår oppretting av et RAID-0-volum på <filename>md0</filename> kun er et sammentreff, og nummereringen av tabellen ikke trenger å være korrelert til det valgte redundansnivå. Det er også mulig å lage navngitte RAID-arrays, ved å gi <command>mdadm</command> et parametre ala <filename>/dev/md/linear</filename> i stedet for <filename>/dev/md0</filename>.</para>
 
-	<para>Opprettelse av en RAID-1 følger opp en lignende måte, forskjellene blir bare merkbare etter etableringen:</para>
+	<para>Opprettelse av et RAID-1 gjøres på lignende måte, forskjellene blir bare merkbare etter opprettelsen:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md1 --level=1 --raid-devices=2 /dev/sdd2 /dev/sde</userinput>
 <computeroutput>mdadm: Note: this array has metadata at the start and
@@ -274,30 +274,30 @@ Working Devices : 2
         <sidebar>
           <title><emphasis>TIPS</emphasis> RAID, disker og partisjoner</title>
 
-	  <para>Som illustrert ved vårt eksempel, kan RAID-enheter bygges fra diskpartisjoner, og krever ikke hele disker.</para>
+	  <para>Som illustrert i eksempelet vårt, kan RAID-enheter lages fra diskpartisjoner, og krever ikke hele disker.</para>
         </sidebar>
 
 	<para>Noen få merknader er på sin plass. Først, <command>mdadm</command> merker at de fysiske elementene har forskjellige størrelser; siden dette innebærer at noe plass går tapt på de større elementene, kreves en bekreftelse.</para>
 
-	<para>Enda viktigere er det å merke tilstanden til speilet. Normal tilstand for et RAID-speil er at begge diskene har nøyaktig samme innhold. Men ingenting garanterer at dette er tilfelle når volumet blir opprettet. RAID-subsystem vil derfor gi denne garantien selv, og det vil være en synkroniseringsfase så snart RAID-enheten er opprettet. Etter en tid (den nøyaktige tiden vil avhenge av den faktiske størrelsen på diskene ...), skifter RAID-tabellen til «aktiv» eller «ren» tilstand. Legg merke til at i løpet av denne gjenoppbyggingsfasen, er speilet i en degradert modus, og reservekapasitet er ikke sikret. En disk som svikter på dette trinnet kan føre til at alle data mistes. Store mengder av viktige data er imidlertid sjelden lagret på en nyopprettet RAID før den første synkroniseringen. Legg merke til at selv i degradert modus, vil <filename>/dev/md1</filename> kunne brukes, og et filsystem kan opprettes på den, så vel som noe data kopieres på den.</para>
+	<para>Enda viktigere er det å merke tilstanden til speilet. Normal tilstand for et RAID-speil er at begge diskene har nøyaktig samme innhold. Men ingenting garanterer at dette er tilfelle når volumet blir opprettet. RAID-delsystem vil derfor sikre denne garantien selv, og det vil være en synkroniseringsfase i det RAID-enheten er opprettet. Etter en tid (den nøyaktige tiden vil avhenge av den faktiske størrelsen på diskene ...), skifter RAID-tabellen til «aktiv» eller «ren» tilstand. Legg merke til at i løpet av denne gjenoppbyggingsfasen, er speilet i en degradert modus, og reservekapasitet er ikke sikret. En disk som svikter på dette trinnet kan føre til at alle data mistes. Store mengder av viktige data er imidlertid sjelden lagret på en nyopprettet RAID før den første synkroniseringen. Legg merke til at selv i degradert modus, vil <filename>/dev/md1</filename> kunne brukes, og et filsystem kan opprettes på den, og data kan kopieres inn.</para>
 
         <sidebar>
-          <title><emphasis>TIPS</emphasis> Å starte et speil i degradert modus</title>
+          <title><emphasis>TIPS</emphasis> Oppstart av speil i degradert modus</title>
 
-	  <para>Noen ganger er to disker ikke umiddelbart tilgjengelig når man ønsker å starte et RAID-1-speil, for eksempel fordi en av diskene en planlegger å inkludere, allerede er brukt til å lagre dataene man ønsker å flytte til matrisen. I slike tilfeller er det mulig å bevisst skape en degradert RAID-1-tabell ved å sende <filename>missing</filename> i stedet for en enhetsfil som ett av argumentene til <command>mdadm</command>. Når dataene er blitt kopiert til «speilet», kan den gamle disken legges til matrisen. Så vil det finne sted en synkronisering, noe som gir oss den reservekapasitet som var ønsket i første omgang.</para>
+	  <para>Noen ganger er to disker ikke umiddelbart tilgjengelig når man ønsker å starte et RAID-1-speil, for eksempel fordi en av diskene som planlegges inkludert, allerede er brukt til å lagre dataene man ønsker å flytte til settet. I slike tilfeller er det mulig å med vilje opprette et degradert RAID-1-sett ved å sende <filename>missing</filename> i stedet for en enhetsfil som ett av argumentene til <command>mdadm</command>. Når dataene er kopiert til «speilet», kan den gamle disken legges til settet. Deretter vil det finne sted en synkronisering, noe som gir oss den reservekapasitet som var ønsket i første omgang.</para>
         </sidebar>
 
         <sidebar>
           <title><emphasis>TIPS</emphasis> Oppsett av et speil uten synkronisering</title>
 
-	  <para>RAID-1-volumer opprettes oftest å bli brukt som en ny disk, som antas å være tom. Det faktiske innledende innholdet på disken er dermed ikke så relevant, siden man bare trenger å vite at dataene som er skrevet etter at volumet og spesielt filsystemet er opprettet, kan nås senere.</para>
+	  <para>RAID-1-volumer opprettes oftest for å brukes som en ny disk, som antas å være blank. Det faktiske og opprinnelige innholdet på disken er dermed ikke så relevant, siden man bare trenger å vite at dataene som er skrevet etter at volumet og spesielt filsystemet er opprettet, kan nås senere.</para>
 
 	  <para>Man kan derfor lure på om poenget med å synkronisere begge diskene ved tidpunktet for opprettelsen er god. Hvorfor bry seg om innholdet er identisk på soner i volumet som vi vet kun vil leses etter at vi har skrevet til dem?</para>
 
-	  <para>Heldigvis kan denne synkroniseringsfasen unngås ved å gå forbi <literal>--assume-clean</literal>-valget til <command>mdadm</command>. Imidlertid kan dette alternativet føre til overraskelser i tilfeller hvor de første dataene vil bli lest (for eksempel hvis et filsystem allerede er der på de fysiske diskene), som er grunnen til at den ikke er aktivert som standard.</para>
+	  <para>Heldigvis kan denne synkroniseringsfasen unngås ved å sende inn <literal>--assume-clean</literal>-valget til <command>mdadm</command>. Imidlertid kan dette alternativet gi overraskelser i tilfeller hvor de opprinnelige dataene leses (for eksempel hvis et filsystem allerede er til stede på de fysiske diskene).  Dette er grunnen til at valget ikke er aktivert som standard.</para>
         </sidebar>
 
-	<para>La oss nå se hva som skjer når et av elementene i RAID-1-tabellen svikter. <command>mdadm</command>, spesielt <literal>--fail</literal>-valget tillater å simulere en slik diskfeiling:</para>
+	<para>La oss nå se hva som skjer når et av elementene i RAID-1-settet svikter. <command>mdadm</command>, spesielt <literal>--fail</literal>-valget tillater å simulere en slik diskfeiling:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --fail /dev/sde</userinput>
 <computeroutput>mdadm: set /dev/sde faulty in /dev/md1
@@ -321,7 +321,7 @@ Working Devices : 1
 
        1       8       64        -      faulty   /dev/sde</computeroutput></screen>
 
-	<para>Innholdet i volumet er fortsatt tilgjengelig (og, hvis det er montert, legger ikke programmene merke til en ting), men datasikkerheten er ikke trygg lenger: Skulle <filename>sdd</filename>-disken i sin tur svikte, vil dataene gå tapt. Vi ønsker å unngå denne risikoen, så vi erstatter den ødelagte disken med en ny en, <filename>sdf</filename>:</para>
+	<para>Innholdet i volumet er fortsatt tilgjengelig (og, hvis det er montert, legger ikke programmene merke til noen ting), men datasikkerheten er ikke trygg lenger: Skulle <filename>sdd</filename>-disken i sin tur svikte, vil data gå tapt. Vi ønsker å unngå denne risikoen, så vi erstatter den ødelagte disken med en ny, <filename>sdf</filename>:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --add /dev/sdf</userinput>
 <computeroutput>mdadm: added /dev/sdf
@@ -372,7 +372,7 @@ Working Devices : 2
 
        1       8       64        -      faulty   /dev/sde</computeroutput></screen>
 
-	<para>Her igjen utløser kjernen automatisk en rekonstruksjonsfase der volumet fortsatt er tilgjengelig, men i en degradert modus. Når gjenoppbyggingen er over, er RAID-matrisen tilbake i normal tilstand. Man kan da si til systemet at <filename>sde</filename>-disken er i ferd med å bli fjernet fra matrisen, for å ende opp med et klassisk RAID-speil på to disker:</para>
+	<para>Her utløser kjernen som vanlig automatisk en rekonstruksjonsfase der volumet fortsatt er tilgjengelig, men i en degradert modus. Når gjenoppbyggingen er over, er RAID-settet tilbake i normal tilstand. Man kan da si til systemet at <filename>sde</filename>-disken er i ferd med å bli fjernet fra settet, for å ende opp med et klassisk RAID-speil med to disker:</para>
 
         <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --remove /dev/sde</userinput>
 <computeroutput>mdadm: hot removed /dev/sde from /dev/md1
@@ -383,7 +383,7 @@ Working Devices : 2
        0       8       50        0      active sync   /dev/sdd2
        2       8       80        1      active sync   /dev/sdf</computeroutput></screen>
 
-	<para>Fra da av kan driveren fysisk fjernes når tjeneren nærmest er slått av, eller til og med hot-fjernes når maskinvareoppsettet tillater det. Slike oppsett inkluderer noen SCSI-kontrollere, de fleste SATA-disker, og eksterne harddisker som opererer via USB eller Firewire.</para>
+	<para>Etter dette kan disken fysisk fjernes når tjenermaskinen er slått av neste gang, eller til og med fjernes under kjøring hvis maskinvareoppsettet tillater det. Slike oppsett inkluderer noen SCSI-kontrollere, de fleste SATA-disker, og eksterne harddisker tilkoblet via USB eller Firewire.</para>
       </section>
       <section id="sect.backup-raid-config">
         <title>Sikkerhetskopi av oppsettet</title>
