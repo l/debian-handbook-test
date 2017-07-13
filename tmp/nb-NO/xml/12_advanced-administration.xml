@@ -485,7 +485,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 					En av de mest nyttige detaljer er <literal>DEVICE</literal>-valget, som viser enhetene som systemet automatisk vil undersøke for å se etter deler av RAID-volumer ved oppstarts. I vårt eksempel erstattet vi standardverdien, <literal>partitions containers</literal>, med en eksplisitt liste over enhetsfiler, siden vi valgte å bruke hele disker, og ikke bare partisjoner for noen volumer.
 				</para>
 				 <para>
-					De to siste linjene i vårt eksempel er de som tillater kjernen trygt å velge hvilke volumnummer som skal tilordnes hvilken matrise. Metadataene som er lagret på selve diskene er nok til å sette volumene sammen igjen, men ikke for å bestemme volumnummeret (og det matchende <filename>/dev/md*</filename>-enhetsnavn).
+					De to siste linjene i vårt eksempel er de som tillater kjernen trygt å velge hvilke volumnummer som skal tilordnes hvilket sett. Metadataene som er lagret på selve diskene er nok til å sette volumene sammen igjen, men ikke for å bestemme volumnummeret (og det matchende <filename>/dev/md*</filename>-enhetsnavn).
 				</para>
 				 <para>
 					Heldigvis kan disse linjene generes automatisk:
@@ -495,7 +495,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 <computeroutput>ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
 ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f67464</computeroutput></screen>
 				 <para>
-					Innholdet i disse to siste linjene avhenger ikke av listen over disker som inngår i volumet. Det er derfor ikke nødvendig å lage disse linjene på nytt når du bytter ut en feilet disk med en ny. På den annen side må man sørge for å oppdatere filen når en oppretter eller sletter en RAID-rekke.
+					Innholdet i disse to siste linjene avhenger ikke av listen over disker som inngår i volumet. Det er derfor ikke nødvendig å lage disse linjene på nytt når du bytter ut en feilet disk med en ny. På den annen side må man sørge for å oppdatere filen når en oppretter eller sletter et RAID-sett.
 				</para>
 
 			</section>
@@ -510,7 +510,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 				<primary>Logical Volume Manager ( logisk volumhåndtering)</primary>
 			</indexterm>
 			 <para>
-				LVM, <emphasis>Logical Volume Manager</emphasis> ( logisk volumhåndtering), er en annen tilnærming for å abstrahere logiske volumer fra sin fysiske forankring, som fokuserer på økt fleksibilitet i stedet for økt pålitelighet. LVM lar deg endre et logisk volum transparent så langt programmene angår; for eksempel er det mulig å legge til nye disker, overføre dataene til dem, og fjerne gamle disker, uten at volumet demonteres.
+				LVM, <emphasis>Logical Volume Manager</emphasis> ( logisk volumhåndtering), er en annen tilnærming for å abstrahere logiske volumer fra sin fysiske forankring, som fokuserer på økt fleksibilitet i stedet for økt pålitelighet. LVM lar deg endre et logisk volum transparent så langt programmene angår; for eksempel er det mulig å legge til nye disker, overføre dataene til dem, og fjerne gamle disker, uten at volumet avmonteres.
 			</para>
 			 <section id="sect.lvm-concepts">
 				<title>LVM-konsepter</title>
@@ -518,29 +518,29 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 					Denne fleksibilitet oppnås med et abstraksjonsnivå som involverer tre konsepter.
 				</para>
 				 <para>
-					Først, PV (<emphasis>Physical Volume</emphasis>, fysisk volum) er enheten nærmest maskinvaren: Det kan være partisjoner på en disk, en full disk, eller til og med en annen blokkenhet (inkludert, for eksempel, en RAID-matrise). Merk at når et fysisk element er satt opp til å bli en PV for LVM, skal den kun være tilgjengelige via LVM, ellers vil systemet bli forvirret.
+					Først, PV (<emphasis>Physical Volume</emphasis>, fysisk volum) er enheten nærmest maskinvaren: Det kan være partisjoner på en disk, en hel disk, eller til og med en annen blokkenhet (inkludert, for eksempel, et RAID-sett). Merk at når et fysisk element er satt opp til å bli en PV for LVM, skal den kun være tilgjengelige via LVM, ellers vil systemet bli forvirret.
 				</para>
 				 <para>
-					Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>, volumgruppe), som kan sammenlignes med både virtuelle og utvidbare disker. VG er abstrakte, og vises ikke i en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risiko for å bruke dem direkte.
+					Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>, volumgruppe), som kan sammenlignes med både virtuelle og utvidbare disker. VG-er er abstrakte, og dukker ikke opp som en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risiko for å bruke dem direkte.
 				</para>
 				 <para>
-					Den tredje typen objekt er LV (<emphasis>Logical Volume</emphasis>, logisk volum), som er en del av en VG; hvis vi holder på VG-as-disk analogien, LV kan sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <filename>/dev</filename>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, for å være vert for et filsystem eller et vekselminne).
+					Den tredje typen objekt er LV (<emphasis>Logical Volume</emphasis>, logisk volum), som er en del av en VG; hvis vi holder på analogien VG-som-disk, kan LV sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <filename>/dev</filename>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, som en vert for et filsystem eller et vekselminne).
 				</para>
 				 <para>
-					Det viktige er at splittingen av en VG til LVS-er er helt uavhengig av dens fysiske komponenter (PVS-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; på samme måte kan en VG bruke flere fysiske disker, og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen allokert (fordelt) til LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.
+					Det viktige er at splittingen av en VG til LV-er er helt uavhengig av dens fysiske komponenter (PV-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; på samme måte kan en VG bruke flere fysiske disker, og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen tildelt LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.
 				</para>
 				 <para>
 					Det er imidlertid ofte fornuftig å ha en viss form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, kan de raske bli gruppert i en VG, og de tregere i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.
 				</para>
 				 <para>
-					I alle fall, husk at en LV ikke er spesielt knyttet til en bestemt PV. Det er mulig å påvirke hvor data fra en LV fysisk er lagret, men å bruk denne muligheten på daglig basis er ikke nødvendig. Tvert imot: Ettersom settet med fysiske komponenter i en VG utvikler seg, kan de fysiske lagringsstedene som tilsvarer en bestemt LV, migreres over disker (mens den selvfølgelig blir værende innenfor PV-er tildelt VG-en).
+					I alle fall, husk at en LV ikke er spesielt knyttet til en bestemt PV. Det er mulig å påvirke hvor data fra en LV fysisk er lagret, men å bruk denne muligheten er ikke nødvendig til daglig. Tvert imot: Ettersom settet med fysiske komponenter i en VG utvikler seg, kan de fysiske lagringsstedene som tilsvarer en bestemt LV, spres over disker (mens den selvfølgelig blir værende innenfor PV-er tildelt VG-en).
 				</para>
 
 			</section>
 			 <section id="sect.lvm-setup">
 				<title>Oppsett av LVM</title>
 				 <para>
-					La oss nå følge, trinn for trinn, prosessen med å sette opp LVM for et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon skjer vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål vil vi vurdere en tjener der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:
+					La oss nå følge prosessen, steg for steg, med å sette opp LVM i et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon oppstår vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål vil vi vurdere en tjenermaskin der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:
 				</para>
 				 <itemizedlist>
 					<listitem>
@@ -557,7 +557,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 					</listitem>
 					 <listitem>
 						<para>
-							<filename>sdd</filename>-disken, 4 GB, fullt tilgjengelig;
+							<filename>sdd</filename>-disken, 4 GB, hele er tilgjengelig;
 						</para>
 
 					</listitem>
@@ -570,7 +570,7 @@ ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f674
 
 				</itemizedlist>
 				 <para>
-					I tillegg, la oss anta at diskene <filename>sdb</filename> og <filename>sdf</filename> er raskere enn de andre to.
+					I tillegg, la oss anta at diskene <filename>sdb</filename> og <filename>sdf</filename> er raskere enn de to andre.
 				</para>
 				 <para>
 					Vårt mål er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB). De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhindrer bruk av partisjoner på egen hånd; å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
