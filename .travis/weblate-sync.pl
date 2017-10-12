@@ -20,6 +20,14 @@ our $table = {
             file    => 'ar-MA',
             weblate => 'ar_MA',
         },
+        {    # Chinese (Simplified)
+            file    => 'zh-CN',
+            weblate => 'zh_Hans',
+        },
+        {    # Chinese (Traditional)
+            file    => 'zh-TW',
+            weblate => 'zh_Hant',
+        },
         {    # Croatian
             file    => 'hr-HR',
             weblate => 'hr',
@@ -84,17 +92,13 @@ our $table = {
             file    => 'ru-RU',
             weblate => 'ru',
         },
-        {    # Simplified Chinese
-            file    => 'zh-CN',
-            weblate => 'zh_Hans',
-        },
         {    # Spanish
             file    => 'es-ES',
             weblate => 'es',
         },
-        {    # Traditional Chinese
-            file    => 'zh-TW',
-            weblate => 'zh_Hant',
+        {    # Swedish
+            file    => 'sv-SE',
+            weblate => 'sv',
         },
         {    # Turkish
             file    => 'tr-TR',
