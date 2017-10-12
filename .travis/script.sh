@@ -259,6 +259,13 @@ EOT
 	} | tee \
 		'/etc/apt/apt.conf.d/02force-conf' \
 	;
+	{
+	cat << 'EOT'
+APT::Get::AllowUnauthenticated "true";
+EOT
+	} | tee \
+		"/etc/apt/apt.conf.d/03allow-unauthenticated" \
+	;
 	apt_get_install \
 		debian-keyring \
 		debian-archive-keyring \
@@ -387,6 +394,7 @@ apt_get_install_pre () {
 	| grep \
 		--regexp='APT::Install-' \
 		--regexp='DPkg::options' \
+		--regexp='APT::Get::' \
 	;
 	apt-cache \
 		policy \
