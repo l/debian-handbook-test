@@ -35,14 +35,20 @@ configure_chroot () {
 }
 
 configure_identity () {
+	id;
 	readonly CURRENT_USER="$(id \
 		--user \
 		--name \
 	;)";
+	readonly CURRENT_USER_ID="$(id \
+		--user \
+	;)";
 	readonly CURRENT_GROUP="$(id \
 		--group \
 		--name \
-		 "${CURRENT_USER}" \
+	;)";
+	readonly CURRENT_GROUP_ID="$(id \
+		--group \
 	;)";
 	readonly CURRENT_HOST="$(hostname \
 	;)";
@@ -261,7 +267,7 @@ EOT
 	;
 	{
 	cat << 'EOT'
-APT::Get::AllowUnauthenticated "true";
+// APT::Get::AllowUnauthenticated "true";
 EOT
 	} | tee \
 		"/etc/apt/apt.conf.d/03allow-unauthenticated" \
@@ -386,7 +392,7 @@ EOT
 }
 
 apt_get_install_pre () {
-	echo cat \
+	cat \
 		'/etc/debian_version' \
 	;
 	apt-config \
@@ -660,14 +666,14 @@ setup_build_branch_merge () {
 		"${_GIT_LOCAL_TOPIC_BRANCH}" \
 	;
 	then
-		#echo merge NG!;
+		: "merge NG!";
 		git \
 			checkout \
 			"${_GIT_LOCAL_BASE_BRANCH}" \
 		;
 		return 1;
 	fi
-	#echo merge OK!;
+	: "merge OK!";
 	return 0;
 }
 
@@ -686,7 +692,7 @@ setup_build_branch_rebase () {
 		"${_GIT_LOCAL_TEMP_BRANCH}" \
 	;
 	then
-		echo rebase NG!;
+		: "rebase NG!";
 		git \
 			rebase \
 			--abort \
@@ -697,7 +703,7 @@ setup_build_branch_rebase () {
 		;
 		return 1;
 	fi
-	echo rebase OK!;
+	: "rebase OK!";
 	git \
 		branch \
 		--set-upstream-to="$(git \
@@ -742,7 +748,7 @@ git_cherry_pick () {
 	then
 		return 0;
 	fi
-	#echo cherry-pick NG!;
+	: "cherry-pick NG!";
 	git \
 		reset \
 		--hard \
@@ -1212,7 +1218,7 @@ systems_build_repository_build_results_push () {
 		\; \
 	;
 	then
-		: "ERROR: ${?}: find" ;
+		: "ERROR: ${?}: find";
 	fi
 	git \
 		add \
@@ -1335,6 +1341,28 @@ sighandler () {
 	tail \
 		"${_LOGGER_FILE}" \
 	;
+	docker exec \
+		--user travis \
+		debian_unstable \
+		"${SELF}" \
+		'systems:build/repository/build/results/push' \
+		"${_GIT_WORK_TREE}" \
+		"${_GIT_DIVERT_DIR}" \
+		"${_TRAVIS_LOG_WEB}" \
+		"${_TRAVIS_LOG_RAW}" \
+	;
+	return 0;
+
+	if test \
+		-f \
+		/home/travis/chroot/unstable_amd64_build/debootstrap/debootstrap.log \
+	;
+	then
+		tail \
+			/home/travis/chroot/unstable_amd64_build/debootstrap/debootstrap.log \
+		;
+	fi
+	systems_host_test;
 	schroot \
 		--chroot="${CHROOT_ID}" \
 		-- \
@@ -1430,6 +1458,87 @@ travis () {
 	return "${_EXIT_STATUS}";
 }
 
+travis_docker () {
+	travis_pre;
+	local _EXIT_STATUS=0;
+	{
+		travis_signal_trap;
+		systems_host_test;
+		sudo \
+			-- \
+			"${SELF}" \
+			'systems:host/setup' \
+		;
+		docker pull \
+			debian:unstable \
+		;
+		docker run \
+			--detach \
+			--name debian_unstable \
+			--volume /root/:/root/ \
+			--volume /home/:/home/ \
+			--rm \
+			--interactive \
+			--tty \
+			debian:unstable \
+			bash \
+		;
+		docker exec \
+			debian_unstable \
+			useradd \
+			-u "${CURRENT_USER_ID}" \
+			-d /home/travis \
+			"${CURRENT_USER}" \
+		;
+		docker exec \
+			debian_unstable \
+			"${SELF}" \
+			'systems:build/setup' \
+		;
+		docker exec \
+			--user travis \
+			debian_unstable \
+			"${SELF}" \
+			'systems:build/repository/setup' \
+			"${_GIT_WORK_TREE}" \
+			"${WEBLATE_SYNC}" \
+		;
+		docker exec \
+			--user travis \
+			debian_unstable \
+			"${SELF}" \
+			'systems:build/repository/translation/status' \
+			"${_GIT_WORK_TREE}" \
+			"${TRANSLATION_STATUS}" \
+		;
+		if ! docker exec \
+			--user travis \
+			debian_unstable \
+			"${SELF}" \
+			'systems:build/repository/build' \
+			"${_GIT_WORK_TREE}" \
+			"${_FIFO_DIR}" \
+		;
+		then
+			_EXIT_STATUS=1;
+		fi
+		docker exec \
+			--user travis \
+			debian_unstable \
+			"${SELF}" \
+			'systems:build/repository/build/targets/prepare' \
+			"${_GIT_WORK_TREE}" \
+			"${_GIT_DIVERT_DIR}" \
+			"${_FIFO_DIR}" \
+		;
+	} \
+		2>&1 \
+	| tee \
+		"${_LOGGER_FILE}" \
+	;
+	return "${_EXIT_STATUS}";
+}
+
 main () {
 	readonly MODE="${1}";
 	shift 1;
@@ -1481,6 +1590,11 @@ main () {
 		;;
 		'travis')
 			travis \
+				"${@}" \
+			;
+		;;
+		'travis-docker')
+			travis_docker \_
 				"${@}" \
 			;
 		;;
