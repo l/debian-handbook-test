@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.11. Varm tilkobling: hotplug</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="Systemoppstart, Initskript, SSH, Telnet, Rettigheter, Tillatelser, Overvåking, Inetd, Cron, Sikkerhetskopiering, Hot-plugging, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Håndbok for Debian-administratoren" /><link
+        rel="up"
+        href="unix-services.html"
+        title="Kapittel 9. Unix-tjenester" /><link
+        rel="prev"
+        href="sect.backup.html"
+        title="9.10. Sikkerhetskopiering" /><link
+        rel="next"
+        href="sect.power-management.html"
+        title="9.12. Strømstyring: Advanced Configuration and Power Interface (ACPI)" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.hotplug.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>Forrige</strong></a></li><li
+          class="home">Håndbok for Debian-administratoren</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.hotplug"></a>9.11. Varm tilkobling: <span
+                  class="emphasis"><em>hotplug</em></span></h2></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.2"></a>9.11.1. Introduksjon</h3></div></div></div><div
+            class="para">
+				Kjerne-delsystemet <span
+              class="emphasis"><em>hotplug</em></span> håndterer å legge til og fjerne enheter ved å laste de riktige driverne, og ved å lage passende enhetsfiler (med hjelp av <code
+              class="command">udevd</code>). Med moderne maskinvare og visualisering, kan nesten alt bli varmtilkoblet (hotplugged): fra den vanlige USB/PCMCIA/IEEE 1394 enheter til SATA-harddisker, men også CPU-en og minnet.
+			</div><div
+            class="para">
+				Kjernen har en database som knytter hver enhets-ID med den nødvendige driveren. Denne databasen brukes under oppstart for å laste alle driverne til eksterne enheter som oppdages på forskjellige busser, men også når en ekstra varmtilkoblingsenhet blir koblet til. Når enheten er klar til bruk, sendes en melding til <code
+              class="command">udevd</code> slik at den kan lage den tilsvarende oppføringen i <code
+              class="filename">/dev/</code>.
+			</div><a
+            id="id-1.12.14.2.4"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.5"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.6"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.7"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.8"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.9"
+            class="indexterm"></a></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.3"></a>9.11.2. Navneproblemet</h3></div></div></div><div
+            class="para">
+				Før varm-tilkoblingene, var det enkelt å tilordne et fast navn til en enhet. Det var enkelt basert på enhetenes posisjonen på sine respektive busser. Men dette er ikke mulig når slike enheter kan komme og gå på bussen. Det typiske tilfellet er bruk av et digitalt kamera og en USB-minnepenn, som begge for datamaskinen ser ut som harddisker. Den første tilkoblede kan være <code
+              class="filename">/dev/sdb</code> og den andre <code
+              class="filename">/dev/sdc</code> (med <code
+              class="filename">/dev/sda</code> som representerer datamaskinens egen harddisk). Enhetsnavnet er ikke fast; det er avhengig av rekkefølgen enheter er koblet til.
+			</div><div
+            class="para">
+				I tillegg bruker flere og flere drivere dynamiske verdier for enhetenes store/små nummer, noe som gjør det umulig å ha statiske oppføringer for de gitte enhetene, siden deres grunnleggende egenskaper kan variere etter en omstart.
+			</div><div
+            class="para">
+				<span
+              class="emphasis"><em>udev</em></span> ble laget nettopp for å løse dette problemet.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>I PRAKSIS</em></span> Håndtering av nettverkskort</strong></p></div></div></div><div
+              class="para">
+				Mange datamaskiner har flere nettverkskort (noen ganger to kablede grensesnitt og et wifi-grensesnitt), og med <span
+                class="emphasis"><em>hotplug</em></span>-støtte til de fleste busstyper, garanterer ikke Linux-kjernen fast navngiving av nettverksgrensesnitt . Men brukere som ønsker å sette opp sine nettverk i <code
+                class="filename">/etc/network/interfaces</code> trenger et fast navn!
+			</div><div
+              class="para">
+				Det ville være vanskelig å be hver bruker om å lage sine egne <span
+                class="emphasis"><em>udev</em></span>-regler for å løse dette problemet. Dette er grunnen til at <span
+                class="emphasis"><em>udev</em></span> ble satt opp på en heller spesiell måte. Ved første oppstart (og, mer generelt, hver gang et nytt nettverkskort vises) bruker den navnet på nettverksgrensesnittet og dets MAC-adresse for å lage nye regler som vil tilordne samme navn på de påfølgende oppstartene. Disse reglene er lagret i <code
+                class="filename">/etc/udev/rules.d/70-persistent-net.rules</code>.
+			</div><div
+              class="para">
+				Denne mekanismen har noen sidevirkninger som du bør vite om. La oss vurdere hvordan på en datamaskin som bare har ett PCI-nettverkskort. Nettverkets grensesnitt heter <code
+                class="literal">eth0</code>, logisk. Nå, si at kortet bryter sammen, og administratoren erstatter det; det nye kortet vil ha en ny MAC-adresse. Siden det gamle kortet ble gitt navnet, <code
+                class="literal">eth0</code>, vil det nye bli tildelt <code
+                class="literal">eth1</code>, selv om <code
+                class="literal">eth0</code>-kortet er borte for godt (og nettverket vil ikke være funksjonelt fordi <code
+                class="filename">/etc/network/interfaces</code> sannsynligvis satte opp et <code
+                class="literal">eth0</code>-grensesnitt). I dette tilfellet er det nok å bare slette <code
+                class="filename">/etc/udev/rules.d/70-persistent-net.rules</code>-filen før maskinen restartes. Det nye kortet vil da bli gitt det forventede <code
+                class="literal">eth0</code>-navnet.
+			</div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.4"></a>9.11.3. Hvordan <span
+                    class="emphasis"><em>udev</em></span> virker</h3></div></div></div><div
+            class="para">
+				Når <span
+              class="emphasis"><em>udev</em></span> varsles av kjernen når en ny enhet dukker opp, samler den ulike opplysninger om den gitte enheten ved å konsultere de tilsvarende oppføringene i <code
+              class="filename">/sys/</code>, spesielt de som klart identifiserer den (MAC-adressen til et nettverkskort, serienummer for enkelte USB-enheter, etc.).
+			</div><div
+            class="para">
+				Bevæpnet med all denne informasjonen, <span
+              class="emphasis"><em>udev</em></span> konsulterer så alle reglene som ligger i <code
+              class="filename">/etc/udev/rules.d/</code> og <code
+              class="filename">/lib/udev/rules.d/</code>. I denne prosessen bestemmer den hvordan enheten skal navnes, hvilke symbolske lenker som skal lages (for å gi den alternative navn), og hvilke kommandoer som skal kjøres. Alle disse filene er konsultert , og reglene er alle vurdert sekvensielt (bortsett fra når en fil bruker «GOTO»-direktiver). Således kan det være flere regler som svarer til en gitt hendelse.
+			</div><div
+            class="para">
+				Regelfilenes syntaks er ganske enkel: Hver rad inneholder utvalgskriterier og variable oppdrag. Den første er brukt til å velge hendelser der det er behov for å reagere, og sistnevnte definerer handlingen som skal utføres. De er alle enkelt atskilt med komma, og operatøren skiller implisitt mellom et utvalgskriterium (med sammenligningsoperatorer, for eksempel <code
+              class="literal">==</code>, eller <code
+              class="literal">!=</code>), eller et oppdragsdirektiv (med operatorer som <code
+              class="literal">=</code>, <code
+              class="literal">+=</code> eller <code
+              class="literal">:=</code>).
+			</div><div
+            class="para">
+				Sammenligningsoperatorer brukes på følgende variabler:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KJERNE</code>: navnet som kjernen tilordner til enheten;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">ACTION</code>: handlingen som tilsvarer hendelsen («add» når en enhet er lagt til, «remove» når den er fjernet);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">DEVPATH</code>: Stien til enhetens <code
+                    class="filename">/sys/</code> inngang;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SUBSYSTEM</code>: kjerne-delsystemet som genererer forespørselen (det er mange, men noen eksempler er «usb»,«ide», «net», «firmware», etc.);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">ATTR{<em
+                      class="replaceable">attributt (egenskap)</em>}</code>: filinnholdet til <em
+                    class="replaceable">attributt</em>-filen i <code
+                    class="filename">/sys/<em
+                      class="replaceable">$devpath</em>/</code>-mappen til enheten. Det er her du finner MAC-adressen og andre buss-spesifikke identifikatorer;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KERNELS</code>, <code
+                    class="literal">SUBSYSTEMS</code> og <code
+                    class="literal">ATTRS{<em
+                      class="replaceable">attributter</em>}</code> er variasjoner som vil prøve å treffe de ulike valgene hos en av de overordnede enhetene til den aktuelle enheten;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">PROGRAM</code>: delegerer testen til det angitte programmet (sant hvis den returnerer 0, falsk hvis ikke). Innholdet av programmmets standard resultat blir lagret slik at det kan brukes om igjen av <code
+                    class="literal">RESULT</code>-testen;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RESULT</code>: utfører tester på standardresultatet lagret under siste kontakt til <code
+                    class="literal">PROGRAM</code>.
+					</div></li></ul></div><div
+            class="para">
+				De riktige operander kan bruke mønsteruttrykk for å finne flere verdier som passer samtidig. For eksempel, <code
+              class="literal">*</code> matcher alle strenger (selv en tom en); <code
+              class="literal">?</code> treffer hvilken som helst tegn, og <code
+              class="literal">[]</code> matcher settet med tegn som er listet mellom hakeparenteser (eller det motsatte hvis det første tegnet er et utropstegn, og sammenhengende rekker med tegn er angitt som <code
+              class="literal">a-z</code>).
+			</div><div
+            class="para">
+				Når det gjelder tildelingsoperatørene, <code
+              class="literal">=</code> tildeler en verdi (og erstatter gjeldende verdi); i tilfelle av en liste, blir den tømt, og inneholder bare den tildelte verdien. <code
+              class="literal">:=</code> gjør det samme, men hindrer senere endringer i samme variabel. Når det gjelder <code
+              class="literal">+=</code>, legger den til et element i en liste. Følgende variabler kan endres:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">NAME</code>: filnavnet til enheten som skal opprettes i <code
+                    class="filename">/dev/</code>. Bare den første oppgaven teller; de andre blir ignorert;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SYMLINK</code>: listen med symbolske lenker som vil peke til den samme enheten;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">OWNER</code>, <code
+                    class="literal">GROUP</code> og <code
+                    class="literal">MODE</code> definerer brukeren og gruppen som eier enheten, samt tilhørende tillatelse;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RUN</code>: listen over programmer som må kjøres som reaksjon på denne hendelsen.
+					</div></li></ul></div><div
+            class="para">
+				Verdiene tilordnet disse variablene kan bruke en rekke erstatninger:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$kernel</code> eller <code
+                    class="literal">%k</code>: som tilsvarer <code
+                    class="literal">KERNEL</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$number</code> eller <code
+                    class="literal">%n</code>: rekkefølgenummeret til enheten, for eksempel for <code
+                    class="literal">sda3</code>, ville det være «3»;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$devpath</code> eller <code
+                    class="literal">%p</code>: som tilsvarerer <code
+                    class="literal">DEVPATH</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$attr{<em
+                      class="replaceable">attributt</em>}</code> eller <code
+                    class="literal">%s{<em
+                      class="replaceable">attributt</em>}</code>: som tilsvarer <code
+                    class="literal">ATTRS{<em
+                      class="replaceable">attributt</em>}</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$major</code> eller <code
+                    class="literal">%M</code>: hovednummeret for enheten i kjernen
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$minor</code> eller <code
+                    class="literal">%m</code>: undernummer for enheten i kjernen
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$result</code> eller <code
+                    class="literal">%c</code>: resultatstrengen fra det siste programmet aktivert av <code
+                    class="literal">PROGRAM</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						og, til slutt, <code
+                    class="literal">%%</code> og <code
+                    class="literal">$$</code> for henholdsvis prosent og dollartegnet.
+					</div></li></ul></div><div
+            class="para">
+				De ovennevnte listene er ikke komplette (de inneholder kun de viktigste parametrene), men manualside <span
+              class="citerefentry"><span
+                class="refentrytitle">udev</span>(7)</span> skulle være uttømmende.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.5"></a>9.11.4. Et konkret eksempel</h3></div></div></div><div
+            class="para">
+				La oss vurdere tillfellet med en enkel USB-minnepenn, og prøve å tilordne et fast navn til den. Først må du finne de elementene som unikt vil identifisere den. For å få til dette plugg den inn og kjør <code
+              class="command">udevadm info -a -n /dev/sdc</code> (for å erstatte <em
+              class="replaceable">/dev/sdc</em> med det faktiske navnet minnepennen har).
+			</div><pre
+            class="screen"><code
+              class="computeroutput"># </code><strong
+              class="userinput"><code>udevadm info -a -n /dev/sdc</code></strong>
+<code
+              class="computeroutput">[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</code></pre><div
+            class="para">
+				For å opprette en ny regel kan du bruke tester på enhetens variabler, så vel som de fra en av de overordnede enhetene. Det ovennevnte tilfellet tillater oss å lage to regler som disse:
+			</div><pre
+            class="programlisting">KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</pre><div
+            class="para">
+				Når disse reglene er satt i en fil, som for eksempel er døpt <code
+              class="filename">/etc/udev/rules.d/010_local.rules</code>, kan du enkelt fjerne og koble til USB-minnepennen. Deretter kan du se at <code
+              class="filename">/dev/usb_key/disk</code> representerer disken knyttet til USB-minnepennen, og <code
+              class="filename">/dev/usb_key/part1</code> er dens første partisjon.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>FOR VIDEREKOMMENDE</em></span> Feilsøking i oppsettet til <span
+                        class="emphasis"><em>udev</em></span></strong></p></div></div></div><div
+              class="para">
+				Som for mange bakgrunnsprosesser, lagrer <code
+                class="command">udevd</code> logger i <code
+                class="filename">/var/log/daemon.log</code>. Men det er ikke veldig detaljert som standard, og det er som regel ikke nok til å forstå hva som skjer. Kommandoen <code
+                class="command">udevadm control --log-priority=info</code> øker detaljnivået, og løser dette problemet. <code
+                class="command">udevadm control --log-priority=err</code> returnerer til standard detaljnivå.
+			</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>Forrige</strong>9.10. Sikkerhetskopiering</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>Neste</strong>9.12. Strømstyring: Advanced Configuration and Po...</a></li></ul></body></html>

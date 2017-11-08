@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">8.11. 安装内核</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-zh-CN-1.0-1" /><meta
+        name="keywords"
+        content="配置, 本地化, 地区设置, 网络, 名称解析, 用户, 用户组, 账户, 命令行解释器, Shell, 打印, Bootloader, 内核编译" /><link
+        rel="home"
+        href="index.html"
+        title="Debian 管理员手册" /><link
+        rel="up"
+        href="basic-configuration.html"
+        title="第 8 章 基础配置：网络，账户，打印……" /><link
+        rel="prev"
+        href="sect.kernel-compilation.html"
+        title="8.10. 编译核心" /><link
+        rel="next"
+        href="unix-services.html"
+        title="第 9 章 Unix 服务" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/zh-CN/stable/sect.kernel-installation.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.kernel-compilation.html"><strong>上一页</strong></a></li><li
+          class="home">Debian 管理员手册</li><li
+          class="next"><a
+            accesskey="n"
+            href="unix-services.html"><strong>下一页</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.kernel-installation"></a>8.11. 安装内核</h2></div></div></div><a
+          id="id-1.11.15.2"
+          class="indexterm"></a><a
+          id="id-1.11.15.3"
+          class="indexterm"></a><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.kernel-package"></a>8.11.1. Debian 内核包特性</h3></div></div></div><a
+            id="id-1.11.15.4.2"
+            class="indexterm"></a><div
+            class="para">
+				Debian 核心软件包安装核心映像 (<code
+              class="filename">vmlinuz-<em
+                class="replaceable">version</em></code>)、其配置 (<code
+              class="filename">config-<em
+                class="replaceable">version</em></code>) 与符号表 (<code
+              class="filename">System.map-<em
+                class="replaceable">version</em></code>) 于 <code
+              class="filename">/boot/</code> 内。符号表协助开发者了解核心错误消息的意义；少了心，核心 “oopses” (“oops” 是相当于给用户程序的核心区段错误，换句话说，消息加上错误指针) 只有数字内存地址，没有符号表映射该等地址至符号与功能的话，本身是无意义的。该等模块安装在 <code
+              class="filename">/lib/modules/<em
+                class="replaceable">version</em>/</code> 文件夹。
+			</div><div
+            class="para">
+				软件包的配置脚本自动产生 initrd 映像，此为由启动程序加载内存的迷你系统 (其名称源自于此，表示为 “init ramdisk”)，被 Linux 核心专用于加载包括完整 Debian 系统设备的模块 (例如，SATA 磁盘机的驱动程序)。最后，安装后脚本更新符号链接 <code
+              class="filename">/vmlinuz</code>、<code
+              class="filename">/vmlinuz.old</code>、<code
+              class="filename">/initrd.img</code> 与 <code
+              class="filename">/initrd.img.old</code>，让它们分别指向最新的两个核心， 以及映射的 initrd 映像。
+			</div><div
+            class="para">
+				大部分的这些工作卸载至 <code
+              class="filename">/etc/kernel/*.d/</code> 文件夹内的脚本。例如，当已安装或移除核心时，集成 <code
+              class="command">grub</code> 于 <code
+              class="filename">/etc/kernel/postinst.d/zz-update-grub</code> 和 <code
+              class="filename">/etc/kernel/postrm.d/zz-update-grub</code> 调用 <code
+              class="command">update-grub</code>。
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.kernel-installation-with-dpkg"></a>8.11.2. 与 <code
+                    class="command">dpkg</code> 集成</h3></div></div></div><div
+            class="para">
+				使用 <code
+              class="command">apt</code> 极为便利，以致常忘记它是极为低级的工具，但是安装被编译的核心可使用更简单的工具，诸如 <code
+              class="command">dpkg -i <em
+                class="replaceable">package</em>.deb</code>，<code
+              class="literal"><em
+                class="replaceable">package</em>.deb</code> 是 <span
+              class="pkg pkg">linux-image</span> 软件包的名称，例如 <code
+              class="filename">linux-image-3.16.7-ckt4-falcot_1_amd64.deb</code>。
+			</div><div
+            class="para">
+				本章描述供服务器系统或工作站的基本配置，可以用半自动的方式大量复制。然而，本身还不足以提供完整的配置系统。还有若干部分需要进一步的配置，从 “Unix 服务” 之类的低级程序开始。
+			</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.kernel-compilation.html"><strong>上一页</strong>8.10. 编译核心</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>上一级</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>起始页</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="unix-services.html"><strong>下一页</strong>第 9 章 Unix 服务</a></li></ul></body></html>

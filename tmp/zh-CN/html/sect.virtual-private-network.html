@@ -1,0 +1,776 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">10.2. 虚拟专用网络</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-8-zh-CN-1.0-1" /><meta
+        name="keywords"
+        content="网络, 网关, TCP/IP, IPV6, DNS, Bind, DHCP, QoS" /><link
+        rel="home"
+        href="index.html"
+        title="Debian 管理员手册" /><link
+        rel="up"
+        href="network-infrastructure.html"
+        title="第 10 章 基本网络设置" /><link
+        rel="prev"
+        href="network-infrastructure.html"
+        title="第 10 章 基本网络设置" /><link
+        rel="next"
+        href="sect.quality-of-service.html"
+        title="10.3. 品质服务" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/zh-CN/stable/sect.virtual-private-network.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="network-infrastructure.html"><strong>上一页</strong></a></li><li
+          class="home">Debian 管理员手册</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.quality-of-service.html"><strong>下一页</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.virtual-private-network"></a>10.2. 虚拟专用网络</h2></div></div></div><div
+          class="para">
+			<span
+            class="emphasis"><em>虚拟专用网络</em></span> (VPN) 是以信道方式，经由互联网链接两个局域网路的方式；通常以加密方式在信道内发送信息。VPN 通常用于集成公司内部远程机器。
+		</div><a
+          id="id-1.13.5.3"
+          class="indexterm"></a><a
+          id="id-1.13.5.4"
+          class="indexterm"></a><a
+          id="id-1.13.5.5"
+          class="indexterm"></a><div
+          class="para">
+			好几个工具提供这种服务。OpenVPN 是个有效率解决方案，基于 SSL/TLS，容易布署与维护。以 IPsec 加密两部机器的 IP 流量；这是透明的编码，在该等主机运行应用程序时不需修改 VPN。SSH 在传统的功能外，也能提供 VPN。最后，可以用微软的 PPTP 协议创建 VPN。其他的解决方案，就留给读者自行探索。
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.openvpn"></a>10.2.1. OpenVPN</h3></div></div></div><a
+            id="id-1.13.5.7.2"
+            class="indexterm"></a><div
+            class="para">
+				OpenVPN 用于创建虚拟专用网络的一个软件。在 VPN 服务器及客户端创建虚拟专用网络；支持 <code
+              class="literal">tun</code> (IP 层面的信道) 和 <code
+              class="literal">tap</code> (Ethernet 层面的信道) 接口。实务上，常用的是 <code
+              class="literal">tun</code> 接口，除非 VPN 客户端难以经由 Ethernet 桥接器集成入服务器的局域网路。
+			</div><div
+            class="para">
+				OpenVPN 所有的 SSL/TLS 加密与其他功能 (机密性、认证、完整性、不可否认性)，均有赖于 OpenSSL。可以用公钥基础设施的共享私钥或使用 X.509 认证的方式配置它。建议使用后者的方式配置，以漫游方式近用 VPN 的用户可享有更多的弹性。
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>文化</em></span> SSL 和 TLS</strong></p></div></div></div><a
+              id="id-1.13.5.7.5.2"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.5.3"
+              class="indexterm"></a><div
+              class="para">
+				Netscape 研发的 SSL 协议 (<span
+                class="emphasis"><em>Secure Socket Layer</em></span>) 为安全连接至网站服务器的工具。后来被 IETF 标准化为 TLS (<span
+                class="emphasis"><em>Transport Layer Security</em></span>)。后来，在 SSL 里发现多个设计的缺失，弃置后，改使用 TLS。
+			</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="sect.easy-rsa"></a>10.2.1.1. 公钥基础设施：<span
+                      class="emphasis"><em>easy-rsa</em></span></h4></div></div></div><a
+              id="id-1.13.5.7.6.2"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.6.3"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.6.4"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.6.5"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.6.6"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.6.7"
+              class="indexterm"></a><a
+              id="id-1.13.5.7.6.8"
+              class="indexterm"></a><div
+              class="para">
+					RSA 算法是使用广泛的公钥加密法。以 “密钥配对” 法比对私钥与公钥。两钥密切连在一起，以公钥演算加密的消息，只能被知道私钥的人解开，以保障其安全。反之亦然，以私钥加密的消息，只能被公钥解开，也就是让拥有私钥的人，可以向指定的社区发出消息。以数字哈希 (MD5、SHA1、或其他) 方式演算，适用于任何签名机制的消息。
+				</div><div
+              class="para">
+					任何人都可以添加密钥配对。采用 <span
+                class="emphasis"><em>授权认证</em></span> (CA)，即 X.509 标准。此术语指的是拥有信任密钥配对做为 <span
+                class="emphasis"><em>root 认证</em></span>。此认证只用于签署另个认证 (密钥配对)，经过适当的进程，检查保存在密钥配对的内容。使用 X.509 可以检查其中的认证。
+				</div><div
+              class="para">
+					OpenVPN 遵守此法则。因为公共 CA 放出的认证系用于交换 (巨大) 的费用，可以在公司内部生成专用的认证机制。<span
+                class="pkg pkg">easy-rsa</span> 软件包可做为 X.509 认证基础建设，应用于 <code
+                class="command">openssl</code> 命令的脚本内。
+				</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>说明</em></span> <span
+                          class="emphasis"><em>easy-rsa</em></span> 早于 <span
+                          class="distribution distribution">Jessie</span> 之前</strong></p></div></div></div><div
+                class="para">
+					在 Debian <span
+                  class="distribution distribution">Wheezy</span> 之前的版本，<span
+                  class="emphasis"><em>easy-rsa</em></span> 做为 <span
+                  class="pkg pkg">openvpn</span> 软件包的一部分，其脚本在 <code
+                  class="filename">/usr/share/doc/openvpn/examples/easy-rsa/2.0/</code> 之内。复制该文件夹就能设置成 CA，不必使用 <code
+                  class="command">make-cadir</code> 命令。
+				</div></div><div
+              class="para">
+					Falcot 公司的管理者以此工具添加必要的服务器与客户端认证。可以把所有的客户端配置成类似的状态，因为他们只需信件 Falcot 本地 CA 的认证。此 CA 是率先认证的；为此工作，管理者在适当的地方创建新的文件夹，供 CA 的文件使用，最好放在脱机的地方，杜绝私钥被窃的危险。
+				</div><pre
+              class="screen">
+<code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>make-cadir pki-falcot
+</code></strong><code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>cd pki-falcot</code></strong></pre><div
+              class="para">
+					把必要的参数保存在 <code
+                class="filename">vars</code> 文件内，特别是以 <code
+                class="literal">KEY_</code> 开头的部分；这些变量集成入环境：
+				</div><pre
+              class="screen">
+<code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>vim vars
+</code></strong><code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>grep KEY_ vars
+</code></strong><code
+                class="computeroutput">export KEY_CONFIG=`$EASY_RSA/whichopensslcnf $EASY_RSA`
+export KEY_DIR="$EASY_RSA/keys"
+echo NOTE: If you run ./clean-all, I will be doing a rm -rf on $KEY_DIR
+export KEY_SIZE=2048
+export KEY_EXPIRE=3650
+export KEY_COUNTRY="FR"
+export KEY_PROVINCE="Loire"
+export KEY_CITY="Saint-Étienne"
+export KEY_ORG="Falcot Corp"
+export KEY_EMAIL="admin@falcot.com"
+export KEY_OU="Certificate authority"
+export KEY_NAME="Certificate authority for Falcot Corp"
+# If you'd like to sign all keys with the same Common Name, uncomment the KEY_CN export below
+# export KEY_CN="CommonName"
+$ </code><strong
+                class="userinput"><code>. ./vars
+</code></strong><code
+                class="computeroutput">NOTE: If you run ./clean-all, I will be doing a rm -rf on /home/roland/pki-falcot/keys
+$ </code><strong
+                class="userinput"><code>./clean-all
+</code></strong></pre><div
+              class="para">
+					接着添加 CA 密钥配对本身 (在此阶段把两组钥匙保存在 <code
+                class="filename">keys/ca.crt</code> 和 <code
+                class="filename">keys/ca.key</code>)：
+				</div><pre
+              class="screen">
+<code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>./build-ca</code></strong>
+<code
+                class="computeroutput">Generating a 2048 bit RSA private key
+...................................................................+++
+...+++
+writing new private key to 'ca.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [FR]:
+State or Province Name (full name) [Loire]:
+Locality Name (eg, city) [Saint-Étienne]:
+Organization Name (eg, company) [Falcot Corp]:
+Organizational Unit Name (eg, section) [Certificate authority]:
+Common Name (eg, your name or your server's hostname) [Falcot Corp CA]:
+Name [Certificate authority for Falcot Corp]:
+Email Address [admin@falcot.com]:
+</code></pre><div
+              class="para">
+					现在 VPN 服务器的认证完成，Diffie-Hellman 参数供服务器的 SSL/TLS 链接亦完成。VPN 服务器以其 DNS 名称 <code
+                class="literal">vpn.falcot.com</code> 识别；此名称再次使用于添加钥匙文件 (<code
+                class="filename">keys/vpn.falcot.com.crt</code> 供公钥，<code
+                class="filename">keys/vpn.falcot.com.key</code> 供私钥)：
+				</div><pre
+              class="screen">
+<code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>./build-key-server vpn.falcot.com
+</code></strong><code
+                class="computeroutput">Generating a 2048 bit RSA private key
+.....................................................................................................................+++
+...........+++
+writing new private key to 'vpn.falcot.com.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [FR]:
+State or Province Name (full name) [Loire]:
+Locality Name (eg, city) [Saint-Étienne]:
+Organization Name (eg, company) [Falcot Corp]:
+Organizational Unit Name (eg, section) [Certificate authority]:
+Common Name (eg, your name or your server's hostname) [vpn.falcot.com]:
+Name [Certificate authority for Falcot Corp]:
+Email Address [admin@falcot.com]:
+
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+Using configuration from /home/roland/pki-falcot/openssl-1.0.0.cnf
+Check that the request matches the signature
+Signature ok
+The Subject's Distinguished Name is as follows
+countryName           :PRINTABLE:'FR'
+stateOrProvinceName   :PRINTABLE:'Loire'
+localityName          :T61STRING:'Saint-\0xFFFFFFC3\0xFFFFFF89tienne'
+organizationName      :PRINTABLE:'Falcot Corp'
+organizationalUnitName:PRINTABLE:'Certificate authority'
+commonName            :PRINTABLE:'vpn.falcot.com'
+name                  :PRINTABLE:'Certificate authority for Falcot Corp'
+emailAddress          :IA5STRING:'admin@falcot.com'
+Certificate is to be certified until Mar  6 14:54:56 2025 GMT (3650 days)
+Sign the certificate? [y/n]:</code><strong
+                class="userinput"><code>y
+</code></strong><code
+                class="computeroutput">
+
+1 out of 1 certificate requests certified, commit? [y/n]</code><strong
+                class="userinput"><code>y
+</code></strong><code
+                class="computeroutput">Write out database with 1 new entries
+Data Base Updated
+$ </code><strong
+                class="userinput"><code>./build-dh
+</code></strong><code
+                class="computeroutput">Generating DH parameters, 2048 bit long safe prime, generator 2
+This is going to take a long time
+[…]
+</code></pre><div
+              class="para">
+					以上的步骤添加 VPN 客户；每个使用 VPN 的电脑或用户都需有个认证：
+				</div><pre
+              class="screen">
+<code
+                class="computeroutput">$ </code><strong
+                class="userinput"><code>./build-key JoeSmith
+</code></strong><code
+                class="computeroutput">Generating a 2048 bit RSA private key
+................................+++
+..............................................+++
+writing new private key to 'JoeSmith.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [FR]:
+State or Province Name (full name) [Loire]:
+Locality Name (eg, city) [Saint-Étienne]:
+Organization Name (eg, company) [Falcot Corp]:
+Organizational Unit Name (eg, section) [Certificate authority]:</code><strong
+                class="userinput"><code>Development unit
+</code></strong><code
+                class="computeroutput">Common Name (eg, your name or your server's hostname) [JoeSmith]:</code><strong
+                class="userinput"><code>Joe Smith
+</code></strong><code
+                class="computeroutput">[…]</code></pre><div
+              class="para">
+					新的认证建好后，需复制至适当的地方：超级用户公钥 (<code
+                class="filename">keys/ca.crt</code>) 保存在所有机器 (服务器与客户端) 的 <code
+                class="filename">/etc/ssl/certs/Falcot_CA.crt</code>。服务器的认证仅安装在服务器 (<code
+                class="filename">keys/vpn.falcot.com.crt</code> 的 <code
+                class="filename">/etc/ssl/vpn.falcot.com.crt</code>，以及 <code
+                class="filename">keys/vpn.falcot.com.key</code> 在 <code
+                class="filename">/etc/ssl/private/vpn.falcot.com.key</code> 限制其权限为管理者才能读取)，对应至 Diffie-Hellman 参数 (<code
+                class="filename">keys/dh2048.pem</code>) 安装在 <code
+                class="filename">/etc/openvpn/dh2048.pem</code>。客户端认证则类似的方式，安装在对应的 VPN 各户端。
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.13.5.7.7"></a>10.2.1.2. 配置 OpenVPN 服务器</h4></div></div></div><div
+              class="para">
+					缺省，OpenVPN 初始化的脚本在 <code
+                class="filename">/etc/openvpn/*.conf</code> 启动所有虚拟专用网络。设置 VPN 服务器就是在此文件夹保存对应的配置档。<code
+                class="filename">/usr/share/doc/openvpn/examples/sample-config-files/server.conf.gz</code> 是个好的起点，创建相当标准服务器。当然，还有若干参数需要调整：<code
+                class="literal">ca</code>、<code
+                class="literal">cert</code>、<code
+                class="literal">key</code> 和 <code
+                class="literal">dh</code> 需指定其地点 (分别是 <code
+                class="literal">/etc/ssl/certs/Falcot_CA.crt</code>、<code
+                class="literal">/etc/ssl/vpn.falcot.com.crt</code>、<code
+                class="literal">/etc/ssl/private/vpn.falcot.com.key</code> 和 <code
+                class="literal">/etc/openvpn/dh2048.pem</code>)。<code
+                class="literal">server 10.8.0.0 255.255.255.0</code> 设置 VPN 的次网络；此服务器使用此范围内的第一个 IP 地址 (<code
+                class="literal">10.8.0.1</code>) 然后把其他的地址保留给客户端。
+				</div><div
+              class="para">
+					在这种配置下，通常以 <code
+                class="literal">tun0</code> 之名，添加 OpenVPN 的虚拟网络接口。然而，有时在启动 OpenVPN 前，把防火墙配置成真实的网络接口。最好固定添加的虚拟网络接口，OpenVPN 使用预存的接口。进一步选择接口的名称。到了这个阶段，<code
+                class="command">openvpn --mktun --dev vpn --dev-type tun</code> 添加一个虚拟网络接口名称为 <code
+                class="literal">vpn</code> 型态为 <code
+                class="literal">tun</code>；这个命令可以集成入防火墙配置脚本，或 <code
+                class="literal">up</code> 指向 <code
+                class="filename">/etc/network/interfaces</code> 文件。OpenVPN 配置档必须跟着更新，直接使用 <code
+                class="literal">dev vpn</code> 和 <code
+                class="literal">dev-type tun</code>。
+				</div><div
+              class="para">
+					禁止进一步的行动，VPN 客户端只能经由 <code
+                class="literal">10.8.0.1</code> 地址近用 VPN 服务器。为了授权客户近用本地网络 (192.168.0.0/24)，需在 OpenVPN 配置中加入 <code
+                class="literal">推送路径 192.168.0.0 255.255.255.0</code>，让 VPN 客户端自动取得网络路由，使其明了经由 VPN 可以进入该网络。此外，本地网络的机器也需被告知，经由 VPN 服务器 (在闸道安装 VPN 服务器即自动启用) 进入VPN。另外，VPN 服务器可以配置后运行伪装 IP 的工作，让来自 VPN 客户端的消息显示成来自 VPN 服务器 (见 <a
+                class="xref"
+                href="network-infrastructure.html#sect.gateway">第 10.1 节 “网关”</a>)。
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.13.5.7.8"></a>10.2.1.3. 配置 OpenVPN 客户端</h4></div></div></div><div
+              class="para">
+					需配置 <code
+                class="filename">/etc/openvpn/</code> 内的文件才能设置 OpenVPN 客户端。标准的配置方法可从使用 <code
+                class="filename">/usr/share/doc/openvpn/examples/sample-config-files/client.conf</code> 这个文件开始。<code
+                class="literal">remote vpn.falcot.com 1194</code> 介绍 OpenVPN 服务器的地址及端口号；描述密钥文档地址时，需参考 <code
+                class="literal">ca</code>、<code
+                class="literal">cert</code> 和 <code
+                class="literal">key</code>。
+				</div><div
+              class="para">
+					若开机时无法自动进入 VPN，则需设置 <code
+                class="literal">AUTOSTART</code> 为 <code
+                class="literal">none</code> 于 <code
+                class="filename">/etc/default/openvpn</code> 文件内。以命令 <code
+                class="command">service openvpn@<em
+                  class="replaceable">name</em> start</code> 和 <code
+                class="command">service openvpn@<em
+                  class="replaceable">name</em> stop</code> (其中的 <em
+                class="replaceable">name</em> 就是在 <code
+                class="filename">/etc/openvpn/<em
+                  class="replaceable">name</em>.conf</code> 中设置的名称) 就能启用或停用指定的 VPN 链接。
+				</div><div
+              class="para">
+					此 <span
+                class="pkg pkg">network-manager-openvpn-gnome</span> 软件包包括允许管理 OpenVPN 虚拟专属网络的延伸网络管理者 (见 <a
+                class="xref"
+                href="sect.network-config.html#sect.roaming-network-config">第 8.2.4 节 “Automatic Network Configuration for Roaming Users”</a>)。允许每个用户以图形接口配置 OpenVPN 且从网络管理图标控制它们。 <a
+                id="id-1.13.5.7.8.4.3"
+                class="indexterm"></a>
+				</div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.ssh-vpn"></a>10.2.2. SSH 下的虚拟专属网络</h3></div></div></div><a
+            id="id-1.13.5.8.2"
+            class="indexterm"></a><a
+            id="id-1.13.5.8.3"
+            class="indexterm"></a><div
+            class="para">
+				实际上有两种方法以 SSH 添加虚拟专属网络。较旧的是以 SSH 创建 PPP 层链接。此方法在 HOWTO 文档详细说明：<div
+              xmlns=""
+              class="url">→ <a
+                xmlns="http://www.w3.org/1999/xhtml"
+                href="http://www.tldp.org/HOWTO/ppp-ssh/">http://www.tldp.org/HOWTO/ppp-ssh/</a></div>
+			</div><div
+            class="para">
+				第二个方法较新，适用于 OpenSSH 4.3；可以在 OpenSSH 之下创建虚拟网络接口 (<code
+              class="literal">tun*</code>) 于 SSH 链接的两端，且可以精准地配置这些虚拟接口，就像在实体接口环境下。必须先设置 <code
+              class="literal">PermitTunnel</code> 为 “yes” 于 SSH 服务器配置档 (<code
+              class="filename">/etc/ssh/sshd_config</code>)，才能启用此隧道系统。启用 SSH 链接后，添加的隧道必须以 <code
+              class="literal">-w any:any</code> 选项 (<code
+              class="literal">any</code> 可以用期望的 <code
+              class="literal">tun</code> 设备名称取代) 请求链接。两端的用户需有管理者权限，才能添加网络设备 (换句话说，必须以超级用户的身份才能创建链接)。
+			</div><div
+            class="para">
+				以 SSH 创建虚拟专属网络的两种方法都很直接。然而，它们提供的 VPN 不是最有效的；特别是，无法有效处理高端的流量。
+			</div><div
+            class="para">
+				当 TCP/IP 堆栈封装在 TCP/IP 链接 (供 SSH 使用) 时，TCP 协议用了两次，一次给 SSH 链接用，另一次使用于信道。问题就在这里，尤其是 TCP 改变网络延迟时间的状态。详情见：<div
+              xmlns=""
+              class="url">→ <a
+                xmlns="http://www.w3.org/1999/xhtml"
+                href="http://sites.inka.de/sites/bigred/devel/tcp-tcp.html">http://sites.inka.de/sites/bigred/devel/tcp-tcp.html</a></div> 所以在 SSH 环境下的 VPN 应限制于无性能限制的一次性信道。
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.ipsec"></a>10.2.3. 互联网安全协议</h3></div></div></div><a
+            id="id-1.13.5.9.2"
+            class="indexterm"></a><a
+            id="id-1.13.5.9.3"
+            class="indexterm"></a><a
+            id="id-1.13.5.9.4"
+            class="indexterm"></a><div
+            class="para">
+				仅管 IPsec 已是 IP VPN 的标准，不过在应用层面仍有待加强。IPsec 引擎本身已经集成入 Linux 核心；控制与配置工具等必备的用户部分，已由 <span
+              class="pkg pkg">ipsec-tools</span> 软件包提供。具体来说，每个主机的 <code
+              class="filename">/etc/ipsec-tools.conf</code> 包括给 <span
+              class="emphasis"><em>IPsec tunnels</em></span> (或 <span
+              class="emphasis"><em>Security Associations</em></span>，以 IPsec 术语来说) 使用的参数，让主机连进来；<code
+              class="command">/etc/init.d/setkey</code> 脚本提供启用与停止信道的方法 (每个信道是安全链接至另个主机虚拟私有网络)。可以参考 <span
+              class="citerefentry"><span
+                class="refentrytitle">setkey</span>(8)</span> 手册提供的文档，以人工方式创建此文件。然而，撰写供所有主机使用的参数，并不轻松反而极为烦琐，因为信道的数量急剧增加。安装 IKE 调度 (如 <span
+              class="emphasis"><em>IPsec Key Exchange</em></span>) 就像 <span
+              class="pkg pkg">racoon</span> 或 <span
+              class="pkg pkg">strongswan</span> 把管理带入中央的点，就可简化此进程，而且定期更换密钥，显得更安全。
+			</div><a
+            id="id-1.13.5.9.6"
+            class="indexterm"></a><a
+            id="id-1.13.5.9.7"
+            class="indexterm"></a><a
+            id="id-1.13.5.9.8"
+            class="indexterm"></a><a
+            id="id-1.13.5.9.9"
+            class="indexterm"></a><div
+            class="para">
+				仅管其状态为参照，IPsec 的设置限制其用途。必备的信道不多也不是动态时，OpenVPN-based 解决方案较受用。
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>注意</em></span> IPsec 与 NAT</strong></p></div></div></div><div
+              class="para">
+				NAT 的防火墙与 IPsec 无法并用：因为 IPsec 是软件包，任何改变将引发防火墙的作用，软件包就会被拒绝。不同的 IPsec 应用包括：<span
+                class="emphasis"><em>NAT-T</em></span> 技术 (给 <span
+                class="emphasis"><em>NAT Traversal</em></span>)，把 IPsec 软件包包装在标准的 UDP 封包内。
+			</div><a
+              id="id-1.13.5.9.11.3"
+              class="indexterm"></a><a
+              id="id-1.13.5.9.11.4"
+              class="indexterm"></a></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>安全</em></span> IPsec 与防火墙</strong></p></div></div></div><div
+              class="para">
+				IPsec 的标准操作模式在 UDP 端口号 500 做键值交换 (使用 NAT-T 时，也可在 UDP 端口号 4500)。而且，IPsec 封包使用两个固定的 IP 协议允许防火墙通过；收到这些封包的基础是其协议编号，50 (ESP) 与 51 (AH)。
+			</div><a
+              id="id-1.13.5.9.12.3"
+              class="indexterm"></a><a
+              id="id-1.13.5.9.12.4"
+              class="indexterm"></a><a
+              id="id-1.13.5.9.12.5"
+              class="indexterm"></a><a
+              id="id-1.13.5.9.12.6"
+              class="indexterm"></a></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.pptp"></a>10.2.4. PPTP</h3></div></div></div><div
+            class="para">
+				PPTP (𪅈原文是 <span
+              class="emphasis"><em>Point-to-Point Tunneling Protocol</em></span>) 用到两种通信闸道，一个控制数据另个酬载数据；后者使用 GRE 协议 (<span
+              class="emphasis"><em>Generic Routing Encapsulation</em></span>)。标准的 PPP 链接创建在数据交换闸道。
+			</div><a
+            id="id-1.13.5.10.3"
+            class="indexterm"></a><a
+            id="id-1.13.5.10.4"
+            class="indexterm"></a><a
+            id="id-1.13.5.10.5"
+            class="indexterm"></a><a
+            id="id-1.13.5.10.6"
+            class="indexterm"></a><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="sect.pptp-config-client"></a>10.2.4.1. 设置客户端</h4></div></div></div><div
+              class="para">
+					此 <span
+                class="pkg pkg">pptp-linux</span> 封包含有易于配置的 Linux 客户端 PPTP。以下说明取自官方文档：<div
+                xmlns=""
+                class="url">→ <a
+                  xmlns="http://www.w3.org/1999/xhtml"
+                  href="http://pptpclient.sourceforge.net/howto-debian.phtml">http://pptpclient.sourceforge.net/howto-debian.phtml</a></div>
+				</div><a
+              id="id-1.13.5.10.7.3"
+              class="indexterm"></a><div
+              class="para">
+					Falcot 管理者添加若干文件：<code
+                class="filename">/etc/ppp/options.pptp</code>、<code
+                class="filename">/etc/ppp/peers/falcot</code>、<code
+                class="filename">/etc/ppp/ip-up.d/falcot</code>、与 <code
+                class="filename">/etc/ppp/ip-down.d/falcot</code>。
+				</div><div
+              class="example"><a
+                xmlns=""
+                id="example.ppp-options.pptp"></a><p
+                class="title"><strong>例 10.2. <code
+                    class="filename">/etc/ppp/options.pptp</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+# PPP options used for a PPTP connection
+lock
+noauth
+nobsdcomp
+nodeflate</pre></div></div><div
+              class="example"><a
+                xmlns=""
+                id="example.ppp-peers-falcot"></a><p
+                class="title"><strong>例 10.3. <code
+                    class="filename">/etc/ppp/peers/falcot</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+# vpn.falcot.com is the PPTP server
+pty "pptp vpn.falcot.com --nolaunchpppd"
+# the connection will identify as the "vpn" user
+user vpn
+remotename pptp
+# encryption is needed
+require-mppe-128
+file /etc/ppp/options.pptp
+ipparam falcot</pre></div></div><div
+              class="example"><a
+                xmlns=""
+                id="example.ppp-ip-up.d-falcot"></a><p
+                class="title"><strong>例 10.4. <code
+                    class="filename">/etc/ppp/ip-up.d/falcot</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+# Create the route to the Falcot network
+if [ "$6" = "falcot" ]; then
+  # 192.168.0.0/24 is the (remote) Falcot network
+  route add -net 192.168.0.0 netmask 255.255.255.0 dev $1
+fi</pre></div></div><div
+              class="example"><a
+                xmlns=""
+                id="example.ppp-ip-down.d-falcot"></a><p
+                class="title"><strong>例 10.5. <code
+                    class="filename">/etc/ppp/ip-down.d/falcot</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+# Delete the route to the Falcot network
+if [ "$6" = "falcot" ]; then
+  # 192.168.0.0/24 is the (remote) Falcot network
+  route del -net 192.168.0.0 netmask 255.255.255.0 dev $1
+fi</pre></div></div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>安全</em></span> MPPE</strong></p></div></div></div><div
+                class="para">
+					加密的 PPTP 涉及使用 MPPE 功能 (<span
+                  class="emphasis"><em>Microsoft Point-to-Point Encryption</em></span>)，可从 Debian 官方的核心取得模块。
+				</div><a
+                id="id-1.13.5.10.7.9.3"
+                class="indexterm"></a><a
+                id="id-1.13.5.10.7.9.4"
+                class="indexterm"></a></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="sect.pptp-config-serveur"></a>10.2.4.2. 配置服务器</h4></div></div></div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>注意</em></span> PPTP 与防火墙</strong></p></div></div></div><div
+                class="para">
+					需配置中间防火墙让 IP 封包使用端口号 47 (GRE)。此外，需打开 PPTP 服务器的端口号 1723以使用通信闸道。
+				</div></div><div
+              class="para">
+					<code
+                class="command">pptpd</code> 是 Linux 的 PPTP 服务器。它的主要配置档是，<code
+                class="filename">/etc/pptpd.conf</code>，应做若干改变：<span
+                class="emphasis"><em>localip</em></span> (内网 IP 地址) 与 <span
+                class="emphasis"><em>remoteip</em></span> (外网 IP 地址)。在下例中，PPTP 服务器总是使用 <code
+                class="literal">192.168.0.199</code> 地址，以及从 <code
+                class="literal">192.168.0.200</code> 至 <code
+                class="literal">192.168.0.250</code> 之间接收 PPTP 客户端的 IP 地址。
+				</div><div
+              class="example"><a
+                xmlns=""
+                id="example.pptpd.conf"></a><p
+                class="title"><strong>例 10.6. <code
+                    class="filename">/etc/pptpd.conf</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+# TAG: speed
+#
+#       Specifies the speed for the PPP daemon to talk at.
+#
+speed 115200
+
+# TAG: option
+#
+#       Specifies the location of the PPP options file.
+#       By default PPP looks in '/etc/ppp/options'
+#
+option /etc/ppp/pptpd-options
+
+# TAG: debug
+#
+#       Turns on (more) debugging to syslog
+#
+# debug
+
+# TAG: localip
+# TAG: remoteip
+#
+#       Specifies the local and remote IP address ranges.
+#
+#       You can specify single IP addresses separated by commas or you can
+#       specify ranges, or both. For example:
+#
+#               192.168.0.234,192.168.0.245-249,192.168.0.254
+#
+#       IMPORTANT RESTRICTIONS:
+#
+#       1. No spaces are permitted between commas or within addresses.
+#
+#       2. If you give more IP addresses than MAX_CONNECTIONS, it will
+#          start at the beginning of the list and go until it gets
+#          MAX_CONNECTIONS IPs. Others will be ignored.
+#
+#       3. No shortcuts in ranges! ie. 234-8 does not mean 234 to 238,
+#          you must type 234-238 if you mean this.
+#
+#       4. If you give a single localIP, that's ok - all local IPs will
+#          be set to the given one. You MUST still give at least one remote
+#          IP for each simultaneous client.
+#
+#localip 192.168.0.234-238,192.168.0.245
+#remoteip 192.168.1.234-238,192.168.1.245
+#localip 10.0.1.1
+#remoteip 10.0.1.2-100
+localip 192.168.0.199
+remoteip 192.168.0.200-250</pre></div></div><div
+              class="para">
+					PPP 采用 PPTP 服务器配置时也需在 <code
+                class="filename">/etc/ppp/pptpd-options</code> 做若干改变。 重要的参数有服务器名称 (<code
+                class="literal">pptp</code>)、网域名称 (<code
+                class="literal">falcot.com</code>)、以及 DNS 与 WINS 服务器的 IP 地址。
+				</div><div
+              class="example"><a
+                xmlns=""
+                id="example.ppp-pptpd-options"></a><p
+                class="title"><strong>例 10.7. <code
+                    class="filename">/etc/ppp/pptpd-options</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+## turn pppd syslog debugging on
+#debug
+
+## change 'servername' to whatever you specify as your server name in chap-secrets
+name pptp
+## change the domainname to your local domain
+domain falcot.com
+
+## these are reasonable defaults for WinXXXX clients
+## for the security related settings
+# The Debian pppd package now supports both MSCHAP and MPPE, so enable them
+# here. Please note that the kernel support for MPPE must also be present!
+auth
+require-chap
+require-mschap
+require-mschap-v2
+require-mppe-128
+
+## Fill in your addresses
+ms-dns 192.168.0.1
+ms-wins 192.168.0.1
+
+## Fill in your netmask
+netmask 255.255.255.0
+
+## some defaults
+nodefaultroute
+proxyarp
+lock</pre></div></div><div
+              class="para">
+					登录 <code
+                class="literal">vpn</code> 用户 (及其密码) 于 <code
+                class="filename">/etc/ppp/chap-secrets</code> 文件的最后一个步骤。其他的作为里，星号 (<code
+                class="literal">*</code>) 是有作用的，在此的服务器名称必须明示出来。而且，Windows PPTP 客户端以 <code
+                class="literal"><em
+                  class="replaceable">DOMAIN</em>\\<em
+                  class="replaceable">USER</em></code> 形式辨识，不是以用户名区别。这就说明了在 <code
+                class="literal">FALCOT\\vpn</code> 用户必须提及的文件。也可以指定用户使用特定的 IP 地址；此字段内的星号用于指定动态的地址。
+				</div><div
+              class="example"><a
+                xmlns=""
+                id="example.ppp-chap-secrets"></a><p
+                class="title"><strong>例 10.8. 该 <code
+                    class="filename">/etc/ppp/chap-secrets</code> 文件</strong></p><div
+                class="example-contents"><pre
+                  class="programlisting">
+# Secrets for authentication using CHAP
+# client        server  secret      IP addresses
+vpn             pptp    f@Lc3au     *
+FALCOT\\vpn     pptp    f@Lc3au     *</pre></div></div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>安全</em></span> PPTP 漏洞</strong></p></div></div></div><div
+                class="para">
+					𧢒微软的第一个 PPTP 应用发生重大的瑕疪，因为出现很多安全漏洞；多半在新版已修正了。本节的配置文档使用最新版的协议。移除部分选项 (如 <code
+                  class="literal">require-mppe-128</code> 与 <code
+                  class="literal">require-mschap-v2</code>) 仍可能再出现服务漏洞。
+				</div></div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="network-infrastructure.html"><strong>上一页</strong>第 10 章 基本网络设置</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>上一级</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>起始页</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.quality-of-service.html"><strong>下一页</strong>10.3. 品质服务</a></li></ul></body></html>

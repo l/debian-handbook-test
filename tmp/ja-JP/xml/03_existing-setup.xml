@@ -1,0 +1,342 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="existing-setup" lang="ja-JP">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>既存環境</keyword>
+			 <keyword>再利用</keyword>
+			 <keyword>移行</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>既存環境の解析と移行</title>
+	 <highlights> <para>
+		コンピュータシステムを総入れ替えする際には既存のシステムを考慮するべきです。既存のシステムを考慮することで、利用できる資源を最大限に再利用したり、システムを形作るさまざまな要素の相互運用性を保証したりすることが可能です。この章では、コンピュータインフラを Linux に移行する際に従うべき、一般的な枠組みを紹介します。
+	</para>
+	 </highlights> <section id="sect.heterogeneous-environments">
+		<title>異機種環境の共存</title>
+		 <indexterm>
+			<primary>環境</primary>
+			<secondary>異機種環境</secondary>
+		</indexterm>
+		 <para>
+			Debian はあらゆる種類の既存環境とうまく融合し、他のオペレーティングシステムとうまく協調して動くように設計されています。市場圧力がソフトウェア開発元に対して規格に従ったプログラムの開発を要求することで、このような完璧に近い調和が生まれます。規格に準拠しているため、管理者はプログラムを入れ替えることが可能です。すなわち、クライアントでもサーバでも、そして自由なものであるか否かに依存せずプログラムを入れ替えることが可能です。
+		</para>
+		 <section>
+			<title>Windows マシンとの統合</title>
+			 <para>
+				Samba の SMB/CIFS サポートは Windows 環境の中で優れた通信を行うことを保証します。Samba はファイルと印刷キューを Windows クライアントと共有し、Linux マシンが Windows サーバで利用できる資源を使えるようにするためのソフトウェアを備えています。
+			</para>
+			 <sidebar> <title><emphasis>TOOL</emphasis> Samba</title>
+			 <indexterm>
+				<primary>Samba</primary>
+			</indexterm>
+			 <para>
+				Samba の最新版を使えば Windows サーバが担う機能のほとんどを置き換えることが可能です。具体的に言えば、簡単な Windows NT サーバ (認証、ファイル、印刷キュー、プリンタドライバのダウンロード、DFS など) だけでなく最も先進的なサーバ (Active Directory と互換性を持つドメインコントローラ) でさえも置き換えることが可能です。
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>OS X マシンとの統合</title>
+			 <indexterm>
+				<primary>Zeroconf</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Bonjour</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Avahi</primary>
+			</indexterm>
+			 <para>
+				OS X マシンはファイルサーバやプリンタ共有などのネットワークサービスを提供し、これを利用できます。これらのサービスはローカルネットワークに公開されています。このことにより、他のマシンはサービスを発見し、Zeroconf プロトコルスイートの Bonjour 実装を使い、手作業で設定することなくサービスを利用できるようになります。Debian は同じ機能を提供する Avahi と呼ばれる別の実装を使います。
+			</para>
+			 <indexterm>
+				<primary>AFP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>AppleShare</primary>
+			</indexterm>
+			 <para>
+				他方で、ネットワーク上の OS X マシンに向けてファイルサーバを提供するために Netatalk デーモンが使われます。Netatalk は AFP (AppleShare) プロトコルの実装であるのと同時に OS X クライアントがサーバを自動的に発見できるようにするために必要な通知の実装です。
+			</para>
+			 <indexterm>
+				<primary>AppleTalk</primary>
+			</indexterm>
+			 <para>
+				古めの (OS X 以前の) Mac OS ネットワークでは AppleTalk と呼ばれる別のプロトコルが使われていました。Netatalk は AppleTalk プロトコルを使っているマシンを含む環境に対して AppleTalk プロトコルも提供しています (実際、Netatalk は AppleTalk プロトコルのクローンとして始められました)。これによりファイルサーバと印刷キューおよび時刻サーバ (時刻同期) 機能が確保されます。また、Netatalk のルータ機能により AppleTalk ネットワーク間の相互接続が可能になります。
+			</para>
+
+		</section>
+		 <section>
+			<title>他の Linux/Unix マシンとの統合</title>
+			 <para>
+				最後に、NFS と NIS によって Unix システムとのやり取りが可能になります。NFS はファイルサーバの機能を提供し、NIS はユーザディレクトリを作成します。多くの Unix システムで使われている BSD 印刷レイヤによって、印刷キューを共有することが可能です。
+			</para>
+			 <figure>
+				<title>Debian が OS X、Windows、Unix システムと共存する様子</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/existing-setup-1.png" format="PNG" width="25%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+
+	</section>
+	 <section id="sect.how-to-migrate">
+		<title>移行の方法</title>
+		 <indexterm>
+			<primary>移行</primary>
+		</indexterm>
+		 <para>
+			サービスの継続性を保証するために、それぞれのコンピュータの移行計画を立て、計画に従って移行作業を行わなければいけません。この原則はオペレーティングシステムの種類に依存しません。
+		</para>
+		 <section>
+			<title>サービスの調査と確認</title>
+			 <para>
+				見かけの簡単さに反して、サービスを調査し確認することは最も重要な手順です。真面目な管理者はそれぞれのサーバの主たる役割をよく理解していますが、その役割が変わる可能性もありますし、経験豊富なユーザが「奇妙な」サービスをインストールしていたかもしれません。そのようなサービスが存在するとわかれば、少なくともこのようなサービスを場当たり的に削除するのではなく、どのように扱うか決めることが可能です。
+			</para>
+			 <para>
+				Debian への移行作業を段階的に行うという目的で、サーバを移行する前にユーザに Debian プロジェクトを紹介しておくことが賢明です。ユーザが Debian プロジェクトと関わりを持つことができるようするには、移行前に最も一般的かつ Debian への移行後に使うようなフリーソフトウェアプログラムをユーザのデスクトップにインストールすることが役に立つかもしれません。たとえば Libre Office や Mozilla スイートはこのようなソフトウェアの良い例です。
+			</para>
+			 <section>
+				<title>ネットワークとプロセス</title>
+				 <indexterm>
+					<primary><command>nmap</command></primary>
+				</indexterm>
+				 <para>
+					<command>nmap</command> ツール (同名のパッケージに含まれます) を使うことで、あるネットワークに接続されたマシンにログインすることなしにそのマシンがホストするインターネットサービスを素早く特定できます。これを行うには、調査対象と同じネットワークに接続されている別のマシンで以下のコマンドを実行するだけです。
+				</para>
+				 
+<screen>
+<computeroutput>$ </computeroutput><userinput>nmap mirwiz</userinput>
+<computeroutput>Starting Nmap 6.47 ( http://nmap.org ) at 2015-03-24 19:34 JST
+Nmap scan report for mirwiz (192.168.1.104)
+Host is up (0.0037s latency).
+Not shown: 999 closed ports
+PORT   STATE SERVICE
+22/tcp open  ssh
+
+Nmap done: 1 IP address (1 host up) scanned in 0.13 seconds</computeroutput></screen>
+				 <sidebar> <title><emphasis>ALTERNATIVE</emphasis> 利用できるサービスのリストを表示するために <command>netstat</command> を使う</title>
+				 <para>
+					Linux マシン上で <command>netstat -tupan</command> コマンドを実行すると、アクティブ状態および保留状態の TCP セッションと実行中のプログラムがリッスンしている UDP ポートのリストが表示されます。これはネットワーク上で提供されているサービスの識別を容易にします。
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>GOING FURTHER</emphasis> IPv6</title>
+				 <para>
+					いくつかのネットワークコマンドは IPv4 (通常デフォルト) と IPv6 を扱うことが可能です。<command>nmap</command> と <command>netstat</command> はそのようなコマンドですが、たとえば <command>route</command> や <command>ip</command> のようなコマンドは IPv6 を扱えません。慣習的には <parameter>-6</parameter> コマンドラインオプションを使うことで IPv6 を扱うことができるようになります。
+				</para>
+				 </sidebar> <para>
+					サーバがユーザにシェルアカウントを提供する Unix マシンの場合、所有者不在のプロセスがバックグラウンドで実行されているかどうかを見つけ出すことは興味深いものです。<command>ps auxw</command> コマンドはユーザ名と一緒にすべてのプロセスのリストを表示します。この情報と、ログイン中のユーザのリストを表示する <command>who</command> コマンドの出力を比較することで、バックグラウンドで実行されている不正で無申告のサーバまたはプログラムを特定することが可能です。<filename>crontabs</filename> (ユーザが定期的に予定している自動実行の一覧表) にはしばしばサーバの果たす役割に関する興味深い情報が含まれています (<command>cron</command> の完全な説明は<xref linkend="sect.task-scheduling-cron-atd" />にあります)。
+				</para>
+				 <para>
+					どんな場合でも、サーバのバックアップを行うことは絶対に必要です。すなわち、バックアップをしておけば、移行したことで生じた特定の問題がユーザから報告され、問題が起きた後でも情報を回復することが可能です。
+				</para>
+
+			</section>
+
+		</section>
+		 <section>
+			<title>設定のバックアップ</title>
+			 <para>
+				更新後のサーバに同等の環境を作れるようにするため、それぞれのサービスに対する設定を保存しておくのは賢明です。設定ファイルのバックアップコピーを取ることは最低限必要です。
+			</para>
+			 <para>
+				Unix マシンでは、設定ファイルは通常 <filename>/etc/</filename> にありますが、場合によっては <filename>/usr/local/</filename> のサブディレクトリにあるかもしれません。これはプログラムをパッケージではなくソースコードを使ってインストールした場合です。また、設定ファイルが <filename>/opt/</filename> の下にある場合もあります。
+			</para>
+			 <para>
+				データ管理サービス (データベースなど) では、移行先のソフトウェアで簡単に読み込むことができる一般的なフォーマットでデータを書き出すことを強く推奨します。そのようなフォーマットは通例テキストデータであり、ソフトウェアの文書ではこのフォーマットについて説明されています。ここで一般的なフォーマットとは、たとえばデータベースの SQL ダンプや LDAP サーバの LDIF ファイルのことを指します。
+			</para>
+			 <figure>
+				<title>データベースのバックアップ</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/existing-setup-2.png" format="PNG" width="50%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				それぞれのサーバソフトウェアには違いがありますから、現存するすべての場合について詳しく述べることは不可能です。移行元と移行先のソフトウェアの文書を比較して、書き出し可能 (そして、再読み込み可能) な要素と手作業で書き出したり読み込んだりする必要があるかどうかを確認してください。本書を読めば主な Linux サーバプログラムの設定をしっかりと把握できるようになるでしょう。
+			</para>
+
+		</section>
+		 <section>
+			<title>既存の Debian サーバの引き継ぎ</title>
+			 <indexterm>
+				<primary>Debian マシンのリカバリ</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Debian マシンの探索</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Debian サーバの引き継ぎ</primary>
+			</indexterm>
+			 <para>
+				メンテナンスを効率的に引き継ぐために、既に Debian が稼働中のマシンを解析する必要があるかもしれません。
+			</para>
+			 <para>
+				Debian サーバで最初に確認するファイルは <filename>/etc/debian_version</filename> です。通常 <filename>/etc/debian_version</filename> にはインストールされた Debian システムのバージョン番号が書かれています (<filename>/etc/debian_version</filename> は <emphasis>base-files</emphasis> パッケージに含まれます)。バージョン番号が <literal><replaceable>codename</replaceable>/sid</literal> となっていた場合、Debian サーバのシステムが開発版ディストリビューション (テスト版か不安定版のどちらか) のパッケージを使って更新されたことを意味しています。
+			</para>
+			 <para>
+				<command>apt-show-versions</command> プログラム (同名の Debian パッケージに含まれます) はインストールされたパッケージのリストを確認して、利用できるバージョンを識別します。<command>apt-show-versions</command> に比べると体系的ではありませんが、<command>aptitude</command> を同様の目的で使うことも可能です。
+			</para>
+			 <para>
+				<filename>/etc/apt/sources.list</filename> ファイル (と <filename>/etc/apt/sources.list.d/</filename> ディレクトリ) をぱっと見ただけで、インストール済みの Debian パッケージの取得元がわかります。ここにたくさんの未知の取得元があった場合、管理者は Debian が提供するソフトウェアとの最適な互換性を確保するために、コンピュータシステムを完全に再インストールするかもしれません。
+			</para>
+			 <para>
+				多くの場合、この <filename>sources.list</filename> ファイルが良い手掛かりとなります。なぜなら大多数の管理者は、少なくともコメントの中で、過去に使っていた APT ソースのリストを残しているからです。しかし、過去に使っていたソースは削除されているかもしれないこと、インターネットから取得されたでたらめなパッケージが手作業で (<command>dpkg</command> コマンドを使って) インストールされているかもしれないこと、を忘れるべきではありません。この場合、マシンは「標準的な」Debian の外観に偽装されている恐れがあります。そのため、外部パッケージの存在を示す兆候を見逃さないようするべきです (通常では考えにくいディレクトリに <filename>deb</filename> ファイルがあったり、パッケージのバージョン番号のサフィックスに <literal>ubuntu</literal> や <literal>lmde</literal> などの特別なものが使われていたら、それは Debian プロジェクト以外で作られたことを意味しています)。
+			</para>
+			 <para>
+				同様に <filename>/usr/local/</filename> ディレクトリの内容を分析するのは興味深いです。このディレクトリは手作業でコンパイルおよびインストールされたプログラムを収めるための場所です。手作業でインストールされたソフトウェアをリストアップすることは有益です。なぜなら、そうすることで Debian にもそのソフトウェアに類似するパッケージがあるにも関わらずそれを使っていない理由に疑問を提起できるからです。
+			</para>
+			 <sidebar> <title><emphasis>QUICK LOOK</emphasis> <emphasis role="pkg">cruft</emphasis></title>
+			 <para>
+				<emphasis role="pkg">cruft</emphasis> パッケージはいかなるパッケージによっても所有されていないファイルのリストを提案します。正規のファイル (Debian パッケージが生成したファイル、<command>dpkg</command> で管理されていない生成された設定ファイルなど) が報告されるのを避けるためにいくつかのフィルタ (おおむね有効で、おおむね最新のフィルタ) を持っています。
+			</para>
+			 <para>
+				<command>cruft</command> がリストアップしたすべてのファイルを削除する場合には、用心のため事前に要否の確認を行った後、削除してください!
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Debian のインストール</title>
+			 <para>
+				現在のサーバに関するすべての必要な情報を集め終わったら、サーバを停止させ、Debian のインストールを始めることが可能です。
+			</para>
+			 <indexterm>
+				<primary>アーキテクチャ</primary>
+			</indexterm>
+			 <para>
+				適切なバージョンを選ぶには、コンピュータのアーキテクチャを知らなければいけません。まあまあ最近の PC ならば、アーキテクチャは十中八九 amd64 でしょう (古めの PC なら i386)。それ以外の場合、以前使っていたシステムから可能性を狭めることが可能です。
+			</para>
+			 <para>
+				<xref linkend="tab-corresp" xrefstyle="select: label nopage" /> はすべてを網羅することを意図したものではありませんが、参考になります。いかなる場合でも、コンピュータの原資料はこの種の情報を探すには最も信頼できるソースです。
+			</para>
+			 <table colsep="1" id="tab-corresp">
+				<title>オペレーティングシステムとアーキテクチャの照合</title>
+				 <tgroup cols="2">
+					<thead>
+						<row>
+							<entry>オペレーティングシステム</entry>
+							 <entry>アーキテクチャ</entry>
+
+						</row>
+
+					</thead>
+					 <tbody>
+						<row>
+							<entry>DEC Unix (OSF/1)</entry>
+							 <entry>alpha、mipsel</entry>
+
+						</row>
+						 <row>
+							<entry>HP Unix</entry>
+							 <entry>ia64、hppa</entry>
+
+						</row>
+						 <row>
+							<entry>IBM AIX</entry>
+							 <entry>powerpc</entry>
+
+						</row>
+						 <row>
+							<entry>Irix</entry>
+							 <entry>mips</entry>
+
+						</row>
+						 <row>
+							<entry>OS X</entry>
+							 <entry>amd64、powerpc、i386</entry>
+
+						</row>
+						 <row>
+							<entry>z/OS、MVS</entry>
+							 <entry>s390x、s390</entry>
+
+						</row>
+						 <row>
+							<entry>Solaris、SunOS</entry>
+							 <entry>sparc、i386、m68k</entry>
+
+						</row>
+						 <row>
+							<entry>Ultrix</entry>
+							 <entry>mips</entry>
+
+						</row>
+						 <row>
+							<entry>VMS</entry>
+							 <entry>alpha</entry>
+
+						</row>
+						 <row>
+							<entry>Windows 95/98/ME</entry>
+							 <entry>i386</entry>
+
+						</row>
+						 <row>
+							<entry>Windows NT/2000</entry>
+							 <entry>i386、alpha、ia64、mipsel</entry>
+
+						</row>
+						 <row>
+							<entry>Windows XP / Windows Server 2008</entry>
+							 <entry>i386、amd64、ia64</entry>
+
+						</row>
+						 <row>
+							<entry>Windows Vista / Windows 7 / Windows 8</entry>
+							 <entry>i386、amd64</entry>
+
+						</row>
+
+					</tbody>
+
+				</tgroup>
+
+			</table>
+			 <sidebar> <title><emphasis>HARDWARE</emphasis> 64 ビット PC 対 32 ビット PC</title>
+			 <indexterm>
+				<primary>amd64</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>i386</primary>
+			</indexterm>
+			 <para>
+				最新のコンピュータは、古めの 32 ビットプロセッサと互換性のある 64 ビット Intel もしくは AMD プロセッサを搭載しています。そしてこのために「i386」アーキテクチャ向けにコンパイルされたソフトウェアが動きます。一方で、この互換モードでは新しいプロセッサの性能を十分に引き出せません。このため、Debian は「amd64」アーキテクチャを提供しています。これは最近の AMD チップおよび AMD64 によく似た Intel「em64t」プロセッサ (ほとんどの Core シリーズを含みます) に有効です。
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>選ばれたサービスのインストールと設定</title>
+			 <para>
+				Debian のインストールが完了したら、コンピュータがホストするすべてのサービスについて 1 つずつインストールと設定を行わなければいけません。移行を円滑に進めるためにも、新しい設定は古い設定を考慮して行われなければいけません。最初の 2 ステップで集めたすべての情報が、この作業を成功のうちに完了させるのに役立つでしょう。
+			</para>
+			 <figure>
+				<title>選ばれたサービスのインストール</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/existing-setup-4.png" format="PNG" width="66%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				意気込んで行動を起こす前に、本書の残りの部分を読むことを強く推奨します。そうすることで、運用予定のサービスを設定する方法について、正確な理解を得ることができるでしょう。
+			</para>
+			 <para>
+			</para>
+
+		</section>
+
+	</section>
+</chapter>
+
