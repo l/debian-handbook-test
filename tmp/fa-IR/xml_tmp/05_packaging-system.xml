@@ -1,0 +1,1139 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="packaging-system">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-packaging-system.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>بسته باینری</keyword>
+      <keyword>بسته سورس</keyword>
+      <keyword>dpkg</keyword>
+      <keyword>وابستگی‌ها</keyword>
+      <keyword>تداخل</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>سیستم بسته‌بندی: اصول و ابزارهای بنیادین</title>
+  <highlights>
+    <para>به عنوان یک مدیر سیستم دبیان، شما به طور مداوم با بسته‌های <filename>.deb</filename> سروکار خواهید داشت، چراکه دارای کاربردهای گوناگونی هستند (برنامه‌ها، مستندات و ...) و شامل عملیات نصب و نگهداری می‌شوند. بنابراین ایده خوبی است که از چگونگی و نحوه کارکرد آن‌ها اطلاع داشته باشید.</para>
+  </highlights>
+
+  <para>این فصل به بررسی ساختار و محتوای بسته‌های “binary” و “source” می‌پردازد. اولی شامل فایل‌های <filename>.deb</filename> است که به صورت مستقیم توسط <command>dpkg</command> استفاده می‌شود و دومی شامل سورس کد و دستورالعمل‌هایی است که برای ساخت بسته‌های باینری لازم می‌باشند.</para>
+  <section id="sect.binary-package-structure">
+    <title>ساختار یک بسته باینری</title>
+    <indexterm><primary>بسته</primary><secondary>بسته باینری</secondary></indexterm>
+    <indexterm><primary><command>ar</command></primary></indexterm>
+
+    <para>The Debian package format is designed so that its content may be
+    extracted on any Unix system that has the classic commands
+    <command>ar</command>, <command>tar</command>, and
+    <command>xz</command> (sometimes
+    <command>gzip</command> or <command>bzip2</command>). This seemingly
+    trivial property is important for portability and disaster
+    recovery.</para>
+
+    <para>Imagine, for example, that you mistakenly deleted the
+    <command>dpkg</command> program, and that you could thus no longer
+    install Debian packages. <command>dpkg</command> being a Debian package
+    itself, it would seem your system would be done for... Fortunately, you
+    know the format of a package and can therefore download the
+    <filename>.deb</filename> file of the <emphasis role="pkg">dpkg</emphasis> package and install it manually (see sidebar
+    <xref linkend="sidebar.dpkg-apt-ar" />). If by some misfortune one or more of the programs
+    <command>ar</command>, <command>tar</command> or
+    <command>gzip</command>/<command>xz</command>/<command>bzip2</command>
+    have disappeared, you will only need to copy the missing program from
+    another system (since each of these operates in a completely
+    autonomous manner, without dependencies, a simple copy will
+    suffice).  If your system suffered some even more outrageous
+    fortune, and even these don't work (maybe the deepest system
+    libraries are missing?), you should try the static version of
+    <command>busybox</command> (provided in the <emphasis role="pkg">busybox-static</emphasis> package), which is even more
+    self-contained, and provides subcommands such as <command>busybox ar</command>,
+    <command>busybox tar</command> and <command>busybox
+    xz</command>.</para>
+
+    <sidebar id="sidebar.dpkg-apt-ar">
+      <title><emphasis>ابزار</emphasis> <command>dpkg</command>، <command>APT</command> و <command>ar</command></title>
+      <indexterm><primary><command>dpkg</command></primary></indexterm>
+      <indexterm><primary><command>ar</command></primary></indexterm>
+      <indexterm><primary>APT</primary></indexterm>
+
+      <para><command>dpkg</command> برنامه‌ای است که فایل‌های <filename>.deb</filename> را مدیریت می‌کند، عملیاتی مانند خارج‌سازی از حالت فشرده، تحلیل و بررسی آن‌ها.</para>
+
+      <para><command>APT</command> مجموعه‌ای از برنامه‌ها است که امکان تغییرات سطح بالاتری از سیستم را میسر می‌سازد. نصب یا حذف یک بسته (با رعایت وابستگی‌های آن)، بروزرسانی سیستم، فهرست‌سازی از بسته‌های موجود و ...</para>
+    
+      <indexterm><primary><command>ar</command></primary></indexterm>
+      <para>
+      As for the <command>ar</command> program, it allows handling files of
+      the same name: <command>ar t
+      <replaceable>archive</replaceable></command> displays the list of
+      files contained in such an archive, <command>ar x
+      <replaceable>archive</replaceable></command> extracts the files from
+      the archive into the current working directory, <command>ar d
+      <replaceable>archive</replaceable>
+      <replaceable>file</replaceable></command> deletes a file from the
+      archive, etc. Its man page
+      (<citerefentry><refentrytitle>ar</refentrytitle><manvolnum>1</manvolnum></citerefentry>)
+      documents all its other features. <command>ar</command> is a very
+      rudimentary tool that a Unix administrator would only use on rare
+      occasions, but admins routinely use <command>tar</command>, a more
+      evolved archive and file management program. This is why it is easy
+      to restore <command>dpkg</command> in the event of an erroneous
+      deletion. You would only have to download the Debian package and
+      extract the content from the <filename>data.tar.xz</filename> archive
+      in the system's root (<filename>/</filename>):</para>
+
+      <screen>
+<computeroutput># </computeroutput><userinput>ar x dpkg_1.18.24_amd64.deb</userinput>
+<computeroutput># </computeroutput><userinput>tar -C / -p -xJf data.tar.xz</userinput>
+</screen>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>بازگشت به مقدمات</emphasis> صفحه راهنما و توضیحات آن</title>
+
+      <para>ممکن است برای تازه‌کاران دسترسی به “<citerefentry><refentrytitle>ar</refentrytitle><manvolnum>1</manvolnum></citerefentry>” دشوار باشد. این در حقیقت شیوه‌ای برای دسترسی به قسمت ۱ صفحه راهنمای <literal>ar</literal> است.</para>
+
+      <para>گاهی اوقات این شیوه علامت‌گذاری برای رفع ابهام بکار می‌رود. برای نمونه، بین دستور <command>printf</command> که توسط <citerefentry><refentrytitle>printf</refentrytitle><manvolnum>1</manvolnum></citerefentry> مشخص می‌گردد و تابع <function>printf</function> که توسط <citerefentry><refentrytitle>printf</refentrytitle><manvolnum>3</manvolnum></citerefentry> مشخص می‌گردد و در زبان برنامه‌نویسی C موجود است، تفاوت وجود دارد.</para>
+
+      <para><xref linkend="solving-problems" /> درباره صفحات راهنمای با جزییات بیشتری بحث می‌کند (قسمت <xref linkend="sect.manual-pages" /> را مشاهده کنید).</para>
+    </sidebar>
+
+    <para>بیایید نگاهی به محتوای درون فایل <filename>.deb</filename> بیندازیم:</para>
+
+    <screen><computeroutput>$ </computeroutput><userinput>ar t dpkg_1.18.24_amd64.deb</userinput>
+<computeroutput>debian-binary
+control.tar.gz
+data.tar.xz
+$ </computeroutput><userinput>ar x dpkg_1.18.24_amd64.deb</userinput>
+<computeroutput>$ </computeroutput><userinput>ls</userinput>
+<computeroutput>control.tar.gz  data.tar.xz  debian-binary  dpkg_1.18.24_amd64.deb
+$ </computeroutput><userinput>tar tJf data.tar.xz | head -n 15</userinput>
+<computeroutput>./
+./etc/
+./etc/alternatives/
+./etc/alternatives/README
+./etc/cron.daily/
+./etc/cron.daily/dpkg
+./etc/dpkg/
+./etc/dpkg/dpkg.cfg
+./etc/dpkg/dpkg.cfg.d/
+./etc/logrotate.d/
+./etc/logrotate.d/dpkg
+./sbin/
+./sbin/start-stop-daemon
+./usr/
+./usr/bin/
+$ </computeroutput><userinput>tar tzf control.tar.gz</userinput>
+<computeroutput>./
+./conffiles
+./postinst
+./md5sums
+./prerm
+./control
+./postrm
+$ </computeroutput><userinput>cat debian-binary</userinput>
+<computeroutput>2.0</computeroutput>
+</screen>
+
+    <para>همانطور که مشاهده می‌کنید، آرشیو <command>ar</command> یک بسته دبیان از سه فایل تشکیل شده است:</para>
+    <itemizedlist>
+      <listitem>
+	<para><filename>debian-binary</filename>. This is a text file which
+	simply indicates the version of the <filename>.deb</filename> file
+	used (in 2017: version 2.0).</para>
+      </listitem>
+      <listitem>
+	<para><filename>control.tar.gz</filename>. این فایل آرشیو شامل تمام اطلاعات جانبی مربوط به بسته است، مانند نام و نسخه آن. برخی از این اطلاعات به ابزار مدیریت بسته امکان تشخیص قابل نصب یا حذف بودن بسته را می‌دهد، برای نمونه بر اساس فهرست بسته‌های موجود در سیستم.</para>
+      </listitem>
+      <listitem>
+	<para><filename>data.tar.xz</filename>. This archive contains all
+	of the files to be extracted from the package; this is where the
+	executable files, documentation, etc., are all stored. Some
+	packages may use other compression formats, in which case the file
+	will be named differently (<filename>data.tar.bz2</filename> for
+	bzip2, <filename>data.tar.gz</filename> for gzip).</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+
+  <section id="sect.package-meta-information">
+    <title>اطلاعات-جانبی بسته</title>
+    <indexterm><primary>اطلاعات-جانبی بسته</primary></indexterm>
+    <indexterm><primary>بسته</primary><secondary>اطلاعات-جانبی</secondary></indexterm>
+
+    <para>یک بسته دبیان تنها شامل فایل‌های مورد نیاز برای نصب روی سیستم نمی‌باشد، بلکه جزئی از یک کل به حساب می‌آید و ارتباط بین خود و سایر بسته‌های موجود در دبیان را توضیح می‌دهد (وابستگی‌ها، تداخل‌ها، پیشنهادها). همچنین شامل اسکریپت‌هایی است که در مراحل گوناگون چرخه‌حیات یک بسته اجرا می‌شوند (نصب، حذف، بروزرسانی). این داده‌ها توسط ابزار مدیریت بسته استفاده می‌شوند اما جزئی از نرم‌افزار موجود در بسته نیستند؛ آن‌ها، درون بسته هستند، به همین دلیل است که نام “اطلاعات-جانبی” به آن‌ها داده شده است (اطلاعاتی درباره سایر اطلاعات).</para>
+
+    <section id="sect.control">
+      <title>توضیح: فایل <filename>control</filename></title>
+      <indexterm><primary>اطلاعات-جانبی بسته</primary></indexterm>
+      <indexterm><primary>بسته</primary><secondary>اطلاعات-جانبی</secondary></indexterm>
+      <indexterm><primary><filename>control</filename></primary></indexterm>
+
+      <para>این فایل ساختار شبیه به سرآیند ایمیل دارد (استاندارد RFC2822). برای نمونه، فایل <filename>control</filename> برنامه <emphasis role="pkg">apt</emphasis> شبیه زیر است:</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>apt-cache show apt</userinput>
+<computeroutput>Package: apt
+Version: 1.4.8
+Installed-Size: 3539
+Maintainer: APT Development Team &lt;deity@lists.debian.org&gt;
+Architecture: amd64
+Replaces: apt-utils (&lt;&lt; 1.3~exp2~)
+Depends: adduser, gpgv | gpgv2 | gpgv1, debian-archive-keyring, init-system-helpers (&gt;= 1.18~), libapt-pkg5.0 (&gt;= 1.3~rc2), libc6 (&gt;= 2.15), libgcc1 (&gt;= 1:3.0), libstdc++6 (&gt;= 5.2)
+Recommends: gnupg | gnupg2 | gnupg1
+Suggests: apt-doc, aptitude | synaptic | wajig, dpkg-dev (&gt;= 1.17.2), powermgmt-base, python-apt
+Breaks: apt-utils (&lt;&lt; 1.3~exp2~)
+Description-en: commandline package manager
+ This package provides commandline tools for searching and
+ managing as well as querying information about packages
+ as a low-level access to all features of the libapt-pkg library.
+ .
+ These include:
+  * apt-get for retrieval of packages and information about them
+    from authenticated sources and for installation, upgrade and
+    removal of packages together with their dependencies
+  * apt-cache for querying available information about installed
+    as well as installable packages
+  * apt-cdrom to use removable media as a source for packages
+  * apt-config as an interface to the configuration settings
+  * apt-key as an interface to manage authentication keys
+Description-md5: 9fb97a88cb7383934ef963352b53b4a7
+Tag: admin::package-management, devel::lang:ruby, hardware::storage,
+ hardware::storage:cd, implemented-in::c++, implemented-in::perl,
+ implemented-in::ruby, interface::commandline, network::client,
+ protocol::ftp, protocol::http, protocol::ipv6, role::program,
+ scope::application, scope::utility, sound::player, suite::debian,
+ use::downloading, use::organizing, use::searching, works-with::audio,
+ works-with::software:package, works-with::text
+Section: admin
+Priority: important
+Filename: pool/main/a/apt/apt_1.4.8_amd64.deb
+Size: 1231676
+MD5sum: 4963240f23156b2dda3affc9c0d416a3
+SHA256: bc319a3abaf98d76e7e13ac97ab0ee7c238a48e2d4ab85524be8b10cfd23d50d</computeroutput>
+</screen>
+
+      <sidebar>
+        <title><emphasis>بازگشت به مقدمات</emphasis> استانداردهای اینترنت - RFC</title>
+        <indexterm><primary>RFC</primary></indexterm>
+        <indexterm><primary>Request For Comments</primary></indexterm>
+
+	<para>RFC مخفف عبارت “Request For Comments” است. RFC به سند فنی اطلاق می‌شود که قرار است به صورت یک استاندارد در اینترنت پیاده‌سازی شود. قبل از اینکه به صورت استاندارد درآید، این فایل‌ها برای مرور عمومی (همانطور که از نامیش پیداست) منتشر می‌شوند. IETF (کارگروه مهندسی اینترنت) تصمیمات مرتبط با توسعه این اسناد را به عهده دارد (استاندارد پیشنهادی، استاندارد پیشنویس، استاندارد نهایی).</para>
+
+	<para>RFC 2026 فرآیند استانداردسازی پروتکل‌های اینترنتی را تعریف می‌کند. <ulink type="block" url="http://www.faqs.org/rfcs/rfc2026.html" /></para>
+      </sidebar>
+      <section>
+        <title>وابستگی‌ها: فیلد <literal>Depends</literal></title>
+        <indexterm><primary>وابستگی</primary></indexterm>
+        <indexterm><primary><literal>Depends</literal>, header field</primary></indexterm>
+        <indexterm><primary>بسته</primary><secondary>وابستگی</secondary></indexterm>
+
+	<para>وابستگی‌ها در فیلد <literal>Depends</literal> موجود در سرآیند بسته تعریف می‌شوند. این فیلد فهرستی از شرایط برای کارکرد صحیح بسته را ارایه می‌دهد - این اطلاعات توسط ابزارهایی مانند <command>apt</command> برای نصب کتابخانه‌های مورد نیاز بکار گرفته می‌شوند و از نسخه‌های مناسب هر برنامه جهت نصب بسته مورد نیاز استفاده می‌کنند. برای هر وابستگی، امکان محدود کردن طیف نسخه‌ها وجود دارد. به عبارت دیگر، این امکان وجود دارد که بخواهیم بسته <emphasis role="pkg">libc6</emphasis> را با نسخه بزرگتر از “2.15” نصب کنیم (<command>libc6 (&gt;= 2.15)</command>). عملگرهای مقایسه‌ای نسخه عبارتند از:</para>
+        <itemizedlist>
+          <listitem>
+	    <para><command>&lt;&lt;</command>: کوچکتر از;</para>
+          </listitem>
+          <listitem>
+	    <para><command>&lt;=</command>: کوچکتر یا مساوی;</para>
+          </listitem>
+          <listitem>
+	    <para><command>=</command>: مساوی;</para>
+          </listitem>
+          <listitem>
+	    <para><command>&gt;=</command>: بزرگتر یا مساوی;</para>
+          </listitem>
+          <listitem>
+	    <para><command>&gt;&gt;</command>: بزرگتر از.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>In a list of conditions to be met, the comma serves as a
+	separator. It must be interpreted as a logical “and”.
+	In conditions, the vertical bar (“|”) expresses a logical “or”
+	(it is an inclusive “or”, not an exclusive
+	“either/or”). Carrying greater priority than “and”, it can
+	be used as many times as necessary. Thus, the dependency “(A or
+	B) and C” is written <command>A | B, C</command>. In contrast,
+	the expression “A or (B and C)” should be written as “(A or
+	B) and (A or C)”, since the <literal>Depends</literal> field does
+	not tolerate parentheses that change the order of priorities
+	between the logical operators “or” and “and”. It would thus
+	be written <command>A | B, A | C</command>. <ulink type="block" url="https://www.debian.org/doc/debian-policy/#document-ch-relationships" /></para>
+
+        <indexterm><primary>meta-package</primary></indexterm>
+	<para>سیستم وابستگی‌ها مکانیزم خوبی برای تضمین عملکرد یک برنامه است اما کاربرد دیگری با “meta-packages” نیز دارد. این‌ها بسته‌های خالی هستند که تنها به توضیح وابستگی‌ها می‌پردازند. آن‌ها فرآیند نصب گروهی از برنامه‌ها که توسط نگهدارنده‌شان انتخاب شده است، تسهیل می‌بخشند؛ به همین دلیل، <command>apt install <replaceable>meta-package</replaceable></command> به صورت خودکار تمام برنامه‌های مورد نیاز meta-package را نصب می‌کند. <emphasis role="pkg">gnome</emphasis>، <emphasis role="pkg">kde-full</emphasis> و <emphasis role="pkg">linux-image-amd64</emphasis> نمونه‌هایی از meta-packages هستند.</para>
+
+        <sidebar>
+          <title><emphasis>خط‌مشی دبیان</emphasis> <literal>Pre-Depends</literal>، نوعی دیگر از <literal>Depends</literal></title>
+          <indexterm><primary><literal>Pre-Depends</literal>, header field</primary></indexterm>
+          <indexterm><primary>پیش-وابستگی</primary></indexterm>
+
+	  <para>“Pre-dependencies”، که در فیلد “<literal>Pre-Depends</literal>” واقع در سرآیند بسته فهرست شده‌اند، وابستگی‌های عادی را کامل می‌کنند؛ نحو آن‌ها یکسان است. یک وابستگی عادی بیان می‌کند که بسته مورد نیاز باید قبل از بسته درخواست‌کننده وابستگی، پیکربندی شود. یک پیش-وابستگی بیان می‌کند که بسته مورد نیاز باید قبل از اجرای اسکریپت pre-installation بسته درخواست‌کننده وابستگی، پیکربندی شود که این مرحله درست قبل از نصب بسته صورت می‌گیرد.</para>
+
+	  <para>یک پیش-وابستگی بسیار مورد نیاز <command>apt</command> واقع می‌شود، چراکه به صورت ضمنی ترتیب اجرای بسته‌های مورد نیاز را تعیین می‌کند. به همین منظور، از پیش-وابستگی‌ها استفاده نمی‌شود مگر در شرایط ضروری. همچنین توصیه می‌شود که سایر توسعه‌دهندگان <email>debian-devel@lists.debian.org</email> را قبل از ایجاد یک پیش-وابستگی در جریان بگذارید. همچنین امکان انتخاب گزینه‌های دیگر نیز وجود دارد.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>خط‌مشی دبیان</emphasis> فیلدهای <literal>Recommends</literal>، <literal>Suggests</literal> و <literal>Enhances</literal></title>
+          <indexterm><primary><literal>Recommends</literal>, header field</primary></indexterm>
+          <indexterm><primary><literal>Suggests</literal>, header field</primary></indexterm>
+
+	  <para>فیلدهای <literal>Recommends</literal> و <literal>Suggests</literal> بسته‌های مکمل را توضیح می‌دهند. فیلد “recommended”، که مهم‌ترین آن‌ها است، عملکرد کلی بسته را افزایش می‌دهد اما تاثیری رو عملیات موجود روی آن ندارد. فیلد “suggested”، که در درجه دوم اهمیت قرار دارد، بیان می‌کند برخی بسته‌ها می‌توانند عملکرد یکدیگر را بهبود ببخشند، اما بهتر آن است که تنها یکی از آن‌ها نصب گردد.</para>
+
+	  <para>شما همیشه باید بسته‌های “recommended” را نصب کنید، مگر اینکه بدانید چرا به آن‌ها نیاز نخواهید داشت. بر عکس همین قضیه، ضرورتی ندارد که بسته‌های “suggested” را نصب کنید مگر اینکه بدانید چرا به آن‌ها نیاز خواهید داشت.</para>
+
+          <indexterm><primary><literal>Enhances</literal>, header field</primary></indexterm>
+
+	  <para>فیلد <literal>Enhances</literal> نیز به پیشنهاد بسته‌ها می‌پردازد اما در یک حوزه متفاوت. در واقع درون بسته‌های پیشنهادی قرار دارد و نه بسته‌ای که از آن بهره می‌برد. نکته جالب اینجاست که امکان اضافه‌کردن یک بسته پیشنهادی بدون تغییر روی بسته اصلی وجود دارد. بنابراین، تمام add-ons، plug-ins و extension یک برنامه می‌توانند در این فهرست قرار گیرند. با اینکه سالیان طولانی از وجود این فیلد می‌گذرد، اما برنامه‌های <command>apt</command> و <command>synaptic</command> از آن استفاده می‌کنند. هدف از آن پیشنهاد قابلیت‌های جداگانه نسبت به فیلد <literal>Suggests</literal> است که کاربر می‌تواند از بین آن‌ها انتخاب کند.</para>
+        </sidebar>
+      </section>
+      <section>
+        <title>تداخل‌ها: فیلد <literal>Conflicts</literal></title>
+        <indexterm><primary>conflicts</primary></indexterm>
+        <indexterm><primary><literal>Conflicts</literal>, header field</primary></indexterm>
+        <indexterm><primary>package</primary><secondary>conflict</secondary></indexterm>
+
+	<para>فیلد <literal>Conflicts</literal> بسته‌(ها) را مشخص می‌کند که در کنار برنامه اصلی نمی‌توانند نصب گردند. معقول‌ترین حالت برای بسته‌هایی است که نام یکسانی دارند، یا فراهم‌کردن خدمات یکسان روی پورت یکسانی از TCP یا بسته‌هایی که در عملکرد یکدیگر تداخل ایجاد می‌کنند.</para>
+
+	<para><command>dpkg</command> در صورتی که بسته مورد نظر با بسته دیگری تداخل داشته باشد، اقدام به نصب آن نمی‌کند بجز حالتی که بسته جدید جایگزین نسخه قبلی آن شود که در این صورت <command>dpkg</command> بسته قدیمی را با جدید جایگزین خواهد کرد. <command>apt</command> همیشه از دستورالعمل‌های شما پیروی می‌کند: اگر انتخاب کنید که بسته جدیدی نصب گردد، به صورت خودکار پیشنهاد حذف بسته‌های دردسرساز را به شما می‌دهد.</para>
+      </section>
+      <section>
+        <title>ناسازگاری‌ها: فیلد <literal>Breaks</literal></title>
+        <indexterm><primary>ناسازگاری‌ها</primary></indexterm>
+        <indexterm><primary><literal>Breaks</literal>, header field</primary></indexterm>
+        <indexterm><primary>package</primary><secondary>incompatibility</secondary></indexterm>
+
+	<para>فیلد <literal>Breaks</literal> تاثیر مشابه مانند فیلد <literal>Conflicts</literal> دارد، اما به طور متفاوتی. نشان می‌دهد که نصب یک بسته، بسته دیگری را “break” می‌کند (یا نسخه مشخصی از آن را). به طور کلی، این عدم سازگاری بین دو بسته، موقتی است و رابطه <literal>Breaks</literal> به صورت خاص اشاره به نسخه‌های ناسازگار از آن‌ها دارد.</para>
+
+	<para><command>dpkg</command> از نصب برنامه‌ای که با سایر بسته‌ها ناسازگاری داشته و موجب خرابی آن‌ها می‌شود، جلوگیری کرده و <command>apt</command> با بروزرسانی بسته خراب به نسخه جدیدتر (که این ناسازگاری را رفع کرده است) تلاش برای حل این مساله می‌کند.</para>
+
+	<para>این گونه شرایط ممکن است در حالتی رخ دهد که بروزرسانی بدون توجه به سازگاری با نسخه‌های قدیمی‌تر اجرا شده باشد: مانند حالتی که نسخه جدید با نسخه قدیم دیگر سازگاری نداشته باشد و باعث خرابی در برنامه دیگری شود بدون آنکه هیچ اطلاعی راجع به آن کسب کند. فیلد <literal>Breaks</literal> کاربر را در ورود به چنین شرایطی آگاه می‌سازد.</para>
+      </section>
+      <section>
+        <title>گزینه‌های فراهم‌شده: فیلد <literal>Provides</literal></title>
+        <indexterm><primary><literal>Provides</literal>, header field</primary></indexterm>
+
+	<para>این فیلد، مفهوم بسیار جالب “بسته مجازی” را معرفی می‌کند. این بسته‌ها نقش‌های متفاوتی ایفا می‌کنند، اما دو نقش آن از اهمیت خاصی برخوردار هستند. نقش اول شامل کاربرد یک بسته مجازی برای انطباق با یک سرویس عمومی است (بسته، سرویس را “فراهم” می‌کند). نقش دوم نشان می‌دهد که یک بسته جایگزین دیگری می‌شود، و با تمام وابستگی‌های بسته قدیم سازگار خواهد بود. بنابراین این امکان وجود دارد که بدون بکاربردن نام  واقعی یک بسته، جایگزینی برای آن تعریف کرد.</para>
+
+        <sidebar>
+          <title><emphasis>واژگان</emphasis> تفاوت بین بسته‌های meta و virtual</title>
+          <indexterm><primary>meta-package</primary></indexterm>
+          <indexterm><primary>package</primary><secondary>virtual package</secondary></indexterm>
+          <indexterm><primary>بسته مجازی</primary></indexterm>
+
+	  <para>ضروری است که بین دو بسته meta و virtual تفاوت قائل شویم. اولی شامل بسته‌ای واقعی (به همراه فایل‌های <filename>.deb</filename>) است که هدفش بیان وابستگی‌های مربوط به آن بسته است.</para>
+
+	  <para>از طرف دیگر، بسته‌های مجازی به صورت فیزیکی وجود ندارند؛ بلکه روشی هستند برای شناسایی بسته‌های حقیقی بر اساس یک سری شرایط خاص و منطقی (سرویس فراهم‌آورده، سازگاری با یک برنامه استاندارد یا یک بسته از پیش موجود).</para>
+        </sidebar>
+        <section>
+          <title>فراهم‌آوردن یک “سرویس”</title>
+
+	  <para>بیاید در مورد اول با جزئیات بیشتری به همراه یک مثال بحث کنیم: گفته می‌شود که تمام سرورهای ایمیل مانند <emphasis role="pkg">postfix</emphasis> یا <emphasis role="pkg">sendmail</emphasis> بسته مجازی <emphasis role="pkg">mail-transport-agent</emphasis> را “فراهم می‌آورد”. بنابراین، هر بسته‌ای که به این سرویس نیاز داشته باشد (مانند میلینگ‌لیست <emphasis role="pkg">smartlist</emphasis> یا <emphasis role="pkg">sympa</emphasis>) به سادگی وابستگی‌های خود را در قالب بسته مجازی <emphasis role="pkg">mail-transport-agent</emphasis> بیان می‌کند تا اینکه بخواهد به فهرست بلندبالا و ناسازگاری از راهکارهای موجود اشاره کند (مانند <command>postfix | sendmail | exim4 | …</command>). علاوه بر این، نصب دو سرور ایمیل روی یک ماشین کار بیهوده‌ای است که به همین دلیل هر کدام از این بسته‌ها، ناسازگاری خود را با بسته مجازی <emphasis role="pkg">mail-transport-agent</emphasis> نشان می‌دهد. مغایرت یک بسته با خودش از طرف سیستم نادیده گرفته می‌شود، اما این تکنیک از نصب دو سرور ایمیل در کنار یکدیگر جلوگیری بعمل می‌آورد.</para>
+
+          <sidebar>
+            <title><emphasis>خط‌مشی دبیان</emphasis> فهرستی از بسته‌های مجازی</title>
+            <indexterm><primary>package</primary><secondary>virtual package</secondary></indexterm>
+
+	    <para>برای آنکه بسته‌های مجازی کاربردی شوند، همه باید روی نامشان توافق داشته باشند. به همین دلیل است که برای نامگذاری آن‌ها در خط‌مشی دبیان استانداردی وجود دارد. این فهرست شامل <emphasis role="pkg">mail-transport-agent</emphasis> برای سرورهای ایمیل، <emphasis role="pkg">c-compiler</emphasis> برای کامپایلرهای زبان برنامه‌نویسی C، <emphasis role="pkg">www-browser</emphasis> برای مرورگرهای وب، <emphasis role="pkg">httpd</emphasis> برای سرورهای وب، <emphasis role="pkg">ftp-server</emphasis> برای سرورهای FTP، <emphasis role="pkg">x-terminal-emulator</emphasis> برای شبیه‌سازی ترمینال در محیط گرافیکی (<command>xterm</command>) و <emphasis role="pkg">x-window-manager</emphasis> برای مدیر پنجره‌ها.</para>
+
+	    <para>فهرست کامل این بسته‌ها روی وب یافت می‌شود. <ulink type="block" url="http://www.debian.org/doc/packaging-manuals/virtual-package-names-list.txt" /></para>
+          </sidebar>
+        </section>
+        <section>
+          <title>قابلیت تعویض با بسته‌ای دیگر</title>
+
+	  <para>The <literal>Provides</literal> field is also interesting
+	  when the content of a package is included in a larger package.
+	  For example, the <emphasis role="pkg">libdigest-md5-perl</emphasis> Perl module was an
+	  optional module in Perl 5.6, and has been integrated as standard
+	  in Perl 5.8 (and later versions, such as 5.24 present in
+	  <emphasis role="distribution">Stretch</emphasis>). As such, the
+	  package <emphasis role="pkg">perl</emphasis> has since version
+	  5.8 declared <literal>Provides: libdigest-md5-perl</literal> so
+	  that the dependencies on this package are met if the user has
+	  Perl 5.8 (or newer). The <emphasis role="pkg">libdigest-md5-perl</emphasis> package itself has
+	  eventually been deleted, since it no longer had any purpose when
+	  old Perl versions were removed.</para>
+
+          <figure>
+            <title>کاربرد فیلد <literal>Provides</literal> بصورتی که وابستگی‌های را خراب نکند</title>
+            <mediaobject>
+              <imageobject>
+                <imagedata fileref="images/virtual-package.png" width="50%" />
+              </imageobject>
+            </mediaobject>
+          </figure>
+
+	  <para>این ویژگی بسیار کاربردی است، چراکه امکان پیشبینی توسعه خیالی وجود نخواهد داشت و توانایی نحوه نامگزاری ضروری است و سایر جایگزین‌های خودکار از نرم‌افزارهای منسوخ.</para>
+
+          <sidebar>
+            <title><emphasis>بازگشت به مقدمات</emphasis> زبان برنامه‌نویسی Perl</title>
+            <indexterm><primary>Perl</primary></indexterm>
+            <indexterm><primary>CPAN</primary></indexterm>
+
+	    <para>Perl (Practical Extraction and Report Language) یک زبان برنامه‌نویسی بسیار محبوب است که شامل بسیاری ماژول‌های آماده بکار جهت طیف گسترده‌ای از برنامه‌ها است که از طریق سرورهای CPAN (Comprehensive Perl Archive Network) توزیع می‌گردند، یک شبکه جامع از بسته‌های Perl. <ulink type="block" url="http://www.perl.org/" /> <ulink type="block" url="http://www.cpan.org/" /></para>
+
+	    <para>از آنجایی که یک زبان تفسیری بحساب می‌آید، برنامه‌ای که به زبان Perl نوشته می‌شود قبل از اجرا نیازی به کامپایل شدن ندارد. به همین دلیل به برنامه‌های آن “Perl Scripts” گفته می‌شود.</para>
+          </sidebar>
+        </section>
+        <section>
+          <title>محدودیت‌های سابق</title>
+
+	  <para>بسته‌های مجازی سابق بر این از برخی محدودیت‌ها رنج می‌بردند، که مهم‌ترین آن‌ها نبود شماره نسخه بود. در بازگشت به مثال فوق، یک وابستگی مانند <literal>Depends: libdigest-md5-perl (&gt;= 1.6)</literal> برخلاف وجود Perl 5.10، توسط سیستم بسته‌بندی هیچگاه درنظر گرفته نمی‌شود - با اینکه اینطور بنظر می‌رسد. سیستم بسته‌بندی، بدون آگاهی از این موضوع، آخرین گزینه موجود را بررسی می‌کند که منجر به عدم تطابق نسخه‌ها می‌گردد.</para>
+
+          <para>This limitation has been lifted in <emphasis role="pkg">dpkg</emphasis> 1.17.11, and is no longer
+          relevant in Stretch. Packages can assign a version
+          to the virtual packages they provide with a
+          dependency such as <literal>Provides: libdigest-md5-perl (=
+          1.8)</literal>.
+          </para>
+        </section>
+      </section>
+
+      <section>
+        <title>فایل‌های جایگزین شده: فیلد <literal>Replaces</literal></title>
+        <indexterm><primary>جایگزینی</primary></indexterm>
+        <indexterm><primary><literal>Replaces</literal>, header field</primary></indexterm>
+        <indexterm><primary>package</primary><secondary>replacement</secondary></indexterm>
+
+	<para>فیلد <literal>Replaces</literal> بیان می‌کند بسته شامل فایل‌هایی است که در سایر بسته‌ها وجود دارد، اما بسته بصورت قانونی اقدام به جایگزینی آن‌ها می‌کند. بدون این مشخصات، <command>dpkg</command> در عملیات خود با شسکت روبه‌رو می‌شود با بیان اینکه نمی‌تواند روی سایر فایل‌های بسته‌های دیگر بنویسد (به لحاظ فنی، امکان اجرای آن با استفاده از گزینه <literal>--force-overwrite</literal> وجود دارد، اما عملیات استانداردی بحساب نمی‌آید). این امر، امکان شناسایی مشکلات باالقوه را می‌دهد و نگهدارنده بسته را ملزم می‌سازد که قبل از اضافه کردن چنین فیلدی، به نتایج آن پی ببرد.</para>
+
+	<para>استفاده از این فیلد در صورت تغییر نام بسته یا بکاررفتن آن در بسته دیگری، توجیه پذیر است. همچنین در شرایطی که نگهدارنده بسته تصمیم می‌گیرد فایل‌های جداگانه‌ای در کنار بسته‌های باینری تولید شده از بسته سورس قرار دهد: یک فایل جایگزین شده دیگر متعلق به بسته قدیم نیست، بلکه تنها به بسته جدید تعلق دارد.</para>
+
+	<para>اگر تمام فایل‌های یک بسته موجود تغییر کنند، بسته در شرایط حذف قرار می‌گیرد. در نهایت، این فیلد به <command>dpkg</command> کمک می‌کند در شرایط بروز تداخل با سایر بسته‌ها، آن را حذف کند.</para>
+
+        <sidebar id="sidebar.debtags">
+          <title><emphasis>مطالعه بیشتر</emphasis> فیلد <literal>Tag</literal></title>
+
+	  <para>In the <emphasis role="pkg">apt</emphasis> example above,
+	  we can see the presence of a field that we have not yet
+	  described, the <literal>Tag</literal> field. This field does not
+	  describe a relationship between packages, but is simply a way of
+	  categorizing a package in a thematic taxonomy. This
+	  classification of packages according to several criteria (type of
+	  interface, programming language, domain of application, etc.) has
+	  been available for a long time. Despite this, not all packages have
+	  accurate tags and it is not yet
+	  integrated in all Debian tools; <command>aptitude</command>
+	  displays these tags, and allows them to be used as search
+	  criteria. For those who are repelled by
+	  <command>aptitude</command>'s search criteria, the following website
+	  allows navigation of the tag database:
+	  <ulink type="block" url="https://wiki.debian.org/Debtags" />
+	  </para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.configuration-scripts">
+      <title>اسکریپت‌های پیکربندی</title>
+      <indexterm><primary><filename>postinst</filename></primary></indexterm>
+      <indexterm><primary><filename>preinst</filename></primary></indexterm>
+      <indexterm><primary><filename>postrm</filename></primary></indexterm>
+      <indexterm><primary><filename>prerm</filename></primary></indexterm>
+      <indexterm><primary><filename>control.tar.gz</filename></primary></indexterm>
+
+      <para>به جز فایل <filename>control</filename>، فایل <filename>control.tar.gz</filename> برای هر بسته دبیان ممکن است شامل تعدادی اسکریپت باشد که توسط <command>dpkg</command> در مراحل مختلف از پردازش یک بسته فراخوانی می‌گردند. خط‌مشی دبیان به تشریح گزینه‌های محتمل پرداخته است، اینکه در هر اسکریپت برای چه مرحله و با چه پارامترهایی فراخوانی گردد. این توالی اسکریپت‌ها ممکن است پیچیدگی خود را داشته باشد به صورتی که در هر مرحله از فرآیند نصب یا حذف اگر مشکلی بوجود آید، <command>dpkg</command> به صورت خودکار به آخرین حالت صحیح از آن فرآیند باز خواهد گشت (تا جایی که ممکن باشد).</para>
+
+      <sidebar>
+        <title><emphasis>مطالعه بیشتر</emphasis> پایگاه‌داده <command>dpkg</command></title>
+        <indexterm><primary><filename>/var/lib/dpkg/</filename></primary></indexterm>
+	<indexterm><primary>dpkg</primary><secondary>پایگاه‌داده</secondary></indexterm>
+
+	<para>تمام اسکریپت‌های پیکربندی برای بسته‌های نصب شده در دایرکتوری <filename>/var/lib/dpkg/info/</filename> قرار می‌گیرند، به شکل فایلی که با نام بسته‌اش پیشوند شده باشد. این دایرکتوری همچنین شامل فایلی با فرمت <filename>.list</filename> است که فهرستی از فایل‌های مرتبط با هر بسته را نمایش می‌دهد.</para>
+
+	<para>فایل <filename>/var/lib/dpkg/status</filename> شامل مجموعه‌ای از بلوک‌های داده است (در قالب استاندارد معروف ایمیل، RFC 2822) که وضعیت هر بسته را گزارش می‌دهد. اطلاعات مربوط به فایل <filename>control</filename> هر بسته در زمان نصب به این فایل منتقل می‌شود.</para>
+      </sidebar>
+
+      <para>در حالت کالی، اسکریپت <filename>preinst</filename> قبل از نصب یک بسته اجرا می‌شود، در حالتی که <filename>postinst</filename> پس از آن اجرا می‌گردد. به همین شکل، اسکریپت <filename>prerm</filename> قبل از حذف یک بسته و <filename>postrm</filename> پس از حذف آن اجرا می‌گردد. بروزرسانی یک بسته معادل با حذف بسته سابق و نصب بسته جدید است. ذکر تمام حالت‌های ممکن در اینجا امکانپذیر نیست اما به بررسی دو مورد متداول می‌پردازیم: نصب/بروزرسانی و حذف.</para>
+
+      <sidebar>
+        <title><emphasis>احتیاط</emphasis> نام‌های نمادین اسکریپت‌ها</title>
+
+	<para>ترتیبی که در این قسمت به بررسی آن می‌پردازیم اسکریپت‌ها را بر اساس نام خاصی فراخوانی می‌کند، مانند <command>old-prerm</command> یا <command>new-postinst</command>. این‌ها معادل با اسکریپت <command>prerm</command> موجود در بسته قدیم (نصب شده قبل از بروزرسانی) و اسکریپت <command>postinst</command> موجود در بسته جدید (نصب شده توسط بروزرسانی) هستند.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>نکته</emphasis> نمودار حالت</title>
+
+	<para>Manoj Srivastava made these diagrams explaining how the
+	configuration scripts are called by <command>dpkg</command>.
+	Similar diagrams have also been developed by the Debian Women
+	project; they are a bit simpler to understand, but less complete.
+	<ulink type="block" url="https://people.debian.org/~srivasta/MaintainerScripts.html" />
+	<ulink type="block" url="https://www.debian.org/doc/debian-policy/#maintainer-script-flowcharts" /></para>
+      </sidebar>
+      <section>
+        <title>نصب و بروزرسانی</title>
+        <indexterm><primary><command>dpkg</command></primary><secondary>عملیات داخلی</secondary></indexterm>
+
+	<para>این اتفاقی است که در حین نصب (یا بروزرسانی) می‌افتد:</para>
+        <orderedlist>
+          <listitem>
+	    <para>برای بروزرسانی، <command>dpkg</command> به فراخوانی <command>old-prerm upgrade <replaceable>new-version</replaceable></command> می‌پردازد.</para>
+          </listitem>
+          <listitem>
+	    <para>هنوز برای بروزرسانی، <command>dpkg</command> به فراخوانی <command>new-preinst upgrade <replaceable>old-version</replaceable></command> می‌پردازد؛ برای اولین مرتبه نصب، <command>new-preinst install</command> را اجرا می‌کند. ممکن است نسخه قدیم را در آخرین پارامتر قرار دهد، اگر بسته نصب  یا به تازگی حذف شده باشد (اما purge نشده باشد، که در این حالت فایل‌های پیکربندی باقی می‌مانند).</para>
+          </listitem>
+          <listitem>
+	    <para>فایل‌های بسته جدید از حالت فشرده خارج می‌شوند. اگر فایلی موجود باشد، جایگزین می‌گردد اما در همین حالت یک نسخه پشتیبان از آن گرفته می‌شود.</para>
+          </listitem>
+          <listitem>
+	    <para>برای بروزرسانی، <command>dpkg</command> به فراخوانی <command>old-postrm upgrade <replaceable>new-version</replaceable></command> می‌پردازد.</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> تمام داده‌های داخلی (فهرست فایل‌ها، اسکریپت‌های پیکربندی و ...) را بروزرسانی و فایل‌های پشتیبان از نسخه‌های موجود را حذف می‌کند. این نقطه‌ای است که دیگر بازگشتی وجود ندارد: <command>dpkg</command> دیگر به تمام اجرای ضروری جهت بازگشت به حالت قبلی دسترسی نخواهد داشت.</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> فایل‌های پیکربندی را بروزرسانی می‌کند و در صورت عدم اجرای خودکار این فرآیند، از کاربر پرسش‌هایی را می‌پرسد. جزئیات این رویه در قسمت <xref linkend="sect.conffiles" /> آمده است.</para>
+          </listitem>
+          <listitem>
+	    <para>در نهایت، <command>dpkg</command> به فراخوانی <command>new-postinst configure <replaceable>last-version-configured</replaceable></command> می‌پردازد تا بسته را پیکربندی کند.</para>
+          </listitem>
+        </orderedlist>
+      </section>
+      <section>
+        <title>حذف بسته</title>
+
+	<para>این اتفاقی است که در حین حذف بسته می‌افتد:</para>
+        <orderedlist>
+          <listitem>
+	    <para><command>dpkg</command> به فراخوانی <command>prerm remove</command> می‌پردازد.</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> تمام فایل‌های بسته را پاک می‌کند، به جز فایل‌های پیکربندی و اسکریپت‌های پیکربندی.</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> به فراخوانی <command>postrm remove</command> می‌پردازد. تمام اسکریپت‌های پیکربندی، به جز <filename>postrm</filename> حذف می‌شوند. اگر کاربر از گزینه “purge” استفاده نکرده باشد، فرآیند در همین نقطه به پایان می‌رسد.</para>
+          </listitem>
+          <listitem>
+	    <para>برای حذف کامل یک بسته (دستوری که به صورت <command>dpkg --purge</command> یا <command>dpkg -P</command> اجرا می‌شود)، فایل‌های پیکربندی نیز حذف می‌گردند، همچنین تعدادی از کپی‌های (<filename>*.dpkg-tmp</filename>، <filename>*.dpkg-old</filename> و <filename>*.dpkg-new</filename>) و فایل‌های موقت؛ <command>dpkg</command> سپس به اجرای <command>postrm-purge</command> می‌پردازد.</para>
+          </listitem>
+        </orderedlist>
+
+        <sidebar>
+          <title><emphasis>واژگان</emphasis> Purge, حذف کامل بسته</title>
+          <indexterm><primary>حذف کامل یک بسته</primary></indexterm>
+
+	  <para>زمانی که یک بسته دبیان حذف می‌شود، فایل‌های پیکربندی به منظور تسهیل در فرآیند بازنصب احتمالی، نگاه داشته می‌شوند. به همین صورت، داده‌هایی که توسط فرآیند پیش‌زمینه (مانند محتوای یک دایرکتوری سرور LDAP یا محتوای یک پایگاه‌داده سرور SQL) تولید می‌شوند، معمولاً حفظ می‌گردند.</para>
+
+	  <para>برای حذف تمام داده‌های مربوط به یک بسته، ضروری است که از دستورات <command>dpkg -P <replaceable>package</replaceable></command>، <command>apt-get remove --purge <replaceable>package</replaceable></command> یا <command>aptitude purge <replaceable>package</replaceable></command> استفاده گردد.</para>
+
+	  <para>با توجه به ماهیت حذف چنین داده‌هایی، باید از purge با دقت بیشتری استفاده کرد.</para>
+        </sidebar>
+
+        <indexterm><primary><filename>config</filename>, <command>debconf</command> script</primary></indexterm>
+
+	<para>چهار اسکریپتی که در بالا به توضیحشان پرداختیم توسط اسکریپت <filename>config</filename> کامل می‌شوند، که توسط بسته‌های مورد استفاده <command>debconf</command> جهت جمع‌آوری اطلاعات پیکربندی از کاربر گرفته می‌شود. در زمان نصب، این اسکریپت پرسش‌های مورد نیاز توسط <command>debconf</command> را تعریف می‌کند. پاسخ‌ها نیز در پایگاه‌داده <command>debconf</command> برای ارجاع بعدی ذخیره می‌گردند. اسکریپت معمولاً توسط <command>apt</command> اجرا می‌گردد و درست قبل از نصب بسته‌ها به صورت ترتیبی و یک به یک پرسش‌ها مطرح می‌شود. اسکریپت‌های پیش و پس از نصب می‌توانند از این اطلاعات جهت شخصی‌سازی تنظیمات کاربر استفاده کنند.</para>
+
+        <sidebar>
+          <title><emphasis>ابزار</emphasis> <command>debconf</command></title>
+          <indexterm><primary><command>debconf</command></primary></indexterm>
+
+	  <para><command>debconf</command> برای حل یک مشکل تکرارشدنی در دبیان بوجود آمده است. تمام بسته‌های دبیان بدون وجود پیکربندی‌هایی که توسط دستورات <command>read</command> و <command>echo</command> در اسکریپت‌های <filename>postinst</filename> (و سایر اسکریپت‌های مشابه) گردآوری می‌شوند، قادر به اجرا نخواهند بود. این بدان معنی نیز هست که کاربر در حین نصب یا بروزرسانی سیستم باید منتظر این پرسش‌ها بماند تا به آن‌ها در هر لحظه پاسخ دهد. این شیوه تعامل دستی، حال به لطف ابزار <command>debconf</command> جای خود را به فرآیند خودکار داده است.</para>
+
+	  <para><command>debconf</command> قابلیت‌های بسیاری دارد: مشخص کردن شیوه تعامل را برای توسعه‌دهنده ضروری می‌کند؛ امکان بومی‌سازی تمام رشته‌های موجود در صفحه را فراهم می‌سازد (تمام ترجمه‌ها در فایل <filename>templates</filename> هر تعامل قرار می‌گیرند)؛ رابط‌های متفاوتی برای نمایش پرسش‌ها به کاربر دارد (متنی، گرافیکی، غیر-تعاملی) و همچنین امکان پیاده‌سازی یک پایگاه‌داده متمرکز از پاسخ‌ها را می‌دهد تا بتوان روی رایانه‌های دیگر از آن استفاده کرد... اما مهم‌ترین قابلیت آن امکان نمایش تمام پرسش‌ها در یک سطر به کاربر است، قبل از اینکه یک فرآیند طولانی نصب یا بروزرسانی آغاز گردد. کاربر در اینجا می‌تواند به سایر کارهای خود برسد بدون آنکه نیازی به پاسخ دادن به پرسش‌های متعدد در زمان نصب یا بروزرسانی وجود داشته باشد.</para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.conffiles">
+      <title>Checksums، فهرستی از فایل‌های پیکربندی</title>
+      <indexterm><primary><filename>md5sums</filename></primary></indexterm>
+      <indexterm><primary><filename>conffiles</filename></primary></indexterm>
+      <indexterm><primary>checksums</primary></indexterm>
+      <indexterm><primary>فایل‌ها</primary><secondary>فایل‌های پیکربندی</secondary></indexterm>
+      <indexterm><primary>پیکربندی</primary><secondary>فایل‌ها</secondary></indexterm>
+
+      <para>در کنار اسکریپت‌های پیکربندی و داده‌های کنترلی که در قسمت قبل مورد بررسی قرار گرفتند، فایل <filename>control.tar.gz</filename> از هر بسته دبیان ممکن است شامل فایل‌های دیگری نیز باشد. اولین فایل، <filename>md5sums</filename> است که شامل کد MD5 تمام فایل‌های موجود در بسته است. برتری اصلی آن هنگام استفاده از <command>dpkg --verify</command> (که در قسمت <xref linkend="sect.dpkg-verify" /> مورد مطالعه قرار می‌دهیم) است که بررسی می‌کند آیا این فایل‌ها از زمان نصب تغییری داشته‌اند یا خیر. نکته اینکه اگر این فایل وجود نداشته باشد، <command>dpkg</command> در زمان نصب به صورت خودکار آن را ایجاد می‌کند (و در پایگاه‌داده dpkg مانند سایر فایل‌های کنترلی ذخیره می‌نماید).</para>
+
+      <para><filename>conffiles</filename> فهرستی از فایل‌های بسته را نمایش می‌دهد که به عنوان فایل‌های پیکربندی باید در نظر گرفته شوند. فایل‌های پیکربندی می‌توانند توسط مدیرسیستم تغییر یابند و <command>dpkg</command> هنگام بروزرسانی بسته می‌کوشد تا این تغییرات را حفظ نماید.</para>
+
+      <para>در این وضعیت، <command>dpkg</command> به صورت هوشمندانه عمل می‌کند: اگر فایل پیکربندی استاندارد بین دو نسخه تغییری نکرده باشد، کاری انجام نمی‌دهد. اگر، در هر صورت، فایل تغییر کرده باشد، تلاش می‌کند تا آن را بروز نماید. دو حالت ممکن پیش می‌آید: یا مدیرسیستم اقدام به تغییر آن نکرده است که در این حالت <command>dpkg</command> به صورت خودکار نسخه جدید را نصب می‌کند؛ یا فایل تغییر کرده است، که در این حالت <command>dpkg</command> از مدیرسیستم می‌پرسد کدام نسخه را می‌خواهد نگهداری کند (نسخه قدیم با تغییرات یا نسخه جدید همراه با بسته). برای راهنمایی در اتخاذ این تصمیم، <command>dpkg</command> پیشنهاد می‌کند که یک “<command>diff</command>” از اختلاف بین دو فایل نمایش داده شود. اگر کاربر اقدام به حفظ نسخه قدیم کند، نسخه جدید در همان مسیر با پسوند <filename>.dpkg-dist</filename> ذخیره می‌گردد. اگر کاربر نسخه جدید را انتخاب کند، نسخه قدیم با پسوند <filename>.dpkg-old</filename> در همان مسیر ذخیره می‌گردد. یک اقدام دیگر این است که با توقف فعالیت <command>dpkg</command> اقدام به ویرایش فایل در آن لحظه کرده و سپس عملیات مرتبط با فراخوانی اختلاف بین دو فایل (که توسط <command>diff</command> مشخص گردید) را اجرا کنیم.</para>
+
+      <sidebar id="sidebar.questions-conffiles">
+        <title><emphasis>مطالعه بیشتر</emphasis> پیشگیری از پرسش‌های فایل پیکربندی</title>
+
+	<para><command>dpkg</command> بروزرسانی‌های فایل پیکربندی را مدیریت می‌کند، اما در هنگام اجرای این عملیات، از مدیرسیستم پرسش‌هایی را مطرح می‌کند. این فرآیند برای افرادی که دوست دارند بروزرسانی بدون دخالت انسان صورت گیرد، ناخوشایند بنظر می‌آید. این همان دلیلی است که برنامه امکان ارائه پاسخ‌های پیش‌فرض به پرسش‌ها را بر اساس یک قاعده مشخص فراهم می‌آورد: <command>--force-confold</command> نسخه قبلی از فایل را حفظ می‌کند؛ <command>--force-confnew</command> از نسخه جدید فایل استفاده می‌کند (این گزینه‌ها اختیاری هستند، حتی اگر فایل توسط مدیرسیستم تغییر نکرده باشد، که به ندرت پیش می‌آید تاثیر مطلوبی داشته باشد). اضافه‌کردن گزینه <command>--force-confdef</command> به <command>dpkg</command> می‌گوید هر طور صلاح می‌داند با آن برخورد کند (به عبارت دیگر، زمانی که فایل پیکربندی اصلی تغییر نکرده باشد) و تنها از <command>--force-confnew</command> یا <command>--force-confold</command> برای سایر حالت‌ها استفاده کند.</para>
+
+	<para>این گزینه‌ها مربوط به <command>dpkg</command> هستند، اما در اکثر اوقات مدیرسیستم به صورت مستقیم با <command>aptitude</command> یا <command>apt-get</command> سروکار دارد. به همین دلیل، دانستن شیوه صحیح فراخوانی این گزینه‌ها برای ارجاع به <command>dpkg</command> ضروری است (رابط خط فرمان تقریباً مشابهی دارند با یکدیگر).</para>
+
+        <screen>
+<computeroutput># </computeroutput><userinput>apt -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" full-upgrade</userinput></screen>
+
+	<para>این گزینه‌ها می‌توانند به صورت مستقیم در فایل پیکربندی <command>apt</command> قرار گیرند. برای این کار، خط زیر را در فایل <filename>/etc/apt/apt.conf.d/local</filename> قرار دهید:</para>
+        <informalexample>
+          <programlisting>
+DPkg::options { "--force-confdef"; "--force-confold"; }</programlisting>
+        </informalexample>
+
+	<para>قرار دادن این گزینه‌ها در فایل پیکربندی به این معنی است که توسط رابط‌های گرافیکی مانند <command>aptitude</command> نیز قابل دسترسی هستند.</para>
+      </sidebar>
+
+      <sidebar id="sidebar.questions-conffiles-bis">
+        <title><emphasis>مطالعه بیشتر</emphasis> وادارکردن dpkg به پرسیدن سوالات پیکربندی</title>
+
+	<para>گزینه <command>--force-confask</command> به <command>dpkg</command> می‌‌گوید که تمام پرسش‌های مربوط به فایل پیکربندی را از کاربر بپرسد، حتی آن‌هایی که در حالت عادی پرسیده نمی‌شوند. بنابراین، هنگام نصب مجدد یک بسته با این روش، <command>dpkg</command> مجدد تمام پرسش‌های مربوط به فایل‌های پیکربندی را از مدیرسیستم می‌پرسد. این روش مناسبی به منظور نصب مجدد فایل‌های پیکربندی است که حذف گردیده‌اند و کپی دیگری از آنان وجود ندارد: یک عملیات باز-نصب نرمال صورت نمی‌پذیرد، چرا که <command>dpkg</command> عملیات حذف را یک تغییر قانونی می‌داند و این امر منجر می‌شود که فایل پیکربندی موردنظر نصب نگردد.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.source-package-structure">
+    <title>ساختار یک بسته سورس</title>
+    <indexterm><primary>بسته</primary><secondary>بسته سورس</secondary></indexterm>
+    <indexterm><primary>سورس</primary><secondary>بسته</secondary></indexterm>
+    <section>
+      <title>قالب</title>
+      <indexterm><primary>فایل DSC</primary></indexterm>
+      <indexterm><primary>فایل <filename>diff.gz</filename></primary></indexterm>
+      <indexterm><primary>فایل <filename>debian.tar.gz</filename></primary></indexterm>
+      <indexterm><primary>فایل <filename>orig.tar.gz</filename></primary></indexterm>
+
+      <para>A source package is usually comprised of three files, a
+      <filename>.dsc</filename>, a <filename>.orig.tar.gz</filename>, and a
+      <filename>.debian.tar.xz</filename> (or <filename>.diff.gz</filename>).
+      They allow creation of binary packages (<filename>.deb</filename>
+      files described above) from the source code files of the program,
+      which are written in a programming language.</para>
+
+      <para>فایل <filename>.dsc</filename> یا Debian Source Control فایل کوتاهی است مبتنی بر استاندارد RFC 2822 (درست مانند فایل <filename>control</filename> که در قسمت <xref linkend="sect.control" /> بررسی شد) که بسته سورس و محتویات آن را مشخص می‌نماید. این فایل توسط توسعه‌دهنده آن امضا شده است که صحت آن را نمایش می‌دهد. برای مطالعه بیشتر در این زمینه به <xref linkend="sect.package-authentication" /> مراجعه کنید.</para>
+
+      <example>
+        <title>یک فایل <filename>.dsc</filename></title>
+
+        <programlisting>
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Format: 3.0 (quilt)
+Source: zim
+Binary: zim
+Architecture: all
+Version: 0.65-4
+Maintainer: Emfox Zhou &lt;emfox@debian.org&gt;
+Uploaders: Raphaël Hertzog &lt;hertzog@debian.org&gt;
+Homepage: http://zim-wiki.org
+Standards-Version: 3.9.8
+Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/zim.git
+Vcs-Git: https://anonscm.debian.org/git/collab-maint/zim.git
+Build-Depends: debhelper (&gt;= 9), xdg-utils, python (&gt;= 2.6.6-3~), libgtk2.0-0 (&gt;= 2.6), python-gtk2, python-xdg, dh-python
+Package-List:
+ zim deb x11 optional arch=all
+Checksums-Sha1:
+ 4a9be85c98b7f4397800f6d301428d64241034ce 1899614 zim_0.65.orig.tar.gz
+ 0ec38c990ec7662205dd0c843bf81f9033906a2e 10332 zim_0.65-4.debian.tar.xz
+Checksums-Sha256:
+ 5442f3334395a2beafc5b9a2bbec2e53e38270d4bad696b5c4053dd51dc1ed96 1899614 zim_0.65.orig.tar.gz
+ 78271df16aa166dce916b3ff4ecd705ed3a8832e49d3ef0bd8738a4fe8dd2b4f 10332 zim_0.65-4.debian.tar.xz
+Files:
+ 63ab7a2070e6d1d3fb32700a851d7b8b 1899614 zim_0.65.orig.tar.gz
+ 648559b38e04eaf4f6caa97563c057ff 10332 zim_0.65-4.debian.tar.xz
+
+-----BEGIN PGP SIGNATURE-----
+Comment: Signed by Raphael Hertzog
+
+iQEzBAEBCgAdFiEE1823g1EQnhJ1LsbSA4gdq+vCmrkFAlgzZXkACgkQA4gdq+vC
+mrnyXAf+M/PzZFjqk6Hvv1QSbocIDZ3bEqRjVpNLApubsPsEZZT6yw9vypzNE2hZ
+/BbLPa0Ntbhew4U+SJpuujV7VnLs9mZgOFuKRHKWYQBQ+oxw+gtM6iePwVj58aP/
+LW7K5gE428ohMdjIkf42Lz4Fve3dVPgPLIzQxRZ87N6OKqmS81M6/RRIF3TS/gJp
+CwpN1yifCfQs46gxL5/CgA4uhI8taz+g+8ZDd6fL5BQeFuNsgplY4QL1uGno3F7G
+VY7WZhM601Re2ePnv+6vjh8kDWMjZhfB4RJy0+hHezuoVGKljyaxc1O4P/fxvXus
+CEETju6cAE/HgDubDXDqExMwEd4odA==
+=HUvj
+-----END PGP SIGNATURE----- </programlisting>
+      </example>
+
+      <indexterm><primary><literal>Build-Depends</literal>, header field</primary></indexterm>
+
+      <para>نکته اینکه بسته‌های سورس نیز وابستگی‌های مربوط به خود را دارند (<literal>Build-Depends</literal>) که کاملاً با وابستگی‌های موجود در بسته‌های باینری تفاوت دارد، چرا که شامل ابزاری جهت کامپایل کردن نرم‌افزار مورد نظر و ایجاد فایل باینری آن هستند.</para>
+
+      <sidebar>
+        <title><emphasis>احتیاط</emphasis> فضای‌نامگذاری منحصربفرد</title>
+
+	<para>نکته حائر اهمیت در اینجا این است که ممکن است هیچ انطباقی بین نام بسته سورس و بسته باینری آن وجود نداشته باشد. درک این نکته ساده است که بدانید هر بسته سورس می‌تواند چندین بسته باینری ایجاد کند. این همان دلیلی است که فایل <filename>.dsc</filename> فیلدهای جداگانه‌ای برای <literal>Source</literal> و <literal>Binary</literal> دارد که به ازای هر بسته سورس، نام بسته باینری آن را تعیین کند.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>فرهنگ</emphasis> علت تقسیم به چند بسته</title>
+
+	<para>تقریباً در اکثر اوقات، یک بسته سورس (برای یک نرم‌افزار مورد نظر) می‌تواند چندین بسته باینری ایجاد کند. این تقسیم‌بندی به منظور احتمال استفاده (قسمتی از) نرم‌افزار در شرایط گوناگون در نظر گرفته می‌شود. یک کتابخانه اشتراکی را در نظر بگیرید، ممکن است به منظور اجرای یک برنامه نصب شده باشد (برای نمونه <emphasis role="pkg">libc6</emphasis>) یا ممکن است به منظور ایجاد یک برنامه جدید نصب شده باشد (در این حالت <emphasis role="pkg">libc6-dev</emphasis> بسته مورد نظر خواهد بود). این منطق در سرویس‌های client/server نیز وجود دارد که می‌خواهیم قسمت server را در یک ماشین و قسمت client را در ماشین دیگر نصب کنیم (برای نمونه، <emphasis role="pkg">openssh-server</emphasis> و <emphasis role="pkg">openssh-client</emphasis> برای سرویس OpenSSH).</para>
+
+	<para>درست مانند نرم‌افزار، مستندات هر نرم‌افزار نیز در بسته مربوط به خود قرار دارند: کاربر ممکن است جدای از نرم‌افزار اقدام به نصب آن کند و در هر لحظه که بخواهد برای دستیابی به فضای دیسک بیشتر، آن‌ها را حذف کند. به علاوه، این کار موجب صرفه‌جویی در فضای دیسک موجود در سرورهای دبیان می‌گردد، چرا که بسته مستندسازی‌شده در تمام معماری‌های یکسان بکارگرفته می‌شود (بجای اینکه برای هر معماری یک مستندات مربوط به بسته باینری آن موجود باشد).</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>چشم‌انداز</emphasis> قالب‌های متفاوت بسته سورس</title>
+
+	<para>در ابتدا تنها یک قالب برای بسته سورس وجود داشت. این قالب <literal>1.0</literal> است که ارتباط بین یک آرشیو <filename>.orig.tar.gz</filename> با <filename>.diff.gz</filename> که فایل پچ “مخصوص دبیان” است را برقرار می‌کند (همچنین یک نسخه <filename>.tar.gz</filename> وجود دارد در صورتی که فایل <filename>.orig.tar.gz</filename> موجود نباشد).</para>
+
+	<para>Since Debian <emphasis role="distribution">Squeeze</emphasis>, Debian developers have the
+	option to use new formats that correct many problems of the
+	historical format. Format <literal>3.0 (quilt)</literal> can
+	combine multiple upstream archives in the same source package: in
+	addition to the usual <filename>.orig.tar.gz</filename>,
+	supplementary
+	<filename>.orig-<replaceable>component</replaceable>.tar.gz</filename>
+	archives can be included. This is useful with software that is distributed in
+	several upstream components but for which a single source package
+	is desired. These archives can also be compressed with
+        <command>xz</command> rather than
+        <command>gzip</command>, which saves disk space and network resources. Finally,
+	the monolithic patch, <filename>.diff.gz</filename> is replaced by
+	a <filename>.debian.tar.xz</filename> archive containing the
+	compiling instructions and a set of upstream patches contributed by
+	the package maintainer. These last are recorded in a format
+	compatible with <command>quilt</command> — a tool that facilitates
+	the management of a series of patches.</para>
+      </sidebar>
+
+      <para>فایل <filename>.orig.tar.gz</filename> آرشیو شامل سورس کد از توسعه‌دهنده اصلی برنامه است. از توسعه‌دهندگان بسته در دبیان تقاضا می‌شود که این فایل را به منظور سازگاری هر چه بیشتر با فایل اصلی برنامه، تغییر ندهند (که این کار توسط یک عملیات مقایسه‌ای انجام می‌شود) و به نقظه نظرات نویسنده اصلی احترام بگذارند.</para>
+
+      <para>The <filename>.debian.tar.xz</filename> contains all of the
+      modifications made by the Debian maintainer, especially the addition
+      of a <filename>debian</filename> directory containing the instructions to
+      execute to construct a Debian package.</para>
+
+      <sidebar>
+        <title><emphasis>ابزار</emphasis> خارج‌سازی بسته از حالت فشرده</title>
+        <indexterm><primary><command>dpkg-source</command></primary></indexterm>
+	<indexterm><primary>decompress کردن بسته سورس</primary></indexterm>
+	<indexterm><primary>uncompress کردن بسته سورس</primary></indexterm>
+	<indexterm><primary>unpack کردن</primary><secondary>بسته سورس</secondary></indexterm>
+
+	<para>اگر بسته سورسی دارید، می‌تواند با استفاده از دستور <command>dpkg-source</command> (از بسته <emphasis role="pkg">dpkg-dev</emphasis>) آن را از حالت فشرده خارج سازید:</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>dpkg-source -x package_0.7-1.dsc</userinput></screen>
+
+	<para>همچنین می‌توانید از <command>apt-get</command> برای دانلود بسته استفاده کنید و آن را از حالت فشرده خارج سازید. این کار مستلزم وجود خط‌های <literal>deb-src</literal> در فایل <filename>/etc/apt/sources.list</filename> می‌باشد (برای مطالعه بیشتر به قسمت <xref linkend="sect.apt-sources.list" /> مراجعه کنید). این خطوط به منظور دسترسی به “source” بسته‌های سورس قرار داده شده‌اند (سرورهایی که روی آن‌ها بسته‌های سورس میزبانی می‌شوند).</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>apt-get source <replaceable>package</replaceable></userinput></screen>
+      </sidebar>
+    </section>
+    <section>
+      <title>کاربرد در دبیان</title>
+
+      <para>بسته سورس پایه و اساس هر چیز دیگری در دبیان است. تمام بسته‌های دبیان از یک بسته سورس نشات می‌گیرند، تغییر در هر بسته دبیان مستلزم تغییر در بسته سورس آن است. توسعه‌دهندگان دبیان که روی بسته‌های سورس کار می‌کنند، می‌دانند که کوچکترین تغییر در آن‌ها روی بسته‌های دبیان تاثیر خواهد گذاشت. حاصل کار نهایی آن‌ها در بسته‌های سورس قرار می‌گیرد: به راحتی می‌توانید به آن‌ها مراجعه کنید و ببینید که تمام تغییرات از آنجا شروع می‌شود.</para>
+
+      <para>زمانی که نسخه جدیدی از یک بسته (یک بسته سورس و یک یا چند بسته باینری) روی سرورهای دبیان قرار می‌گیرد، بسته سورس مهمترین آن‌ها است. در واقع، توسط شبکه‌ای از ماشین‌ها با معماری‌های متفاوت برای کامپایل و ساخت نسخه‌های مختلف از آن بسته در معماری‌های گوناگون مورد استفاده قرار می‌گیرد. در حقیقت اینکه توسعه‌دهنده خود اقدام به انتشار نسخه‌های متفاوت برای معماری‌های گوناگون می‌کند (معمولا i386 یا amd64) اهمیت خاصی ندارد، چرا که این فعالیت‌ها به صورت خودکار صورت می‌پذیرند.</para>
+    </section>
+  </section>
+  <section id="sect.manipulating-packages-with-dpkg">
+    <title>مدیریت بسته‌ها با استفاده از <command>dpkg</command></title>
+    <indexterm><primary><command>dpkg</command></primary></indexterm>
+
+    <para>... دستور پایه‌ای برای سروکار داشتن با بسته‌های دبیان است. اگر بسته <filename>.deb</filename> دارید، این <command>dpkg</command> است که اجازه نصب و بررسی محتویات داخل آن را می‌دهد. اما این برنامه دید نسبی از دنیای دبیان دارد: می‌داند چه چیزهایی روی سیستم نصب شده است و چه پارامترهای خط فرمانی را دریافت کرده است، اما چیزی راجع به سایر بسته‌های موجود نمی‌داند. بنابراین، اگر یک وابستگی فراهم نباشد، کل فرآیند شکست می‌خورد. از طرف دیگر، ابزاری مانند <command>apt</command> فهرستی از وابستگی‌های مورد نیاز جهت نصب برنامه را بدست آورده و به صورت خودکار اقدام به نصب آن‌ها می‌کنند.</para>
+
+    <sidebar>
+      <title><emphasis>یادداشت</emphasis> <command>dpkg</command> یا <command>apt</command>؟</title>
+
+      <para><command>dpkg</command> باید به عنوان یک ابزار سیستمی (backend) و <command>apt</command> به عنوان یک ابزار سمت کاربر دیده شوند، که به محدودیت‌های اولی غلبه می‌کند. این ابزارها در کنار یکدیگر کار می‌کنند و هر یک ویژگی‌های خاص خود را دارند که برای فعالیت‌های مختلفی در نظر گرفته شده‌اند.</para>
+    </sidebar>
+    <section>
+      <title>نصب بسته‌ها</title>
+      <indexterm><primary>نصب</primary><secondary>نصب بسته</secondary></indexterm>
+      <indexterm><primary>بسته</primary><secondary>نصب</secondary></indexterm>
+
+      <para><command>dpkg</command>، فراتر از همه، ابزار مورد نیاز جهت نصب یک بسته دبیان موجود می‌باشد (چرا که خود نمی‌تواند دانلود کند). برای اینکار، از گزینه <literal>-i</literal> یا <literal>--install</literal> آن استفاده می‌کنیم.</para>
+
+      <example>
+        <title>نصب یک بسته با استفاده از <command>dpkg</command></title>
+
+        <screen role="scale">
+<computeroutput># </computeroutput><userinput>dpkg -i man-db_2.7.6.1-2_amd64.deb</userinput>
+<computeroutput>(Reading database ... 110431 files and directories currently installed.)
+Preparing to unpack man-db_2.7.6.1-2_amd64.deb ...
+Unpacking man-db (2.7.6.1-2) over (2.7.6.1-1) ...
+Setting up man-db (2.7.6.1-2) ...
+Updating database of manual pages ...
+Processing triggers for mime-support (3.60) ...</computeroutput>
+</screen>
+      </example>
+
+      <para>می‌توانیم مشاهده کنیم که مراحل مختلفی از نصب با <command>dpkg</command> رخ می‌دهند؛ با این وجود می‌دانیم، در هر نقطه ممکن است خطایی رخ دهد. فرآیند نصب طی دو مرحله صورت می‌پذیرد: ابتدا از حالت فشرده خارج کردن بسته، سپس پیکربندی آن. <command>apt-get</command> این کارها را انجام می‌دهد، که منجر به کاهش فراخوانی‌ها به <command>dpkg</command> می‌گردد (چرا که هر فراخوانی بسیار هزینه‌بر است، با توجه به بارگیری پایگاه‌داده در حافظه اصلی، به خصوص فهرست فایل‌های نصب شده).</para>
+
+      <example>
+        <title>از حالت فشرده خارج کردن و پیکربندی به صورت جداگانه</title>
+
+        <screen role="scale">
+<computeroutput># </computeroutput><userinput>dpkg --unpack man-db_2.7.6.1-2_amd64.deb</userinput>
+<computeroutput>(Reading database ... 110431 files and directories currently installed.)
+Preparing to unpack man-db_2.7.6.1-2_amd64.deb ...
+Unpacking man-db (2.7.6.1-2) over (2.7.6.1-2) ...
+Processing triggers for mime-support (3.60) ...
+# </computeroutput><userinput>dpkg --configure man-db</userinput>
+<computeroutput>Setting up man-db (2.7.6.1-2) ...
+Updating database of manual pages ...
+</computeroutput>
+</screen>
+      </example>
+      <indexterm><primary>بسته</primary><secondary>خروج از حالت فشرده</secondary></indexterm>
+      <indexterm><primary>خروج از حالت فشرده</primary><secondary>بسته باینری</secondary></indexterm>
+
+      <para>گاهی اوقات <command>dpkg</command> موفق به نصب یک بسته نمی‌شود و پیام خطایی باز می‌گرداند؛ اگر کاربر نخواهد این پیام را ببیند، تنها یک اخطار صادر می‌شود؛ به همین دلیل است که از نسخه‌های متفاوت گزینه <literal>--force-*</literal> استفاده می‌کنیم. دستور <command>dpkg --force-help</command> یا مستندات مربوط به آن، فهرستی از تمام گزینه‌های موجود را نمایش می‌دهد. متداول‌ترین خطا، که دیر یا زود با آن مواجه خواهید شد، وجود فایل مورد نظر روی سیستم است. زمانی که بسته شامل فایلی است که از قبل توسط بسته دیگری نصب شده است، <command>dpkg</command> از نصب آن خودداری می‌کند. آنگاه پیام‌های زیر صادر می‌شوند:</para>
+
+      <screen>
+<computeroutput>Unpacking libgdm (from .../libgdm_3.8.3-2_amd64.deb) ...
+dpkg: error processing /var/cache/apt/archives/libgdm_3.8.3-2_amd64.deb (--unpack):
+ trying to overwrite '/usr/bin/gdmflexiserver', which is also in package gdm3 3.4.1-9</computeroutput></screen>
+
+      <para>در این مورد، اگر فکر می‌کنید که جایگزین کردن فایل تاثیر بسزایی روی سیستم نخواهد گذاشت (که معمولا می‌گذارد)، می‌توانید از گزینه <literal>--force-overwrite</literal> استفاده کنید که به <command>dpkg</command> می‌گوید فایل جدید را جایگزین قبلی کند و از این خطا جلوگیری نماید.</para>
+
+      <para>با توجه به اینکه گزینه‌های متفاوتی از <literal>--force-*</literal> وجود دارند، <literal>--force-overwrite</literal> معمولا از بقیه بیشتر مورد استفاده قرار می‌گیرد. این گزینه‌ها برای حالت‌های بسیار خاص موجود هستند و بهتر است تا جایی که می‌توانیم از آن‌ها استفاده نکنیم تا به قواعد استاندارد مکانیزم بسته‌بندی احترام بگذاریم. فراموش نکنید که، این قوانین منجر به پایداری و یکپارچکی سیستم شما می‌گردند.</para>
+
+      <sidebar>
+        <title><emphasis>احتیاط</emphasis> کاربرد موثر <literal>--force-*</literal></title>
+        <indexterm><primary>وابستگی از میان رفته</primary></indexterm>
+
+	<para>اگر در استفاده از گزینه‌های <literal>--force-*</literal> احتیاط نکنید، سیستم شما به حالتی می‌رود که هیچ یک از ابزار خانواده APT دیگر قادر به ادامه فعالیت خود نخواهند بود. در حقیقت، برخی از این گزینه‌ها با حالت‌هایی سروکار دارند که یک وابستگی رعایت نشده یا تداخلی در آن موجود باشد و به شما اجازه نصب را می‌دهند. نتیجه یک سیستم ناپایدار خواهد بود از نقطه نظر وابستگی‌ها و دستورات APT از اجرای هر فرمان جدید خودداری می‌کنند مگر آن دسته فرامین که به پایداری مجدد سیستم کمک کند (این گزینه شامل نصب وابستگی گم شده یا حذف بسته دردسرساز می‌باشد). پس از نصب نسخه جدید <emphasis role="pkg">rdesktop</emphasis> بدون در نظر گرفتن وابستگی جدید آن به <emphasis role="pkg">libc6</emphasis>، پیام‌های زیر صادر می‌شوند:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>apt full-upgrade
+</userinput><computeroutput>[...]
+You might want to run 'apt-get -f install' to correct these.
+The following packages have unmet dependencies:
+  rdesktop: Depends: libc6 (&gt;= 2.5) but 2.3.6.ds1-13etch7 is installed
+E: Unmet dependencies. Try using -f.</computeroutput></screen>
+
+	<para>یک مدیرسیستم شجاع که نسبت به تحلیل وضعیت سیستم خود آگاهی دارد می‌تواند یک وابستگی را در نظر نگیرد یا از تداخل بسته‌ها بیمی نداشته باشد و از گزینه <literal>--force-*</literal> استفاده نماید. در این مورد، اگر بخواهد در ادامه از <command>apt</command> یا <command>apt</command> استفاده کند، باید فایل <filename>/var/lib/dpkg/status</filename> را ویرایش کرده و وابستگی یا تداخل مورد نظر را حذف/تغییر دهد.</para>
+
+	<para>این تغییرات به مانند یک هک کثیف هستند و نباید از آن‌ها استفاده شود، مگر در شرایط بسیار خاص و ضروری. به طور معمول، کامپایل مجدد بسته بهترین راه حل موجود است (<xref linkend="sect.rebuilding-package" /> را مشاهده کنید) یا استفاده از یک نسخه جدید (اصلاح شده) از مخزنی مانند <literal>stable-backports</literal> (<xref linkend="sect.backports" /> را مشاهده کنید).</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>حذف بسته</title>
+      <indexterm><primary>حذف یک بسته</primary></indexterm>
+      <indexterm><primary>پاکسازی یک بسته</primary></indexterm>
+      <indexterm><primary>بسته</primary><secondary>حذف</secondary></indexterm>
+      <indexterm><primary>بسته</primary><secondary>پاکسازی</secondary></indexterm>
+
+      <para>فراخوانی <command>dpkg</command> با گزینه <literal>-r</literal> یا <literal>--remove</literal>، به همراه نام بسته منجر به حذف آن می‌گردد. این حذف، اگرچه کامل نیست: تمام فایل‌های پیکربندی، اسکریپت‌های نگهداری، فایل‌های لاگ (لاگ‌های سیستمی) و سایر داده‌های سمت کاربر حفظ می‌شوند. به این دلیل که نصب مجدد برنامه در آینده با دشواری کمتری همراه باشد. برای حذف کامل هر آنچه با یک بسته نصب می‌گردد، از گزینه <literal>-P</literal> یا <literal>--purge</literal> استفاده کنید، به همراه نام بسته.</para>
+
+      <example>
+        <title>حذف و پاکسازی بسته <emphasis role="pkg">debian-cd</emphasis></title>
+
+        <screen><computeroutput># </computeroutput><userinput>dpkg -r debian-cd</userinput>
+<computeroutput>(Reading database ... 112188 files and directories currently installed.)
+Removing debian-cd (3.1.20) ...
+# </computeroutput><userinput>dpkg -P debian-cd</userinput>
+<computeroutput>(Reading database ... 111613 files and directories currently installed.)
+Purging configuration files for debian-cd (3.1.20) ...
+</computeroutput>
+</screen>
+      </example>
+    </section>
+    <section>
+      <title>فراخوانی پایگاه‌داده <command>dpkg</command> و جستجوی فایل‌های <filename>.deb</filename></title>
+      <indexterm><primary>بسته</primary><secondary>وضعیت</secondary></indexterm>
+      <indexterm><primary>بسته</primary><secondary>فهرست فایل</secondary></indexterm>
+      <indexterm><primary>بسته</primary><secondary>کاوش محتوا</secondary></indexterm>
+
+      <sidebar>
+        <title><emphasis>بازگشت به مقدمات</emphasis> شیوه نحوه گزینه‌های جانبی</title>
+
+	<para>اکثر گزینه‌ها به صورت نسخه “بلند” (یک یا چند کلمه مرتبط، بعد از کاراکتر --) و یک نسخه “کوتاه” (یک کاراکتر، معمولا حرف اول نسخه کامل کلمه، بعد از کاراکتر -) هستند. این قاعده به عنوان یک استاندارد POSIX به حساب می‌آید.</para>
+      </sidebar>
+
+      <para>قبل از جمع‌بندی این قسمت، به مطالعه گزینه‌هایی از <command>dpkg</command> می‌پردازیم که برای کسب اطلاعات بیشتر از پایگاه‌داده داخلی آن به پرس و جو می‌پردازند. ابتدا نسخه بلند سپس کوتاه آورده می‌شود (هر دو به یک میزان پارامتر دریافت می‌کنند). <literal>--listfiles <replaceable>package</replaceable></literal> (یا <literal>-L</literal>) فهرست فایل‌های نصب شده توسط بسته را نمایش می‌دهد؛ <literal>--search <replaceable>file</replaceable></literal> (یا <literal>-S</literal>) به جستجوی بسته(ها) می‌پردازد که شامل فایل مورد نظر هستند؛ <literal>--status <replaceable>package</replaceable></literal> (یا <literal>-s</literal>) فایل سرآیند یک بسته نصب شده را نمایش می‌دهد؛ <literal>--list</literal> (یا <literal>-l</literal>) فهرست بسته‌های نصب شده روی سیستم و وضعیت هر یک را نمایش می‌دهد؛ <literal>--contents <replaceable>file.db</replaceable></literal> (یا <literal>-c</literal>) فهرستی از فایل‌های موجود در بسته را نمایش می‌دهد؛ <literal>--info <replaceable>file.db</replaceable></literal> (یا <literal>-I</literal>) که فایل سرآیند این بسته دبیان را نمایش می‌دهد.</para>
+
+      <example>
+        <title>پرس و جوهای گوناگون با استفاده از <command>dpkg</command></title>
+
+        <screen role="scale" width="80">
+<computeroutput>$ </computeroutput><userinput>dpkg -L base-passwd</userinput>
+<computeroutput>/.
+/usr
+/usr/sbin
+/usr/sbin/update-passwd
+/usr/share
+/usr/share/base-passwd
+/usr/share/base-passwd/group.master
+/usr/share/base-passwd/passwd.master
+/usr/share/doc
+/usr/share/doc/base-passwd
+/usr/share/doc/base-passwd/README
+/usr/share/doc/base-passwd/changelog.gz
+/usr/share/doc/base-passwd/copyright
+/usr/share/doc/base-passwd/users-and-groups.html
+/usr/share/doc/base-passwd/users-and-groups.txt.gz
+/usr/share/doc-base
+/usr/share/doc-base/users-and-groups
+/usr/share/lintian
+/usr/share/lintian/overrides
+/usr/share/lintian/overrides/base-passwd
+/usr/share/man
+/usr/share/man/de
+/usr/share/man/de/man8
+/usr/share/man/de/man8/update-passwd.8.gz
+/usr/share/man/es
+/usr/share/man/es/man8
+/usr/share/man/es/man8/update-passwd.8.gz
+/usr/share/man/fr
+/usr/share/man/fr/man8
+/usr/share/man/fr/man8/update-passwd.8.gz
+/usr/share/man/ja
+/usr/share/man/ja/man8
+/usr/share/man/ja/man8/update-passwd.8.gz
+/usr/share/man/man8
+/usr/share/man/man8/update-passwd.8.gz
+/usr/share/man/pl
+/usr/share/man/pl/man8
+/usr/share/man/pl/man8/update-passwd.8.gz
+/usr/share/man/ru
+/usr/share/man/ru/man8
+/usr/share/man/ru/man8/update-passwd.8.gz
+$ </computeroutput><userinput>dpkg -S /bin/date</userinput>
+<computeroutput>coreutils: /bin/date
+$ </computeroutput><userinput>dpkg -s coreutils</userinput>
+<computeroutput>Package: coreutils
+Essential: yes
+Status: install ok installed
+Priority: required
+Section: utils
+Installed-Size: 15103
+Maintainer: Michael Stone &lt;mstone@debian.org&gt;
+Architecture: amd64
+Multi-Arch: foreign
+Version: 8.26-3
+Replaces: mktemp, realpath, timeout
+Pre-Depends: libacl1 (&gt;= 2.2.51-8), libattr1 (&gt;= 1:2.4.46-8), libc6 (&gt;= 2.17), libselinux1 (&gt;= 2.1.13)
+Conflicts: timeout
+Description: GNU core utilities
+ This package contains the basic file, shell and text manipulation
+ utilities which are expected to exist on every operating system.
+ .
+ Specifically, this package includes:
+ arch base64 basename cat chcon chgrp chmod chown chroot cksum comm cp
+ csplit cut date dd df dir dircolors dirname du echo env expand expr
+ factor false flock fmt fold groups head hostid id install join link ln
+ logname ls md5sum mkdir mkfifo mknod mktemp mv nice nl nohup nproc numfmt
+ od paste pathchk pinky pr printenv printf ptx pwd readlink realpath rm
+ rmdir runcon sha*sum seq shred sleep sort split stat stty sum sync tac
+ tail tee test timeout touch tr true truncate tsort tty uname unexpand
+ uniq unlink users vdir wc who whoami yes
+Homepage: http://gnu.org/software/coreutils
+$ </computeroutput><userinput>dpkg -l 'b*'</userinput>
+<computeroutput>Desired=Unknown/Install/Remove/Purge/Hold
+| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                 Version         Architecture    Description
++++-====================-===============-===============-=============================================
+un  backupninja          &lt;none&gt;          &lt;none&gt;          (no description available)
+un  backuppc             &lt;none&gt;          &lt;none&gt;          (no description available)
+un  baekmuk-ttf          &lt;none&gt;          &lt;none&gt;          (no description available)
+un  base                 &lt;none&gt;          &lt;none&gt;          (no description available)
+un  base-config          &lt;none&gt;          &lt;none&gt;          (no description available)
+ii  base-files           9.9+deb9u1      amd64           Debian base system miscellaneous files
+ii  base-passwd          3.5.43          amd64           Debian base system master password and group 
+ii  bash                 4.4-5           amd64           GNU Bourne Again SHell
+[...]
+$ </computeroutput><userinput>dpkg -c /var/cache/apt/archives/gnupg_2.1.18-8~deb9u1_amd64.deb</userinput>
+<computeroutput>drwxr-xr-x root/root         0 2017-09-18 20:41 ./
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/bin/
+-rwxr-xr-x root/root    996648 2017-09-18 20:41 ./usr/bin/gpg
+-rwxr-xr-x root/root      3444 2017-09-18 20:41 ./usr/bin/gpg-zip
+-rwxr-xr-x root/root    161192 2017-09-18 20:41 ./usr/bin/gpgconf
+-rwxr-xr-x root/root     26696 2017-09-18 20:41 ./usr/bin/gpgparsemail
+-rwxr-xr-x root/root     76112 2017-09-18 20:41 ./usr/bin/gpgsplit
+-rwxr-xr-x root/root    158344 2017-09-18 20:41 ./usr/bin/kbxutil
+-rwxr-xr-x root/root      1081 2014-06-25 16:17 ./usr/bin/lspgpot
+-rwxr-xr-x root/root      2194 2017-09-18 20:41 ./usr/bin/migrate-pubring-from-classic-gpg
+-rwxr-xr-x root/root     14328 2017-09-18 20:41 ./usr/bin/watchgnupg
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/sbin/
+-rwxr-xr-x root/root      3078 2017-09-18 20:41 ./usr/sbin/addgnupghome
+-rwxr-xr-x root/root      2219 2017-09-18 20:41 ./usr/sbin/applygnupgdefaults
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/share/
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/share/doc/
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/share/doc/gnupg/
+-rw-r--r-- root/root     18964 2017-01-23 18:39 ./usr/share/doc/gnupg/DETAILS.gz
+[...]
+$ </computeroutput><userinput>dpkg -I /var/cache/apt/archives/gnupg_2.1.18-8~deb9u1_amd64.deb</userinput>
+<computeroutput> new debian package, version 2.0.
+ size 1124042 bytes: control archive=2221 bytes.
+    1388 bytes,    24 lines      control              
+    2764 bytes,    43 lines      md5sums              
+ Package: gnupg
+ Source: gnupg2
+ Version: 2.1.18-8~deb9u1
+ Architecture: amd64
+ Maintainer: Debian GnuPG Maintainers &lt;pkg-gnupg-maint@lists.alioth.debian.org&gt;
+ Installed-Size: 2088
+ Depends: gnupg-agent (= 2.1.18-8~deb9u1), libassuan0 (&gt;= 2.0.1), libbz2-1.0, libc6 (&gt;= 2.15), libgcrypt20 (&gt;= 1.7.0), libgpg-error0 (&gt;= 1.14), libksba8 (&gt;= 1.3.4), libreadline7 (&gt;= 6.0), libsqlite3-0 (&gt;= 3.7.15), zlib1g (&gt;= 1:1.1.4)
+ Recommends: dirmngr (= 2.1.18-8~deb9u1), gnupg-l10n (= 2.1.18-8~deb9u1)
+ Suggests: parcimonie, xloadimage
+ Breaks: debsig-verify (&lt;&lt; 0.15), dirmngr (&lt;&lt; 2.1.18-8~deb9u1), gnupg2 (&lt;&lt; 2.1.11-7+exp1), libgnupg-interface-perl (&lt;&lt; 0.52-3), libgnupg-perl (&lt;= 0.19-1), libmail-gnupg-perl (&lt;= 0.22-1), monkeysphere (&lt;&lt; 0.38~), php-crypt-gpg (&lt;= 1.4.1-1), python-apt (&lt;= 1.1.0~beta4), python-gnupg (&lt;&lt; 0.3.8-3), python3-apt (&lt;= 1.1.0~beta4)
+ Replaces: gnupg2 (&lt;&lt; 2.1.11-7+exp1)
+ Provides: gpg
+ Section: utils
+ Priority: optional
+ Multi-Arch: foreign
+ Homepage: https://www.gnupg.org/
+ Description: GNU privacy guard - a free PGP replacement
+  GnuPG is GNU's tool for secure communication and data storage.
+  It can be used to encrypt data and to create digital signatures.
+  It includes an advanced key management facility and is compliant
+  with the proposed OpenPGP Internet standard as described in RFC4880.
+[...]</computeroutput>
+</screen>
+      </example>
+
+      <sidebar>
+        <title><emphasis>مطالعه بیشتر</emphasis> مقایسه نسخه‌ها</title>
+        <indexterm><primary>نسخه، مقایسه</primary></indexterm>
+        <indexterm><primary>مقایسه نسخه‌ها</primary></indexterm>
+
+	<para>از آنجایی که <command>dpkg</command> برنامه اصلی برای سر و کار داشتن با بسته‌های دبیان است، همچنین امکان مقایسه منطقی بین نسخه‌های مختلف از یک برنامه را فراهم می‌آورد. به همین دلیل است که گزینه <literal>--compare-versions</literal> موجود می‌باشد، که اغلب توسط برنامه‌های دیگر مانند اسکریپت‌های پیکربندی (که توسط خود <command>dpkg</command> اجرا می‌شوند) مورد استفاده قرار می‌گیرد. این گزینه به سه پارامتر نیاز دارد: نسخه اول، عملگر و نسخه دوم. عملگرهای متفاوت عبارتند: از <literal>lt</literal> (کوچکتر)، <literal>le</literal> (کوچکتر یا مساوی)، <literal>eq</literal> (مساوی)، <literal>ne</literal> (نامساوی)، <literal>ge</literal> (بزرگتر یا مساوی) و gt (بزرگتر). اگر مقایسه صحیح باشد، <command>dpkg</command> عدد ۰ را باز می‌گرداند (موفقیت)؛ در غیر اینصورت، یک مقدار غیر صفر را نمایش می‌دهد (نشانه شکست).</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>dpkg --compare-versions 1.2-3 gt 1.1-4</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>0
+$ </computeroutput><userinput>dpkg --compare-versions 1.2-3 lt 1.1-4</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>1
+$ </computeroutput><userinput>dpkg --compare-versions 2.6.0pre3-1 lt 2.6.0-1</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>1</computeroutput></screen>
+
+	<para>به شسکت غیرمنتظره از آخرین مقایسه توجه کنید: برای <command>dpkg</command>، عبارت <literal>pre</literal>، که به معنی pre-release است، هیچ معنای خاصی ندارد و این برنامه عمل مقایسه روی کاراکترهای الفبایی را مانند اعداد (a &lt; b &lt; c) انجام می‌دهد، به ترتیب الفبایی. به همین دلیل است که تشخیص داد “<literal>0pre3</literal>” از “<literal>0</literal>” بزرگتر است. اگر بخواهیم نشان دهیم که نسخه یک بسته نشان‌دهنده یک pre-release است از کاراکتر “<literal>~</literal>” استفاده می‌کنیم:</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>dpkg --compare-versions 2.6.0~pre3-1 lt 2.6.0-1</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>0</computeroutput></screen>
+      </sidebar>
+    </section>
+    <section>
+      <title>فایل لاگ <command>dpkg</command></title>
+
+      <para><command>dpkg</command> مجموعه تمام رخدادهای خود را درون فایل <filename>/var/log/dpkg.log</filename> ذخیره می‌کند. این فایل تمام عملیات انجام شده توسط <command>dpkg</command> را به همراه جزئیات نمایش می‌دهد. در کنار ایجاد روشی جهت ردیابی عملکرد dpkg، این فایل تاریخچه‌ای از عملیات انجام شده روی سیستم را ذخیره می‌کند: به راحتی می‌توان تشخیص داد در هر لحظه چه بسته‌ای اضافه یا حذف شده است و این اطلاعات به درک و بررسی اتفاقات اخیر روی سیستم کمک شایانی می‌کند. به علاوه، تمام نسخه‌ها نیز نگهداری می‌شوند که این امر فرآیند بررسی اطلاعات موجود را با فایل <filename>changelog.Debian.gz</filename> برای بسته مورد نظر یا حتی گزارش‌های آنلاین باگ، تسهیل می‌نماید.</para>
+    </section>
+    <section id="sect.multi-arch">
+      <title>پشتیبانی از چند-معماری</title>
+      <indexterm><primary>چند-معماری</primary></indexterm>
+      <indexterm><primary>معماری</primary><secondary>پشتیبانی از چند-معماری</secondary></indexterm>
+
+      <para>تمام بسته‌های دبیان دارای یک فیلد <literal>Architecture</literal> در فایل کنترلی خود هستند. این فیلد می‌تواند شامل “<literal>all</literal>” (برای بسته‌های مستقل از یک معماری خاص) یا نام معماری‌های مورد نظر (مانند “armhf”، “amd64” و ...) باشد. در مورد آخر، <command>dpkg</command> تنها در صورتی اقدام به نصب بسته می‌کند که معماری آن با معماری سیستم موجود که توسط دستور <command>dpkg --print-architecture</command> مشخص می‌شود، یکسان باشد.</para>
+
+      <para>این محدودیت تضمین می‌کند که کاربران به اشتباه از یک باینری معماری دیگر استفاده نکنند. همه چیز خوب پیش می‌رود به جز (برخی) رایانه‌هایی که قادر به اجرای باینری‌های معماری‌های متفاوت هستند، خواه به صورت پیش‌فرض (یک سیستم “amd64“ می‌تواند باینری‌های “i386“ را اجرا کند) یا با استفاده از شبیه‌سازها.</para>
+      
+      <section>
+        <title>فعال‌سازی چند-معماری</title>
+	<para>قابلیت پشتیبانی از چند معماری در <command>dpkg</command> به کاربران امکان تعریف “معماری‌های خارجی” که می‌توانند روی سیستم نصب شوند را می‌دهد. اینکار به راحتی با دستور <command>dpkg--add-architecture</command> که در ادامه می‌بینیم، انجام می‌شود. همچنین دستور متناظر با آن <command>dpkg--remove-architecture</command> است که پشتیبانی از یک معماری خارجی را متوقف می‌سازد، اما تنها زمانی قابل استفاده است که هیچ بسته‌ای از این معماری روی سیستم نصب نباشد.</para>
+
+	<screen>
+<computeroutput># </computeroutput><userinput>dpkg --print-architecture</userinput>
+<computeroutput>amd64
+# </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput># </computeroutput><userinput>dpkg -i gcc-6-base_6.3.0-18_armhf.deb</userinput>
+<computeroutput>dpkg: error processing archive gcc-6-base_6.3.0-18_armhf.deb (--install):
+ package architecture (armhf) does not match system (amd64)
+Errors were encountered while processing:
+ gcc-6-base_6.3.0-18_armhf.deb
+# </computeroutput><userinput>dpkg --add-architecture armhf</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --add-architecture armel</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput>armhf
+armel
+# </computeroutput><userinput>dpkg -i gcc-6-base_6.3.0-18_armhf.deb</userinput>
+<computeroutput>Selecting previously unselected package gcc-6-base:armhf.
+(Reading database ... 112000 files and directories currently installed.)
+Preparing to unpack gcc-6-base_6.3.0-18_armhf.deb ...
+Unpacking gcc-6-base:armhf (6.3.0-18) ...
+Setting up gcc-6-base:armhf (6.3.0-18) ...
+# </computeroutput><userinput>dpkg --remove-architecture armhf</userinput>
+<computeroutput>dpkg: error: cannot remove architecture 'armhf' currently in use by the database
+# </computeroutput><userinput>dpkg --remove-architecture armel</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput>armhf</computeroutput>
+</screen>
+
+	<sidebar>
+	  <title><emphasis>یادداشت</emphasis> پشتیبانی از چند-معماری در APT</title>
+	  <para>APT به صورت خودکار تشخیص می‌دهد که dpkg از چه معماری‌هایی پشتیبانی می‌کند و در زمان بروزرسانی به دریفات فایل‌های <filename>Packages</filename> مربوط به آن معماری می‌پردازد.</para>
+	  <para>بسته‌های خارجی می‌توانند با استفاده از دستور <command>apt install <replaceable>package</replaceable>:<replaceable>architecture</replaceable></command> نصب گردند.</para>
+	</sidebar>
+
+	<sidebar>
+	  <title><emphasis>در عمل</emphasis> استفاده از باینری‌های اختصاصی i386 در amd64</title>
+	  <para>There are multiple use cases for multi-arch, but the most
+	  popular one is the possibility to execute 32 bit binaries (i386)
+	  on 64 bit systems (amd64).</para>
+	</sidebar>
+      </section>
+      <section>
+	<title>تغییرات مربوط به چند-معماری</title>
+
+	<para>To make multi-arch actually useful and usable, libraries had to
+	be repackaged and moved to an architecture-specific directory so that
+	multiple copies (targeting different architectures) can be installed
+	alongside. Such updated packages contain the “<literal>Multi-Arch:
+	same</literal>” header field to tell the packaging system that the
+	various architectures of the package can be safely co-installed (and
+	that those packages can only satisfy dependencies of packages of the
+        same architecture). The most important libraries have been converted
+        since the introduction of multi-arch in Debian
+        <emphasis role="distribution">Wheezy</emphasis>, but there are many
+        libraries that will likely never be converted unless someone
+        specifically requests it (through a bug report for example).
+	</para>
+
+	<screen><computeroutput>$ </computeroutput><userinput>dpkg -s gcc-6-base
+</userinput><computeroutput>dpkg-query: error: --status needs a valid package name but 'gcc-6-base' is not: ambiguous package name 'gcc-6-base' with more than one installed instance
+
+Use --help for help about querying packages.
+$ </computeroutput><userinput>dpkg -s gcc-6-base:amd64 gcc-6-base:armhf | grep ^Multi
+</userinput><computeroutput>Multi-Arch: same
+Multi-Arch: same
+$ </computeroutput><userinput>dpkg -L libgcc1:amd64 |grep .so
+</userinput><computeroutput>/lib/x86_64-linux-gnu/libgcc_s.so.1
+$ </computeroutput><userinput>dpkg -S /usr/share/doc/gcc-6-base/copyright
+</userinput><computeroutput>gcc-6-base:amd64, gcc-6-base:armhf: /usr/share/doc/gcc-6-base/copyright
+</computeroutput></screen>
+
+	<para>شایان ذکر است که بسته‌های <literal>Multi-Arch: same</literal> باید در انتهای نام خود، معماری را ذکر کنند تا به تنهایی قابل تشخیص از سایر بسته‌ها گردند. همچنین احتمال به اشتراک‌گذاری فایل‌ها از یک نمونه دیگر از آن بسته وجود دارد؛ <command>dpkg</command> اطمینان می‌یابد که تمام بسته‌ها زمانی که به اشتراک گذاشته می‌شوند فایل‌های یکسان و بیت به بیت دارند. در انتها، تمام نمونه‌های یک بسته باید از یک نسخه تبعیت کنند. همچنین باید با یکدیگر بروزرسانی گردند.</para>
+
+	<para>پشتیبانی از چند-معماری همراه با چالش‌های جالبی در رابطه با شیوه مدیریت وابستگی‌ها است. رعایت یک وابستگی نیازمند این است که یا بسته به عنوان “<literal>Multi-Arch: foreign</literal>” نشانه‌گذاری شده باشد یا معماری آن با معماری وابستگی‌اش یکسان باشد (در این فرآیند، بسته‌هایی که مستقل از یک معماری هستند به عنوان بسته‌های سازگار با معماری سیستم در نظر گرفته می‌شوند). همچنین یک وابستگی می‌تواند به منظور اجرا در سیستم، ضعیف گردد، با استفاده از <literal><replaceable>package</replaceable>:any</literal>، اما بسته‌های خارجی تنها در حالتی می‌توانند این وابستگی را رعایت کنند که به عنوان “<literal>Multi-Arch: allowed</literal>” نشانه‌گذاری شده باشند.</para>
+      </section>
+    </section>
+  </section>
+  <section id="sect.coexistence-with-other-packaging-systems">
+    <title>همزیستی با سایر سیستم‌های بسته‌بندی</title>
+    <indexterm><primary>RPM</primary></indexterm>
+    <indexterm><primary>Red Hat Package Manager</primary></indexterm>
+    <indexterm><primary><command>alien</command></primary></indexterm>
+
+    <para>بسته‌های دبیان تنها بسته‌های نرم‌افزاری موجود در دنیای نرم‌افزار آزاد نیستند. رقیب اصلی آن‌ها قالب RPM از توزیع ردهت و مشتقات آن می‌باشد. ردهت یک توزیع بسیار محبوب و تجاری است. به همین دلیل طبیعی است که نرم‌افزارهای شخص ثالث، در قالب بسته‌های ردهت ارائه شوند تا دبیان.</para>
+
+    <para>در این مورد، باید بدانید برنامه <command>rpm</command>، که بسته‌های RPM را مدیریت می‌کند، خود به عنوان یک بسته دبیان موجود است، بنابراین امکان استفاده از آن در دبیان وجود دارد. اگرچه، احتیاط شرط عقل است و هنگام استخراج اطلاعات از یک بسته یا بررسی جامعیت آن، باید دقت لازم را داشته باشید. در حقیقت، استفاده از <command>rpm</command> به منظور نصب یک بسته RPM در دبیان غیرمنطقی به نظر می‌رسد؛ RPM از پایگاه‌داده خود استفاده می‌کند، که جدای از پایگاه‌داده <command>dpkg</command> است. به همین دلیل امکان تضمین همزیستی مسالمت‌آمیز بین این دو سیستم وجود ندارد.</para>
+
+    <para>از طرف دیگر، برنامه <emphasis role="pkg">alien</emphasis> قابلیت تبدیل بسته‌های RPM به دبیان و برعکس را دارد.</para>
+
+    <sidebar>
+      <title><emphasis>جامعه کاربری</emphasis> تشویق به قبول <filename>.deb</filename></title>
+
+      <para>If you regularly use the <command>alien</command> program to
+      install RPM packages coming from one of your providers, do not
+      hesitate to write to them and amicably express your strong preference
+      for the <filename>.deb</filename> format. Note that the format of the
+      package is not everything: a <filename>.deb</filename> package built
+      with <command>alien</command> or prepared for a version of Debian
+      different than that which you use, or even for a derivative distribution
+      like Ubuntu, would probably not offer the same level of quality and
+      integration as a package specifically developed for Debian <emphasis role="distribution">Stretch</emphasis>.</para>
+    </sidebar>
+
+    <screen>
+<computeroutput>$ </computeroutput><userinput>fakeroot alien --to-deb phpMyAdmin-4.7.5-2.fc28.noarch.rpm</userinput>
+<computeroutput>phpmyadmin_4.7.5-3_all.deb generated
+$ </computeroutput><userinput>ls -s phpmyadmin_4.7.5-3_all.deb</userinput>
+<computeroutput>  4356 phpmyadmin_4.7.5-3_all.deb</computeroutput>
+</screen>
+
+    <para>متوجه می‌شوید که این فرآیند بسیار ساده است. اگرچه، باید بدانید که بسته تولید شده اطلاعاتی درباره وابستگی‌های مورد نیازش ندارد، چرا که وابستگی‌های در دو سیستم کاملا جداگانه تعریف شده و با یکدیگر سازگاری مشخصی ندارند. مدیرسیستم خود باید تضمین کند که بسته تبدیل شده به درستی کار خواهد کرد، این دلیلی است که بسته‌های دبیان که به این روش تولید می‌شوند تا آنجا که ممکن است نباید استفاده گردند. خوشبختانه، دبیان دارای بزرگترین مجموعه از بسته‌های نرم‌افزاری در بین تمام توزیع‌ها است و به احتمال زیاد هر آنچه شما بخواهید در آن وجود دارد.</para>
+
+    <para>با نگاه به صفحه راهنمای <command>alien</command> متوجه می‌شوید که این برنامه از سایر قالب‌های بسته‌بندی نیز پشتیبانی می‌کند، به خصوص قالب مورد استفاده در توزیع Slackware (که از یک آرشیو ساده <filename>tar.gz</filename> تشکیل شده است).</para>
+
+    <para>پایداری نرم‌افزار توزیع شده توسط ابزار <command>dpkg</command> به شهرت دبیان افزوده است. مجموعه ابزار APT، که در فصل بعد بررسی می‌کنیم، از این برتری استفاده می‌کند، به صورتی که مدیرسیستم دیگر نگرانی درباره نحوه مدیریت وضعیت یک بسته نخواهد داشت، یک وظیفه لازم اما دشوار.</para>
+  </section>
+</chapter>

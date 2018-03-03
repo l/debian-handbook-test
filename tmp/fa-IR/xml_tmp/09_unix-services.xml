@@ -1,0 +1,1483 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="unix-services">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-unix-services.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>راه‌اندازی سیستم</keyword>
+      <keyword>اسکریپت‌های init</keyword>
+      <keyword>SSH</keyword>
+      <keyword>Telnet</keyword>
+      <keyword>حقوق</keyword>
+      <keyword>مجوزها</keyword>
+      <keyword>نظارت</keyword>
+      <keyword>Inetd</keyword>
+      <keyword>Cron</keyword>
+      <keyword>پشتیبان‌گیری</keyword>
+      <keyword>Hotplug</keyword>
+      <keyword>PCMCIA</keyword>
+      <keyword>APM</keyword>
+      <keyword>ACPI</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>سرویس‌های یونیکس</title>
+  <highlights>
+    <para>این فصل به پوشش سرویس‌های پایه‌ای می‌پردازد که در بسیاری از سیستم‌های یونیکس متداول هستند. تمام مدیرسیستم‌ها باید با آن‌ها آشنا باشند.</para>
+  </highlights>
+  <section id="sect.system-boot">
+    <title>راه‌اندازی سیستم</title>
+    <indexterm><primary>راه‌اندازی</primary><secondary>سیستم</secondary></indexterm>
+
+    <para>زمانی که رایانه را راه‌اندازی می‌کنید، پیام‌های زیادی که در کنسول به شما نمایش داده می‌شوند نشان‌دهنده عملیات خودکار راه‌اندازی و پیکربندی سیستم هستند. شاید بعضی وقت‌ها بخواهید تغییری در این مرحله ایجاد کنید، که به معنای درک اولیه صحیح از آن است. هدف این قسمت نیز همین است.</para>
+
+    
+    <para>ابتدا، BIOS کنترل رایانه را بر عهده می‌گیرد، دیسک‌ها را شناسایی کرده، <emphasis>Master Boot Record</emphasis> را بارگیری می‌کند و به اجرای راه‌اندازسیستم می‌پردازد. راه‌اندازسیستم کنترل را بدست گرفته، کرنل را روی دیسک پیدا می‌کند، آن را بارگیری کرده سپس اجرا می‌کند. کرنل در این مرحله راه‌اندازی شده و به جستجو پارتیشن شامل فایل‌سیستم روت می‌پردازد سپس آن را متصل کرده و اولین برنامه یعنی <command>init</command> را اجرا می‌کند. به طور معمول، این “پارتیشن روت” و این برنامه <command>init</command>، در حفیقت درون یک فایل‌سیستم مجازی در حافظه اصلی به نام “initramfs”، (که سابق بر این با نام “initrd” که مخفف “Initial Ram Disk” است)، قرار دارند. این فایل‌سیستم توسط راه‌اندازسیستم درون حافظه اصلی قرار می‌گیرد، که اغلب از طریق یک فایل روی هارد درایو یا شبکه قابل دسترس است. شامل حداقل امکانات لازم برای کرنل جهت راه‌اندازی فایل‌سیستم روت “حقیقی” است: ممکن است شامل ماژول‌های درایور مورد نیاز هارد درایو، یا دستگا‌ه‌های دیگری که سیستم قادر به راه‌اندازی آن‌ها نیست، یا به طور متداول، اسکریپت‌های راه‌اندازی و ماژول‌های مورد نیاز برای پیکربندی آرایه‌های RAID، بازکردن پارتیشن‌های رمزگذاری شده، فعال‌سازی LVM و مواردی از این دست باشد. زمانی که پارتیشن روت متصل گردید، initramfs کنترل را به init حقیقی می‌سپارد و ماشین به فرآیند راه‌اندازی استاندارد خود باز می‌گردد.</para>
+
+    <figure id="figure.boot-process-systemd">
+      <title>ترتیب اجرای عملیات راه‌اندازی در لینوکس به همراه systemd</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/startup-systemd.png" scalefit="1" width="80%" />
+        </imageobject>
+      </mediaobject>
+    </figure>
+
+    <section id="sect.systemd"><title>سیستم راه‌انداز systemd</title>
+
+    <para>“init حقیقی” توسط <emphasis role="pkg">systemd</emphasis> ارائه شده است که این قسمت به بررسی آن می‌پردازد.</para>
+
+    <sidebar>
+      <title><emphasis>فرهنگ</emphasis> قبل از <command>systemd</command></title>
+
+      <para><command>systemd</command> یک “سیستم راه‌انداز” جدید به حساب می‌آید، با اینکه در محیط‌های گوناگونی از قبل وجود داشته است مانند <emphasis role="distribution">Wheezy</emphasis>، در نسخه <emphasis role="distribution">Jessie</emphasis> از دبیان بود که به عنوان پیش‌فرض انتخاب شد. انتشارهای سابق آن، به صورت پیش‌فرض، بر اساس “System V init” بودند (در بسته <emphasis role="pkg">sysv-rc</emphasis>)، یک سیستم قدیمی‌تر در این زمینه. در ادامه به توضیح System V init می‌پردازیم.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>جایگزین</emphasis> سایر سیستم‌های راه‌انداز</title>
+
+      <para>این کتاب به توضیح سیستم راه‌انداز موجود در دبیان <emphasis role="distribution">Jessie</emphasis> می‌پردازد (که توسط بسته <emphasis role="pkg">systemd</emphasis> پیاده‌سازی شده است)، به همراه نسخه پیش‌فرض قبلی، <emphasis role="pkg">sysvinit</emphasis> که از سیستم‌های یونیکس <emphasis>System V</emphasis> مشتق شده است؛ گزینه‌های دیگری نیز وجود دارد.</para>
+
+      <para><emphasis role="pkg">file-rc</emphasis> یک سیستم راه‌انداز با فرآیندی بسیار ساده است. بر اساس اصول runlevel کار کرده، اما دایرکتوری‌ها و پیوندهای نمادین را با یک فایل پیکربندی جایگزین می‌کند، که به <command>init</command> فرآیندهای مورد نیاز جهت اجرا و ترتیب اجرای هر کدام را نشان می‌دهد.</para>
+
+      <para>سیستم <command>upstart</command> هنوز به خوبی در دبیان مورد آزمون قرار نگرفته است. این سیستم، رویدادگرا است: اسکریپت‌های راه‌انداز دیگر بر اساس ترتیب سابق اجرا نمی‌شوند بلکه در پاسخ به رویدادهایی که وضعیت سیستم را تغییر می‌دهند مانند اتمام یک اسکریپت دیگر که به آن وابسته هستند. این سیستم، که توسط اوبونتو آغاز گردید، در دبیان <emphasis role="distribution">Jessie</emphasis> موجود است، اما گزینه پیش‌فرض آن نیست؛ در حقیقت، به عنوان جایگزینی برای <emphasis role="pkg">sysvinit</emphasis> مطرح می‌شود و یکی از وظایف <command>upstart</command> اجرای اسکریپت‌های نوشته شده برای سیستم‌های قدیمی‌تر است، به خصوص آن‌هایی که به بسته <emphasis role="pkg">sysv-rc</emphasis> تعلق دارند.</para>
+
+      <para>سیستم‌های راه‌انداز دیگری مانند <command>runit</command> یا <command>minit</command> وجود دارند، اما بسیار خاص منظوره طراحی شده‌اند و از این رو عمومیت ندارند.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>مورد خاص</emphasis> راه‌اندازی از طریق شبکه</title>
+
+      <para>در برخی پیکربندی‌ها، BIOS طوری تنظیم می‌شود که نه تنها به دنبال MBR باشد، بلکه معادل آن را از روی شبکه پیدا کند، که اینکار امکان راه‌اندازی رایانه‌های بدون هارد درایو را فراهم می‌کند یا آن‌هایی که به طور کامل در هر مرتبه راه‌اندازی از نو نصب می‌گردند. این گزینه در تمام سخت‌افزارها موجود نیست و به یک ترکیب مناسب از BIOS و کارت شبکه نیاز دارد.</para>
+
+      <para>راه‌اندازی از طریق شبکه می‌تواند به اجرای <command>debian-installer</command> یا FAI (قسمت <xref linkend="sect.installation-methods" /> را مشاهده کنید) ختم گردد.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>بازگشت به مقدمات</emphasis> فرآیند، نمونه یک برنامه</title>
+      <indexterm><primary>فرآیند</primary></indexterm>
+
+      <para>یک فرآیند نماد اجرایی یک برنامه داخل حافظه است. شامل تمام اطلاعات لازم برای اجرای صحیح نرم‌افزار می‌باشد (کد برنامه، به همراه داده‌هایی که حافظه اشغال کرده‌اند، فهرست فایل‌هایی که باز کرده است، اتصلات شبکه‌ای که برقرار کرده است و از این قبیل). یک برنامه می‌تواند شامل چندین فرآیند باشد، که الزاما توسط شناسه کاربری‌های متفاوت اجرا نمی‌شوند.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>امنیت</emphasis> استفاده از پوسته‌ای مانند <command>init</command> به منظور دسترسی به مجوزهای root</title>
+
+      <para>بر اساس قرارداد، اولین برنامه‌ای که اجرا می‌شود <command>init</command> نام دارد (که یک پیوند نمادین به فایل <filename>/lib/systemd/systemd</filename> است). اگرچه، امکان ارسال گزینه <literal>init</literal> به کرنل با نام برنامه‌ای دیگر وجود دارد.</para>
+      <indexterm><primary><command>init</command></primary></indexterm>
+
+      <para>هر فردی که قابلیت دسترسی به رایانه را دارد می‌تواند دکمه <keycap>Reset</keycap> را فشار دهد و آن را راه‌اندازی مجدد نماید. آنگاه در صفحه راه‌اندازسیستم، امکان ارسال گزینه <literal>init=/bin/sh</literal> به کرنل جهت دسترسی به حساب کاربری root بدون گذرواژه فراهم می‌آید.</para>
+
+      <para>برای جلوگیری از آن، می‌توانید راه‌اندازسیستم را با یک گذرواژه محافظت کنید. همچنین ممکن است بخواهید از BIOS نیز مراقبت کنید (یک مکانیزم محافظت با گذرواژه همیشه موجود است)، که بدون آن یک عامل نفوذی می‌تواند به سادگی سیستم را از طریق یک حافظه جانبی که شامل سیستم لینوکس خودش است راه‌اندازی کند، که از طریق آن می‌تواند به اطلاعات موجود روی هارد درایوها دسترسی داشته باشد.</para>
+
+      <para>در نهایت، آگاه باشید که اکثر BIOSها یک گذرواژه متداول دارند. به منظور عیب‌یابی برای افرادی که گذرواژه خود را فراموش می‌کنند، این گذزواژه‌ها عمومی بوده و در اینترنت موجود هستند (جستجوی عبارت “generic BIOS passwords” در یک موتور جستجو). تمام این عملیات محافظتی به منظور مانع شدن از دسترسی غیرمجاز به سیستم است. هیچ روش شناخته‌شده‌ای به منظور محافظت از رایانه وجود ندارد مادامی که مهاجم بتواند به آن دسترسی فیزیکی داشته باشد؛ آن‌ها می‌توانند هارد درایو را از جای خود کنده و با خود ببرند، یا حتی کل ماشین فیزیکی را بدزدند، یا جافظه BIOS را به منظور از بین رفتن گذرواژه پاک کنند.</para>
+    </sidebar>
+
+
+<para>... فرآیندهای بسیاری را اجرا می‌کند، که مسئول راه‌اندازی سیستم هستند: صفحه‌کلید، درایورها، فایل‌سیستم‌ها، شبکه، سرویس‌ها. این عملیات را هنگامی که کل سیستم را تحت نظر دارد اجرا می‌کند و به بررسی پیش‌نیازهای هر یک می‌پردازد. هر جزء توسط یک “unit file” توضیح داده می‌شود (بعضی وقت‌ها بیشتر)؛ شیوه نگارش آن بر اساس قالب شناخته‌شده “*.ini files“ است، به همراه جفت مقادیر <literal><replaceable>key</replaceable> = <replaceable>value</replaceable></literal> که در بین سرآیندهای <literal>[<replaceable>section</replaceable>]</literal> گروه‌بندی شده‌اند. این فایل‌ها در مسیر <filename>/lib/systemd/system/</filename> و <filename>/etc/systemd/system/</filename> ذخیره‌سازی شده‌اند؛ آن‌ها به شیوه‌های گوناگونی وجود دارند که در اینجا به بررسی “سرویس‌ها” و “اهداف” می‌پردازیم.</para>
+
+<para>یک “فایل سرویس” از systemd به یک فرآیند قابل مدیریت توسط آن را توضیح می‌دهد. تقریبا همان اطلاعات اسکریپت‌های قدیمی init را دارا هستند اما به شیوه‌ای نوین و مختصر بیان شده است. systemd عمده فعالیت‌های تکراری را بر عهده می‌گیرد (آغاز و پایان یک فرآیند، بررسی وضعیت آن، گزارش‌گیری، بررسی مجوزها و از این قبیل) و فایل سرویس تنها لازم دارد موارد خاص آن فرآیند را بیان کند. برای نمونه، در اینجا نمونه‌ای از فایل سرویس مربوط به SSH را می‌بینیم:</para>
+
+<programlisting>[Unit]
+Description=OpenBSD Secure Shell server
+After=network.target auditd.service
+ConditionPathExists=!/etc/ssh/sshd_not_to_be_run
+
+[Service]
+EnvironmentFile=-/etc/default/ssh
+ExecStart=/usr/sbin/sshd -D $SSHD_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+Alias=sshd.service</programlisting>
+
+<para>همانطور که مشاهده می‌کنید، کد بسیار کمی در آن وجود دارد، تنها تعریف‌های مورد نیاز. systemd مواردی از قبیل نمایش گزارش‌های پیشرفت، بررسی وضعیت فرآیندها و حتی اجرای مجددشان هر زمان لازم باشد را انجام می‌دهد.</para>
+
+<para>یک “فایل هدف” از systemd به تشریح وضعیت یک سیستم می‌پردازد، که در آن مجموعه‌ای از سرویس‌ها اعمال می‌شوند. این فایل می‌تواند به عنوان معادل قدیمی runlevel فرض شود. یکی از اهداف <literal>local-fs.target</literal> است؛ زمانی که محقق گردد، باقی سیستم می‌توانند تصور کنند که تمام فایل‌سیستم‌های محلی متصل شده و قابل دسترس هستند. سایر اهداف شامل <literal>network-online.target</literal> و <literal>sound.target</literal> می‌شوند. وابستگی‌های یک هدف می‌توانند درون فایل آن نوشته شوند (در خط <literal>Requires=</literal>) یا از یک پیوند نمادین به یک فایل سرویس در دایرکتوری <literal>/lib/systemd/system/<replaceable>targetname</replaceable>.target.wants/</literal> استفاده شوند. برای نمونه، <filename>/etc/systemd/system/printer.target.wants/</filename> شامل پیوندی به <filename>/lib/systemd/system/cups.service</filename> است؛ systemd اطمینان می‌یابد که برای دسترسی به <literal>printer.target</literal> ابتدا CUPS باید اجرا گردد.</para>
+
+<para>از آنجا که فایل‌های واحد بر خلاف اسکریپت‌ها یا برنامه‌ها جنبه بیانی دارند، به طور مستقیم قابل اجرا نیستند و تنها توسط systemd تفسیر می‌گردند؛ برخی ابزارهای جانبی این امکان را به مدیرسیستم می‌دهند که به صورت تعاملی با systemd برخورد کرده و هر یک از اجزای آن را مدیریت کنند.</para>
+
+<para>اولین ابزار در این زمینه <command>systemctl</command> نام دارد. زمانی که بدون هیچ پارامتری اجرا گردد، به فهرست کردن تمام فایل‌های واحد شناخته‌شده برای systemd می‌پردازد (به جز آن‌هایی که غیرفعال شده‌اند) به همراه وضعیت هر کدام. <command>systemctl status</command> دید مناسب‌تری از سرویس‌ها را ارائه می‌دهد، به همراه فرآیندهای مربوط به هر کدام. اگر نام یک سرویس نیز داده شود (مانند <command>systemctl status ntp.service</command>) جزئیات بیشتری نیز نمایش داده می‌شود به همراه آخرین خطوط گزارش مرتبط با آن (که بعدا به آن می‌رسیم).</para>
+
+<para>شروع یک سرویس به صورت دستی به سادگی اجرای دستور <command>systemctl start <replaceable>servicename</replaceable>.service</command> است. همانطور که حدس زدید، توقف سرویس با استفاده از <command>systemctl stop <replaceable>servicename</replaceable>.service</command> صورت می‌گیرد؛ سایر دستورات زیر-مجموعه عبارتند از <command>reload</command> و <command>restart</command>.</para>
+
+<para>به منظور اطلاع از فعال‌بودن یک سرویس (خواه در زمان راه‌اندازی سیستم اجرا شده باشد یا خیر) از دستور <command>systemctl enable <replaceable>servicename</replaceable>.service</command> استفاده کنید (یا <command>disable</command>). <command>is-enabled</command> برای بررسی وضعیت سرویس بکار می‌رود.</para>
+
+<para>یک ویژگی جالب از systemd افزودن یک جزء به نام <command>journald</command> است. به عنوان یک مکمل برای سیستم‌های گزارش‌گیری قدیمی‌تر مانند <command>syslogd</command> به حساب می‌آید که ویژگی‌های جالبی مانند افزودن یک پیوند رسمی بین سرویس و پیام‌هایی که تولید می‌کند یا قابلیت دریافت پیام‌های خطای تولید شده توسط ترتیب اولیه آن‌ها را شامل می‌شود. پیام‌ها در ادامه می‌توانند نمایش داده شوند، با اندکی کمک از دستور <command>journalctl</command>. بدون هیچ پارامتری، به تشریخ تمام پیام‌های لاگ که از راه‌اندازی سیستم دریافت کرده است می‌پردازد؛ البته به این شکل کمتر استفاده می‌شود. در اکثر موارد، به همراه شناسه یک سرویس بکار می‌رود:</para>
+
+<screen><computeroutput># </computeroutput><userinput>journalctl -u ssh.service
+</userinput><computeroutput>-- Logs begin at Tue 2015-03-31 10:08:49 CEST, end at Tue 2015-03-31 17:06:02 CEST. --
+Mar 31 10:08:55 mirtuel sshd[430]: Server listening on 0.0.0.0 port 22.
+Mar 31 10:08:55 mirtuel sshd[430]: Server listening on :: port 22.
+Mar 31 10:09:00 mirtuel sshd[430]: Received SIGHUP; restarting.
+Mar 31 10:09:00 mirtuel sshd[430]: Server listening on 0.0.0.0 port 22.
+Mar 31 10:09:00 mirtuel sshd[430]: Server listening on :: port 22.
+Mar 31 10:09:32 mirtuel sshd[1151]: Accepted password for roland from 192.168.1.129 port 53394 ssh2
+Mar 31 10:09:32 mirtuel sshd[1151]: pam_unix(sshd:session): session opened for user roland by (uid=0)
+</computeroutput></screen>
+
+<para>گزینه جالب دیگر در خط-فرمان <command>-f</command> است که به <command>journalctl</command> می‌گوید به نمایش پیام‌های جدید اضافه‌شده به انتهای فایل بپردازد (مانند عملکردی که <command>tail -f <replaceable>file</replaceable></command> دارد).</para>
+
+<para>اگر سرویس عملکرد مورد نظر را نداشته باشد، اولین مرحله عیب‌یابی این است که بدانیم آیا سرویس اجرا شده است یا خیر با استفاده از دستور <command>systemctl status</command>؛ اگر اجرا نشده بود و پیام‌های دستور اول به عیب‌یابی مشکل کمکی نکرد، به بررسی گزارش‌های تهیه شده توسط journald مرتبط با آن سرویس بپردازید. برای نمونه، تصور کنید که سرویس SSH کار نمی‌کند:</para>
+
+<screen><computeroutput># </computeroutput><userinput>systemctl status ssh.service
+</userinput><computeroutput>● ssh.service - OpenBSD Secure Shell server
+   Loaded: loaded (/lib/systemd/system/ssh.service; enabled)
+   Active: failed (Result: start-limit) since Tue 2015-03-31 17:30:36 CEST; 1s ago
+  Process: 1023 ExecReload=/bin/kill -HUP $MAINPID (code=exited, status=0/SUCCESS)
+  Process: 1188 ExecStart=/usr/sbin/sshd -D $SSHD_OPTS (code=exited, status=255)
+ Main PID: 1188 (code=exited, status=255)
+
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service start request repeated too quickly, refusing to start.
+Mar 31 17:30:36 mirtuel systemd[1]: Failed to start OpenBSD Secure Shell server.
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+# </computeroutput><userinput>journalctl -u ssh.service
+</userinput><computeroutput>-- Logs begin at Tue 2015-03-31 17:29:27 CEST, end at Tue 2015-03-31 17:30:36 CEST. --
+Mar 31 17:29:27 mirtuel sshd[424]: Server listening on 0.0.0.0 port 22.
+Mar 31 17:29:27 mirtuel sshd[424]: Server listening on :: port 22.
+Mar 31 17:29:29 mirtuel sshd[424]: Received SIGHUP; restarting.
+Mar 31 17:29:29 mirtuel sshd[424]: Server listening on 0.0.0.0 port 22.
+Mar 31 17:29:29 mirtuel sshd[424]: Server listening on :: port 22.
+Mar 31 17:30:10 mirtuel sshd[1147]: Accepted password for roland from 192.168.1.129 port 38742 ssh2
+Mar 31 17:30:10 mirtuel sshd[1147]: pam_unix(sshd:session): session opened for user roland by (uid=0)
+Mar 31 17:30:35 mirtuel sshd[1180]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:35 mirtuel sshd[1182]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:35 mirtuel sshd[1184]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:35 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:35 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel sshd[1186]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel sshd[1188]: /etc/ssh/sshd_config line 28: unsupported option "yess".
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service: main process exited, code=exited, status=255/n/a
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+Mar 31 17:30:36 mirtuel systemd[1]: ssh.service start request repeated too quickly, refusing to start.
+Mar 31 17:30:36 mirtuel systemd[1]: Failed to start OpenBSD Secure Shell server.
+Mar 31 17:30:36 mirtuel systemd[1]: Unit ssh.service entered failed state.
+# </computeroutput><userinput>vi /etc/ssh/sshd_config
+</userinput><computeroutput># </computeroutput><userinput>systemctl start ssh.service
+</userinput><computeroutput># </computeroutput><userinput>systemctl status ssh.service
+</userinput><computeroutput>● ssh.service - OpenBSD Secure Shell server
+   Loaded: loaded (/lib/systemd/system/ssh.service; enabled)
+   Active: active (running) since Tue 2015-03-31 17:31:09 CEST; 2s ago
+  Process: 1023 ExecReload=/bin/kill -HUP $MAINPID (code=exited, status=0/SUCCESS)
+ Main PID: 1222 (sshd)
+   CGroup: /system.slice/ssh.service
+           └─1222 /usr/sbin/sshd -D
+# </computeroutput></screen>
+
+<para>پس از بررسی وضعیت سرویس (failed)، به بررسی فایل‌های گزارش پرداختیم؛ آن‌ها نشان دادند که یک خطا در فایل پیکربندی وجود دارد. پس از ویرایش فایل پیکربندی و اصلاح خطا، سرویس را راه‌اندازی مجدد کردیم و دیدیم که به درستی کار می‌کند.</para>
+
+<sidebar><title><emphasis>مطالعه بیشتر</emphasis> سایر انواع فایل‌های واحد</title>
+
+<para>در این قسمت به ساده‌ترین قابلیت‌های systemd اشاره کردیم. اما ویژگی‌های جالب دیگری را نیز ارائه می‌دهد که در اینجا فقط برخی از آن‌ها را نام می‌بریم:</para>
+
+<itemizedlist>
+
+<listitem><para>فعال‌سازی سوکت: یک فایل واحد “سوکت” می‌تواند به منظور شرح یک شبکه یا سوکت یونیکس که توسط systemd مدیریت می‌شود بکار رود؛ این بدان معناست که سوکت توسط systemd ایجاد می‌شود و سرویس حقیقی تنها زمانی که درخواستی برای آن مطرح گردد آغاز می‌شود. این عملکرد نزدیک به <command>inetd</command> است. <citerefentry><refentrytitle>systemd.socket</refentrytitle><manvolnum>5</manvolnum></citerefentry> را مشاهده کنید.</para></listitem>
+
+<listitem><para>زمانسنج‌ها: یک فایل واحد “زمانسنج” وقایعی را شرح می‌دهد که در یک بازه زمانی ثابت یا زمان‌های مشخص تکرار می‌شوند؛ زمانی که یک سرویس به چنین زمانسنجی متصل گردد، فعالیت مرتبط با آن هنگام واکنش زمانسنج آغاز می‌گردد. این عملکرد نزدیک به <command>cron</command> است. <citerefentry><refentrytitle>systemd.timer</refentrytitle><manvolnum>5</manvolnum></citerefentry> را مشاهده کنید.</para></listitem>
+
+<listitem><para>شبکه: یک فایل واحد “شبکه“ به توضیح یک رابط شبکه می‌پردازد که امکان پیکربندی چنین رابطی را فراهم آورده و همچنین بیان می‌کند کدام سرویس وابسته به این رابط خواهد بود.</para></listitem>
+
+</itemizedlist>
+</sidebar>
+
+</section>
+
+<section id="sect.sysvinit"><title>سیستم راه‌انداز System V</title>
+    <para>سیستم راه‌انداز System V (که به اختصار init می‌نامیم) چندین فرآیند را اجرا می‌کند، که دستورالعمل‌های آن در فایل <filename>/etc/inittab</filename> آمده است. اولین برنامه‌ای که اجرا می‌شود (که معادل با گام <emphasis>sysinit</emphasis> است) برابر با <command>/etc/init.d/rcS</command> است، اسکریپتی که سایر برنامه‌های موجود در دایرکتوری <filename>/etc/rcS.d/</filename> را اجرا می‌کند. <indexterm><primary><filename>/etc/init.d/rcS</filename></primary></indexterm> <indexterm><primary><filename>rcS</filename></primary></indexterm> <indexterm><primary><filename>/etc/init.d/rcS.d/</filename></primary></indexterm> <indexterm><primary><filename>rcS.d</filename></primary></indexterm></para>
+
+    <para>در میان آن‌ها، برنامه‌های پی‌در‌پی مرتبطی پیدا خواهید کرد:</para>
+    <itemizedlist>
+      <listitem>
+	<para>پیکربندی صفحه‌کلید کنسول؛</para>
+      </listitem>
+      <listitem>
+	<para>بارگیری درایورها: اکثر ماژول‌های کرنل توسط خودش هنگام شناسایی سخت‌افزار بارگیری می‌شوند؛ درایورهای اضافی به صورت خودکار زمانی که ماژول مربوطه در فایل <filename>/etc/modules</filename> قرار گیرد بارگیری می‌شوند.</para>
+      </listitem>
+      <listitem>
+	<para>بررسی جامعیت فایل‌سیستم‌ها؛</para>
+      </listitem>
+      <listitem>
+	<para>متصل‌کردن پارتیشن‌های محلی؛</para>
+      </listitem>
+      <listitem>
+	<para>پیکربندی شبکه؛</para>
+      </listitem>
+      <listitem>
+	<para>متصل‌کردن فایل‌سیستم‌های شبکه یا NFS.</para>
+      </listitem>
+    </itemizedlist>
+
+    <sidebar>
+      <title><emphasis>بازگشت به مقدمات</emphasis> ماژول‌های کرنل و گزینه‌های آن‌ها</title>
+      <indexterm><primary>ماژول‌ها</primary><secondary>ماژول‌های کرنل</secondary></indexterm>
+
+      <para>ماژول‌های کرنل دارای گزینه‌هایی هستند که می‌توانند با قرار گرفتن در مسیر <filename>/etc/modprobe.d/</filename> پیکربندی شوند. این گزینه‌ها با دستوراتی این چنین تعریف می‌شوند: <literal>options <replaceable>module-name</replaceable> <replaceable>option-name</replaceable>=<replaceable>option-value</replaceable></literal>. چندین گزینه در صورت لزوم می‌توانند تنها با یک دستور تعریف شوند.</para>
+
+      <para>این فایل‌های پیکربندی برای <command>modprobe</command> در نظر گرفته شده‌اند - برنامه‌ای که یک ماژول کرنل به همراه وابستگی‌هایش را بارگیری می‌کند (ماژول‌ها می‌توانند یکدیگر را فراخوانی کنند). این برنامه توسط بسته <emphasis role="pkg">kmod</emphasis> ارائه می‌شود.</para>
+      <indexterm><primary><command>modprobe</command></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">kmod</emphasis></primary></indexterm>
+    </sidebar>
+
+    <para>پس از این گام، <command>init</command> وارد می‌شود و برنامه‌های فعال‌شده در runlevel پیش‌فرض (که معمولا شماره ۲ است) را آغاز می‌کند. به اجرای <command>/etc/init.d/rc 2</command> می‌پردازد، اسکریپتی که تمام سرویس‌های موجود در <filename>/etc/rc2.d/</filename> که با حرف “S” شروع می‌شوند را آغاز می‌کند. عدد دو رقمی که بعد از نام هر سرویس قرار دارد ترتیب اجرای آن‌ها را مشخص می‌کند، اما امروزه سیستم راه‌انداز پیش‌فرض از <command>insserv</command> به این منظور استفاده می‌کند، که تمام مراحل را با توجه به وابستگی‌های بین اسکریپت‌ها زمان‌بندی می‌کند. هر اسکریپت راه‌انداز شرایط مربوط به خود جهت اَغاز یا پایان سرویس را توصیف می‌کند (برای نمونه، اگر باید قبل یا بعد از یک سرویس دیگر آغاز گردد)؛ <command>init</command> سپس به اجرای آن‌ها با توجه به شرایط موجود می‌پردازد. بنابراین شماره‌گذاری ایستا که در اسکریپت‌ها استفاده می‌شد دیگر به حساب نمی‌آید (اما آن‌ها باید نامی که با “S” شروع می‌شود به همراه عدد دو رقمی و نام حقیقی سرویس را به همراه داشته باشند). در حالت کلی، سرویس‌های پایه (مانند گزارش‌گیری با <command>rsyslog</command> یا تخصیص پورت با <command>portmap</command>) در ابتدا آعاز می‌گردند به همراه سرویس‌های استاندارد و رابط گرافیکی (<command>gdm3</command>).</para>
+
+    <para>این سیستم راه‌انداز مبتنی بر وابستگی‌ها امکان شماره‌گذاری مجدد را فراهم می‌کند، کاری که در حالت دستی دشواری‌های فراوانی دارد و امکان خطای انسانی را کاهش می‌دهد چرا که زمان‌بندی مختص به پارامترهای مشخص شده می‌باشد. مزیت دیگر آن این است که سرویس‌ها می‌توانند به صورت موازی آغاز شوند زمانی که به یکدیگر وابسته نیستند، که این امر به فرآیند راه‌اندازی سرعت می‌بخشد.</para>
+
+    <indexterm><primary>runlevel</primary></indexterm>
+    <indexterm><primary>سطح، سطح‌اجرایی</primary></indexterm>
+
+    <para>... قابلیت شناسایی چندین runlevel را دارد، پس می‌تواند بین آن‌ها با استفاده از دستور <command>telinit <replaceable>new-level</replaceable></command> جابجا شود. بلافاصله، <command>init</command> به اجرای <command>/etc/init.d/rc</command> با runlevel جدید می‌پردازد. این اسکریپت به اجرای سرویس‌های مفقود و توقف آن‌هایی که دیگر مورد نیاز نیستند می‌پردازد. به این منظور، به محتوای موجود در مسیر <filename>/etc/rc<replaceable>X</replaceable>.d</filename> ارجاع می‌کند (که <replaceable>X</replaceable> نشان‌دهنده runlevel جدید است). اسکریپت‌هایی که با “S” شروع می‌شوند (به معنای “Start”) سرویس‌هایی هستند که باید آغاز گردند؛ آن‌هایی که با “K” شروع می‌شوند (به معنای “Kill”) سرویس‌هایی هستند که باید متوقف گردند. اسکریپت به اجرای سرویس فعال در runlevel قبلی نمی‌پردازد.</para>
+
+    <para>به صورت پیش‌فرض، سیستم راه‌انداز System V در دبیان از چهار runlevel متفاوت استفاده می‌کند:</para>
+    <itemizedlist>
+      <listitem>
+	<para>سطح ۰ هنگام خاموش شدن رایانه به صورت موقتی استفاده می‌شود. به همین دلیل شامل بسیاری اسکریپت‌های “K” است.</para>
+      </listitem>
+      <listitem>
+	<para>سطح ۱، که به نام حالت تک-کاربره نیز شناخته می‌شود، مطابق با سیستم در حالت عیب‌یابی است؛ تنها شامل سرویس‌های پایه است و مناسب عملیات عیب‌یابی است که تعامل با کاربران در آن مد نظر نباشد.</para>
+      </listitem>
+      <listitem>
+	<para>سطح ۲ برای عملکرد نرمال استفاده می‌شود که شامل سرویس‌های شبکه، رابط گرافیکی، ورود کاربر و از این قبیل است.</para>
+      </listitem>
+      <listitem>
+	<para>سطح ۶ که به سطح ۰ مشابه است تنها با این تفاوت که برای حالت راه‌اندازی مجدد رایانه استفاده می‌گردد.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>سطح‌های دیگری نیز وجود دارند، به خصوص ۳ تا ۵. به صورت پیش‌فرض آن‌ها مانند سطح ۲ عمل می‌کنند، اما مدیرسیستم می‌تواند آن‌ها را تغییر دهد (با افزودن یا حذف اسکریپت‌هایی در دایرکتوری <filename>/etc/rc<replaceable>X</replaceable>.d</filename>) تا آن‌ها را برای نیازهای خاص سازگار سازد.</para>
+
+    <figure id="figure.boot-process-sysvinit">
+      <title>ترتیب اجرای عملیات راه‌اندازی در لینوکس به همراه System V</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="images/startup-sysvinit.png" scalefit="1" width="80%" />
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <indexterm><primary>اسکریپت راه‌اندازی</primary></indexterm>
+
+    <para>تمام اسکریپت‌های موجود در دایرکتوری‌های <filename>/etc/rc<replaceable>X</replaceable>.d</filename> تنها پیوندهای نمادین هستند - که توسط برنامه <command>update-rc.d</command> هنگام نصب یک بسته ایجاد می‌گردند - که به اسکریپت‌های اصلی ذخیره‌شده در <filename>/etc/init.d/</filename> اشاره می‌کنند. مدیرسیستم می‌تواند به بهینه‌سازی سرویس‌های موجود در هر runlevel با اجرای دستور <command>update-rc.d</command> به همراه پارامترهای لازم بپردازد. صفحه راهنمای <citerefentry><refentrytitle>update-rc.d</refentrytitle><manvolnum>1</manvolnum></citerefentry> به تشریح شیوه استفاده از آن پرداخته است. به یاد داشته باشید که حذف پیوندهای نمادین (با پارامتر <literal>remove</literal>) روش خوبی برای غیرفعال‌کردن یک سرویس نیست. در عوض باید طوری پیکربندی کنید که در runlevel مورد نظر اجرا نشود (به صورتی که فراخوانی‌های مربوطه به آن از runlevel قبلی متوقف گردند). از آنجا که <command>update-rc.d</command> خود دارای رابط جداگانه‌ای است ممکن است بخواهید از <command>rcconf</command> استفاده کنید (از بسته <emphasis role="pkg">rcconf</emphasis>) که رابط کاربری بهتری فراهم کرده است.</para>
+    <indexterm><primary><command>update-rc.d</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>خط‌مشی دبیان</emphasis> راه‌اندازی‌مجدد سرویس‌ها</title>
+      <indexterm><primary><command>invoke-rc.d</command></primary></indexterm>
+      <indexterm><primary>سرویس</primary><secondary>راه‌اندازی‌مجدد</secondary></indexterm>
+      <indexterm><primary>راه‌اندازی‌مجدد سرویس‌ها</primary></indexterm>
+
+      <para>اسکریپت‌های پیکربندی برای بسته‌های دبیان بعضی وقت‌ها اقدام به راه‌اندازی‌مجدد سرویس‌ها به منظور در دسترس بودن آن‌ها ای افزودن برخی گزینه‌های خاص به آن‌ها می‌کنند. دستوری که سرویس را کنترل می‌کند - <command>service <replaceable>service</replaceable> <replaceable>operation</replaceable></command> - runlevel را به حساب نمی‌آورد، تصور می‌کند (به صورت اشتباه) که سرویس هم اکنون استفاده شده است و از این رو عملیات اشتباهی را رقم می‌زند (آغاز سرویسی که به عمد متوقف شده بود، یا پایان سرویسی که هم اکنون متوقف است). به این منظور دبیان برنامه <command>invoke-rc.d</command> را معرفی کرد: این برنامه باید توسط اسکریپت‌های پیکربندی به منظور اجرای سرویس‌های اسکریپت‌های راه‌انداز و اجرای دستورات لازم استفاده گردد. نکته اینکه، بر خلاف استفاده متداول آن، پسوند <filename>.d</filename> در اینجا در نام یک برنامه بکار رفته است و نه یک دایرکتوری.</para>
+    </sidebar>
+
+    <para>در نهایت، <command>init</command> به اجرای برنامه‌های کنترلی مرتبط با کنسول‌های مجازی (<command>getty</command>) می‌پردازد. یک صفحه خالی که نام‌کاربری را درخواست می‌کند نمایش می‌یابد، سپس برای برپایی یک نشست به اجرای <command>login <replaceable>user</replaceable></command> می‌پردازد.</para>
+    <indexterm><primary><command>getty</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>واژگان</emphasis> کنسول و ترمینال</title>
+
+      <para>اولین رایانه‌ها به قسمت‌های بسیار بزرگی تقسیم شده بودند: فضای ذخیره‌سازی و واحد پردازش مرکری از دستگا‌ه‌های جانبی که توسط اپراتورها استفاده می‌شدند جدا بودند. این‌ها قسمتی از یک چیدمان جداگانه بودند یعنی “کنسول”. این عبارت اکنون حفظ شده ولی معنای آن تغییر یافته است. بیشتر با “ترمینال” مترادف است که به معنای صفحه‌کلید و نمایشگر است.</para>
+
+      <para>با توسعه رایانه‌ها، سیستم‌عامل‌ها امکان استفاده از چندین کنسول مجازی که توسط چندین نشست جداگانه اجرا می‌شوند را فراهم آوردند، حتی اگر یک صفحه‌کلید و نمایشگر وجود داشته باشد. اکثر سیستم‌های گنو/لینوکس دارای شش کنسول مجازی هستند (در حالت متنی) که از طریق کلید‌های <keycombo action="simul"> <keycap>Control</keycap> <keycap>Alt</keycap> <keycap>F1</keycap> </keycombo> تا <keycombo action="simul"> <keycap>Control</keycap> <keycap>Alt</keycap> <keycap>F6</keycap> </keycombo> قابل دسترس می‌باشند.</para>
+
+      <para>عبارت‌های “کنسول” و “ترمینال” می‌توانند به یک شبیه‌ساز ترمینال در محیط گرافی X11 اشاره کنند (مانند <command>xterm</command>، <command>gnome-terminal</command> یا <command>konsole</command>).</para>
+    </sidebar>
+</section>
+  </section>
+  <section id="sect.remote-login">
+    <title>دسترسی از راه‌دور</title>
+
+    <para>اتصال به یک رایانه از راه‌دور برای مدیرسیستم یک امر ضروری است. سرورها، که در اتاق‌های جداگانه‌ای بدون صفحه‌کلید و نمایشگر قرار می‌گیرند - به شبکه متصل هستند.</para>
+
+    <sidebar>
+      <title><emphasis>بازگشت به مقدمات</emphasis> معماری کلاینت، سرور</title>
+      <indexterm><primary>کلاینت</primary><secondary>معماری کلاینت/سرور</secondary></indexterm>
+      <indexterm><primary>سرور</primary><secondary>معماری کلاینت/سرور</secondary></indexterm>
+
+      <para>سیستمی که در آن چندین فرآیند با یکدیگر در حال برقراری ارتباط هستند استعاره از “client/server” دارد. سرور برنامه‌ای است که به درخواست‌های دریافتی از کلایت پاسخ می‌دهد. این کلاینت است که عملیات را کنترل می‌کند، سرور هیچ عملیاتی را خود آعاز نمی‌کند.</para>
+    </sidebar>
+
+    <indexterm><primary>ورود</primary><secondary>ورود از راه‌دور</secondary></indexterm>
+    <indexterm><primary>ورود از راه‌دور</primary></indexterm>
+
+    <section id="sect.ssh">
+      <title>ورود امن از راه‌دور: SSH</title>
+      <indexterm><primary>SSH</primary></indexterm>
+      <indexterm><primary>Secure Shell</primary></indexterm>
+
+      <para>پروتکل <emphasis>SSH</emphasis> یا Secure SHell با توجه به اصول امنیتی و قابلیت اطمینان طراجی شده است. ارتباطاتی که از SSH استفاده می‌کنند امن هستند: طرف مقابل احراز هویت شده و تمام اطلاعات به صورت رمزگذاری شده ارسال می‌شوند.</para>
+
+      <sidebar>
+        <title><emphasis>فرهنگ</emphasis> منسوخ شدن استفاده Telnet و RSH</title>
+	<indexterm><primary><command>telnet</command></primary></indexterm>
+	<indexterm><primary><command>rsh</command></primary></indexterm>
+
+	<para>قبل از SSH، <emphasis>Telnet</emphasis> و <emphasis>RSH</emphasis> دو ابزار اصلی برای ارتباط راه‌دور بودند. اکنون این ابزارها منسوخ شده و با وجود فراهم بودن در دبیان نباید به این منظور استفاده گردند.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>واژگان</emphasis> احراز هویت، رمزنگاری</title>
+
+	<para>زمانی که می‌خواهید از طریق یک کلاینت قابلیت اجرای برخی دستورات در سرور را داشته باشید، امنیت به میان می‌آید. باید هویت کلاینت را مشخص کنید؛ این کار احراز هویت نام دارد. این شناسایی معمولا شامل یک گذرواژه می‌باشد که باید به صورت خصوصی نگهداری شود، در غیر اینصورت هر کلاینت می‌تواند به آن وصل شود. این همان هدف رمزنگاری است، که شیوه‌ای به صورت رمزگذاری برای سیستم‌ها است تا بتوانند اطلاعات بین خود را از طریق یک کانال عمومی ناامن رد و بدل کنند.</para>
+
+	<para>احرازهویت و رمزنگاری معمولا با یکدیگر بکار می‌روند، از آنجا که کاربرد مشابهی دارند و از آنجا که از مفاهیم مشترک ریاضی استفاده می‌کنند.</para>
+      </sidebar>
+
+      <para>SSH همچنین تو سرویس انتقال فایل را ارائه می‌دهد. <command>scp</command> یک ابزار خط فرمان است که عملکردی مشابه <command>cp</command> دارد، به جز مسیرهای خارج از یک رایانه که باید ابتدا نام رایانه به همراه دو نقطه آورده شود.</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>scp file machine:/tmp/</userinput></screen>
+
+      <para><command>sftp</command> یک دستور تعاملی مشابه <command>ftp</command> است. در یک نشست واحد، <command>sftp</command> می‌تواند چندین فایل را منتقل کند و امکان ایجاد تغییرات در فایل‌های راه‌دور نیز وجود دارد (حذف، تغییر نام، تغییر مجوزها و از این قبیل).</para>
+      <indexterm><primary><command>scp</command></primary></indexterm>
+      <indexterm><primary><command>sftp</command></primary></indexterm>
+
+      <para>دبیان از OpenSSH، یک نسخه آزاد از SSH که توسط پروژه <command>OpenBSD</command> مدیریت می‌شود (یک سیستم عامل آزاد مبتنی بر کرنل BSD با تمرکز بر امنیت) و انشعاب نسخه اصلی نرم‌افزار SSH که توسط شرکت SSH Communications Security Corp در فنلاند اداره می‌شد، استفاده می‌کند. این شرکت در ابتدا SSH را به عنوان نرم‌افزار آزاد منتشر کرد، اما در ادامه مسیر تصمیم گرفت تا توسعه آن را تحت یک مجوز انحصاری انجام دهد. پروژه OpenBSD با ایجاد OpenSSH تصمیم گرفت یا یک نسخه آزاد از آن ارائه دهد.</para>
+      <indexterm><primary>OpenSSH</primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>بازگشت به مقدمات</emphasis> <foreignphrase>Fork</foreignphrase></title>
+        <indexterm><primary>انشعاب</primary></indexterm>
+
+	<para>یک “انشعاب”، در حوزه نرم‌افزار، به معنای پروژه جدیدی بر اساس پروژه فعلی است که با آن رقابت می‌کند. از آن زمان به بعد، هر دو نرم‌افزار رویکردهای متفاوتی در نسخه‌های جدید دارند. یک انشعاب معمولا ناشی از عدم تفاقق بین اعضای یک تیم توسعه نرم‌افزار است.</para>
+
+	<para>گزینه انشعاب برای یک پروژه از طبیعت نرم‌افزار آزاد نشات می‌گیرد؛ یک انشعاب رویدادی حیات بخش برای ادامه توسعه نرم‌افزار با فلسفه آزاد است (برای نمونه در مورد تغییر مجوز). انشعابی که از مسائل فنی یا شخصی نشات می‌گیرد معمولا به اتلاف منابع انسانی می‌انجامد؛ در این رابطه رویکرد دیگری ترجیح داده می‌شود. افرادی که دو پروژه متفاوت را که سابق بر این تحت یک عنوان فعالیت می‌کرد، راهبری می‌کنند با سابقه آن آشنا هستند.</para>
+      </sidebar>
+
+      <para>OpenSSH به دو بسته تقسیم شده است: بخش مربوط به کلاینت در بسته <emphasis role="pkg">openssh-client</emphasis> و بخش مربوط به سرور در بسته <emphasis role="pkg">openssh-server</emphasis> قرار دارد. بسته <emphasis role="pkg">ssh</emphasis> به هر دو آن‌ها وابسته بوده و عملیات نصب آن‌ها را انجام می‌دهد (<command>apt install ssh</command>).</para>
+
+      <section id="sect.ssh-key-based-auth">
+        <title>احرازهویت کلید-محور</title>
+
+	<para>با هر بار ورود از طریق SSH، سرور راه‌دور درخواست یک گذرواژه برای احزارهویت کاربر می‌کند. این می‌تواند در صورت خودکارسازی ارتباط یا استفاده از ابزاری که نیاز به ارتباط مداوم با سرور دارد، مشکل‌ساز گردد. به همین دلیل است که SSH سیستم احرازهویت کلید-محور را فراهم کرده است.</para>
+
+	<para>کاربر در رایانه خود اقدام به ایجاد یک جفت کلید با استفاده از دستور <command>ssh-keygen -t rsa</command> می‌کند؛ کلید عمومی در فایل <filename>~/.ssh/id_rsa.pub</filename> و کلید خصوصی در فایل <filename>~/.ssh/id_rsa</filename> ذخیره می‌شوند. کاربر با اجرای دستور <command>ssh-copy-id <replaceable>server</replaceable></command> کلید عمومی خود را به انتهای فایل <filename>~/.ssh/authorized_keys</filename> موجود در سرور اضافه می‌کند. اگر کلید خصوصی در زمان تولید خود با استفاده از “گذزواژه” محافظت نشده باشد، تمام ورودهای جداگانه به سرور بدون درخواست گذرواژه کار خواهند کرد. در غیر اینصورت، کلید خصوصی در هر مرتبه ورود به سرور نیاز به رمزگشایی با استفاده از گذرواژه مربوطه دارد. خوشبختانه، <command>ssh-agent</command> امکان نگهداری کلید خصوصی در حافظه را به منظور دسترسی آسان‌تر فراهم می‌کند. به این منظور، کافی است <command>ssh-add</command> را (برای هر نشست جداگانه) با یک نسخه کامل <command>ssh-agent</command> بکار می‌برید. دبیان این کار را در نشست‌های گرافیکی به صورت خودکار انجام می‌دهد اما می‌توانید با تغییر در <filename>/etc/X11/Xsession.options</filename> آن را غیرفعال کنید. برای یک نشست کنسول، می‌توانید آن را به صورت دستی و با <command>eval $(ssh-agent)</command> آغاز کنید.</para>
+
+        <sidebar>
+          <title><emphasis>امنیت</emphasis> محافظت از کلید خصوصی</title>
+
+	  <para>هر کسی که به کلید خصوصی دسترسی داشته باشد با حساب کاربری مربوط به آن می‌تواند وارد شود. به همین دلیل است که دسترسی به کلید خصوصی از طریق یک “گذزواژه” محافظت می‌شود. کسی که یک رونوشت از کلید خصوصی می‌گیرد (برای نمونه، <filename>~/.ssh/id_rsa</filename>) هنوز باید به گذرواژه مخصوص آن دسترسی داشته باشد. این لایه حفاظتی اضافی نیز، اگرچه، رسوخ‌ناپذیر نیست و اگر فکر می‌کنید که کلید خصوصی شما آشکار شده است بهتر است تا مجوز دسترسی به آن روی رایانه‌های سرور را از بین ببرید (با حفظ کردن آن از فایل <filename>authorized_keys</filename>) و آن را با یک کلید جدید جایگزین کنید.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>فرهنگ</emphasis> نقص OpenSSL در دبیان <emphasis role="distribution">Etch</emphasis></title>
+
+	  <para>کتابخانه OpenSSL، که ابتدا در دبیان <emphasis role="distribution">Etch</emphasis> ارائه شد، یک مشکل اساسی در تولیدکننده عدد تصادفی (RNG) خود داشت. در واقع، نگهدارنده بسته تغییر کوچکی ایجاد کرده بود تا برنامه‌هایی که از آن استفاده می‌کنند اقدام به تولید اخطارهای خاصی زمانی که از ابزار آزمون حافظه مانند <command>valgrind</command> استفاده می‌شود، نکنند. متاسفانه، این تغییر به معنای این بود که RNG تنها از یک منبع آنتروپی متناظر با شماره فرآیند (PID) که ۳۲،۰۰۰ مقدار آن برای تولید عدد تصادفی کافی نبود، استفاده می‌کرد. <ulink type="block" url="http://www.debian.org/security/2008/dsa-1571" /></para>
+
+	  <para>به خصوص، زمانی که OpenSSL برای تولید یک کلید استفاده می‌شد، همیشه کلیدی بین محدوده مشخصی از آن‌ها تولید می‌کرد (۳۲،۰۰۰ ضرب در تعداد کمی از طول کلید‌ها). این عملکرد روی کلیدهای SSH، کلیدهای SSL و گواهینامه‌های X.509 که توسط بسیاری برنامه‌ها مانند OpenVPN استفاده می‌شدند، تاثیر گذاشت. یک نفوذگر تنها می‌بایست تمام کلید‌های موجود در آن بازه را جهت دسترسی به سیستم پیدا کند. برای کاهش تاثیر این مشکل، فرآیند پس‌زمینه SSH طوری تغییر یافت تا کلیدهای دردسرساز فهرست شده در بسته‌های <emphasis role="pkg">openssh-blacklist</emphasis> و <emphasis role="pkg">openssh-blacklist-extra</emphasis> را رد کند. علاوه بر این، دستور <command>ssh-vulnkey</command> امکان شناسایی کلیدهای آشکارشده در سیستم را فراهم می‌کرد.</para>
+
+	  <para>تحلیل بیشتر روی این موضوع نشان داد که مشکلات کوچک بیشتری در پروژه OpenSSL و نگهدارنده بسته دبیان آن وجود داشت. کتابخانه بزرگی مانند OpenSSL - بدون تغییر - نباید پس از آزمون با <command>valgrind</command> پیام‌های اخطار صادر کند. علاوه بر این، کد (به خصوص قسمت حساسی مانند RNG) باید با توضیحات بهتری از بروز چنین خطایی پیشگیری کند. در طرف دبیان، نگهدارنده بسته قصد داشت تا تغییرات مورد نظر خود را با توسعه‌دهندگان اصلی OpenSSL سازگار سازد، اما بدون ارايه فایل وصله مناسب و در جریان گذاشتن تیم اصلی از تغییرات انجام گرفته خارج از مسئولیت‌های پروژه دبیان اقدام کرد. در نهایت، راه‌حل‌های پیشنهادی خیلی بهینه نبودند: تغییرات ایجاد شده در کد اصلی به خوبی مستند نشده بود؛ تمام تغییرات در یک مخزن Subversion ذخیره شده بودند اما هنگام ایجاد بسته اصلی تنها به تولید یک فایل وصله انجامید.</para>
+
+	  <para>It is difficult under such conditions to find the
+	  corrective measures to prevent such incidents from recurring. The
+	  lesson to be learned here is that every divergence Debian
+	  introduces to upstream software must be justified, documented,
+	  submitted to the upstream project when possible, and widely
+	  publicized. It is from this perspective that the new source
+          package format (“3.0 (quilt)”) and the Debian sources webservice
+          were developed.
+	  <ulink type="block" url="http://sources.debian.org" /></para>
+        </sidebar>
+      </section>
+      <section id="sect.ssh-x11">
+        <title>استفاده راه‌دور از برنامه‌های X11</title>
+
+	<para>پروتکل SSH امکان فوروارد کردن داده‌های گرافیکی را می‌دهد (نشست “X11”، که از نام متداول‌ترین سیستم گرافیکی یونیکس گرفته شده است)؛ سرور یک کانال اختصاصی برای آن در نظر می‌گیرد. به خصوص، یک برنامه گرافیکی که از راه‌دور اجرا می‌شود می‌تواند روی سرور X.org سیستم محلی نمایش یابد و تمام نشست جاری (ورودی و نمایش) امن خواهد بود. از آنجا که این سیستم اجازه تداخل برنامه‌های راه‌دور با سیستم محلی را می‌دهد، به صورت پیش‌فرض غیرفعال است. می‌توانید با مشخص کردن <literal>X11Forwarding yes</literal> در فایل پیکربندی سرور (<filename>/etc/ssh/sshd_config</filename>) آن را فعال کنید. در نهایت، کاربر نیز هنگام درخواست <command>ssh</command> باید گزینه <literal>-X</literal> را بیان کند.</para>
+      </section>
+      <section id="sect.ssh-port-forwarding">
+        <title>ایجاد تونل‌های رمزگذاری شده با پورت فورواردینگ</title>
+        <indexterm><primary>پورت فورواردینگ</primary></indexterm>
+
+	<para>گزینه‌های <literal>-R</literal> و <literal>-L</literal> به <command>ssh</command> امکان ایجاد “تونل‌های رمزگذاری‌شده” بین دو رایانه را می‌دهند، که به تبع آن یک پورت TCP محلی (قسمت <xref linkend="sidebar.tcp-udp" /> را مشاهده کنید) به شیوه‌ای امن می‌تواند به یک ماشین راه‌دور فوروارد شود یا بر عکس.</para>
+
+        <sidebar>
+          <title><emphasis>واژگان</emphasis> تونل</title>
+          <indexterm><primary>تونل (SSH)</primary><seealso>VPN</seealso></indexterm>
+          <indexterm><primary>تونل SSH</primary><seealso>VPN</seealso></indexterm>
+
+	  <para>اینترنت، و اکثر شبکه‌های محلی متصل به آن، در حالت بسته‌ای کار می‌کنند نه متصل، به این معنی که بسته ارسال شده از یک رایانه در مسیر خود چندین رایانه دیگر (مسیریاب) را طی می‌کند تا در نهایت به مقصد برسد. می‌توانید عملیات اتصال را طوری شبیه‌سازی کنید که در آن جریان داده در بسته‌های نرمال IP ذخیره شده باشد. این بسته‌ها از مسیرهای خود طبعیت می‌کنند، اما جریان داده در انتهای مسیر بدون تغییر باقی می‌ماند. ما به این فرآیند یک “تونل” می‌گوییم، مشابه با یک تونل در دنیای واقعی که در آن خودروها از سمت ورودی (input) به خروجی (output) حرکت می‌کنند بدون اینکه مسیرشان تغییر کند، بر خلاف یک مسیر معمولی که ممکن است شامل تقاطع‌های متفاوت باشد.</para>
+
+	  <para>از این موقعیت برای افزودن رمزنگاری به تونل می‌توانید استفاده کنید: با اینکار جریان داده‌ای که از تونل می‌گذرد غیر قابل تشخیص از خارج آن است اما در انتهای تونل به شیوه رمزگشایی شده قرار می‌گیرد.</para>
+        </sidebar>
+
+	<para>دستور <command>ssh -L 8000:server:25 intermediary</command> یک نشست SSH با میزان <replaceable>intermediary</replaceable> برقرار کرده و به پورت محلی ۸۰۰۰ گوش می‌دهد (<xref linkend="figure.ssh-L" /> را مشاهده کنید). برای هر ارتباطی که روی این پورت برقرار شود، <command>ssh</command> یک ارتباط میانی از رایانه <replaceable>intermediary</replaceable> با پورت ۲۵ روی <replaceable>server</replaceable> برقرار کرده و هر دو ارتباط را به یکدیگر متصل می‌کند.</para>
+
+	<para>دستور <command>ssh -R 8000:server:25 intermediary</command> نیز یک نشست SSH با رایانه <replaceable>intermediary</replaceable> برقرار می‌کند، اما روی این رایانه است که <command>ssh</command> به پورت ۸۰۰۰ (<xref linkend="figure.ssh-R" /> را مشاهده کنید) گوش می‌دهد. هر ارتباطی که روی این پورت برقرار شود <command>ssh</command> یک ارتباط با پورت ۲۵ <replaceable>server</replaceable> برقرار کرده و هر دو ارتباط را به یکدیگر متصل می‌کند.</para>
+
+	<para>در هر دو مورد، ارتباطات با پورت ۲۵ میزان <replaceable>server</replaceable> برقرار شد، که جریان داده آن از طریق تونل SSH بین سیستم محلی و سیستم <replaceable>intermediary</replaceable> می‌گذرد. در مورد اول، ورودی تونل پورت ۸۰۰۰ محلی است و داده قبل از اینکه به <replaceable>server</replaceable> در شبکه “عمومی” برسد از طریق رایانه <replaceable>intermediary</replaceable> می‌گذرد. در مورد دوم، ورودی و خروجی تونل برعکس شده است؛ ورودی پورت ۸۰۰۰ از رایانه <replaceable>intermediary</replaceable> است و خروجی روی سیستم محلی قرار دارد و جریان داده به این شکل به <replaceable>server</replaceable> هدایت می‌شود. در عمل، سرور همان سیستم محلی یا میانی است. به این شیوه SSH می‌تواند ارتباط امنی بین هر دو رایانه برقرار کند.</para>
+
+        <figure id="figure.ssh-L">
+          <title>فوروارد کردن یک پورت محلی با SSH</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="images/ssh-L.png" width="35%" />
+            </imageobject>
+          </mediaobject>
+        </figure>
+
+        <figure id="figure.ssh-R">
+          <title>فوروارد کردن یک پورت راه‌دور با SSH</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="images/ssh-R.png" width="35%" />
+            </imageobject>
+          </mediaobject>
+        </figure>
+      </section>
+    </section>
+    <section id="sect.remote-desktops">
+      <title>استفاده از میزکارهای گرافیکی راه‌دور</title>
+
+      <para>VNC یا Virtual Network Computing اجازه دسترسی راه‌دور به میزکارهای گرافیکی را می‌دهد.</para>
+      <indexterm><primary>VNC</primary></indexterm>
+      <indexterm><primary>Virtual Network Computing</primary></indexterm>
+      <indexterm><primary>میزکار گرافیکی</primary><secondary>راه‌دور</secondary></indexterm>
+      <indexterm><primary>میزکار گرافیکی راه‌دور</primary></indexterm>
+      <indexterm><primary>میزکار، میزکار گرافیکی راه‌دور</primary></indexterm>
+
+      <para>این ابزار بیشتر برای راهنمایی فنی استفاده می‌شود؛ مدیرسیستم می‌تواند خطاهایی را ببیند که کاربر با آن مواجه است و به آن‌ها شیوه حل مساله را آموزش دهد.</para>
+      <indexterm><primary><emphasis role="pkg">vino</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">krfb</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">x11vnc</emphasis></primary></indexterm>
+
+      <para>ابتدا، کاربر باید اجازه اشتراک نشست خود را صادر کند. میزکار گرافیکی GNOME در <emphasis role="distribution">Jessie</emphasis> این گزینه را در پنل پیکربندی خود شامل می‌شود (برخلاف نسخه‌های قبلی دبیان که کاربر می‌بایست بسته <command>vino</command> را نصب و اجرا کند). KDE هنوز به بسته <command>krfb</command> جهت اشتراک نشست فعلی با VNC نیاز دارد. برای سایر میزکارهای گرافیکی، دستور <command>x11vnc</command> (در بسته دبیان با همین نام) هدف مشابهی را دنبال می‌کند؛ می‌توانید آن را با استفاده از یک نماد گرافیکی در اختیار کاربر قرار دهید.</para>
+
+      <indexterm><primary><emphasis role="pkg">vinagre</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">tsclient</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">krdc</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis role="pkg">xvnc4viewer</emphasis></primary></indexterm>
+
+      <para>زمانی که نشست گرافیکی توسط VNC آماده شود، مدیرسیستم باید با استفاده از یک کلاینت VNC به آن متصل شود. GNOME از <command>vinagre</command> و <command>remmina</command> به این منظور استفاده می‌کند در حالی که ابزار KDE شامل <command>krdc</command> است (در منوی <menuchoice> <guimenu>K</guimenu> <guisubmenu>Internet</guisubmenu> <guimenuitem>Remote Desktop Client</guimenuitem></menuchoice>). سایر کلاینت‌های VNC نیز وجود دارند که در خط فرمان عمل می‌کنند مانند <command>xvnc4viewer</command> در بسته دبیان با همین نام. زمانی که ارتباط برقرار شود، مدیرسیستم می‌بیند که مشکل از کجاست، به صورت راه‌دور آن را عیب‌یابی کرده و به کاربر شیوه حل مساله را می‌آموزد.</para>
+
+      <sidebar>
+        <title><emphasis>امنیت</emphasis> VNC همراه با SSH</title>
+        <indexterm><primary>تونل SSH</primary><secondary>VNC</secondary></indexterm>
+
+	<para>اگر قصد استفاده از VNC در حالت امن و رمزنگاری شده را دارید، امکان ذخیره‌سازی داده در یک تونل SSH وجود دارد (<xref linkend="sect.ssh-port-forwarding" /> را مشاهده کنید). تنها کافی است بدانید که VNC به صورت پیش‌فرض از پورت ۵۹۰۰ برای نمایشگر اول (که “localhost:0” خوانده می‌شود)، ۵۹۰۱ برای نمایشگر دوم (که “localhost:1” خوانده می‌شود) و به همین ترتیب استفاده می‌کند.</para>
+
+	<para>دستور <command>ssh -L localhost:5901:localhost:5900 -N -T <replaceable>machine</replaceable></command> یک تونل بین پورت ۵۹۰۱ محلی در رابط شبکه localhost و پورت ۵۹۰۰ از میزبان <replaceable>machine</replaceable> ایجاد می‌کند. اولین “localhost” به SSH می‌گوید که تنها روی این رابط شبکه از رایانه محلی متمرکز باشد. دومین “localhost” نشان‌دهنده رابط شبکه رایانه راه‌دور است که ترافیک دریافتی را از طریق “localhost:5901” می‌فرستد. بنابراین <command>vncviewer localhost:1</command> کلایت VNC را به نمایشگر راه‌دور متصل کرده، با اینکه نام رایانه محلی را ذکر کرده‌اید.</para>
+
+	<para>زمانی که نشست VNC به پایان رسید به یاد داشته باشید که باید نشست SSH مربوط به آن را نیز خاتمه دهید.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>بازگشت به مقدمات</emphasis> مدیر نمایش</title>
+        <indexterm><primary><command>gdm3</command></primary></indexterm>
+        <indexterm><primary><command>kdm</command></primary></indexterm>
+        <indexterm><primary><command>xdm</command></primary></indexterm>
+        <indexterm><primary><command>lightdm</command></primary></indexterm>
+        <indexterm><primary>مدیر</primary><secondary>مدیر نمایش</secondary></indexterm>
+        <indexterm><primary>مدیر نمایش</primary></indexterm>
+
+	<para><command>gdm</command>، <command>kdm</command>، <command>xdm</command> و <command>lightdm</command> مدیر نمایش هستند. آن‌ها وظیفه کنترل کردن رابط گرافیکی بعد از راه‌اندازی اولیه سیستم به منظور فراهم کردن صفحه ورودی برای کاربر را به عهده دارند. زمانی که کاربر وارد سیستم شود برنامه‌ای را اجرا می‌کنند که میزکار گرافیکی را فراهم می‌آورد.</para>
+      </sidebar>
+
+      <para>VNC همچنین برای کاربران یک شرکت، مانند مدیران اجرایی، که نیاز به دسترسی به رایانه شرکت از خانه خود را دارند بکار می‌رود. پیکربندی چنین سرویسی کمی پیچیده‌تر است: ابتدا بسته <emphasis role="pkg">vnc4server</emphasis> را نصب می‌کنید، پیکربندی مدیر نمایش را به منظور قبول درخواست‌های <literal>XDMCP Query</literal> تغییر می‌دهید (برای <command>gdm3</command>، اینکار با افزودن <literal>Enable=true</literal> در قسمت “xdmcp” از فایل <filename>/etc/gdm3/daemon.conf</filename> صورت می‌گیرد) و در نهایت سرور VNC را با استفاده از <command>inetd</command> آغاز می‌کنید به طوری که هر زمان کاربر درخواست داد نشست مربوطه آغاز گردد. برای نمونه، می‌توانید این خط را به فایل <filename>/etc/inetd.conf</filename> بیفزایید:</para>
+
+      <programlisting>5950  stream  tcp  nowait  nobody.tty  /usr/bin/Xvnc Xvnc -inetd -query localhost -once -geometry 1024x768 -depth 16 securitytypes=none</programlisting>
+
+      <para>هدایت ارتباطات ورودی به مدیر نمایش مشکل احراز هویت را حل می‌کند، چرا که تنها کاربران با حساب‌های کاربری محلی می‌توانند از صفحه <command>gdm3</command> عبور کنند (یا معادل <command>kdm</command>، <command>xdm</command> و از این قبیل). از آنجا که این عملیات امکان چندین ورودی مختلف را فراه می‌کند (در صورت قوی بودن سرور)، می‌تواند برای ارائه میزکارهای گرافیکی برای کاربران سیار (یا برای سیستم‌های رومیزی ضعیف‌تر) استفاده شود. کاربران تنها کافی است با استفاده از <command>vncviewer <replaceable>server</replaceable>:50</command> به سرور متصل شوند، چرا که پورت مورد استفاده ۵۹۵۰ است.</para>
+      <indexterm><primary><emphasis role="pkg">vnc4server</emphasis></primary></indexterm>
+    </section>
+  </section>
+  <section id="sect.rights-management">
+    <title>مدیریت دسترسی</title>
+
+    <para>لینوکس بدون شک یک سیستم چندکاربره حقیقی است، پس فراهم کردن یک سیستم محوز برای کنترل عملیات مورد مجاز روی فایل‌ها و دایرکتوری‌ها، که شامل تمام منابع و دستگاه‌های سیستم می‌شود، امری لازم و ضروری است (در یک سیستم یونیکس، هر دستگاهی توسط یک فایل یا دایرکتوری مشحص می‌گردد). این اصل درباره تمام سیستم‌های یونیکس صدق می‌کند، اما ذکر این نکته مفید است که کاربردهای پیشرفته دیگری نیز برای این منظور وجود دارند.</para>
+    <indexterm><primary>دسترسی‌ها</primary></indexterm>
+    <indexterm><primary>مجوزها</primary></indexterm>
+    <indexterm><primary>کاربر</primary><secondary>مالک</secondary></indexterm>
+    <indexterm><primary>گروه</primary><secondary>مالک</secondary></indexterm>
+    <indexterm><primary>مالک</primary><secondary>کاربر</secondary></indexterm>
+    <indexterm><primary>مالک</primary><secondary>گروه</secondary></indexterm>
+
+    <para>هر فایل یا دایرکتوری شامل مجوزهای مشخصی برای سه گروه از کاربران است:</para>
+    <itemizedlist>
+      <listitem>
+	<para>مالک آن (که با حرف <literal>u</literal> از کلمه “user” نمایش می‌یابد)؛</para>
+      </listitem>
+      <listitem>
+	<para>گروه مالک آن (که با حرف <literal>g</literal> از کلمه “group” نمایش می‌یابد) که بیانگر تمام اعضای آن گروه است؛</para>
+      </listitem>
+      <listitem>
+	<para>دیگران (که با حرف <literal>o</literal> از کلمه “other” نمایش می‌یابد).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>سه نوع دسترسی قابل ترکیب هستند:</para>
+    <itemizedlist>
+      <listitem>
+	<para>خواندن (که با خرف <literal>r</literal> از کلمه “read” نمایش می‌یابد)؛</para>
+      </listitem>
+      <listitem>
+	<para>نوشتن یا تغییردادن (که با حرف <literal>w</literal> از کلمه “write” نمایش می‌یابد).</para>
+      </listitem>
+      <listitem>
+	<para>اجرا کردن (که با حرف <literal>x</literal> از کلمه “eXecute” نمایش می‌یابد).</para>
+      </listitem>
+    </itemizedlist>
+    <indexterm><primary>خواندن، دسترسی</primary></indexterm>
+    <indexterm><primary>نوشتن، دسترسی</primary></indexterm>
+    <indexterm><primary>تغییردادن، دسترسی</primary></indexterm>
+    <indexterm><primary>اجراکردن، دسترسی</primary></indexterm>
+
+    <para>در مورد یک فایل این دسترسی‌ها به سادگی قابل درک هستند: دسترسی خواندن اجازه خواندن محتوا را می‌دهد (از جمله رونوشت گرفتن)، دسترسی نوشتن اجازه تغییر آن را می‌دهد و دسترسی اجراکردن اجازه اجرای فایل را می‌دهد (که در صورت برنامه بودن معنی دارد).</para>
+
+    <sidebar>
+      <title><emphasis>امنیت</emphasis> برنامه‌های اجرایی <literal>setuid</literal> و <literal>setgid</literal></title>
+
+      <para>دو دسترسی مشحص مربوط به فایل‌های اجرایی هستند: <literal>setuid</literal> و <literal>setgid</literal> (که با حرف “s” نمایش می‌یابند). نکته اینکه با اغلب از “بیت” صحبت می‌کنیم، چرا که هر یک از این مقادیر می‌توانند با ۰ یا ۱ نمایش داده شوند. این دو دسترسی اجازه اجرا برنامه توسط هر کاربری که مالک آن مالک گروه آن باشد را می‌دهند. این مکانیزم اجازه دسترسی بالاتر به قابلیت‌هایی را می‌دهد که ممکن است خارج از محدوده اختیارات کاربر باشد.</para>
+      <indexterm><primary><literal>setuid</literal>دسترسی، </primary></indexterm>
+      <indexterm><primary><literal>setgid</literal>دسترسی، </primary></indexterm>
+
+      <para>از آنجا که یک برنامه <literal>setuid</literal> تحت نظارت کاربر root اجرا می‌شود، امنیت و پایداری آن از اهمیت بالایی برخوردار است. در حقیقت، کاربری که قصد استفاده از آن را دارد می‌تواند با دسترسی root به کل سیستم اشراف داشته باشد.</para>
+    </sidebar>
+
+    <para>یک دایرکتوری به شیوه متفاوتی مدیریت می‌شود. دسترسی خواندن اجازه فهرست‌گیری از محتوای آن را می‌دهد (فایل‌ها و دایرکتوری‌ها)، دسترسی نوشتن اجازه ایجاد یا حذف فایل‌ها را می‌دهد و دسترسی اجرا کردن اجازه عبور و مرور از دایرکتوری را می‌دهد (به خصوص هنگام استفاده از دستور <command>cd</command>). توانایی عبور از یک دایرکتوری بدون آنکه قادر باشیم محتوای آن را بخوانیم اجازه دسترسی به موارد شناخته شده در آن را می‌دهد، اما در صورتی که نام یا محل فایل را ندانیم نمی‌توان آن‌ها را پیدا کرد.</para>
+
+    <sidebar id="sidebar.setgid-dir">
+      <title><emphasis>امنیت</emphasis> دایرکتوری <literal>setgid</literal> همراه با <emphasis>sticky bit</emphasis></title>
+      <indexterm><primary><literal>setgid</literal> دایرکتوری</primary></indexterm>
+
+      <para>بیت <literal>setgid</literal> همچنین بر دایرکتوری نیز اعمال می‌شود. هر محتوای جدیدی که داخل آن ایجاد گردد بجای آنکه گروه اصلی کاربر ایجادکننده را شامل شود به صورت خودکار گروه مالک دایرکتوری والد را به ارث می‌برد. این گروه از تغییر نام گروه اصلی توسط کاربر جلوگیری می‌کند (با دستور <command>newgrp</command>) زمانی که در یک ساختار درختی از فایل‌های اشتراکی بین کاربران یک گروه استفاده شود.</para>
+      <indexterm><primary>بیت چسبنده</primary></indexterm>
+
+      <para>بیت “چسبنده” (که با حرف “t” نمایش می‌یابد) نوعی مجوز است که تنها در دایرکتوری‌ها بکار می‌رود. به طور مخصوص در دایرکتوری‌های موقتی استفاده می‌شود که همگان دسترسی نوشتن داشته باشند (مانند <filename>/tmp/</filename>): از حذف فایل‌ها جلوگیری می‌کند به صورتی که تنها مالک فایل (یا مالک دایرکتوری والد) قادر به انجام آن باشد. بدون این ویژگی، هر کسی می‌تواند محتوای موجود در <filename>/tmp/</filename> را حذف کند.</para>
+    </sidebar>
+
+    <para>سه دستور وجود دارند که مجوزهای مربوط به یک فایل را کنترل می‌کنند:</para>
+    <itemizedlist>
+      <listitem>
+	<para><command>chown <replaceable>user</replaceable> <replaceable>file</replaceable></command> مالک فایل را تغییر می‌دهد؛</para>
+      </listitem>
+      <listitem>
+	<para><command>chgrp <replaceable>group</replaceable> <replaceable>file</replaceable></command> گروه مالک را تغییر می‌دهد؛</para>
+      </listitem>
+      <listitem>
+	<para><command>chmod <replaceable>rights</replaceable> <replaceable>file</replaceable></command> مجوزهای مربوط به فایل را تغییر می‌دهد.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>دو روش برای ارائه دسترسی‌ها وجود دارد. از میان آن‌ها، شیوه نمادین به سادگی فرا گرفته و آموخته می‌شود. این شیوه شامل حروف نمادین ذکر شده در بالا هستند. می‌توانید برای هر دسته‌بندی از کاربران (<literal>u</literal>/<literal>g</literal>/<literal>o</literal>) دسترسی تعیین کنید با تنظیم آن‌ها به صورت انفرادی (با <literal>=</literal>)، با افزودن (<literal>+</literal>) یا کاستن (<literal>-</literal>). بنابراین فرمول <literal>u=rwx,g+rw,o-r</literal> به مالک فایل دسترسی خواندن، نوشتن و اجراکردن، به گروه مالک دسترسی خواندن و نوشتن و دسترسی خواندن را از سایر افراد می‌گیرد. دسترسی‌هایی که در چنین دستوری ذکر نشده باشند بدون تغییر باقی می‌مانند. حرف <literal>a</literal>، به معنی “all”، تمام دسته‌بندی‌های کاربران را شامل می‌شود. بنابراین، <literal>a=rx</literal> به سه دسته‌بندی موجود تمام دسترسی‌ها را (خواندن و اجراکردن، ولی نه نوشتن) می‌دهد.</para>
+    <indexterm><primary><command>chmod</command></primary></indexterm>
+    <indexterm><primary><command>chown</command></primary></indexterm>
+    <indexterm><primary><command>chgrp</command></primary></indexterm>
+    <indexterm><primary>نمایش عددی دسترسی‌ها</primary></indexterm>
+    <indexterm><primary>دسترسی‌ها</primary><secondary>نمایش عددی</secondary></indexterm>
+
+    <para>نمایش عددی (اوکتال) هر دسترسی را به یک عدد نسبت می‌دهد: ۴ برای خواندن، ۲ برای نوشتن و ۱ برای اجراکردن. ترکیب دسترسی‌های یک گروه را با جمع اعداد آن به دست می‌آوریم. هر مقدار به دسته‌بندی‌های مختلف کاربران نسبت داده می‌شود درست به همان ترتیبی که قرار دارند (مالک، گروه و دیگران).</para>
+
+    <para>برای نمونه، دستور <command>chmod 754 <replaceable>file</replaceable></command> دسترسی‌های زیر را تنظیم می‌کند: خواندن، نوشتن و اجراکردن برای مالک (چرا که ۷ = ۴ + ۲ + ۱)؛ خواندن و اجراکردن برای گروه (چرا که ۵ = ۴ + ۱)؛ خواندن برای دیگران. عدد <literal>0</literal> یعنی دسترسی وجود ندارد؛ بنابراین دستور <command>chmod 600 <replaceable>file</replaceable></command> اجازه دسترسی خواندن و نوشتن را به مالک می‌دهد و هیچ دسترسی دیگری را شامل نمی‌شود. متداول‌ترین دسترسی‌های موجود عبارتند از <literal>755</literal> برای فایل‌ها و دایرکتوری‌های قابل اجرا و <literal>644</literal> برای فایل‌های داده‌ای.</para>
+
+    <para>برای نمایش دسترسی‌های ویژه، می‌توانید یک عدد چهارم نیز به قبل از آن اضافه کنید که بیت‌های <literal>setuid</literal>، <literal>setgid</literal> و <literal>sticky</literal> به ترتیب نشانگر ۴ و ۲ و ۱ هستند. دستور <command>chmod 4754</command> بیت <literal>setuid</literal> را به همراه دسترسی‌های موجود اضافه می‌کند.</para>
+
+    <para>نکته اینکه استفاده از شیوه عددی برای تنظیم تمام دسترسی‌ها بکار می‌رود؛ پس نمی‌توانید از آن برای افزودن تنها یک دسترسی، مانند دسترسی خواندن برای گروه مالک، استفاده کنید چرا که باید تمام دسترسی‌های موجود و اعداد مربوط به آن‌ها را نیز به حساب بیاورید.</para>
+
+    <sidebar>
+      <title><emphasis>نکته</emphasis> عملیات بازگشتی</title>
+
+      <para>بعضی وقت‌ها باید دسترسی‌های تمام درخت فایل را تغییر دهیم. تمام دستورات بالا شامل گزینه <literal>-R</literal> هستند که امکان عملیات بازگشتی روی دایرکتوری‌ها را فراهم می‌آورد.</para>
+
+      <para>تفاوت بین فایل‌ها و دایرکتوری‌ها بعضی وقت‌ها برای عملیات بازگشتی مشکل آفرین می‌شود. به همین دلیل است که حرف “X” را در شیوه نمادین دسترسی‌ها معرفی کردیم. این حرف نشانگر اجرای یک دسترسی تنها روی دایرکتوری‌ها است (و نه فایل‌هایی که فاقد این دسترسی هستند). بنابراین، دستور <command>chmod -R a+X <replaceable>directory</replaceable></command> تنها دسترسی اجراکردن را برای تمام دسته‌بندی کاربران (<literal>a</literal>) برای تمام دایرکتوری‌های فرزند و فایل‌هایی که حداقل یک دسته‌بندی از کاربر (حتی برای مالک انحصاری آن‌ها) هم‌اکنون دسترسی اجراکردن را داشته باشد، بکار می‌رود.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>نکته</emphasis> تغییر کاربر و گروه</title>
+
+      <para>بسیار پیش می‌آید که می‌خواهید به طور همزمان گروه و کاربر یک فایل را تغییر دهید. دستور <command>chown</command> یک شیوه بخصوص برای اینکار دارد: <command>chown <replaceable>user</replaceable>:<replaceable>group</replaceable> <replaceable>file</replaceable></command></para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>مطالعه بیشتر</emphasis> <command>umask</command></title>
+
+      <para>زمانی که یک برنامه اقدام به ایجاد فایل می‌کند، به آن دسترسی‌های مشخصی اعطا می‌کند، با اینکه می‌داند سیستم به صورت خودکار و با استفاده از <command>umask</command> دسترسی‌ها اضافی را از بین می‌برد. <command>umask</command> را در یک پوسته اجرا کنید؛ یک ماسک به صورت <computeroutput>0022</computeroutput> را می‌بینید. این عدد نشانگر دسترسی‌هایی است که باید حذف گردند (در این مورد، دسترسی نوشتن برای گروه و سایر کاربران).</para>
+      <indexterm><primary>umask</primary></indexterm>
+      <indexterm><primary>دسترسی‌ها</primary><secondary>ماسک</secondary></indexterm>
+      <indexterm><primary>ماسک</primary><secondary>دسترسی‌های ماسک</secondary></indexterm>
+
+      <para>اگر عدد اوکتال دیگری به آن نسبت دهید، دستور <command>umask</command> اقدام به تغییر ماسک می‌کند. اگر اینکار را در یک فایل راه‌انداز پوسته ثبت کنید (برای نمونه، <filename>~/.bash_profile</filename>)، ماسک پیش‌فرض برای نشست‌های کاری شما را تغییر می‌دهد.</para>
+    </sidebar>
+  </section>
+  <section id="sect.administration-interfaces">
+    <title>رابط‌های مدیریتی</title>
+    <indexterm><primary>رابط</primary><secondary>رابط مدیریتی</secondary></indexterm>
+    <indexterm><primary>مدیریتی، رابط‌ها</primary></indexterm>
+
+    <para>استفاده از یک رابط گرافیکی برای مدیریت سیستم گزینه جالبی در بسیاری موارد به حساب می‌آید. یک مدیرسیستم الزاما تمام جزئیات پیکربندی تمام سرویس‌ها را نمی‌داند، همیشه نیز زمان کافی برای بررسی مستندات مورد نیاز خود ندارد. یک رابط گرافیکی برای انجام امور مدیریتی می‌تواند زمان برپایی یک سرویس جدید را کاهش دهد. همچنین می‌تواند فرآیند برپایی سرویس‌هایی که دشوار هستند را تسهیل بخشد.</para>
+
+    <para>چنین رابطی یک ابزار میانی به حساب می‌آید، اما گزینه نهایی نیست. در تمام موارد، مدیرسیستم باید با جنبه‌های گوناگون آن آشنا باشد تا بتواند مشکلات را به راحتی عیب‌زدایی کند.</para>
+
+    <para>از آنجا که هیچ رابط گرافیکی کاملی وجود ندارد، ممکن است بخواهید گزینه‌های مختلفی را امتحان کنید. البته اینکار تا آنجا که ممکن است نباید انجام شود، چرا که رابط‌های گوناگون شیوه‌هایی متفاوتی را برای حل مساله بیان می‌کنند. حتی اگر در انجام امور خیلی انعطاف‌پذیر باشند و به فایل پیکربندی به عنوان منبع نگاه کنند، همیشه نمی‌توانند تغییرات خارجی اعمال شده روی آن را مدیریت کنند.</para>
+    <section id="sect.webmin">
+      <title>مدیریت سیستم با استفاده از یک رابط تحت-وب: <command>webmin</command></title>
+      <indexterm><primary><emphasis>webmin</emphasis></primary></indexterm>
+
+      <para>این گزینه، بودن شک، یکی از موفق‌ترین رابط‌های مدیریتی سیستم به شمار می‌رود. یک سیستم ماژولار است که از طریق مرورگر مدیریت می‌گردد که قسمت اعظمی از تنظیمات و ابزارها را شامل می‌شود. علاوه بر این، قابلیت چند زبانه بودن دارد که می‌تواند در هر زبانی استفاده گردد.</para>
+
+      <para>متاسفانه، <command>webmin</command> دیگر بخشی از دبیان نیست. مدیربسته دبیان آن - Jaldhar H. Vyas - بسته‌های تولیدشده خود را به دلیل اینکه زمان کافی برای بهبود عملکرد و کیفیت آن را نداشت حذف کرد. تا کنون هیچکس به صورت رسمی توسعه آن را قبول نکرده است، بنابراین <emphasis role="distribution">Jessie</emphasis> شامل بسته‌ای به نام <command>webmin</command> نیست.</para>
+
+      <para>اگرچه، یک بسته غیررسمی روی وبسایت <literal>webmin.com</literal> موجود است. برخلاف بسته‌های اصلی دبیان، این بسته ساختاری یکپارچه دارد؛ تمام ماژول‌های پیکربندی آن به صورت پیش‌فرض نصب و فعال می‌شوند، با اینکه ممکن است سرویس متناظر با آن‌ها روی سیستم موجود نباشد.</para>
+
+      <sidebar>
+        <title><emphasis>امنیت</emphasis> تغییر گذرواژه root</title>
+
+	<para>در اولین ورود، احراز هویت با استفاده از حساب کاربری root و گذرواژه آن صورت می‌گیرد. توصیه می‌شود که در اولین فرصت گذرواژه <command>webmin</command> تغییر یابد، چرا که در زمان نفوذ به سیستم، گذرواژه حساب کاربری root سیستم درگیر نشود، حتی اگر باعث اعطاکردن دسترسی‌های مهم به سیستم شده باشد.</para>
+
+	<para>آگاه باشید! از آنجا که <command>webmin</command> شامل ویژگی‌های بسیاری است، یک کاربر خرابکار می‌تواند امنیت کل سیستم را از بین ببرد. در حالت عمومی، رابط‌های گرافیکی از این دست گزینه‌های مناسبی برای سیستم‌های مهم با مدل‌های امنیت پیشرفته نیستند (دیوارآتش، سرورهای حساس و از این قبیل).</para>
+      </sidebar>
+
+      <para>Webmin از طریق یک رابط وب استفاده می‌شود، اما برای استفاده نیاز به سرور آپاچی ندارد. در حقیقت، این نرم‌افزار یک وب‌سرور کوچک مخصوص به خود را دارد. این سرور به صورت پیش‌فرض به پورت ۱۰۰۰۰ گوش می‌دهد و درخواست‌های امن HTTP را می‌پذیرد.</para>
+
+      <para>ماژول‌های داخل آن شامل سرویس‌های بسیار متنوعی هستند، از جمله:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>تمام سرویس‌های پایه: ایجاد کاربران و گروه‌ها، مدیریت فایل‌های <filename>crontab</filename>، اسکریپت‌های راه‌انداز، مشاهده فایل‌های گزارش و از این قبیل.</para>
+        </listitem>
+        <listitem>
+	  <para>bind: پیکربندی سرور DNS (نام سرویس)؛</para>
+        </listitem>
+        <listitem>
+	  <para>postfix: پیکربندی سرور SMTP (ایمیل)؛</para>
+        </listitem>
+        <listitem>
+	  <para>inetd: پیکربندی ابر-سرور <command>inetd</command>؛</para>
+        </listitem>
+        <listitem>
+	  <para>quota: مدیریت فضای دیسک کاربر؛</para>
+        </listitem>
+        <listitem>
+	  <para>dhcpd: پیکربندی سرور DHCP؛</para>
+        </listitem>
+        <listitem>
+	  <para>proftpd: پیکربندی سرور FTP؛</para>
+        </listitem>
+        <listitem>
+	  <para>samba: پیکربندی سرور فایل Samba؛</para>
+        </listitem>
+        <listitem>
+	  <para>software: نصب و حذف نرم‌افزار از بسته‌های دبیان و بروزرسانی سیستم.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>رابط مدیریتی توسط یک مرورگر وب از نشانی <literal>https://localhost:10000</literal> قابل دسترس است. آگاه باشید! تمام ماژول‌ها به طور مستقیم قابل استفاده نیستند. بعضی وقت‌ها نیاز است که مسیر فایل‌های پیکربندی و برنامه‌های اجرایی به خصوصی را برای آن‌ها مشخص کنید. معمولا سیستم هر گاه نتواند یک ماژول خواسته شده را فعال کند از شما به شکل محترمانه‌ای پرسش‌های خود را مطرح می‌کند.</para>
+
+      <sidebar>
+        <title><emphasis>جایگزین</emphasis> مرکز کنترل GNOME</title>
+        <indexterm><primary><emphasis role="pkg">gnome-control-center</emphasis></primary></indexterm>
+
+	<para>پروژه GNOME نیز چندین رابط مدیریتی که معمولا از گزینه “Settings” در منوی کاربری در سمت راست و بالای صفحه قرار دارد را ارائه می‌دهد. <command>gnome-control-center</command> برنامه اصلی است که تمام ابزار پیکربندی سیستم را در کنار یکدیگر جمع می‌کند اما این ابزار خود از بسته‌های گوناگونی آمده‌اند (<emphasis role="pkg">accountsservice</emphasis>، <emphasis role="pkg">system-config-printer</emphasis> و از این قبیل). اگرچه استفاده از آن‌ها ساده است، این برنامه‌ها تنها تعداد محدودی از سرویس‌های پایه را پوشش می‌دهند: مدیریت کاربر، پیکربندی زمان، پیکربندی شبکه، پیکربندی چاپگر و به همین ترتیب.</para>
+      </sidebar>
+    </section>
+    <section id="sect.debconf">
+      <title>پیکربندی بسته‌ها: <command>debconf</command></title>
+      <indexterm><primary><command>debconf</command></primary></indexterm>
+      <indexterm><primary><command>dpkg-reconfigure</command></primary></indexterm>
+
+      <para>بسیاری از بسته‌ها هنگام فرآیند نصب توسط ابزار Debconf پس از پرسیدن چند پرسش پیکربندی می‌شوند. این بسته‌ها مجدد می‌توانند با استفاده از دستور <command>dpkg-reconfigure <replaceable>package</replaceable></command> پیکربندی گردند.</para>
+
+      <para>در اکثر موارد، این تنظیمات بسیار ساده هستند؛ تنها تعداد معدودی متغیر در فایل‌های پیکربندی تغییر می‌کنند. این متغیرها اغلب بین دو خط “علامت‌گذاری” می‌شوند تا پیکربندی مجدد بسته تنها در قسمت مربوطه اعمال شود. در سایر موارد، پیکربندی مجدد در صورت مشاهده تغییرات دستی در فایل‌های پیکربندی، هیچ تغییری را انجام نمی‌دهد (چرا که اسکریپت نمی‌تواند تشخیص دهد که تغییرات خود منجر به اختلال در سیستم موجود می‌گردد یا خیر).</para>
+
+      <sidebar>
+        <title><emphasis>خط‌مشی دبیان</emphasis> حفظ تغییرات</title>
+
+	<para>خط‌مشی دبیان بیان می‌کند که هر گونه تغییر دستی در فایل‌های پیکربندی باید حفظ شوند، بنابراین اسکریپت‌های بیشتری هنگام ویرایش این فایل‌ها به این اصل توجه می‌کنند. اصل عمومی ساده است: اسکریپت تنها زمانی تغییرات را اعمال می‌کند اگر از وضعیت فایل پیکربندی آگاه باشد، که این امر با بررسی checksum موجود از فایل با آخرین نسخه تولید شده آن صورت می‌گیرد. اگر یکی باشند آنگاه اسکریپت اقدام به تغییر فایل می‌نماید. در غیر اینصورت، تشخیص می‌دهد که فایل تغییر کرده و از کاربر می‌پرسد چه اقدامی باید صورت گیرد (استفاده از فایل جدید، ذخیره‌سازی فایل قدیم یا تلاش برای ادعام هر دو فایل). این اصل احتیاطی مدت طولانی است که در دبیان وجود دارد اما امروزه سایر توزیع‌ها نیز از آن بهره می‌برند.</para>
+
+	<para>برنامه <command>ucf</command> (از بسته دبیان با همین نام) می‌تواند برای پیاده‌سازی چنین عملکردی استفاده شود.</para>
+        <indexterm><primary><command>ucf</command></primary></indexterm>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.syslog">
+    <title><command>syslog</command> رویدادهای سیستمی</title>
+    <indexterm><primary><command>rsyslogd</command></primary></indexterm>
+    <indexterm><primary>فایل‌ها</primary><secondary>فایل‌های گزارش</secondary></indexterm>
+    <indexterm><primary>گزارش‌ها</primary><secondary>مخابره‌کردن</secondary></indexterm>
+    <section id="sect.syslog-principe">
+      <title>اصل و مکانیزم</title>
+
+      <para>فرآیند پس‌زمینه <command>rsyslogd</command> مسئول دریافت پیام‌های ارسالی از کرنل و برنامه‌های مختلف است تا آن‌ها را به فایل‌های گزارش مخابره کند (که معمولا در دایرکتوری <filename>/var/log/</filename> ذخیره می‌شوند). این دستور از فایل پیکربندی <filename>/etc/rsyslog.conf</filename> تبعیت می‌کند.</para>
+
+      <para>هر پیام گزارش متناسب با یک زیرسیستم از برنامه است (که در مستندات با نام “facility” شناخته می‌شود):</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>auth</literal> و <literal>authpriv</literal>: برای احراز هویت؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>cron</literal>: که از سرویس‌های مدیریت وظیفه مانند <command>cron</command> و <command>atd</command> می‌آید؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>daemon</literal>: روی یک فرآیند پس‌زمینه بدون هیچ طبقه‌بندی خاصی تاثیر می‌گذارد (DNS، NTP و از این قبیل)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ftp</literal>: مرتبط با سرور FTP؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>kern</literal>: پیامی که از کرنل می‌آید؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>lpr</literal>: از زیرسیستم چاپ نشات می‌گیرد؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>mail</literal>: از زیرسیستم ایمیل نشات می‌گیرد؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>news</literal>: پیام زیرسیستم Usenet (به خصوص از سمت یک سرور NTP - Network News Transfer Protocol - که گروه‌های خبری را مدیریت می‌کند)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>syslog</literal>: پیام‌هایی که از خود سرور <command>syslogd</command> می‌آیند؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>user</literal>: پیام‌های کاربر (عمومی)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>uucp</literal>:پیام‌های ارسالی از سرور UUCP (Unix to Unix Copy Program، یک پروتکل قدیمی برای انتقال پیام‌های ایمیل)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>local0</literal> تا <literal>local7</literal>: رزرو شده برای استفاده محلی؛</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>هر پیام همچنین با یک سطح اولویت نیز همراه است. اینجا فهرستی از آن‌ها به صورت کاهش درجه اهمیت قرار دارد:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>emerg</literal>: “کمک!” یک موقعیت اضطراری وجود دارد، سیستم به احتمال زیاد غیرقابل استفاده خواهد شد.</para>
+        </listitem>
+        <listitem>
+	  <para><literal>alert</literal>: عجله کن، هر تاخیری ممکن است خطرناک باشد، اقدام باید در اولین فرصت صورت گیرد؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>crit</literal>: شرایط بحرانی است؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>err</literal>: خطا؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>warn</literal>: هشدار (خطای احتمالی)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>notice</literal>: شرایط عادی است، اما پیام حائز اهمیت است؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>info</literal>: پیام آگاهی‌رسان؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>debug</literal>: پیام عیب‌زدایی؛</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+    <section id="sect.syslog-config">
+      <title>فایل پیکربندی</title>
+
+      <para>شیوه دستوری فایل <filename>/etc/rsyslog.conf</filename> در صفحه راهنما <citerefentry><refentrytitle>rsyslog.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry> آمده است، اما همچنین مستندات HTML آن در بسته <emphasis role="pkg">rsyslog-doc</emphasis> نیز قرار دارد (<filename>/usr/share/doc/rsyslog-doc/html/index.html</filename>). اصل کبی نوشتن جفت‌های “selector” و “action” است. selector تمام پیام‌های مرتبط را انتخاب می‌کند و action می‌گوید چطور با آن‌ها برخورد شود.</para>
+      <section id="sect.syslog-selector-syntax">
+        <title>شیوه دستوری انتخابگر</title>
+
+	<para>انتخابگر یک فهرست دوتایی از <literal><replaceable>subsystem</replaceable>.<replaceable>priority</replaceable></literal> است که با ; از هم جدا شده‌اند (نمونه: <literal>auth.notice;mail.info</literal>). یک * نشان‌دهنده کل زیرسیستم‌ها یا اولویت‌ها می‌باشد (نمونه: <literal>*.alert</literal> یا <literal>mail.*</literal>). چندین زیرسیستم با استفاده از , می‌توانند گروه‌بندی شوند (نمونه: <literal>auth,mail.info</literal>). اولویت مشخص شده شامل تمام پیام‌های با آن اولویت یا بالاتر می‌باشد؛ بنابراین <literal>auth.alert</literal> نشان‌دهنده زیرسیستم <literal>auth</literal> با اولویت <literal>alert</literal> یا <literal>emerg</literal> است. اگر با یک علامت ! پیشوند شود، نشانگر خلاف آن عمل است، به عبارت دیگر اولویت‌های پایین‌تر؛ <literal>auth.!notice</literal>، بنابراین نشان‌دهنده پیام‌های زیرسیستم <literal>auth</literal> با اولویت <literal>info</literal> یا <literal>debug</literal> است. اگر با = پیشوند شود، تنها همان اولویت مشخص شده را شامل می‌گردد (<literal>auth.=notice</literal> تنها شامل پیام‌های زیرسیستم <literal>auth</literal> با اولویت <literal>notice</literal> می‌باشد).</para>
+
+	<para>هر عنصر موجود در فهرست selector عنصر قبلی را خنثی می‌کند. بنابراین امکان جداسازی یا محدودساختن برخی عناصر وجود دارد. برای نمونه، <literal>kern.info;kern.!err</literal> یعنی پیام‌های ارسالی کرنل با اولویت بین <literal>info</literal> و <literal>warn</literal>. اولویت <literal>none</literal> نشان‌دهنده مجموعه خالی است (بدون اولویت) و ممکن است برای خارج‌کردن یک زیرسیستم از مجموعه پیام‌ها بکار رود. پس، <literal>*.crit;kern.none</literal> یعنی تمام پیام‌های با اولویت برابر یا بزرگتر از <literal>crit</literal> که از کرنل نمی‌آیند.</para>
+      </section>
+      <section id="sect.syslog-action-syntax">
+        <title>شیوه دستوری اقدامات</title>
+
+        <sidebar>
+          <title><emphasis>بازگشت به مقدمات</emphasis> لوله نامگذاری شده، یک حالت پایدار</title>
+          <indexterm><primary>لوله نامگذاری شده</primary></indexterm>
+          <indexterm><primary>لوله، لوله نامگذاری شده</primary></indexterm>
+
+	  <para>یک لوله نامگذاری شده نوع مشخصی از فایل است که مانند یک لوله سنتی کار می‌کند (عملگری که با استفاده از نماد “|” ایجاد می‌کنید) اما از طریق یک فایل. این مکانیزم مزیت مرتبط کردن دو فرآیند نامربوط را دارا است. هر چیزی که به یک لوله نامگذاری شده ارسال شود فرآیند نوشتن را متوقف می‌کند تا زمانی که یک فرآیند دیگر تلاش  برای خواندن داده نوشته‌شده انجام دهد. این فرآیند دوم با خواندن داده توسط فرآیند اول که آن را نوشته است موجب ادامه عملیات اجرایی می‌گردد.</para>
+
+	  <para>چنین فایلی با استفاده از دستور <command>mkfifo</command> ایجاد می‌گردد.</para>
+        </sidebar>
+
+	<para>اقدامات ممکن عبارتند از:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>افزودن پیام به یک فایل (نمونه: <filename>/var/log/messages</filename>)؛</para>
+          </listitem>
+          <listitem>
+	    <para>ارسال پیام به یک سرور راه‌دور <command>syslog</command> (نمونه؛ <literal>@log.falcot.com</literal>)؛</para>
+          </listitem>
+          <listitem>
+	    <para>ارسال پیام به یک لوله موجود نامگذاری شده (نمونه: <literal>|/dev/xconsole</literal>)؛</para>
+          </listitem>
+          <listitem>
+	    <para>ارسال پیام به یک یا چند کاربر، اگر در سیستم حاضر باشند (نمونه: <literal>root,rhertzog</literal>)؛</para>
+          </listitem>
+          <listitem>
+	    <para>ارسال پیام به تمام کاربران حاضر در سیستم (نمونه: <literal>*</literal>)؛</para>
+          </listitem>
+          <listitem>
+	    <para>نوشتن پیام در یک کنسول متنی (نمونه: <literal>/dev/tty8</literal>).</para>
+          </listitem>
+        </itemizedlist>
+
+        <sidebar>
+          <title><emphasis>امنیت</emphasis> فورواردکردن گزارش‌ها</title>
+          <indexterm><primary>گزارش</primary><secondary>فورواردکردن</secondary></indexterm>
+
+	  <para>ایده خوبی است که مهم‌ترین گزارش‌ها را در یک سیستم جداگانه ثبت کنیم (که شاید برای همین منظور وجود داشته باشد)، چرا که اینکار احتمال خرابکاری نفوذگرهای احتمالی در از بین بردن رد پایشان را از بین می‌برد (مگر اینکه این سیستم جداگانه را نیز تحت نظر بگیرند). به علاوه، در زمان بروز یک مشکل بزرگ (مانند کرش کردن کرنل)، به گزارش‌ها در سیستم دوم دسترسی دارید که شانس شناسایی عوامل موجود در بروز حادثه را افزایش می‌دهد.</para>
+
+	  <para>برای پذیرش پیام‌های گزارش ارسال شده توسط سایر رایانه‌ها، باید <emphasis>rsyslog</emphasis> را پیکربندی مجدد کنید: در عمل، تنها کافی است قابلیت ready-for-use را در فایل <filename>/etc/rsyslog.conf</filename> فعال سازید (<literal>$ModLoad imudp</literal> و <literal>$UDPServerRun 514</literal>).</para>
+        </sidebar>
+      </section>
+    </section>
+  </section>
+  <section id="sect.inetd">
+    <title>ابر-سرور <command>inetd</command></title>
+
+    <para>Inetd (که اعلب “ابر-سرور اینترنت” خوانده می‌شود) یک سرور از سرورها است. سرورهای کم کاربرد را هر زمان نیاز باشد راه‌اندازی می‌کند، به صورتی که نیاز به اجرای مداوم و بی استفاده نداشته باشند.</para>
+    <indexterm><primary><command>inetd</command></primary></indexterm>
+    <indexterm><primary>ابر-سرور</primary></indexterm>
+
+    <para>فایل <filename>/etc/inetd.conf</filename> این سرورها و پورت‌های متداول را فهرست می‌کند. دستور <command>inetd</command> به تمام آن‌ها گوش کرده؛ زمانی که برقرای ارتباط با پورتی را شناسایی کند، برنامه سرور مربوط به آن را اجرا می‌کند.</para>
+
+    <sidebar>
+      <title><emphasis>خط‌مشی دبیان</emphasis> ثبت‌کردن یک سرور در <filename>inetd.conf</filename></title>
+
+      <para>بسته‌ها به صورت متداول می‌خواهند که سرورهای جدید را در فایل <filename>/etc/inetd.conf</filename> اضافه کنند، اما خط‌مشی دبیان از تغییر فایل پیکربندی که متعلق به یک بسته نیست جلوگیری می‌نماید. به همین دلیل است که اسکریپت <command>update-inetd</command> (در بسته‌ای با همین نام) بوجود آمده است: این برنامه فایل پیکربندی را مدیریت کرده و به سایر بسته‌ها امکان ویرایش آن را فراهم می‌آورد.</para>
+    </sidebar>
+
+    <para>هر خط مشخص در فایل <filename>/etc/inetd.conf</filename> بیانگر یک سرور با هفت فیلد است (که با فاصله از هم جدا شده‌اند)؛</para>
+    <itemizedlist>
+      <listitem>
+	<para>شماره پورت TCP یا UDP، یا نام سرویس (که به یک پورت استاندارد بر اساس اطلاعات موجود در فایل <filename>/etc/services</filename> نگاشت شده است).</para>
+      </listitem>
+      <listitem>
+	<para>نوع سوکت: <literal>stream</literal> برای یک ارتباط TCP و <literal>dgram</literal> برای یک ارتباط UDP.</para>
+      </listitem>
+      <listitem>
+	<para>پروتکل: <literal>tcp</literal> یا <literal>udp</literal>.</para>
+      </listitem>
+      <listitem>
+	<para>گزینه‌ها: دو مقدار موجود <literal>wait</literal> یا <literal>nowait</literal> که به <command>inetd</command> می‌گوید آیا برای اتمام فرآیند اجرا شده صبر کند یا خیر. برای ارتباطات TCP، معمولا می‌توان از <literal>nowait</literal> استفاده کرد. برای برنامه‌هایی که به UDP پاسخ می‌دهند، تنها زمانی از <literal>nowait</literal> باید استفاده کنید که سرور قادر به مدیریت چندین ارتباط به صورت همزمان باشد. می‌توانید این فیلد را با استفاده از کاما پسوند کنید، به همراه حداکثر تعداد مجاز ارتباطات در دقیقه (حد پیش‌فرض برابر با ۲۵۶ است).</para>
+      </listitem>
+      <listitem>
+	<para>نام کاربری برای کاربری که تحت مجوزهای او سرور اجرا می‌شود.</para>
+      </listitem>
+      <listitem>
+	<para>مسیر کامل برنامه سرور جهت اجرا شدن.</para>
+      </listitem>
+      <listitem>
+	<para>آرگومان‌ها: این یک فهرست کامل از آرگومان‌های برنامه است، که شامل نام خود نیز می‌شود (<literal>argv[0]</literal> در زبان C).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>نمونه زیر شامل متداول‌ترین گزینه‌ها است:</para>
+
+    <example id="example.inetd-conf">
+      <title>چکیده‌ای از <filename>/etc/inetd.conf</filename></title>
+
+      <programlisting>talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
+finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlisting>
+    </example>
+    <indexterm><primary><command>tcpd</command></primary></indexterm>
+
+    <para>برنامه <command>tcpd</command> به طور متداول در فایل <filename>/etc/inetd.conf</filename> بکار رفته است. این برنامه امکان محدودسازی ارتباطات دریافتی را با اعمال کردن قواعد کنترل دسترسی فراهم می‌سازد که در صفحه راهنمای <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry> مستندسازی شده و گزینه‌هایی که در فایل‌های <filename>/etc/hosts.allow</filename> و <filename>/etc/hosts.deny</filename> قرار گرفته است. زمانی که تشخیص دهد ارتباط دریافتی احرازهویت شده است، <command>tcpd</command> سرور حقیقی آن را اجرا می‌کند (مانند <command>in.fingerd</command> در نمونه بالا). شایان ذکر است که <command>tcpd</command> برای شناسایی برنامه مورد نظر جهت اجرا به نامی وابسته است که طی آن فراخوانی می‌شود (آرگومان اول، <literal>argv[0]</literal>). پس نباید فهرست آرگومان‌ها را با <literal>tcpd</literal> آغاز کنید بلکه با برنامه‌ای که قصد اجرای آن را دارد.</para>
+
+    <sidebar>
+      <title><emphasis>جامعه کاربری</emphasis> Wietse Venema</title>
+      <indexterm><primary>Wietse Venema</primary></indexterm>
+      <indexterm><primary>Venema, Wietse</primary></indexterm>
+
+      <para>Wietse Venema، که تخصص بالایش در حوزه امنیت او را به یک برنامه‌نویس مشهور تبدیل کرده، خالق برنامه <command>tcpd</command> است. او همچنین خالق اصلی Postfix است، سرویس ایمیل انعطاف‌پذیر (SMTP یا Simple Main Transfer Protocol) که جایگزین امن‌تر و مناسب‌تر برنامه <command>sendmail</command> است که تاریخچه طولانی از آسیب‌پذیری‌های امنیتی را دارد.</para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>جایگزین</emphasis> سایر دستورات <command>inetd</command></title>
+
+      <para>با اینکه دبیان به صورت پیش‌فرض از <emphasis role="pkg">openbsd-inetd</emphasis> استفاده می‌کند، گزینه‌های جایگزین دیگری نیز وجود دارند: می‌توان به <emphasis role="pkg">inetutils-inetd</emphasis>، <emphasis role="pkg">micro-inetd</emphasis>، <emphasis role="pkg">rlinetd</emphasis> و <emphasis role="pkg">xinetd</emphasis> اشاره کرد.</para>
+
+      <para>این آخرین گزینه از ابر-سرورها قابلیت‌های جالبی را ارائه می‌دهد. مهم‌تر اینکه، پیکربندی آن می‌تواند از طریق چندین فایل در دایرکتوری <filename>/etc/xinetd.d/</filename> ایجاد شود، که این امر برای مدیرسیستم‌ها مزیت مهمی به حساب می‌آید.</para>
+
+      <para>در نهایت، امکان شبیه‌سازی عملکرد <command>inetd</command> با استفاده از مکانیزم فعال‌سازی-سوکت در <command>systemd</command> وجود دارد (<xref linkend="sect.systemd" /> را مشاهده کنید).</para>
+    </sidebar>
+  </section>
+  <section id="sect.task-scheduling-cron-atd">
+    <title>زمان‌بندی وظیفه‌ها با <command>cron</command> و <command>atd</command></title>
+    <indexterm><primary><command>cron</command></primary></indexterm>
+    <indexterm><primary><command>atd</command></primary></indexterm>
+    <indexterm><primary>دستورات زمان‌بندی</primary></indexterm>
+    <indexterm><primary>زمان‌بندی دستور</primary></indexterm>
+
+    <para><command>cron</command> یک فرآیند پس‌زمینه برای اجرای دستورات تکراری و زمان‌بندی شده است (هر روز، هر هفته و از این قبیل)؛ <command>atd</command> اما تنها یک بار برنامه را در زمان مشخص اجرا می‌کند.</para>
+
+    <para>در یک سیستم یونیکس، بسیاری از وظیفه‌ها برای اجرای مداوم زمان‌بندی می‌شوند:</para>
+    <itemizedlist>
+      <listitem>
+	<para>چرخش گزارش‌ها؛</para>
+      </listitem>
+      <listitem>
+	<para>بروزرسانی پایگاه‌داده برای برنامه <command>locate</command>؛</para>
+      </listitem>
+      <listitem>
+	<para>پشتیبان‌گیری؛</para>
+      </listitem>
+      <listitem>
+	<para>اسکریپت‌های نگهداری (مانند پاکسازی فایل‌های موقت).</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>به صورت پیش‌فرض، تمام کاربران می‌توانند برنامه‌های خود را زمان‌بندی کنند. هر کاربر فایل <emphasis>crontab</emphasis> مخصوص به خود را دارد که در آن می‌توانند برنامه‌ها را زمان‌بندی کنند. با استفاده از دستور <command>crontab -e</command> می‌توان آن را ویرایش کرد (محتویات آن در فایل <filename>/var/spool/cron/crontabs/<replaceable>user</replaceable></filename> نگهداری می‌شود).</para>
+
+    <sidebar>
+      <title><emphasis>امنیت</emphasis> محدودسازی <command>cron</command> یا <command>atd</command></title>
+
+      <para>برای محدودسازی <command>cron</command> می‌توانید با ایجاد یک فایل دسترسی مجاز در <filename>/etc/cron.allow</filename> به فهرست‌سازی کاربرانی بپردازید که می‌توانند عملیات زمان‌بندی را انجام دهند. سایر کاربران به صورت خودکار از این قابلیت محروم خواهند شد. بر عکس این موضوع نیز صادق است، زمانی که می‌خواهید چند کاربر مشکل‌آفرین را از این ویژگی محروم کنید که می‌توانید فهرست آنان را در فایل <filename>/etc/cron.deny</filename> قرار دهید. همین قابلیت برای <command>atd</command> نیز موجود است توسط فایل‌های <filename>/etc/at.allow</filename> و <filename>/etc/at.deny</filename>.</para>
+    </sidebar>
+
+    <para>کاربر root <emphasis>crontab</emphasis> مخصوص به خود را دارد، اما می‌تواند از فایل <filename>/etc/crontab</filename> نیز استفاده کند یا فایل‌های اضافی در دایرکتوری <filename>/etc/cron.d</filename> قرار دهد. این دو گزینه آخر امکان مشخص کردن کاربر هنگام اجرای یک دستور به خصوص را بوجود می‌آورند.</para>
+
+    <para>بسته <emphasis>cron</emphasis> شامل چند دستور زمان‌بندی است که عبارتند از:</para>
+    <itemizedlist>
+      <listitem>
+	<para>برنامه‌های موجود در <filename>/etc/cron.hourly/</filename> به صورت ساعتی اجرا می‌شوند؛</para>
+      </listitem>
+      <listitem>
+	<para>برنامه‌های موجود در <filename>/etc/cron.daily/</filename> به صورت روزانه اجرا می‌شوند؛</para>
+      </listitem>
+      <listitem>
+	<para>برنامه‌های موجود در <filename>/etc/cron.weekly/</filename> به صورت هفتگی اجرا می‌شوند؛</para>
+      </listitem>
+      <listitem>
+	<para>برنامه‌های موجود در <filename>/etc/cron.monthly/</filename> به صورت ماهانه اجرا می‌شوند.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>بسیاری بسته‌های دبیان به این سرویس وابسته هستند: با قرار دادن اسکریپت‌های نگهداری در این دایرکتوری‌ها، آن‌ها عملکرد بهینه سرویس‌ها را رقم می‌زنند.</para>
+    <section id="sect.format-crontab">
+      <title>قالب یک فایل <filename>crontab</filename></title>
+      <indexterm><primary><filename>crontab</filename></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>نکته</emphasis> میانبرهای متنی برای <command>cron</command></title>
+
+	<para>... برخی از مخفف‌ها را می‌شناسد که جایگزین پنج فیلد موجود در <filename>crontab</filename> می‌شود. آن‌ها منطبق با قدیمی‌ترین گزینه‌های زمان‌بندی هستند:</para>
+        <itemizedlist>
+          <listitem>
+	    <para><literal>@yearly</literal>: سالی یک بار (اول ژانویه در ساعت ۰۰:۰۰)؛</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@monthly</literal>: ماهی یک بار (اول هر ماه، در ساعت ۰۰:۰۰)؛</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@weekly</literal>: هر هفته (یکشنبه در ساعت ۰۰:۰۰)؛</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@daily</literal>: به صورت روزانه (در ساعت ۰۰:۰۰)؛</para>
+          </listitem>
+          <listitem>
+	    <para><literal>@hourly</literal>: به صورت ساعتی (در ابتدای هر ساعت)؛</para>
+          </listitem>
+        </itemizedlist>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>مورد خاص</emphasis> <command>cron</command> و ساعت تابستانی</title>
+
+	<para>در دبیان، <command>cron</command> تغییرات زمانی را (برای ساعت تابستانی، یا در حقیقت برای کوچکترین تغییر در زمان) در بهترین حالت به حساب می‌آورد. پس، دستوراتی که باید طی یک ساعت مشخص اجرا شوند ولی آن ساعت وجود ندارد (برای نمونه، وظایفی که زمان‌بندی شده‌اند تا در ۰۲:۳۰ صبخ طی تغییر زمانی بهاره در فرانسه اجرا شوند، چرا که در این بازه ساعت به ۰۳:۰۰ صبح تغییر می‌یابد) بلافاصله پس از تغییر در زمان اجرا می‌شوند (یعنی حدود ساعت ۰۳:۰۰ صبح). از طرف دیگر، در پاییز زمانی که دستورات باید چندین مرتبه اجرا شوند (۰۲:۳۰ صبح در ساعت تابستانی، آنگاه یک ساعت بعد در ساعت ۰۲:۳۰ استاندارد چرا که در ساعت ۰۳:۰۰ صبح زمان به ۰۲:۰۰ صبح باز می‌گردد) تنها یکبار به اجرا در می‌آیند.</para>
+
+	<para>در هر صورت باید مراقب باشید که اگر ترتیب اجرای دستورات زمان‌بندی شده اهمیت داشته باشد باید سازگاری این محدودیت‌ها را با عملکرد <command>cron</command> بررسی کنید؛ در صورت نیاز، می‌توانید یک برنامه خاص را برای این دو شب دردسرساز در سال در نظر بگیرید.</para>
+      </sidebar>
+
+      <para>هر خط جداگانه در <emphasis>crontab</emphasis> یک برنامه زمان‌بندی شده با شش (یا هفت) فیلد را مشخص می‌کند:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>دقیقه (از ۰ تا ۵۹)؛</para>
+        </listitem>
+        <listitem>
+	  <para>ساعت (از ۰ تا ۲۳)؛</para>
+        </listitem>
+        <listitem>
+	  <para>روز در ماه (از ۱ تا ۳۱)؛</para>
+        </listitem>
+        <listitem>
+	  <para>ماه (از ۱ تا ۱۲)؛</para>
+        </listitem>
+        <listitem>
+	  <para>روز در هفته (از ۰ تا ۷، ۱ متناظر با دوشنبه، یکشنه نیز با ۰ یا ۷ نمایش داده می‌شود؛ همچنین امکان استفاده از سه حرف ابتدای هر روز به زبان انگلیسی وجود دارد، مانند <literal>Sun</literal> و <literal>Mon</literal>)؛</para>
+        </listitem>
+        <listitem>
+	  <para>کاربری که طبق مجوز او دستور باید اجرا گردد (در فایل <filename>/etc/crontab</filename> و در قسمت‌های مشخص شده در <filename>/etc/cron.d</filename> اما نه در فایل crontab خود کاربر)؛</para>
+        </listitem>
+        <listitem>
+	  <para>دستوری که باید اجرا شود (زمانی که شرایط تعریف شده توسط پنج ستون اول رعایت شده باشد).</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>تمام این جزئیات در صفحه راهنمای <citerefentry><refentrytitle>crontab</refentrytitle> <manvolnum>5</manvolnum></citerefentry> مستندسازی شده‌اند.</para>
+
+      <para>هر مقدار می‌تواند به صورت فرمی از مقادیر جدا شده با کاما بیان شود. عبارت <literal>a-b</literal> بازه تمام مقادیر بین <literal>a</literal> و <literal>b</literal> را شامل می‌شود. عبارت <literal>a-b/c</literal> بازه افزایشی به همراه <literal>c</literal> را شامل می‌شود (نمونه: <literal>0-10/2</literal> یعنی <literal>0,2,4,6,8,10</literal>). یک <literal>*</literal> به عنوان تمام مقادیر مجاز بکار می‌رود.</para>
+
+      <example id="example.crontab">
+        <title>فایل نمونه <filename>crontab</filename></title>
+
+        <programlisting>#Format
+#min hour day mon dow  command
+
+# Download data every night at 7:25 pm
+ 25  19   *   *   *    $HOME/bin/get.pl
+
+# 8:00 am, on weekdays (Monday through Friday)
+ 00  08   *   *   1-5  $HOME/bin/dosomething
+
+# Restart the IRC proxy after each reboot
+@reboot /usr/bin/dircproxy</programlisting>
+      </example>
+
+      <sidebar>
+        <title><emphasis>نکته</emphasis> اجرای یک دستور هنگام راه‌اندازی اولیه</title>
+
+	<para>برای اجرای یک دستور، یک مرتبه پس از راه‌اندازی رایانه، می‌توانید از ماکرو <literal>@reboot</literal> استفاده کنید (راه‌اندازی مجدد <command>cron</command> منجر به اجرای دستور همراه با <literal>@reboot</literal> نمی‌شود). این ماکرو جایگزین پنج فیلد اول هر خط از <emphasis>crontab</emphasis> می‌شود.</para>
+      </sidebar>
+
+    <sidebar>
+      <title><emphasis>جایگزین</emphasis> شبیه‌سازی <command>cron</command> با <command>systemd</command></title>
+
+      <para>امکان شبیه‌سازی بخشی از عملکرد <command>cron</command> با استفاده از مکانیزم زمان‌بندی <command>systemd</command> وجود دارد (<xref linkend="sect.systemd" /> را مشاهده کنید).</para>
+    </sidebar>
+
+    </section>
+    <section id="sect.at-command">
+      <title>استفاده از دستور <command>at</command></title>
+      <indexterm><primary><command>at</command></primary></indexterm>
+
+      <para><command>at</command> یک دستور را در زمان مشخصی از آینده اجرا می‌کند. زمان و تاریخ مناسب را از طریق پارامترهای خط-فرمان دریافت کرده و دستور مورد نظر جهت اجرا را از ورودی استاندارد می‌گیرد. دستور شروع به اجرا می‌کند به طوری که انگار در پوسته کنونی وارد شده باشد. <command>at</command> حتی به حفظ محیط فعلی رسیدگی می‌کند تا در زمان اجرای دستور همین شرایط برقرار باشد. زمان با استفاده از قوانین زیر تعیین می‌شود: <literal>16:12</literal> یا <literal>4:12pm</literal> نشان‌دهنده ۰۴:۱۲ بعد از ظهر هستند. تاریخ می‌تواند با چندین قالب مختلف اروپایی و غربی بیان شود، از جمله <literal>DD.MM.YY</literal> (عبارت <literal>27.07.15</literal> که بیانگر ۲۷ جولای ۲۰۱۵ است)، <literal>YYYY-MM-DD</literal> (همان تاریخ که به صورت <literal>2015-07-27</literal> بیان می‌شود)، <literal>MM/DD/[CC]YY</literal> (برای نمونه، <literal>12/25/15</literal> یا <literal>12/25/2015</literal> برابر با ۲۵ دسامبر ۲۰۱۵ خواهد بود) یا <literal>MMDD[CC]YY</literal> (که در آن <literal>122515</literal> یا <literal>12252015</literal> بیانگر همان تاریخ قبلی هستند). بدون أن، دستور در اولین بازه زمانی تعیین شده اجرا می‌شود (همان روز، یا فردا اگر زمان روز فعلی گذشته باشد). همچنین می‌توانید از عبارت‌های “today” یا “tomorrow” نیز استفاده کنید.</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>at 09:00 27.07.15 &lt;&lt;END</userinput>
+<computeroutput>&gt; </computeroutput><userinput>echo "Don't forget to wish a Happy Birthday to Raphaël!" \</userinput>
+<computeroutput>&gt; </computeroutput><userinput>  | mail lolando@debian.org</userinput>
+<computeroutput>&gt; </computeroutput><userinput>END</userinput>
+<computeroutput>warning: commands will be executed using /bin/sh
+job 31 at Mon Jul 27 09:00:00 2015</computeroutput></screen>
+
+      <para>یک شیوه نگارش جایگزین اجرای دستور را برای مدت مشخصی به عقب می‌اندازد: <command>at now + <replaceable>number</replaceable> <replaceable>period</replaceable></command> که <replaceable>period</replaceable> می‌تواند <literal>minutes</literal>، <literal>hours</literal>، <literal>days</literal> یا <literal>weeks</literal> باشد. <replaceable>number</replaceable> نیز بیانگر تعداد دفعات واحد مشخص شده برای گذشتن جهت اجرای دستور است.</para>
+
+      <para>برای لغو برنامه زمان‌بندی <command>cron</command> تنها کافی است دستور <command>crontab -e</command> را اجرا کرده و خط مربوط به آن دستور را از فایل <emphasis>crontab</emphasis> حذف کنید. برای وظایف <command>at</command> نیز به همین سادگی است: دستور <command>atrm <replaceable>task-number</replaceable></command> را اجرا کنید. شناسه وظیفه توسط <command>at</command> هنگام تعریف آن مشخص می‌شود و می‌توانید آن را با دستور <command>atq</command> پیدا کنید که فهرستی از وظایف زمان‌بندی شده را باز می‌گرداند.</para>
+      <indexterm><primary><command>atrm</command></primary></indexterm>
+      <indexterm><primary><command>atq</command></primary></indexterm>
+    </section>
+  </section>
+  <section id="sect.asynchronous-task-scheduling-anacron">
+    <title>زمان‌بندی وظیفه‌های غیرهمزمان: <command>anacron</command></title>
+
+    <para><command>anacron</command> یک فرآیند پس‌زمینه مکمل برای <command>cron</command> است مخصوص رایانه‌هایی که در همه زمان روشن نیستند. از آنجا که وظایف معمولی برای نیمه شب زمان‌بندی می‌شوند، در صورت خاموش بودن رایانه هیچگاه اجرا نخواهند شد. هدف <command>anacron</command> اجرای این دستورات است با در نظر گرفتن اینکه رایانه ممکن است روشن نباشد.</para>
+    <indexterm><primary><command>anacron</command></primary></indexterm>
+
+    <para>به یاد داشته باشید که <command>anacron</command> چنین فعالیت‌هایی را بلافاصله پس از راه‌اندازی مجدد رایانه آغاز می‌کند، که ممکن است منجر به کندی آن شوند. به همین دلیل است که وظایف موجود در فایل <filename>/etc/anacrontab</filename> با دستور <command>nice</command> آغاز می‌شوند که اولویت اجرایی آن‌ها را کاهش داده و تاثیر منفی آن‌ها را روی سیستم محدود می‌سازد. آگاه باشید که قالب این فایل با آنچه در <filename>/etc/crontab</filename> وجود دارد متفاوت است؛ اگر نیاز خاصی در رابطه با <command>anacron</command> دارید به صفحه راهنمای <citerefentry><refentrytitle>anacrontab</refentrytitle> <manvolnum>5</manvolnum></citerefentry> را مشاهده کنید.</para>
+
+    <sidebar>
+      <title><emphasis>بازگشت به مقدمات</emphasis> اولویت‌ها و <command>nice</command></title>
+
+      <para>سیستم‌های یونیکس (مانند لینوکس) به صورت چند-وظیفه‌ای و چند-کاربره کار می‌کنند. در حقیقت، چندین فرآیند می‌توانند به صورت همزمان اجرا شوند و به کاربران مختلفی تعلق داشته باشند: کرنل وظیفه مدیریت منابع بین فرآیندهای مختلف را بر عهده دارد. به عنوان قسمتی از این وظیفه، مفومی به نام اولویت وجود دارد که ترتیب اجرایی فرآیندهای مختلف نسبت به یکدیگر را مشخص می‌کند. زمانی که می‌دانید یک فرآیند می‌تواند با اولویت پایین اجرا شود، می‌توانید آن را با دستور <command>nice <replaceable>program</replaceable></command> مشخص کنید. برنامه در این صورت سهم کوچکی از پردازنده خواهد داشت و بنابراین تاثیر کمتری رو عملکرد کلی سیستم می‌گذارد. البته، اگر هیچ فرآیند دیگری برای اجرا وجود نداشته باشد، برنامه به صورت مصنوعی عقب نگاه داشته نمی‌شود.</para>
+
+      <para><command>nice</command> با سطح‌های مختلفی از “niceness” کار می‌کند:  سطح‌های مثبت (از ۱ تا ۱۹) اولویت را به آرامی کاهش، در صورتی که سطح‌های منفی (از ۱- تا ۲۰-) آن را افزایش می‌دهند - اما تنها root قادر به استفاده از آن‌ها است. مگر در جایی به آن اشاره شده باشد (صفحه راهنمای <citerefentry><refentrytitle>nice</refentrytitle> <manvolnum>1</manvolnum></citerefentry> را مشاهده کنید)، <command>nice</command> به صورت پیش‌فرض سطح فعلی را با ۱۰ افزایش می‌دهد.</para>
+
+      <para>اگر دریافتید که یک وظیفه جاری باید با <command>nice</command> آغاز می‌شد ولی این اتفاق نیفتاده است، اصلاح آن ساده است؛ دستور <command>renice</command> اولویت یک فرآیند در حال اجرا را تغییر می‌دهد، در هر جهت (اما کاهش میزان ... یک فرآیند به دسترسی کاربر root نیاز دارد).</para>
+    </sidebar>
+
+    <para>نصب بسته <emphasis role="pkg">anacron</emphasis> منجر به توقف اجرای اسکریپت‌های <command>cron</command> در دایرکتوری‌های <filename>/etc/cron.hourly/</filename>، <filename>/etc/cron.daily/</filename>، <filename>/etc/cron.weekly/</filename> و <filename>/etc/cron.monthly/</filename> می‌شود. این کار از اجرای تکرای <command>cron</command> و <command>anacron</command> جلوگیری می‌کند. دستور <command>cron</command> فعال باقی می‌ماند و به اجرای وظایف زمان‌بندی شده (به خصوص از طرف کاربر) می‌پردازد.</para>
+  </section>
+  <section id="sect.quotas">
+    <title>سهمیه‌بندی</title>
+    <indexterm><primary>quota</primary></indexterm>
+
+    <para>سیستم سهمیه‌بندی امکان محدودسازی فضای دیسک موجود را برای کاربران و گروه‌ها فراهم می‌سازد. برای تنظیم آن، باید کرنلی داشته باشید که آن را پشتیبانی کند (با گزینه <varname>CONFIG_QUOTA</varname> کامپایل شده باشد) - که در مورد کرنل‌های دبیان صادق است. نرم‌افزار مدیریت سهمیه در بسته دبیان <emphasis role="pkg">quota</emphasis> پیدا می‌شود.</para>
+
+    <para>برای فعال‌سازی سهمیه‌بندی در یک فایل‌سیستم، باید گزینه‌های <literal>usrquota</literal> و <literal>grpquota</literal> در فایل <filename>/etc/fstab</filename> را برای سهمیه‌بندی کاربران و گروه‌ها مشخص کنید. راه‌اندازی مجدد رایانه منجر به بروزرسانی این سهمیه‌بندی در غیاب فعالیت دیسک می‌شود (یک شرایط لازم برای محاسبه دقیق فضای مصرفی دیسک).</para>
+
+    <para>دستور <command>edquota <replaceable>user</replaceable></command> یا <command>edquota -g<replaceable>group</replaceable></command> امکان ویرایش سهمیه‌بندی فعلی بر اساس ظرفیت موجود در دیسک را فراهم می‌سازد.</para>
+    <indexterm><primary><command>edquota</command></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>مطالعه بیشتر</emphasis> تعیین سهمیه‌بندی با اسکریپت</title>
+      <indexterm><primary><command>setquota</command></primary></indexterm>
+
+      <para>برنامه <command>setquota</command> می‌تواند به منظور تغییر سهمیه‌بندی‌ها در اسکریپت‌ها استفاده گردد. صفحه راهنمای <citerefentry><refentrytitle>setquota</refentrytitle> <manvolnum>8</manvolnum></citerefentry> به توضیح شیوه استفاده از آن می‌پردازد.</para>
+    </sidebar>
+
+    <para>سیستم سهمیه‌بندی به شما امکان تنظیم چهار محدودیت را می‌دهد؛</para>
+    <itemizedlist>
+      <listitem>
+	<para>دو محدودیت “soft” و “hard” به تعداد بلاک‌های مصرفی اشاره دارند. اگر فایل‌سیستم با اندازه بلاک ۱ کیلوبایت ایجاد شده باشد، یک بلاک شامل ۱۰۲۴ بایت از آن فایل است. بلاک‌های اشباع‌نشده منجر به از بین رفتن فضای دیسک می‌شوند. سهمیه‌ای با ۱۰۰ بلاک، که به صورت نظری قابلیت ذخیره‌سازی ۱۰۲،۴۰۰ بایت را دارد، تنها به ذخیره ۱۰۰ فایل ۵۰۰ بایتی محدود می‌شود، که فقط ۵۰،۰۰۰ بایت در مجموع را شامل می‌شود.</para>
+      </listitem>
+      <listitem>
+	<para>دو محدویت “soft” و “hard” به تعداد inodeهای مصرفی اشاره دارند. هر فایل حداقل یک inode مربوط به خود به منظور ذخیره‌سازی اطلاعات جانبی را دارد (مجوزها، مالک، برچسب‌زمانی از آخرین دسترسی و از این قبیل). این یک محدودیت در فایل‌های مورد استفاده کاربر است.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>یک حد “soft” به صورت موقت می‌تواند تجاوز کند؛ در این حالت با استفاده از دستور <command>warnquota</command> که معمولا توسط <command>cron</command> فراخوانی می‌شود به کاربر اخطار ظرفیت دیسک داده می‌شود. یک حد “hard” هیچگاه نمی‌تواند تجاوز کند: سیستم به رد تمام عملیاتی می‌پردازد که منجر به گذشتن از سهمیه مجاز “hard” باشد.</para>
+
+    <sidebar>
+      <title><emphasis>واژگان</emphasis> block و inode</title>
+      <indexterm><primary>بلاک (دیسک)</primary></indexterm>
+      <indexterm><primary>inode</primary></indexterm>
+
+      <para>فایل‌سیستم، هارد درایو را به بلاک - ناحیه‌های کوچک پیوسته - تقسیم می‌کند. اندازه این بلاک‌ها هنگام ایجاد فایل‌سیستم تعیین می‌شود که معمولا بین ۱ تا ۸ کیلوبایت هستند.</para>
+
+      <para>هر بلاک می‌تواند به منظور ذخیره‌سازی داده‌های حفیقی یک فایل یا اطلاعات-جانبی مربوط به آن استفاده شود. در میان این اطلاعات-جانبی، معمولا inode را پیدا می‌کنید. یک inode از بلاک موجود در هارد درایو استفاده کرده (اما این بلاک در سهمیه‌بندی بلاک لحاظ نمی‌شود بلکه در سهمیه‌بندی inode قرار می‌گیرد) و شامل اطلاعات جانبی درباره فایل (نام، مالک، مجوزها و از این قبیل) همچنین نشانگرها به بلاک‌های داده‌ای واقعی این فایل می‌شود. برای فایل‌های بسیار بزرگ که به بلاک‌های بیشتری برای ذخیره‌سازی اطلاعات inode نیاز دارد، یک سیستم غیرمستقیم بلاک وجود دارد؛ inode شامل فهرستی از بلاک‌ها می‌باشد که داده واقعی را شامل نمی‌شوند، بلکه آن‌ها نیز شامل فهرستی از بلاک‌های دیگر هستند.</para>
+    </sidebar>
+    <indexterm><primary><command>warnquota</command></primary></indexterm>
+
+    <para>با استفاده از دستور <command>edquota -t</command>، می‌توانید یک “بازه محدود” حداکثری که حد نرم از آن عبور کند را تعریف کنید. پس از این بازه، یک حد نرم مانند یک حد سخت در نظر گرفته می‌شود و کاربر مجبور است فضای دیسک را کاهش دهد تا بتواند اطلاعات جدید روی آن ذخیره کند.</para>
+
+    <sidebar>
+      <title><emphasis>مطالعه بیشتر</emphasis> تنظیم سهمیه پیش‌فرض برای کاربران جدید</title>
+
+      <para>به منظور خودکارسازی تنظیم سهمیه برای کاربران جدید، باید یک قالب کاربری جدید (با <command>edquota</command> یا <command>setquota</command>) ایجاد کرده و نام کاربری را در متغیر <varname>QUOTAUSER</varname> موجود در فایل <filename>/etc/adduser.conf</filename> مشخص سازید. این پیکربندی سهمیه به صورت خودکار با هر بار فراخوانی دستور <command>adduser</command> به منظور ایجاد کاربر جدید اعمال می‌شود.</para>
+    </sidebar>
+  </section>
+  <section id="sect.backup">
+    <title>پشتیبان‌گیری</title>
+
+    <para>پشتیبان‌گیری یکی از وظایف اصلی مدیرسیستم‌ها است، اما از آنجا که موضوع پیچیده‌ای است، ابزار آن نیز از پیچیدگی بیشتری برخوردار هستند.</para>
+    <indexterm><primary>پشتیبان‌گیری</primary></indexterm>
+    <indexterm><primary>بازیابی</primary></indexterm>
+
+    <para>برنامه‌های بسیاری برای اینکار وجود دارند از جمله <command>amanda</command>، <command>bacula</command> و <command>BackupPC</command>. این‌ها سیستم‌های کلاینت/سروری هستند که گزینه‌های بسیاری دارند با پیکربندی‌های به نسبت دشوار. برخی از آن‌ها به منظور غلبه بر این دشواری از رابط‌های کاربر-پسند تحت وب استفاده می‌کنند. اما دبیان شامل طیف گسترده‌ای از ابزارهای پشتیبان‌گیری است که با استفاده از دستور <command>apt-cache search backup</command> می‌توانید فهرستی از آنان را مشاهده کنید.</para>
+    <indexterm><primary><command>amanda</command></primary></indexterm>
+    <indexterm><primary><command>bacula</command></primary></indexterm>
+    <indexterm><primary><command>BackupPC</command></primary></indexterm>
+
+    <para>بجای تشریح هر یک از آن‌ها، در این بخش به بررسی استراتژی پشتیبان‌گیری در شرکت فالکوت می‌پردازیم که مدیرسیستم‌های آن تهیه کرده‌اند.</para>
+
+    <para>در شرکت فالکوت، فایل‌های پشتیبان دو هدف دارند: بازیابی فایل‌های پاک شده و بازیابی رایانه‌ای (رومیزی یا سرور) که هارد درایو آن دچار مشکل شده است.</para>
+    <section>
+      <title>پشتیبان‌گیری با استفاده از <command>rsync</command></title>
+
+      <para>پشتیبان‌گیری در نوار مغناطیسی زمان و هزینه بالایی می‌برد، پس داده‌ها روی هارد درایوهای یک سرور اختصاصی نگهداری می‌شوند که در آن استفاده از RAID نرم‌افزاری (<xref linkend="sect.raid-soft" /> را مشاهده کنید) داده‌ها را از خطرات هارد درایو محافظت می‌کند. رایانه‌های رومیزی به صورت انفرادی پشتیبان‌گیری نمی‌شوند، اما به کاربران توصیه شده است که داده‌های شخصی خود را در فایل سرور دپارتمان ذخیره‌سازی کنند. دستور <command>rsync</command> (از بسته‌ای با همین نام) به صورت روزانه برای پشتیبان‌گیری از این سرورها استفاده می‌شود.</para>
+      <indexterm><primary><command>rsync</command></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>بازگشت به مقدمات</emphasis> پیوند سخت، نام دوم برای فایل</title>
+        <indexterm><primary>پیوند</primary><secondary>پیوند سخت</secondary></indexterm>
+        <indexterm><primary>پیوند سخت</primary></indexterm>
+
+	<para>یک پیوند سخت، بر خلاف پیوند نرم، از فایل پیوند داده شده قابل تشخیص نیست. ایجاد یک پیوند سخت به منزله در نظر گرفتن نام دوم برای فایل است. به همین دلیل است که حذف پیوند سخت تنها منجر به از بین رفتن یکی از نام‌های فایل می‌شود. تا زمانی که نام دیگری برای دسترسی به فایل موجود باشد، داده روی آن در فایل‌سیستم باقی می‌ماند. شایان ذکر است که بر خلاف عملیات رونوشت‌گیری، یک پیوند سخت فضای اضافی روی دیسک در نظر نمی‌گیرد.</para>
+
+	<para>یک پیوند سخت با دستور <command>ln <replaceable>target</replaceable> <replaceable>link</replaceable></command> ایجاد می‌شود. فایل <replaceable>link</replaceable> یک نام جدید برای فایل <replaceable>target</replaceable> است. پیوندهای سخت تنها می‌توانند روی یک فایل‌سیستم ایجاد گردند، در جایی که پیوندهای نمادین این محدودیت را ندارند.</para>
+      </sidebar>
+
+      <para>فضای موجود هارد درایو امکان پیاده‌سازی پشتیبان‌گیری روزانه را نمی‌دهد. به همین دلیل، دستور <command>rsync</command> به همراه کپی محتوای هارد پشتیبان‌گیری شده با پیوندهای سخت استفاده می‌شود، که این امر از استفاده بیش از حد فضای هارد درایو جلوگیری می‌کند. فرآیند <command>rsync</command> تنها فایل‌هایی را جایگزین می‌کند که از آخرین زمان پشتیبان‌گیری تغییر کرده باشند. با این مکانیزم تعداد زیادی فایل پشتیبان در فضای کمی از دیسک قابل ذخیره‌سازی هستند. از آنجا که تمام فایل‌های پشتیبان بلافاصله موجود و در دسترس هستند (برای نمونه، در دایرکتوری‌های مختلف از یک شبکه اشتراکی) به سرعت می‌توانید اختلاف محتوای آن‌ها در دو تاریخ مختلف را بدست آورید.</para>
+      <indexterm><primary>رونوشت‌گیری، رونوشت از فایل پشتیبان</primary></indexterm>
+      <indexterm><primary>پشتیبان</primary><secondary>رونوشت</secondary></indexterm>
+      <indexterm><primary><emphasis role="pkg">dirvish</emphasis></primary></indexterm>
+
+      <para>مکانیزم پشتیبان‌گیری به راحتی توسط برنامه <command>dirvish</command> پیاده‌سازی شده است. این برنامه از یک فضای ذخیره‌سازی پشتیبان (“بانک”) استفاده می‌کند که در آن فایل‌های پشتیبان را بر اساس بازه زمانی قرار می‌دهد (که به این فایل‌ها “صندوق” گفته می‌شود).</para>
+
+      <para>پیکربندی اصلی آن در فایل <filename>/etc/dirvish/master.conf</filename> قرار دارد. در این فایل می‌توان محل ذخیره‌سازی فایل‌های پشتیبان، فهرست “صندوق‌ها” برای مدیریت و مقدار پیش‌فرض برای تاریخ انقضای آن‌ها را مشخص کرد. باقی پیکربندی در فایل‌های <filename><replaceable>bank</replaceable>/<replaceable>vault</replaceable>/dirvish/default.conf</filename> قرار دارد که تنظیمات مختص به هر یک از فایل‌ها را شامل می‌شود.</para>
+
+      <example id="example.dirvish-master">
+        <title>فایل <filename>/etc/dirvish/master.conf</filename></title>
+
+        <programlisting>bank:
+    /backup
+exclude:
+    lost+found/
+    core
+    *~
+Runall:
+    root    22:00
+expire-default: +15 days
+expire-rule:
+#   MIN HR    DOM MON       DOW  STRFTIME_FMT
+    *   *     *   *         1    +3 months
+    *   *     1-7 *         1    +1 year
+    *   *     1-7 1,4,7,10  1</programlisting>
+      </example>
+
+      <para>گزینه <literal>bank</literal> دایرکتوری مورد نظر جهت پشتیبان‌گیری را مشخص می‌کند. گزینه <literal>exclude</literal> به شما امکان استخراج فایل‌ها (یا نوع فایل‌ها) از فرآیند پشتیبان‌گیری را می‌دهد. گزینه <literal>Runall</literal> فهرستی از فایل‌ها به منظور پشتیبان‌گیری به همراه بازه زمانی است، که به شما امکان تخصیص تاریخ صحیح برای رونوشت‌گیری را می‌دهد، در صورتی که پشتیبان در زمان مقرر صورت نگرفته باشد. باید یک زمان قبل از زمان اجرای آن (که به صورت پیش فرض ۱۰:۰۴ بعد از ظهر در دبیان بر طبق فایل <filename>/etc/cron.d/dirvish</filename> است) را مشخص کنید. در نهایت، تنظیمات <literal>expire-default</literal> و <literal>expire-rule</literal> سیاست انقضای فایل‌های پشتبان را مشخص می‌کنند. نمونه بالا فایل‌های پشتیبانی که در اولین یکشنه هر فصل ایجاد می‌شوند را تا ابد نگاه می‌دارد، اگر یک سال از اولین یکشنبه هر ماه بگذرد و پس از گذشت سه ماه از سایر یکشنبه‌ها آن‌ها را پاک می‌کند. سایر فایل‌های پشتیبان برای ۱۵ روز نگاه داشته می‌شوند. ترتیب این قانون‌ها اهمیت دارد، چرا که Dirvish از آخرین قانون صحیح استفاده می‌کند یا گزینه <literal>expire-default</literal> در صورتی که هیچ گزینه <literal>expire-rule</literal> یافت نشود.</para>
+
+      <sidebar>
+        <title><emphasis>در عمل</emphasis> انقضای زمان‌بندی شده</title>
+
+	<para>قواعد انقضا توسط <command>dirvish-expire</command> برای انجام کارش استفاده نمی‌شوند. در واقعیت، این قواعد زمانی که هنگام ایجاد یک رونوشت از فایل پشتیبان برای تعیین تاریخ آن اعمال می‌شوند. <command>dirvish-expire</command> به سادگی از رونوشت‌های ذخیره شده استفاده کرده و آن‌هایی که تاریخشان گذشته باشد را حذف می‌کند.</para>
+      </sidebar>
+
+      <example id="example.dirvish-vault">
+        <title>فایل <filename>/backup/root/dirvish/default.conf</filename></title>
+
+        <programlisting>client: rivendell.falcot.com
+tree: /
+xdev: 1
+index: gzip
+image-default: %Y%m%d
+exclude:
+    /var/cache/apt/archives/*.deb
+    /var/cache/man/**
+    /tmp/**
+    /var/tmp/**
+    *.bak</programlisting>
+      </example>
+
+      <para>نمونه بالا تعداد مشخصی از فایل‌ها را برای پشتبان‌گیری مشخص کرده است: فایل‌های روی رایانه <emphasis>rivendell.falcot.com</emphasis> (برای داده‌های پشتیبان محلی کافی است فقط نام رایانه که با دستور <command>hostname</command> معلوم می‌شود را وارد کنیم)، به خصوص آن‌هایی که در مسیر ریشه قرار دارند (<literal>tree: /</literal>)، بجز آن‌هایی که در مسیر <literal>exclude</literal> قرار گرفته‌اند. پشتیبان‌گیری محدود به محتوای یک فایل‌سیستم است (<literal>xdev: 1</literal>). شامل فایل‌های سایر نقاط اتصال نمی‌باشد. یک شاخص برای فایل‌های ذخیره شده تولید می‌شود (<literal>index: gzip</literal>) و فایل اصلی به صورت <literal>image-default: %Y%m%d</literal> و با تاریخ روز ثبت می‌گردد.</para>
+
+      <para>گزینه‌های بسیاری موجود هستند که در صفحه راهنمای <citerefentry><refentrytitle>dirvish.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry> مستندسازی گشته‌اند. زمانی که این فایل‌های پیکربندی تنظیم گردند، باید هر مجموعه فایل را با دستور <command>dirvish --vault <replaceable>vault</replaceable> --init</command> راه‌اندازی اولیه کنید. از این زمان به بعد به صورت روزانه فراخوانی <command>dirvish-runall</command> به صورت خودکار اقدام به ایجاد رونوشت‌های پشتیبان کرده و آن‌هایی را که تاریخ گذشته باشند حذف می‌کند.</para>
+
+      <sidebar>
+        <title><emphasis>در عمل</emphasis> پشتیبان‌گیری راه‌دور با استفاده از SSH</title>
+
+	<para>زمانی که dirvish نیاز دارد داده‌ها را در یک رایانه راه‌دور ذخیره کند، از <command>ssh</command> برای اتصال به آن استفاده کرده و <command>rsync</command> را به عنوان یک سرور راه‌اندازی می‌کند. این کار نیازمند دسترسی‌های کاربر root به منظور اتصال خودکار به آن است. استفاده از یک کلید احرازهویت SSH دقیقا این هدف را برآورده می‌سازد. (<xref linkend="sect.ssh-key-based-auth" /> را مشاهده کنید).</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>بازیابی رایانه‌هایی که فایل پشتیبان ندارند</title>
+
+      <para>رایانه‌های رومیزی، که پشتیبان‌گیری نمی‌شوند، به آسادگی از طریق DVD-ROM مخصوص با استفاده از <emphasis>Simple-CDD</emphasis> قابل نصب مجدد هستند (<xref linkend="sect.simple-cdd" /> را مشاهده کنید). از آنجا که این امر عملیات نصب را از ابتدا انجام می‌دهد هر گونه سفارشی‌کردن سیستم قبل از آن از بین می‌رود. اشکالی در این کار نیست چرا که تمام سیستم‌‌ها به یک دایرکتوری مرکزی LDAP برای مدیریت حساب کاربری متصل و بسیاری برنامه‌های رومیزی نیز به لطف dconf قابل پیکربندی هستند (برای اطلاعت بیشتر در این رابطه، <xref linkend="sect.gnome-desktop" /> را مشاهده کنید).</para>
+
+      <para>مدیرسیستم‌های شرکت فالکوت از محدودیت حجمی سیاست پشتیبان‌گیری خود آگاه هستند. از آنجا که محافظت از سرور پشتیبان به خوبی یک نوار مغناطیسی موجود در یک محفظه ضد آتش نیست، آن‌ها این سرور را در یک اتاق جداگانه نصب کرده‌اند تا در زمان حادثه برای اتاق اصلی سرور، خطری این سرور پشتیبان را تهدید نکند. علاوه بر این، آن‌ها از یک مکانیزم پشتیبان‌گیری افزایشی با استفاده از DVD به صورت هفتگی استفاده می‌کنند - که در آن تنها فایل‌های تغییر کرده از آخرین عملیات پشتیبان‌گیری لحاظ شده‌اند.</para>
+
+      <sidebar>
+        <title><emphasis>مطالعه بیشتر</emphasis> پشتیبان‌گیری از سرویس‌های SQL و LDAP</title>
+
+	<para>بسیاری از سرویس‌ها (مانند پایگاه‌داده‌های SQL و LDAP) به راحتی و با رونوشت‌گیری از فایل‌هایشان قابل ذخیره‌سازی نیستند (مگر در زمان پشتیبان‌گیری کاملا از کار بیفتند، که این امری دردسرساز است چرا که این سرویس‌ها باید در هر زمان فعال باشند). بنابراین، لازم است از یک مکانیزم “استخراج” برای ایجاد “رونوشت داده‌ها” که به راحتی قابل پشتیبان‌گیری هستند استفاده شود. این فایل‌ها اغلب بزرگ هستند اما به راحتی فشرده می‌شوند. برای کاهش فضای مورد نیاز ذخیره‌سازی، تنها کافی است یک فایل متنی کامل هر هفته ذخیره کنید، به همراه یک فایل <command>diff</command> روزانه، که از دستوری معادل با <command>diff <replaceable>file_from_yesterday</replaceable> <replaceable>file_from_today</replaceable></command> ایجاد می‌گردد. برنامه <command>xdelta</command> از داده‌های باینری می‌تواند فایل‌های اختلاف زمانی تولید کند.</para>
+        <indexterm><primary><command>xdelta</command></primary></indexterm>
+        <indexterm><primary><command>diff</command></primary></indexterm>
+        <indexterm><primary>dump</primary></indexterm>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>فرهنگ</emphasis> <emphasis>TAR</emphasis>، استاندارد پشتیبان‌گیری نوار</title>
+        <indexterm><primary>پشتیبان‌گیری</primary><secondary>روی نوار مغناطیسی</secondary></indexterm>
+        <indexterm><primary>نوار مغناطیسی، پشتیبان‌گیری</primary></indexterm>
+        <indexterm><primary>TAR</primary></indexterm>
+
+	<para>به لحاظ تاریخی، ساده‌ترین روش برای پشتیبان‌گیری در یونیکس ذخیره‌سازی یک بایگانی <emphasis>TAR</emphasis> روی نوار مغناطیسی بود. دستور <command>tar</command> حتی نام خود را از عبارت “Tape ARchive” وام گرفته است.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.hotplug">
+    <title>اتصال سریع: <emphasis>hotplug</emphasis></title>
+    <section>
+      <title>مقدمه</title>
+
+      <para>زیرسیستم <emphasis>hotplug</emphasis> از کرنل به صورت پویا اضافه و حذف شدن دستگاه‌ها را مدیریت می‌کند، با بارگیری درایورهای مناسب و ایجاد فایل‌های مخصوص به هر دستگاه (با کمک دستور <command>udevd</command>). با وجود سخت‌افزار جدید و عملیات مجازی‌سازی، تقریبا هر چیزی قابلیت اتصال سریع را دارد: از دستگاه‌های متداول USB/PCMCIA/IEEE 1394 گرفته تا هارد درایوهای SATA، همچنین پردازنده و حافظه اصلی.</para>
+
+      <para>کرنل شامل پایگاه‌داده‌ای است که هر شناسه دستگاه را به درایور مخصوص به آن ثبت می‌کند. این پایگاه‌داده در زمان راه‌اندازی اولیه به منظور بارگیری تمام درایورهای مورد نیاز برای دستگاه‌های شناخته شده در خطوط ارتباطی مختلف استفاده می‌شود، همچنین در زمانی که یک دستگاه جانبی به سیستم متصل می‌گردد. زمانی که دستگاه آماده استفاده باشد یک پیام به <command>udevd</command> ارسال می‌شود تا فایل مورد نظر دستگاه در <filename>/dev/</filename> را ایجاد کند.</para>
+
+      <indexterm><primary><emphasis>hotplug</emphasis></primary></indexterm>
+      <indexterm><primary>اتصال سریع</primary></indexterm>
+      <indexterm><primary>USB</primary></indexterm>
+      <indexterm><primary>IEEE 1394</primary></indexterm>
+      <indexterm><primary>PCMCIA</primary></indexterm>
+      <indexterm><primary>SATA</primary></indexterm>
+    </section>
+    <section>
+      <title>مشکل نامگذاری</title>
+
+      <para>قبل از ظهور قابلیت اتصال، انتساب یک نام ثابت به یک دستگاه کار ساده‌ای بود. اینکار بر اساس موقعیت دستگاه‌ها روی گذرگاه سیستم انجام می‌شد. اما این امکان برای دستگاه‌هایی که روی این گذرگاه وارد و خارج می‌شوند وجود ندارد. مورد متداول هم کاربرد دوربین دیجیتال و حافظه جانبی USB است، که هر دو در رایانه به عنوان هارد درایو ظاهر می‌شوند. اولی به نام <filename>/dev/sdb</filename> و دومی به نام <filename>/dev/sdc</filename> (به همراه <filename>/dev/sda</filename> که نام هارد درایو اصلی رایانه است). نام دستگاه ثابت نیست؛ در حقیقت به ترتیبی که دستگاه‌ها متصل می‌شوند ارتباط دارد.</para>
+
+      <para>علاوه بر این، درایورهای بیشتری از شماره‌گذاری ماژور/مینور دستگاه‌ها استفاده می‌کنند که امکان نامگذاری ثابت دستگاه‌ها را از بین می‌برد چرا که این خصوصیات ضروری در هر مرتبه راه‌اندازی سیستم از بین می‌روند.</para>
+
+      <para><emphasis>udev</emphasis> دقیقا به منظور حل این مشکل ایجاد شد.</para>
+    </section>
+    <section>
+      <title>چگونگی کارکرد <emphasis>udev</emphasis></title>
+
+      <para>زمانی که کرنل <emphasis>udev</emphasis> را از وجود یک دستگاه جدید آگاه می‌کند، این برنامه به جمع‌آوری اطلاعات مختلف در رابطه با دستگاه از طریق <filename>/sys/</filename> می‌پردازد، به خصوص اطلاعاتی که منجر به شناسایی دستگاه می‌شوند (نشانی MAC برای یک کارت شبکه، شماره سریال برخی دستگاه‌های USB و از این قبیل).</para>
+
+      <para>هنگامی که این اطلاعت بدست آمد، <emphasis>udev</emphasis> به مجموعه قواعد موجود در <filename>/etc/udev/rules.d/</filename> و <filename>/lib/udev/rules.d/</filename> مراجعه می‌کند. در این فرآیند تصمیم می‌گیرد که چه نامی به دستگاه اختصاص دهد، از چه پیوندهای نمادین برای ایجاد کردنش استفاده کند (برای اختصاص نام مستعار) و چه دستوراتی را اجرا کند. تمام این فایل‌ها مورد بررسی قرار می‌گیرند و قواعد موجود در آن‌ها به ترتیب ارزیابی می‌گردند (بجز حالتی که یک فایل از عبارت “GOTO” استفاده کند). پس، ممکن است چندین قاعده درباره یک رخداد بررسی شوند.</para>
+
+      <para>شیوه نگارش این قواعد تقریبا ساده است: هر سطر شامل شرایط انتخاب و انتساب متغیرها است. اولی برای انتخاب رویدادها جهت پاسخ دادن و دومی اقدام مورد نظر در پاسخ به آن رویداد است. تمام این قواعد با کاما از یکدیگر جدا شده‌اند و عملگر بین شرایط انتخاب (با عملگرهای مقایسه‌ای، مانند <literal>==</literal> یا <literal>!=</literal>) یا شرایط انتساب (با عملگرهایی نظیر <literal>=</literal>، <literal>+=</literal> یا <literal>:=</literal>) تفاوت قائل می‌شود.</para>
+
+      <para>عملگرهای مقایسه‌ای روی متغیرهای زیر اعمال می‌شوند:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>KERNEL</literal>: نامی که کرنل به دستگاه اختصاص داده است؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ACTION</literal>: پاسخ متناظر به رویداد (“add” زمانی که دستگاه اضافه شده یا “remove” زمانی که دستگاه حذف شده باشد)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>DEVPATH</literal>: مسیر دستگاه در ساختار <filename>/sys/</filename>؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SUBSYSTEM</literal>: زیرسیستم کرنل که درخواست را ایجاد کرده است (گزینه‌های زیادی وجود دارند اما برخی عبارتند از “usb”، “ide”، “net”، “firmware”، و از این قبیل);</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ATTR{<replaceable>attribute</replaceable>}</literal>: محتوای فایل <replaceable>attribute</replaceable> در دایرکتوری <filename>/sys/<replaceable>$devpath</replaceable>/</filename> دستگاه. اینجاست که می‌توانید نشانی MAC و سایر شناسه‌های مخصوص گذرگاه را پیدا کنید.</para>
+        </listitem>
+        <listitem>
+	  <para><literal>KERNELS</literal>، <literal>SUBSYSTEMS</literal> و <literal>ATTRS{<replaceable>attributes</replaceable>}</literal> انواع گوناگونی هستند که تلاش دارند گزینه‌های مختلف در رابطه با دستگاه‌های والد با دستگاه فعلی را سازگار سازند.</para>
+        </listitem>
+        <listitem>
+	  <para><literal>PROGRAM</literal>: نماینده آزمون برای برنامه مشخص شده است (در صورت بازگرداندن ۰ برابر با true، در غیر اینصورت false). محتوای خروحی استاندارد برنامه ذخیره می‌شود تا توسط آزمون <literal>RESULT</literal> قابل استفاده باشد.</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RESULT</literal>: آزمون‌های مورد نظر را روی خروجی استاندارد ذخیره شده از آخرین فراخوانی <literal>PROGRAM</literal> اجرا می‌کند.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>عملگر سمت راست می‌تواند به شیوه‌ای استفاده شود که امکان انتخاب چند مقدار در یک لحظه را داشته باشد. برای نمونه، <literal>*</literal> هر رشته‌ای را شامل می‌شود (حتی رشته خالی)؛ <literal>?</literal> هر کاراکتری را شامل می‌شود و <literal>[]</literal> مجموعه از کاراکترهای محدود را شامل می‌شود (یا خلاف آن، در صورتی که اولین کاراکتر برابر با ! باشد و بازه پیوسته کاراکترها به صورت <literal>a-z</literal> بیان شود).</para>
+
+      <para>با توجه به عملگرهای انتسابی، <literal>=</literal> یک مقدار را نسبت می‌دهد (که جایگزین مقدار فعلی می‌شود)؛ در مورد یک فهرست، خالی می‌شود و تنها مقدار انتسابی را شامل می‌گردد. <literal>:=</literal> نیز همین کار را کرده، اما از تغییرات بعدی آن متغیر جلوگیری می‌کند. همینطور <literal>+=</literal> که یک گزینه به فهرست اضافه می‌کند. متغیرهای زیر می‌توانند تغییر کنند:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>NAME</literal>: نام دستگاه که در مسیر <filename>/dev/</filename> ایجاد می‌شود. تنها اولین انتساب به حساب می‌آید؛ باقی انتساب‌ها نادیده گرفته می‌شوند؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SYMLINK</literal>: فهرستی از پیوندهای نمادین که به یک دستگاه اشاره می‌کنند؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>Owner</literal>، <literal>Group</literal> و <literal>MODE</literal> کاربر و گروه و مجوزهای مورد نیاز دستگاه را تعریف می‌کنند؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RUN</literal>: فهرست برنامه‌هایی که در پاسخ به این رویداد باید اجرا شوند.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>مقدارهای انتسابی به این متغیرها می‌توانند از جایگزین‌های زیر استفاده کنند:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>$kernel</literal> یا <literal>%k</literal>: معادل با <literal>KERNEL</literal>؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$number</literal> یا <literal>%n</literal>: شماره ترتیبی برای دستگاه، برای نمونه در <literal>sda3</literal> برابر با “3”؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$devpath</literal> یا <literal>%p</literal>: معادل با <literal>DEVPATH</literal>؛</para>
+        </listitem>
+        <listitem>
+	 
+	  <para><literal>$attr{<replaceable>attribute</replaceable>}</literal> یا <literal>%s{<replaceable>attribute</replaceable>}</literal>: معادل با <literal>ATTRS{<replaceable>attribute</replaceable>}</literal>؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$major</literal> یا <literal>%M</literal>: شماره ماژور کرنل برای دستگاه؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$minor</literal> یا <literal>%m</literal>: شماره مینور کرنل برای دستگاه؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>$result</literal> یا <literal>%c</literal>: رشته خروجی آخرین برنامه‌ای که توسط <literal>PROGRAM</literal> فراخوانی شده است؛</para>
+        </listitem>
+        <listitem>
+	  <para>و در نهایت، <literal>%%</literal> و <literal>$$</literal> برای علامت‌های درصد و دلار.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>فهرست بالا کامل نیست (تنها شامل مهم‌ترین پارامترها است)، اما صفحه راهنمای <citerefentry><refentrytitle>udev</refentrytitle><manvolnum>7</manvolnum></citerefentry> تمام پارامترها را شامل می‌شود.</para>
+    </section>
+    <section>
+      <title>یک مثال کامل</title>
+
+      <para>بیایید یک حافظه جانبی USB را در نظر بگیریم که می‌خواهیم نامی ثابت برایش ایجاد کنیم. ابتدا، باید شیوه‌ای برای شناسایی منحصربفرد آن بیابید. به این منظور، دستگاه را متصل کرده و دستور <command>udevadm info -a -n /dev/sdc</command> را اجرا کنید (<replaceable>/dev/sdc</replaceable> را با نام انتسابی به دستگاه جایگزین کنید).</para>
+
+      <screen><computeroutput># </computeroutput><userinput>udevadm info -a -n /dev/sdc</userinput>
+<computeroutput>[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</computeroutput></screen>
+
+      <para>برای ایجاد یک قانون جدید، می‌توانید از آزمون‌های روی متغیرهای دستگاه استفاده کنید، یا هر یک از دستگاه‌های والد آن. مورد بالا به ما اجازه ایجاد دو قانون به صورت زیر را می‌دهد:</para>
+
+      <programlisting>KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</programlisting>
+
+      <para>زمانی که این قوانین در یک فایل تنظیم شوند، برای نمونه <filename>/etc/udev/rules.d/010_local.rules</filename>، به سادگی می‌توانید حافظه را جدا کرده و از نو نصب کنید. مشاهده خواهید کرد که <filename>/dev/usb_key/disk</filename> نشان‌دهنده حافظه USB و <filename>/dev/usb_key/part1</filename> نشان‌دهنده اولین پارتیشن آن است.</para>
+
+      <sidebar>
+        <title><emphasis>مطالعه بیشتر</emphasis> اشکال‌زدایی پیکربندی <emphasis>udev</emphasis></title>
+
+	<para>مانند بسیاری فرآیندهای پس‌زمینه، <command>udevd</command> نیز گزارش‌های خود را در <filename>/var/log/daemon.log</filename> ذخیره می‌کند. اما به صورت پیش‌فرض خیلی خوانا نیستند و برای درک شرایط موجود به کار نمی‌آیند. دستور <command>udevadm control --log-priority=info</command> سطح جزئیات را بالا برده و این مشکل را حل می‌کند. <command>udevadm control --log-priority=err</command> نیز به حالت پیش‌فرض باز می‌گردد.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.power-management">
+    <title>مدیریت نیرو؛ پیکربندی پیشرفته و رابط کار با نیرو (ACPI)</title>
+    <indexterm><primary>مدیریت نیرو</primary></indexterm>
+    <indexterm><primary>مدیریت، مدیریت نیرو</primary></indexterm>
+
+    <para>موضوع مدیریت نیرو اغلب دردسرساز است. در حقیقت، اینکه رایانه را به حالت تعلیق ببریم مستلزم این است که تمام درایورهای آن بدانند چطور اینکار صورت می‌گیرد و هنگام برخواستن نیز بتوانند دستگاه‌ها را به درستی پبکربندی کنند. متاسفانه، هنوز برخی دستگاه‌ها هستند که در لینوکس به خوبی نمی‌توانند استراحت کنند، چرا که تولیدکنندگان آن‌ها استاندارد اینکار را ارائه نکرده‌اند.</para>
+
+    <para>لینوکس از ACPI یا Advanced Configuration and Power Interface پشتیبانی می‌کند - آخرین استاندارد مدیریت نیرو. بسته <emphasis role="pkg">acpid</emphasis> یک فرآیند پس‌زمینه را شامل می‌شود که مسئول نگهداری از رویدادهای مربوط به مدیریت نیرو است (سوئیچ بین برق و باتری در لپ‌تاپ و از این قبیل) و می‌تواند در پاسخ، دستورات مختلفی را اجرا کند.</para>
+
+    <indexterm><primary>ACPI</primary></indexterm>
+    <indexterm><primary>Advanced Configuration and Power Interface</primary></indexterm>
+    <indexterm><primary><command>acpid</command></primary></indexterm>
+    
+    <sidebar>
+      <title><emphasis>آگاه‌باشید</emphasis> کارت‌های گرافیکی و حالت تعلیق</title>
+
+      <para>کارت‌های گرافیکی اغلب مقصر اصلی درست کار نکردن حالت تعلیق هستند. در این مورد، بهتر است که آخرین نسخه سرور گرافیکی X.org را بررسی کنید.</para>
+    </sidebar>
+
+    <para>پس از بررسی سرویس‌های پایه که در بسیاری سیستم‌های یونیکس متداول هستند، روی محیط رایانه‌‌های مدیریت شده تمرکز می‌کنیم: یعنی شبکه. بسیاری سرویس‌ها برای عملکرد صحیح نیازمند شبکه هستند. در فصل بعد به بررسی آن‌ها می‌پردازیم.</para>
+  </section>
+</chapter>

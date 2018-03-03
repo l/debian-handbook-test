@@ -1,0 +1,891 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="workstation" lang="ja-JP">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>ワークステーション</keyword>
+			 <keyword>グラフィカルデスクトップ</keyword>
+			 <keyword>事務作業</keyword>
+			 <keyword>X.org</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>ワークステーション</title>
+	 <highlights> <para>
+		これでサーバの配備が終了しました。管理者は各ワークステーションをインストールし典型的な設定を作成することに注力することが可能です。
+	</para>
+	 </highlights> <section id="sect.x11-server-configuration">
+		<title>X11 サーバの設定</title>
+		 <indexterm>
+			<primary>XFree86</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>X.org</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>X11</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>インターフェース</primary>
+			<secondary>グラフィカル</secondary>
+		</indexterm>
+		 <para>
+			グラフィカルインターフェースの初期設定は時々扱いにくいことがあります。そして通常、最新のビデオカードは Debian 安定版に提供されている X.org バージョンでは完全に動作しません。
+		</para>
+		 <para>
+			A brief reminder: X.org is the software component that allows graphical applications to display windows on screen. It includes a driver that makes efficient use of the video card. The features offered to the graphical applications are exported through a standard interface, <emphasis>X11</emphasis> (<emphasis role="distribution">Jessie</emphasis> contains version <emphasis>X11R7.7</emphasis>).
+		</para>
+		 <sidebar> <title><emphasis>PERSPECTIVE</emphasis> X11、XFree86、X.org</title>
+		 <para>
+			X11 is the graphical system most widely used on Unix-like systems (also available for Windows and Mac OS). Strictly speaking, the term “X11” only refers to a protocol specification, but it is also used to refer to the implementation in practice.
+		</para>
+		 <para>
+			X11 had a rough start, but the 1990s saw XFree86 emerge as the reference implementation because it was free software, portable, and maintained by a collaborative community. However, the rate of evolution slowed down near the end when the software only gained new drivers. That situation, along with a very controversial license change, led to the X.org fork in 2004. This is now the reference implementation, and Debian <emphasis role="distribution">Jessie</emphasis> uses X.org version 7.7.
+		</para>
+		 </sidebar> <para>
+			X.org の現在のバージョンは利用できるハードウェアを自動検出することが可能です。すなわち、ビデオカードとモニタだけでなくキーボードとマウスも検出することが可能です。実際、パッケージが <filename>/etc/X11/xorg.conf</filename> 設定ファイルを作成する必要がなくなり、現在の X.org はとても使いやすくなっています。これは Linux カーネルが自動検出をサポートする機能を提供するようになったこと (特にキーボードとマウスの場合)、各ドライバがサポートするビデオカードのリストを持つようになったこと、DDC プロトコルでモニタの固有情報を取得するようになったことにより可能になっています。
+		</para>
+		 <indexterm>
+			<primary>解像度</primary>
+		</indexterm>
+		 <para>
+			キーボードは現在 <filename>/etc/default/keyboard</filename> で設定します。<filename>/etc/default/keyboard</filename> ファイルはテキストコンソールとグラフィカルインターフェースの両方で使われ、<emphasis role="pkg">keyboard-configuration</emphasis> パッケージによって取り扱われます。キーボードレイアウトの設定に関する詳細は<xref linkend="sect.keyboard-config" />をご覧ください。
+		</para>
+		 <para>
+			<emphasis role="pkg">xserver-xorg-core</emphasis> パッケージには X.org のバージョン 7.x が使う一般的な X サーバが含まれます。このサーバはモジュール式で多くの異なる種類のビデオカードを取り扱う独立したドライバを使います。<emphasis role="pkg">xserver-xorg</emphasis> をインストールすると、ドライバと少なくとも 1 種類のビデオドライバが確実にインストールされます。
+		</para>
+		 <indexterm>
+			<primary>サーバ</primary>
+			<secondary>X</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">xserver-xorg</emphasis></primary>
+		</indexterm>
+		 <para>
+			Note that if the detected video card is not handled by any of the available drivers, X.org tries using the VESA and fbdev drivers. VESA is a generic driver that should work everywhere, but with limited capabilities (fewer available resolutions, no hardware acceleration for games and visual effects for the desktop, and so on) while fbdev works on top of the kernel's framebuffer device. The X server writes its messages to the <filename>/var/log/Xorg.0.log</filename> log file, which is where one would look to know what driver is currently in use. For example, the following snippet matches what the <literal>intel</literal> driver outputs when it is loaded:
+		</para>
+		 
+<programlisting>
+(==) Matched intel as autoconfigured driver 0
+(==) Matched modesetting as autoconfigured driver 1
+(==) Matched vesa as autoconfigured driver 2
+(==) Matched fbdev as autoconfigured driver 3
+(==) Assigned the driver to the xf86ConfigLayout
+(II) LoadModule: "intel"
+(II) Loading /usr/lib/xorg/modules/drivers/intel_drv.so</programlisting>
+		 <indexterm>
+			<primary>VESA</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>ビデオカード</primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>EXTRA</emphasis> プロプライエタリドライバ</title>
+		 <para>
+			いくつかのビデオカードメーカー (中でも注目すべきは nVidia) は適切で自由なドライバを実装するために必要とされるハードウェア仕様の公表を拒んでいます。しかしながら、そのようなメーカーは自社のハードウェアを使えるようにするためのプロプライエタリドライバを提供しています。これは極悪非道なやり方です。なぜなら、たとえドライバが提供されていたとしても、あるべき姿と比べて遜色のない程度に洗練されているとは言い難いからです。そしてより重要な問題は、プロプライエタリドライバは X.org の更新に追従する必要がない、という点です。この問題が原因で、X.org が最新の利用できるドライバを正しく (または全く) 読み込めなくなる可能性があります。この態度を大目に見ることはできません。このような態度を取るメーカーの製品を避け、より協力的なメーカーの製品を使うことをお勧めします。
+		</para>
+		 <para>
+			If you still end up with such a card, you will find the required packages in the <emphasis>non-free</emphasis> section: <emphasis role="pkg">nvidia-glx</emphasis> for nVidia cards, and <emphasis role="pkg">fglrx-driver</emphasis> for some ATI cards. Both cases require matching kernel modules. Building these modules can be automated by installing the packages <emphasis role="pkg">nvidia-kernel-dkms</emphasis> (for nVidia), or <emphasis role="pkg">fglrx-modules-dkms</emphasis> (for ATI).
+		</para>
+		 <para>
+			The “nouveau” project aims to develop a free software driver for nVidia cards. As of <emphasis role="distribution">Jessie</emphasis>, its feature set does not match the proprietary driver. In the developers' defense, we should mention that the required information can only be gathered by reverse engineering, which makes things difficult. The free driver for ATI video cards, called “radeon”, is much better in that regard although it often requires non-free firmware.
+		</para>
+		 <indexterm>
+			<primary>ATI</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>nVidia</primary>
+		</indexterm>
+		 </sidebar>
+	</section>
+	 <section id="sect.customizing-graphical-interface">
+		<title>グラフィカルインターフェースのカスタマイズ</title>
+		 <section>
+			<title>ディスプレイマネージャの選択</title>
+			 <indexterm>
+				<primary>マネージャ</primary>
+				<secondary>ディスプレイ</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>gdm</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>kdm</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>xdm</command></primary>
+			</indexterm>
+			 <para>
+				グラフィカルインターフェースはディスプレイ領域を提供するだけです。X サーバを実行すると空の画面が表示されます。このため多くの場合、ユーザ認証画面を表示したり、認証の完了したユーザ向けにグラフィカルデスクトップを開始するための<emphasis>ディスプレイマネージャ</emphasis>がインストールされます。現在最も人気のディスプレイマネージャは <emphasis role="pkg">gdm3</emphasis> (<foreignphrase>GNOME ディスプレイマネージャ</foreignphrase>)、<emphasis role="pkg">kdm</emphasis> (<foreignphrase>KDE ディスプレイマネージャ</foreignphrase>)、<emphasis role="pkg">lightdm</emphasis> (<foreignphrase>Light Display Manager</foreignphrase>) の 3 種類です。Falcot Corp の管理者は GNOME デスクトップ環境を使うことに決めたので、必然的にディスプレイマネージャとして <command>gdm3</command> を選択しました。<filename>/etc/gdm3/daemon.conf</filename> 設定ファイルには挙動を制御する多くのオプションが書かれています (オプションは <filename>/usr/share/gdm/gdm.schemas</filename> スキーマファイルで定義されています)。これに対して、<filename>/etc/gdm3/greeter.dconf-defaults</filename> には greeter「セッション」(ログインウィンドウだけでなく、電源管理とアクセシビリティ関連ツールを備えた制限デスクトップ) 用の設定だけが含まれます。エンドユーザ向けの最も有用な設定の一部は GNOME コントロールセンターを使って微調整することが可能という点に注意してください。
+			</para>
+
+		</section>
+		 <section>
+			<title>ウィンドウマネージャの選択</title>
+			 <para>
+				Since each graphical desktop provides its own window manager, which window manager you choose is usually influenced by which desktop you have selected. GNOME uses the <command>mutter</command> window manager, KDE uses <command>kwin</command>, and Xfce (which we present later) has <command>xfwm</command>. The Unix philosophy always allows using one's window manager of choice, but following the recommendations allows an administrator to best take advantage of the integration efforts led by each project.
+			</para>
+			 <indexterm>
+				<primary><command>metacity</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>mutter</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>kwin</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>BACK TO BASICS</emphasis> ウィンドウマネージャ</title>
+			 <indexterm>
+				<primary>マネージャ</primary>
+				<secondary>ウィンドウ</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis>ウィンドウマネージャ</emphasis></primary>
+			</indexterm>
+			 <para>
+				The window manager displays the “decorations” around the windows belonging to the currently running applications, which includes frames and the title bar. It also allows reducing, restoring, maximizing, and hiding windows. Most window managers also provide a menu that pops up when the desktop is clicked in a specific way. This menu provides the means to close the window manager session, start new applications, and in some cases, change to another window manager (if installed).
+			</para>
+			 </sidebar> <para>
+				Older computers may, however, have a hard time running heavyweight graphical desktop environments. In these cases, a lighter configuration should be used. “Light” (or small footprint) window managers include WindowMaker (in the <emphasis role="pkg">wmaker</emphasis> package), Afterstep, fvwm, icewm, blackbox, fluxbox, or openbox. In these cases, the system should be configured so that the appropriate window manager gets precedence; the standard way is to change the <command>x-window-manager</command> alternative with the command <command>update-alternatives --config x-window-manager</command>.
+			</para>
+			 <indexterm>
+				<primary>WindowMaker</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Afterstep</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Blackbox</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Icewm</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Fluxbox</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Openbox</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>x-window-manager</command></primary>
+			</indexterm>
+			 <sidebar id="sidebar.alternatives"> <title><emphasis>DEBIAN SPECIFICITY</emphasis> 代替コマンド</title>
+			 <indexterm>
+				<primary><emphasis>代替コマンド</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>選択肢</primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>update-alternatives</command></primary>
+			</indexterm>
+			 <para>
+				Debian ポリシーは特定の動作を実行する数多くの標準化されたコマンドを定めています。たとえば、<command>x-window-manager</command> コマンドはウィンドウマネージャを実行します。しかし Debian はこのコマンドに特定のウィンドウマネージャを割り当てていません。管理者が実行するべきウィンドウマネージャを選ぶことが可能です。
+			</para>
+			 <para>
+				各ウィンドウマネージャに対応するパッケージは適切なコマンドと優先度を <command>x-window-manager</command> から実行できる選択肢として登録します。管理者が手作業で設定した場合を除けば、インストール済みのウィンドウマネージャから最も高い優先度を持つウィンドウマネージャが <command>x-window-manager</command> から実行されます。
+			</para>
+			 <para>
+				コマンドを登録したり手作業で設定するには <command>update-alternatives</command> スクリプトを使います。シンボリックコマンドの指す場所を選ぶことは <command>update-alternatives --config <replaceable>symbolic-command</replaceable></command> を実行するだけで簡単に可能です。<command>update-alternatives</command> スクリプトは <filename>/etc/alternatives/</filename> ディレクトリ内にシンボリックリンクを作成 (およびディレクトリ内のシンボリックリンクをメンテナンス) します。このシンボリックリンクは実行ファイルにリンクされています。時間が経過すれば、パッケージがインストールされたり削除されたりするかもしれませんし、管理者が手作業で設定を変更するかもしれません。代替コマンドに割り当てられたコマンドを提供するパッケージが削除された場合、残りのコマンドから最良のコマンドが自動的に選択されます。
+			</para>
+			 <para>
+				すべてのシンボリックコマンドが Debian ポリシーで定められているわけではない点に注意してください。一部の Debian パッケージメンテナは意図的に代替コマンドメカニズムを使い、あまり直接的ではないけれども興味深い柔軟性が必要な場合に対処します (たとえば <command>x-www-browser</command>、<command>www-browser</command>、<command>cc</command>、<command>c++</command>、<command>awk</command> などのパッケージは代替コマンドメカニズムを使っています)。
+			</para>
+			 <indexterm>
+				<primary><command>x-www-browser</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>www-browser</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>cc</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>c++</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>awk</command></primary>
+			</indexterm>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>メニュー管理</title>
+			 <indexterm>
+				<primary><command>menu</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>update-menus</command></primary>
+			</indexterm>
+			 <para>
+				現代的なデスクトップ環境と多くのウィンドウマネージャはユーザが利用できるアプリケーションをリストするメニューを提供します。実際に利用できるアプリケーションに基づいてメニューを最新の状態に保つために、通常各パッケージは <filename>/usr/share/applications</filename> の中に <filename>.desktop</filename> ファイルを配置します。<filename>.desktop</filename> ファイルの書式は FreeDesktop.org によって規格化されています。<ulink type="block" url="http://standards.freedesktop.org/desktop-entry-spec/latest/" />
+			</para>
+			 <para>
+				管理者は「Desktop Menu Specification」に従って記述されたシステム全体に対する設定ファイルを介して、アプリケーションメニューをさらにカスタマイズすることが可能です。さらにエンドユーザも <emphasis role="pkg">kmenuedit</emphasis> (KDE の場合) や <emphasis role="pkg">alacarte</emphasis> (GNOME の場合) や <emphasis role="pkg">menulibre</emphasis> などのグラフィカルツールを使ってメニューをカスタマイズすることが可能です。<ulink type="block" url="http://standards.freedesktop.org/menu-spec/latest/" />
+			</para>
+			 <sidebar> <title><emphasis>HISTORY</emphasis> Debian メニューシステム</title>
+			 <para>
+				歴史的なことを言えば、FreeDesktop.org の規格が現れる以前、Debian は自前のメニューシステムを考案していました。このシステムに従うパッケージは <filename>/usr/share/menu/</filename> 内に所望するメニューエントリの一般的な説明ファイルを配置していました。このツールはまだ Debian で利用できますが (<emphasis role="pkg">menu</emphasis> パッケージに含まれます)、あまり実用的ではありません。なぜなら、パッケージメンテナはメニューエントリを追加する際にはこのツールの代わりに <filename>.desktop</filename> ファイルを使うことを推奨されているからです。
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.graphical-desktops">
+		<title>グラフィカルデスクトップ</title>
+		 <para>
+			自由なグラフィカルデスクトップの分野では 2 種類の巨大なソフトウェア集 (GNOME と KDE) が優勢で、両者とも高い人気を集めています。この事実はフリーソフトウェア世界では珍しいことです。たとえば、Apache ウェブサーバには極めて多くの同等品があります。
+		</para>
+		 <indexterm>
+			<primary>グラフィカルデスクトップ</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>GNOME</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>KDE</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>GTK+</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Qt</primary>
+		</indexterm>
+		 <para>
+			This diversity is rooted in history. KDE was the first graphical desktop project, but it chose the Qt graphical toolkit and that choice wasn't acceptable for a large number of developers. Qt was not free software at the time, and GNOME was started based on the GTK+ toolkit. Qt has since become free software, but the projects still evolved in parallel.
+		</para>
+		 <para>
+			GNOME と KDE は協力し合っています。具体的に言えば、GNOME と KDE は FreeDesktop.org の傘下でアプリケーション間の相互運用性の標準を定義するために協力し合っています。
+		</para>
+		 <indexterm>
+			<primary>FreeDesktop.org</primary>
+		</indexterm>
+		 <para>
+			「最良の」グラフィカルデスクトップを決めることは慎重に扱うべき話題で、本書はそれを決定したいと思っているわけではありません。この節では多くの選択肢を説明し、さらに考えるために必要ないくつかの示唆を与えるだけに留めます。ご自分の手でいくつかの選択肢を試した後に、最良のグラフィカルデスクトップを決めてください。
+		</para>
+		 <section id="sect.gnome-desktop">
+			<title>GNOME</title>
+			 <para>
+				Debian <emphasis role="distribution">Jessie</emphasis> には GNOME バージョン 3.14 が含まれ、単純に <command>apt-get install gnome</command> でインストールすることが可能です (「Debian デスクトップ環境」タスクを使ってインストールすることも可能です)。
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">gnome</emphasis></primary>
+			</indexterm>
+			 <para>
+				GNOME is noteworthy for its efforts in usability and accessibility. Design professionals have been involved in writing its standards and recommendations, which has helped developers to create satisfying graphical user interfaces. The project also gets encouragement from the big players of computing, such as Intel, IBM, Oracle, Novell, and of course, various Linux distributions. Finally, many programming languages can be used in developing applications interfacing to GNOME.
+			</para>
+			 <figure>
+				<title>GNOME デスクトップ</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/gnome.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				For administrators, GNOME seems to be better prepared for massive deployments. Application configuration is handled through the GSettings interface and stores its data in the DConf database. The configuration settings can thus be queried and edited with the <command>gsettings</command>, and <command>dconf</command> command-line tools, or by the <command>dconf-editor</command> graphical user interfaces. The administrator can therefore change users' configuration with a simple script. The GNOME website provides information to guide administrators who manage GNOME workstations: <ulink type="block" url="https://help.gnome.org/admin/" />
+			</para>
+			 <indexterm>
+				<primary><command>gsettings</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>dconf</command></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>KDE</title>
+			 <para>
+				Debian <emphasis role="distribution">Jessie</emphasis> には KDE のバージョン 4.14 が含まれます。KDE をインストールするには <command>apt-get install kde-standard</command> を使います。
+			</para>
+			 <para>
+				KDE has had a rapid evolution based on a very hands-on approach. Its authors quickly got very good results, which allowed them to grow a large user-base. These factors contributed to the overall project quality. KDE is a mature desktop environment with a wide range of applications.
+			</para>
+			 <figure>
+				<title>KDE デスクトップ</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/kde.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Since the Qt 4.0 release, the last remaining license problem with KDE has been solved. This version was released under the GPL both for Linux and Windows (the Windows version was previously released under a non-free license). Note that KDE applications must be developed using the C++ language.
+			</para>
+
+		</section>
+		 <section>
+			<title>Xfce とその他</title>
+			 <para>
+				Xfce は単純で軽量なグラフィカルデスクトップで、リソースの制限されたコンピュータでの使用に完全に適しています。Xfce をインストールするには <command>apt-get install xfce4</command> を使ってください。GNOME と同様、Xfce は GTK+ ツールキットに基づき、いくつかの部品は両方のデスクトップ間で共通です。
+			</para>
+			 <indexterm>
+				<primary>Xfce</primary>
+			</indexterm>
+			 <para>
+				Unlike GNOME and KDE, Xfce does not aim to become a vast project. Beyond the basic components of a modern desktop (file manager, window manager, session manager, a panel for application launchers and so on), it only provides a few specific applications: a terminal, a calendar (Orage), an image viewer, a CD/DVD burning tool, a media player (Parole), sound volume control and a text editor (mousepad).
+			</para>
+			 <figure>
+				<title>Xfce デスクトップ</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/xfce.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Another desktop environment provided in <emphasis role="distribution">Jessie</emphasis> is LXDE, which focuses on the “lightweight” aspect. It can be installed with the <emphasis role="pkg">lxde</emphasis> meta-package.
+			</para>
+			 <indexterm>
+				<primary>LXDE</primary>
+			</indexterm>
+
+		</section>
+
+	</section>
+	 <section id="sect.main-desktop-tools">
+		<title>電子メール</title>
+		 <indexterm>
+			<primary>電子メール</primary>
+			<secondary>ソフトウェア</secondary>
+		</indexterm>
+		 <section>
+			<title>Evolution</title>
+			 <indexterm>
+				<primary>Evolution</primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>COMMUNITY</emphasis> <emphasis>人気のある</emphasis>パッケージ</title>
+			 <para>
+				Installing the <emphasis role="pkg">popularity-contest</emphasis> package enables participation in an automated survey that informs the Debian project about the most popular packages. A script is run weekly by <command>cron</command> which sends (by HTTP or email) an anonymized list of the installed packages and the latest access date for the files they contain. This allows the Debian maintainers to know which packages are most frequently installed, and of these, how frequently they are actually used.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">popularity-contest</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary>パッケージの人気度</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>パッケージ</primary>
+				<secondary>人気度</secondary>
+			</indexterm>
+			 <para>
+				Debian プロジェクトはパッケージの人気度を重要視します。パッケージの人気度は 1 枚目のインストールディスクに含めるパッケージを決定するために使われます。さらにパッケージの人気度はユーザ数の極端に少ないパッケージをディストリビューションから削除するか否かを決定する際にも重要な要素になります。<emphasis role="pkg">popularity-contest</emphasis> パッケージをインストールして、調査に参加することを心から推奨します。
+			</para>
+			 <para>
+				収集されたデータは毎日公開されています。<ulink type="block" url="http://popcon.debian.org/" />
+			</para>
+			 <para>
+				These statistics can also help users to choose between two packages that seem otherwise equivalent. Choosing the more popular package is probably a safer choice.
+			</para>
+			 </sidebar> <para>
+				Evolution is the GNOME email client and can be installed with <command>apt-get install evolution</command>. Evolution is more than a simple email client: it also provides a calendar, an address book, a task list, and a memo (free-form note) application. Its email component includes a powerful message indexing system, and allows for the creation of virtual folders based on search queries on all archived messages. In other words, all messages are stored the same way but displayed in a folder-based organization, each folder containing messages that match a set of filtering criteria.
+			</para>
+			 <figure>
+				<title>Evolution 電子メールソフトウェア</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/evolution.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				An extension to Evolution allows integration with a Microsoft Exchange email system; the required package is <emphasis role="pkg">evolution-ews</emphasis>.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">evolution-ews</emphasis></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>KMail</title>
+			 <indexterm>
+				<primary>KMail</primary>
+			</indexterm>
+			 <para>
+				KDE の電子メールソフトウェアは <command>apt-get install kmail</command> を使ってインストールすることが可能です。KMail は電子メールだけを取り扱いますが、KDE-PIM (<emphasis>Personal Information Manager</emphasis> の略語) と呼ばれるソフトウェアスイートに所属します。KDE-PIM には、アドレス帳、カレンダーなどの機能も含まれます。KMail は強力な電子メールクライアントに期待されるすべての機能を持っています。
+			</para>
+			 <figure>
+				<title>KMail 電子メールソフトウェア</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/kmail.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+		 <section>
+			<title>Thunderbird と Icedove</title>
+			 <para>
+				The <emphasis role="pkg">icedove</emphasis> package provides the Debian version of Thunderbird, the email client from the Mozilla software suite. For legal reasons detailed in the sidebar <xref linkend="sidebar.firefox-iceweasel" />, Debian <emphasis role="distribution">Jessie</emphasis> contains Icedove, and not Thunderbird, but the only real differences between them are their names and icons.
+			</para>
+			 <para>
+				Various localization sets are available in <emphasis role="pkg">icedove-l10n-*</emphasis> packages; the <emphasis role="pkg">enigmail</emphasis> extension handles message encrypting and signing, but it is not available in all languages.
+			</para>
+			 <figure>
+				<title>Icedove 電子メールソフトウェア</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/icedove.png" format="PNG" scalefit="1" width="70%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <indexterm>
+				<primary>Thunderbird、Mozilla</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Mozilla</primary>
+				<secondary>Thunderbird</secondary>
+			</indexterm>
+
+		</section>
+
+	</section>
+	 <section id="sect.web-browsers">
+		<title>ウェブブラウザ</title>
+		 <indexterm>
+			<primary>ウェブブラウザ</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>ブラウザ、ウェブ</primary>
+		</indexterm>
+		 <para>
+			Epiphany は GNOME スイートのウェブブラウザで、Safari ブラウザ向けに Apple が開発した WebKit レンダリングエンジンを使います。対応するパッケージは <emphasis role="pkg">epiphany-browser</emphasis> です。
+		</para>
+		 <indexterm>
+			<primary>WebKit</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Epiphany</primary>
+		</indexterm>
+		 <para>
+			Konqueror, available in the <emphasis role="pkg">konqueror</emphasis> package, is the KDE file manager, which also functions as a web browser. It uses the KDE-specific KHTML rendering engine; KHTML is an excellent engine, as witnessed by the fact that Apple's WebKit is based on KHTML. <indexterm><primary>Konqueror</primary></indexterm>
+		</para>
+		 <para>
+			Epiphany や Konqueror では満足できないユーザは Iceweasel を使うことが可能です。Iceweasel は <emphasis role="pkg">iceweasel</emphasis> に含まれ、Mozilla プロジェクトの Gecko レンダリングエンジンを使い、簡素で拡張できるインターフェースを備えています。<indexterm><primary>Gecko</primary></indexterm><indexterm><primary>Mozilla</primary><secondary>Firefox</secondary></indexterm><indexterm><primary>Firefox、Mozilla</primary></indexterm>
+		</para>
+		 <figure>
+			<title>Iceweasel ウェブブラウザ</title>
+			 <mediaobject>
+				<imageobject>
+					<imagedata fileref="images/iceweasel.png" format="PNG" scalefit="1" width="70%" />
+				</imageobject>
+
+			</mediaobject>
+
+		</figure>
+		 <sidebar id="sidebar.firefox-iceweasel"> <title><emphasis>CULTURE</emphasis> Iceweasel、Firefox、その他</title>
+		 <indexterm>
+			<primary>Iceweasel</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Icedove</primary>
+		</indexterm>
+		 <para>
+			多くのユーザは間違いなく Debian <emphasis role="distribution">Jessie</emphasis> のメニューに Mozilla Firefox がないことに驚きます。でも慌てる必要はありません。なぜなら、基本的には Firefox の別名と考えて差し支えない Iceweasel が <emphasis role="pkg">iceweasel</emphasis> パッケージに含まれているからです。
+		</para>
+		 <para>
+			Debian は Mozilla Foundation の定めた <trademark>Firefox</trademark> 登録商標の利用規則を満足できなかったため、名前を変更しました。すなわち、Firefox と名付けられたソフトウェアはどんなものでも公式の Firefox ロゴとアイコンを使わなければいけませんでした。しかしながら、Firefox ロゴとアイコンは自由なライセンスでリリースされていないため、Debian は Firefox を <emphasis>main</emphasis> セクションで配布できません。パッケージのメンテナは、ブラウザ全体を <emphasis>non-free</emphasis> セクションに移動するのではなく、名前を変えることでこの問題を解決することにしました。
+		</para>
+		 <para>
+			<command>firefox</command> コマンドは <emphasis role="pkg">iceweasel</emphasis> パッケージから提供されますが、これは <command>firefox</command> コマンドを使おうとするツールとの互換性を考慮した措置です。
+		</para>
+		 <para>
+			同様の理由で、<trademark>Thunderbird</trademark> 電子メールクライアントの名前も類似の Icedove に変更されました。
+		</para>
+		 </sidebar> <indexterm>
+			<primary>Mozilla</primary>
+			<secondary>Firefox</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>Firefox、Mozilla</primary>
+		</indexterm>
+		 <sidebar> <title><emphasis>CULTURE</emphasis> Mozilla</title>
+		 <para>
+			Netscape Navigator was the standard browser when the web started reaching the masses, but lost ground when Microsoft bundled Internet Explorer with Windows and signed contracts with computer manufacturers which forbade them from pre-installing Netscape Navigator. Faced with this failure, Netscape (the company) decided to “free” its source code, by releasing it under a free license, to give it a second life. This was the beginning of the Mozilla project. After many years of development, the results are more than satisfying: the Mozilla project brought forth an HTML rendering engine (called Gecko) that is among the most standard-compliant. This rendering engine is in particular used by the Mozilla Firefox browser, which is one of the most successful browsers, with a fast-growing user base.
+		</para>
+		 <indexterm>
+			<primary>Mozilla</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Netscape</primary>
+		</indexterm>
+		 </sidebar> <para>
+			最後に重要なことを述べますが、Debian には <emphasis>Chromium</emphasis> ウェブブラウザが含まれています (<emphasis role="pkg">chromium-browser</emphasis> パッケージから利用できます)。Chromium ブラウザは Google で急速に開発されました。その開発速度は Debian <emphasis role="distribution">Jessie</emphasis> のメンテナンス期間全体にわたって Chromium の単一のバージョンだけメンテナンスすることが意味を成さなくなるほどの速度です。Chromium の明確な目標は、ブラウザ性能を最適化しユーザの安全性を向上させることで、ウェブサービスをより魅力的なものにすることです。Chromium を構成する自由なコードは Google Chrome と呼ばれるプロプライエタリ版でも使われています。
+		</para>
+
+	</section>
+	 <section id="sect.development">
+		<title>開発</title>
+		 <section>
+			<title>GNOME 上の GTK+ 用ツール</title>
+			 <para>
+				Anjuta (<emphasis role="pkg">anjuta</emphasis> パッケージに含まれます) は GNOME 用の GTK+ アプリケーションの作成に最適化された開発環境です。Glade (<emphasis role="pkg">glade</emphasis> パッケージに含まれます) は GNOME 用の GTK+ グラフィカルインターフェースを作成し XML ファイルに保存するために設計されたアプリケーションです。これらの XML ファイルは <emphasis>libglade</emphasis> 共有ライブラリによって読み込まれます。<emphasis>libglade</emphasis> 共有ライブラリは XML ファイルに保存されたインターフェースを動的に再作成することが可能です。動的再作成機能はたとえばダイアログを必要とするプラグインにとって興味深い機能です。
+			</para>
+			 <indexterm>
+				<primary>Anjuta</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Glade</primary>
+			</indexterm>
+			 <para>
+				Anjuta の目標は統合開発環境に期待されるすべての機能をモジュール式の方法でまとめることです。
+			</para>
+
+		</section>
+		 <section>
+			<title>KDE 上の Qt 用ツール</title>
+			 <para>
+				KDE 用の同等なアプリケーションは開発環境である KDevelop (<emphasis role="pkg">kdevelop</emphasis> パッケージに含まれます) と KDE 上の Qt アプリケーション用のグラフィカルインターフェースを設計する Qt Designer (<emphasis role="pkg">qttools5-dev-tools</emphasis> パッケージに含まれます) です。
+			</para>
+			 <indexterm>
+				<primary>KDevelop</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Qt</primary>
+				<secondary>Designer</secondary>
+			</indexterm>
+
+		</section>
+
+	</section>
+	 <section id="sect.collaborative-work">
+		<title>共同作業</title>
+		 <indexterm>
+			<primary>共同作業</primary>
+		</indexterm>
+		 <section>
+			<title>グループで行う作業、<foreignphrase>グループウェア</foreignphrase></title>
+			 <indexterm>
+				<primary><emphasis>グループウェア</emphasis></primary>
+			</indexterm>
+			 <para>
+				Groupware tools tend to be relatively complex to maintain because they aggregate multiple tools and have requirements that are not always easy to reconcile in the context of an integrated distribution. Thus there is a long list of groupware packages that were once available in Debian but have been dropped for lack of maintainers or incompatibility with other (newer) software in Debian. This has been the case with PHPGroupware, eGroupware, and Kolab. <ulink type="block" url="http://www.phpgroupware.org/" /> <ulink type="block" url="http://www.egroupware.org/" /> <ulink type="block" url="http://www.kolab.org/" />
+			</para>
+			 <indexterm>
+				<primary>PHPGroupware</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>eGroupware</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Kolab</primary>
+			</indexterm>
+			 <para>
+				All is not lost though. Many of the features traditionally provided by “groupware” software are increasingly integrated into “standard” software. This is reducing the requirement for specific, specialized groupware software. On the other hand, this usually requires a specific server. Citadel (in the <emphasis role="pkg">citadel-suite</emphasis> package) and Sogo (in the <emphasis role="pkg">sogo</emphasis> package) are alternatives that are available in Debian <emphasis role="distribution">Jessie</emphasis>.
+			</para>
+
+		</section>
+		 <section>
+			<title>FusionForge を使った共同作業</title>
+			 <indexterm>
+				<primary>FusionForge</primary>
+			</indexterm>
+			 <para>
+				FusionForge はフリーソフトウェアプロジェクト用のホスティングサービスである SourceForge を起源とする共同開発ツールです。FusionForge はフリーソフトウェアの標準的な開発モデルに基づく総合的な取り組み方を採用しています。FusionForge は SourceForge のコードがプロプライエタリになった後にも進化し続けました。SourceForge コードの最初の作者である VA Software が今後は SourceForge コードのフリーソフトウェア版を公開しないことを決定し、SourceForge の最初のフォークである GForge がプロプライエタリになった後にも FusionForge は進化し続けました。多くの人と組織が FusionForge の開発に参加し続けたため、現在の FusionForge には開発に対する古典的な姿勢を採用する機能および、純粋なソフトウェア開発に該当しないプロジェクトが含まれます。
+			</para>
+			 <indexterm>
+				<primary>SourceForge</primary>
+			</indexterm>
+			 <para>
+				FusionForge はプロジェクトを管理、追跡、調整するための複数のツールの集合体とみなすことが可能です。これらのツールは大ざっぱに言って 3 種類に分類することが可能です。
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<emphasis>communication</emphasis>: web forums, mailing-list manager, and announcement system allowing a project to publish news
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<emphasis>tracking</emphasis>: tools to track project progress and schedule tasks, to track bugs, feature requests, or any other kind of “ticket”, and to run surveys
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<emphasis>共有ツール</emphasis>。プロジェクトに関連する文書の唯一の原本を提供するための文書管理システム、包括的なファイルリリース管理システム、プロジェクト専用のウェブサイトを指します。
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Since FusionForge largely targets development projects, it also integrates many tools such as CVS, Subversion, Git, Bazaar, Darcs, Mercurial and Arch for source control management (also called “configuration management” or “version control”). These programs keep a history of all the revisions of all tracked files (often source code files), with all the changes they go through, and they can merge modifications when several developers work simultaneously on the same part of a project.
+			</para>
+			 <para>
+				Most of these tools can be accessed or even managed through a web interface, with a fine-grained permission system, and email notifications for some events.
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.office-suites">
+		<title>オフィススイート</title>
+		 <indexterm>
+			<primary>オフィススイート</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>スイート、オフィス</primary>
+		</indexterm>
+		 <para>
+			Office software has long been seen as lacking in the free software world. Users require replacements for Microsoft tools such as Word and Excel, but these are so complex that replacements were hard to develop. The situation changed when Sun released the StarOffice code under a free license as OpenOffice, a project which later gave birth to Libre Office, which is available on Debian. The KDE project also has its own office suite, called Calligra Suite (previously KOffice), and GNOME, while never offering a comprehensive office suite, provides AbiWord as a word processor and Gnumeric as a spreadsheet. The various projects each have their strengths. For instance, the Gnumeric spreadsheet is better than OpenOffice.org/Libre Office in some domains, notably the precision of its calculations. On the word processing front, the Libre Office suite still leads the way.
+		</para>
+		 <indexterm>
+			<primary>OpenOffice.org</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>StarOffice</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Libre Office</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>GNOME Office</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Calligra Suite</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Gnumeric</primary>
+		</indexterm>
+		 <para>
+			Another important feature for users is the ability to import Microsoft Office documents. Even though all office suites have this feature, only the ones in OpenOffice.org and Libre Office are functional enough for daily use.
+		</para>
+		 <sidebar> <title><emphasis>THE BROADER VIEW</emphasis> Libre Office が OpenOffice.org を置き換える</title>
+		 <para>
+			OpenOffice.org contributors set up a foundation (<emphasis>The Document Foundation</emphasis>) to foster the project's development. The idea had been discussed for some time, but the actual trigger was Oracle's acquisition of Sun. The new ownership made the future of OpenOffice under Oracle uncertain. Since Oracle declined to join the foundation, the developers had to give up on the OpenOffice.org name. This office suite is now known as <emphasis>Libre Office</emphasis>, and is available in Debian.
+		</para>
+		 <para>
+			After a period of relative stagnation on OpenOffice.org, Oracle donated the code and associated rights to the Apache Software Foundation, and OpenOffice is now an Apache project. This project is not currently available in Debian.
+		</para>
+		 </sidebar> <indexterm>
+			<primary>Word、Microsoft</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Excel、Microsoft</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Microsoft</primary>
+			<secondary>Word</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>Microsoft</primary>
+			<secondary>Excel</secondary>
+		</indexterm>
+		 <para>
+			Libre Office and Calligra Suite are available in the <emphasis role="pkg">libreoffice</emphasis> and <emphasis role="pkg">calligra</emphasis> Debian packages, respectively. Although the <emphasis role="pkg">gnome-office</emphasis> package was previously used to install a collection of office tools such as AbiWord and Gnumeric, this package is no longer part of Debian, with the individual packages now standing on their own.
+		</para>
+		 <para>
+			Language-specific packs for Libre Office are distributed in separate packages, most notably <emphasis role="pkg">libreoffice-l10n-*</emphasis> and <emphasis role="pkg">libreoffice-help-*</emphasis>. Some features such as spelling dictionaries, hyphenation patterns and thesauri are in separate packages, such as <emphasis role="pkg">myspell-*</emphasis>, <emphasis role="pkg">hunspell-*</emphasis>, <emphasis role="pkg">hyphen-*</emphasis> and <emphasis role="pkg">mythes-*</emphasis>.
+		</para>
+
+	</section>
+	 <section id="sect.windows-emulation">
+		<title>Windows のエミュレート、Wine</title>
+		 <indexterm>
+			<primary>Windows のエミュレート</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Windows、エミュレーション</primary>
+		</indexterm>
+		 <para>
+			これまでに述べてきた努力にも関わらず、まだ数多くのツールには Linux で動く同等品が用意されていませんし、用意されていても元になったバージョンが絶対に不可欠なことがあります。これが Windows エミュレーションシステムの役立つ場面です。最もよく知られている Windows エミュレーションシステムが Wine です。<ulink type="block" url="https://www.winehq.org/" />
+		</para>
+		 <sidebar> <title><emphasis>COMPLEMENTS</emphasis> CrossOver Linux</title>
+		 <para>
+			CodeWeavers が開発している <emphasis>CrossOver</emphasis> は Microsoft Office を完全に利用できるようにするために Wine のエミュレート機能を強化するプロジェクトです。一部の機能強化は定期的に Wine にマージされています。<ulink type="block" url="http://www.codeweavers.com/products/" />
+		</para>
+		 <indexterm>
+			<primary><emphasis>CrossOver</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>CodeWeavers</primary>
+		</indexterm>
+		 </sidebar> <para>
+			しかしながら、Wine は数ある解決策の 1 つに過ぎず、仮想マシンや VNC などの他の解決策を試してみることも覚えておくべきです。仮想マシンや VNC という解決策は補注<xref linkend="sidebar.virtual-machines" />および<xref linkend="sidebar.wts-or-vnc" />で詳しく説明しています。
+		</para>
+		 <para>
+			思い出すことから始めましょう。エミュレーションを使うことで異なるホストシステム上で (あるターゲットシステム向けに開発された) プログラムを実行することが可能になります。エミュレーションソフトウェアはアプリケーションを実行するホストシステムを使い、ターゲットシステムに要求される機能を模倣します。
+		</para>
+		 <indexterm>
+			<primary>Wine</primary>
+		</indexterm>
+		 <para>
+			それでは必要なパッケージをインストールしましょう (<emphasis role="pkg">ttf-mscorefonts-installer</emphasis> は contrib セクションに含まれます)。
+		</para>
+		 
+<screen>
+<computeroutput># </computeroutput><userinput>apt-get install wine ttf-mscorefonts-installer</userinput></screen>
+		 <indexterm>
+			<primary><command>winecfg</command></primary>
+		</indexterm>
+		 <para>
+			64 ビット (amd64) システムで 32 ビットの Windows アプリケーションを使う場合、i386 アーキテクチャの wine32 パッケージをインストールするために multi-arch を有効化しなければいけません (<xref linkend="sect.multi-arch" />を参照してください)。
+		</para>
+		 <para>
+			インストールが終了したらユーザは <command>winecfg</command> を実行し、(Windows) ドライブに対応付ける (Debian 上の) 場所を設定しなければいけません。<command>winecfg</command> のデフォルト設定は堅実で、いくつかのドライブを自動検出することが可能です。このため、デュアルブートシステムを使っていたとしても Wine の <literal>C:</literal> ドライブを Debian からマウントされた Windows パーティションに設定するべきではない点に注意してください。なぜなら、Wine は Windows パーティションの一部のデータを上書きして Windows を破壊してしまうかもしれないからです。他の設定はデフォルトの値を使うことが可能です。Windows プログラムを実行するには、最初に <command>wine <replaceable>.../setup.exe</replaceable></command> を使って Wine の下で Windows プログラムの (Windows) インストーラを実行し、インストール作業を行う必要があります。プログラムのインストールが完了したら、<command>wine <replaceable>.../program.exe</replaceable></command> を使ってプログラムを実行します。<filename>program.exe</filename> ファイルの正しい場所は <literal>C:</literal> ドライブが対応付けられた場所に依存します。しかしながら多くの場合、単純に <command>wine <replaceable>program</replaceable></command> と実行するだけで十分です。なぜなら、通常プログラムは Wine が探す場所にインストールされるからです。
+		</para>
+		 <sidebar> <title><emphasis>TIP</emphasis> winecfg の機能不全の回避手段</title>
+		 <para>
+			場合によっては、<command>winecfg</command> が正しく動作しないことがあります (<command>winecfg</command> はただのラッパーに過ぎません)。<command>winecfg</command> の機能不全を回避する手段として、<command>winecfg</command> が実際に呼び出すコマンドである <command>wine64 /usr/lib/x86_64-linux-gnu/wine/wine/winecfg.exe.so</command> または <command>wine32 /usr/lib/i386-linux-gnu/wine/wine/winecfg.exe.so</command> を手入力して実行してみると良いかもしれません。
+		</para>
+		 </sidebar> <para>
+			動かしたいソフトウェアを実際にテストする前に Wine (または類似の解決策) を信頼するべきではない点に注意してください。すなわち、エミュレーションが完全に動作しているか否かは、実際にそのソフトウェアを使ってみた後に判断するしかありません。
+		</para>
+		 <sidebar id="sidebar.virtual-machines"> <title><emphasis>ALTERNATIVE</emphasis> 仮想マシン</title>
+		 <para>
+			Microsoft のオペレーティングシステムをエミュレートする別の方法として、ハードウェアマシン全体をエミュレートする仮想マシンの中で実際にオペレーティングシステムを実行する方法があります。この方針を取れば、任意のオペレーティングシステムを実行することが可能です。<xref linkend="advanced-administration" />ではいくつかの仮想化システムについて説明していますが、(QEMU、VMWare、Bochs もさることながら) 中でも注目すべきは Xen と KVM です。
+		</para>
+		 </sidebar> <sidebar id="sidebar.wts-or-vnc"> <title><emphasis>ALTERNATIVE</emphasis> <foreignphrase>Windows Terminal Server</foreignphrase> または VNC</title>
+		 <para>
+			さらに別の方法として、<emphasis>Windows Terminal Server</emphasis> を備えた中央サーバ上で古い Windows アプリケーションをリモート実行し、<emphasis>rdesktop</emphasis> を使って Linux マシンから対象のアプリケーションを操作する方針があります。<emphasis>rdesktop</emphasis> は Linux 上で動作する RDP プロトコル (<emphasis>Remote Desktop Protocol</emphasis>) を実装したクライアントです。<foreignphrase>Windows NT/2000 Terminal Server</foreignphrase> は RDP を使ってリモートマシンにデスクトップを表示します。
+		</para>
+		 <indexterm>
+			<primary>RDP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>Remote Desktop Protocol</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>Windows Terminal Server</emphasis></primary>
+		</indexterm>
+		 <para>
+			VNC ソフトウェアは <emphasis>rdesktop</emphasis> と同様の機能を提供します。また、VNC を使えば多くのオペレーティングシステムからアプリケーションを遠隔操作できるという恩恵があります。Linux 上で動作する VNC クライアントとサーバについては<xref linkend="sect.remote-login" />で説明されています。
+		</para>
+		 </sidebar>
+	</section>
+	 <section id="sect.rtc-clients">
+		<title>リアルタイムコミュニケーションソフトウェア</title>
+		 <para>
+			Debian にはさまざまなリアルタイムコミュニケーション (RTC) クライアントソフトウェアが含まれます。<xref linkend="sect.rtc-services" />では RTC サーバのセットアップについて解説しています。SIP の用語では、クライアントアプリケーションおよびデバイスをユーザエージェントと呼ぶこともあります。
+		</para>
+		 <indexterm>
+			<primary>ユーザエージェント (SIP)</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>SIP</primary>
+			<secondary>ユーザエージェント</secondary>
+		</indexterm>
+		 <para>
+			各クライアントアプリケーションはさまざまな機能を備えています。ヘビーなチャットユーザにとってより便利なアプリケーションもあれば、ウェブカメラのユーザに適しているアプリケーションもあります。最も満足のいくアプリケーションを見つけるにはいくつかのアプリケーションをテストする必要があるでしょう。最終的に 1 種類以上のアプリケーションを使うユーザがいるかもしれません。たとえば顧客と連絡を取り合うために XMPP アプリケーションを使い、オンラインコミュニティと連携するために IRC アプリケーションを使ったりするわけです。
+		</para>
+		 <para>
+			ユーザがコミュニケーションできる範囲を狭めないようにするためにも、SIP と XMPP クライアントの両方または両方のプロトコルをサポートするクライアントを設定することを推奨します。
+		</para>
+		 <indexterm>
+			<primary>SIP</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>XMPP</primary>
+		</indexterm>
+		 <para>
+			デフォルトの GNOME デスクトップには Empathy コミュニケーションクライアントが含まれます。Empathy は SIP と XMPP の両方をサポートしています。さらに Empathy はインスタントメッセージ (IM)、音声、動画もサポートしています。KDE デスクトップには KDE Telepathy が含まれます。KDE Telepathy は GNOME Empathy クライアントが使っているのと同じ Telepathy API を使っているコミュニケーションクライアントです。
+		</para>
+		 <indexterm>
+			<primary>Empathy</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Telepathy</primary>
+		</indexterm>
+		 <para>
+			Empathy/Telepathy の代替ソフトウェアとして人気なソフトウェアには、Ekiga、Jitsi、Linphone、Psi、Ring (旧名 SFLphone) などがあります。
+		</para>
+		 <indexterm>
+			<primary>Ekiga</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Jitsi</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Linphone</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Psi</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Ring (ソフトフォン)</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>SFLphone</primary>
+		</indexterm>
+		 <para>
+			上に挙げたアプリケーションの中には、Android の Lumicall などのアプリケーションを使っているモバイルユーザと連絡を取り合うことが可能なアプリケーションもあります。<ulink type="block" url="http://lumicall.org" />
+		</para>
+		 <indexterm>
+			<primary>Lumicall</primary>
+		</indexterm>
+		 <para>
+			<emphasis>リアルタイムコミュニケーションクイックスタートガイド</emphasis>では 1 章を割いてクライアントソフトウェアについて説明しています。<ulink type="block" url="http://rtcquickstart.org/guide/multi/useragents.html" />
+		</para>
+		 <sidebar> <title><emphasis>TIP</emphasis> ICE と TURN をサポートするクライアントを探す</title>
+		 <para>
+			一部の RTC クライアントはファイアウォールと NAT ネットワークを通じて音声や動画を送信する場合に大きな問題があります。このようなソフトウェアを使った場合、ゴーストコール (電話を取ることはできても相手の声が聞こえない状態) になったり、全く電話をかけることができなくなるかもしれません。
+		</para>
+		 <para>
+			ICE および TURN プロトコルはこの問題を解決するために開発されました。TURN サーバに公開 IP アドレスを付けて運営し、さらに ICE と TURN の両方をサポートするクライアントソフトウェアを使えば、最良のユーザエクスペリエンスを得ることが可能です。
+		</para>
+		 <para>
+			インスタントメッセージだけを要件としてクライアントソフトウェアを選ぶ場合、ICE または TURN のサポートは不要です。
+		</para>
+		 </sidebar> <para>
+			Debian 開発者は <ulink url="https://rtc.debian.org">rtc.debian.org</ulink> でコミュニティ SIP サービスを運営しています。このコミュニティは Debian でパッケージングされている数多くのクライアントアプリケーションに関する文書を備えたウィキを管理しています。ウィキに掲載されている記事とスクリーンショットは同様のサービスを自分のドメインで設定する際に役立ちます。<ulink type="block" url="https://wiki.debian.org/UnifiedCommunications/DebianDevelopers/UserGuide" />
+		</para>
+		 <sidebar> <title><emphasis>ALTERNATIVE</emphasis> インターネットリレーチャット</title>
+		 <para>
+			SIP や XMPP に加えて IRC を検討することも可能です。IRC システムはチャンネルの概念を中心としています。チャンネル名の先頭にはハッシュ記号 <literal>#</literal> が付けられます。通常各チャンネルには特定の話題が設定されており、多くの人々がチャンネルに参加してその話題について議論することが可能です (必要ならば、ユーザ同士が一対一でプライベートに会話することも可能です)。IRC プロトコルは古く、メッセージをエンドツーエンドで暗号化することが不可能です。しかし IRC プロトコルを SSL の中にトンネリングすれば、ユーザとサーバ間の通信を暗号化することも可能です。
+		</para>
+		 <indexterm>
+			<primary>IRC</primary>
+		</indexterm>
+		 <indexterm>
+			<primary><foreignphrase>インターネットリレーチャット</foreignphrase></primary>
+		</indexterm>
+		 <para>
+			IRC クライアントはもう少し複雑で、集団環境の中における使用制限を行使するための多くの機能を備えています。たとえば通常の議論が妨げられた場合、チャンネルの「オペレータ」は他のユーザをチャンネルから追い出したり、永久的に参加を禁止したりするためにこれらの機能を使って自分の責任を果たします。
+		</para>
+		 <para>
+			IRC プロトコルはとても古いため、多くのユーザグループの需要に応える多くの IRC クライアントが存在します。IRC クライアントには XChat、Smuxi (GTK+ に基づくグラフィカルクライアント)、Irssi (テキストモード)、Erc (Emacs への統合) などがあります。
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>QUICK LOOK</emphasis> Ekiga を使ったビデオ会議</title>
+		 <para>
+			Ekiga (旧名 GnomeMeeting) は Linux ビデオ会議用の有名なアプリケーションです。Ekiga は安定かつ機能的であり、ローカルネットワーク上ならばとても簡単に使うことが可能です。また、使われているファイアウォールが H323 や SIP テレビ会議プロトコルの全機能を明示的にサポートしていない場合、グローバルネットワーク上でサービスを設定することはかなり複雑になります。
+		</para>
+		 <indexterm>
+			<primary>ビデオ会議</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>H323</primary>
+		</indexterm>
+		 <para>
+			ファイアウォールの背後で実行されている Ekiga クライアントが 1 台だけの場合、その設定はかなり分かりやすいものです。すなわちいくつかのポートを Ekiga クライアントが実行されるホストに転送する設定を行うだけです。具体的に言えば、TCP ポート 1720 番 (入って来る接続をリッスン)、TCP ポート 5060 番 (SIP 用)、TCP ポート 30000 番から 30010 番 (開かれた接続の制御用)、UDP ポート 5000 番から 5100 番 (音声と動画データの伝送と H323 プロキシ登録用) を転送する設定を行います。
+		</para>
+		 <indexterm>
+			<primary>GnomeMeeting</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>Ekiga</primary>
+		</indexterm>
+		 <para>
+			ファイアウォールの背後で複数の Ekiga クライアントを実行する場合、設定は著しく複雑なものになります。H323 プロキシ (たとえば <emphasis role="pkg">gnugk</emphasis> パッケージ) をセットアップする必要がありますし、H323 プロキシの設定はとても難しいものです。
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gnugk</emphasis></primary>
+		</indexterm>
+		 </sidebar>
+	</section>
+</chapter>
+

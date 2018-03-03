@@ -1,0 +1,1139 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="packaging-system">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-packaging-system.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>バイナリパッケージ</keyword>
+      <keyword>ソースパッケージ</keyword>
+      <keyword>dpkg</keyword>
+      <keyword>依存関係</keyword>
+      <keyword>衝突</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>パッケージシステム、ツールと基本原則</title>
+  <highlights>
+    <para>Debian システム管理者は日常的に <filename>.deb</filename> パッケージを取り扱います。なぜなら、パッケージにはそのパッケージを使うために必要なすべての要素 (アプリケーション、文書など) が含まれており、パッケージによってこれらの要素のインストールとメンテナンスが楽になるからです。ゆえに、パッケージとはどのようなもので、パッケージはどのように取り扱われるべきものなのかを知っておくことは良い考えです。</para>
+  </highlights>
+
+  <para>この章では、「バイナリパッケージ」と「ソースパッケージ」の構造と内容について説明します。バイナリパッケージとは <command>dpkg</command> が直接取り扱う <filename>.deb</filename> ファイルです。一方、ソースパッケージにはソースコードおよびバイナリパッケージをビルドするための説明が含まれています。</para>
+  <section id="sect.binary-package-structure">
+    <title>バイナリパッケージの構造</title>
+    <indexterm><primary>パッケージ</primary><secondary>バイナリパッケージ</secondary></indexterm>
+    <indexterm><primary><command>ar</command></primary></indexterm>
+
+    <para>The Debian package format is designed so that its content may be
+    extracted on any Unix system that has the classic commands
+    <command>ar</command>, <command>tar</command>, and
+    <command>xz</command> (sometimes
+    <command>gzip</command> or <command>bzip2</command>). This seemingly
+    trivial property is important for portability and disaster
+    recovery.</para>
+
+    <para>Imagine, for example, that you mistakenly deleted the
+    <command>dpkg</command> program, and that you could thus no longer
+    install Debian packages. <command>dpkg</command> being a Debian package
+    itself, it would seem your system would be done for... Fortunately, you
+    know the format of a package and can therefore download the
+    <filename>.deb</filename> file of the <emphasis role="pkg">dpkg</emphasis> package and install it manually (see sidebar
+    <xref linkend="sidebar.dpkg-apt-ar" />). If by some misfortune one or more of the programs
+    <command>ar</command>, <command>tar</command> or
+    <command>gzip</command>/<command>xz</command>/<command>bzip2</command>
+    have disappeared, you will only need to copy the missing program from
+    another system (since each of these operates in a completely
+    autonomous manner, without dependencies, a simple copy will
+    suffice).  If your system suffered some even more outrageous
+    fortune, and even these don't work (maybe the deepest system
+    libraries are missing?), you should try the static version of
+    <command>busybox</command> (provided in the <emphasis role="pkg">busybox-static</emphasis> package), which is even more
+    self-contained, and provides subcommands such as <command>busybox ar</command>,
+    <command>busybox tar</command> and <command>busybox
+    xz</command>.</para>
+
+    <sidebar id="sidebar.dpkg-apt-ar">
+      <title><emphasis>TOOLS</emphasis> <command>dpkg</command>、<command>APT</command>、<command>ar</command></title>
+      <indexterm><primary><command>dpkg</command></primary></indexterm>
+      <indexterm><primary><command>ar</command></primary></indexterm>
+      <indexterm><primary>APT</primary></indexterm>
+
+      <para><command>dpkg</command> は <filename>.deb</filename> ファイルを取り扱うプログラムで、特に <filename>.deb</filename> ファイルの抽出、分析、展開を担当しています。</para>
+
+      <para><command>APT</command> はシステムの変更操作をさらに手際よく行うプログラム群です。具体的に言えば、<command>APT</command> はパッケージのインストールや削除 (依存関係を破壊することなく)、システムの更新、利用できるパッケージの表示などを行います。</para>
+    
+      <indexterm><primary><command>ar</command></primary></indexterm>
+      <para>
+      As for the <command>ar</command> program, it allows handling files of
+      the same name: <command>ar t
+      <replaceable>archive</replaceable></command> displays the list of
+      files contained in such an archive, <command>ar x
+      <replaceable>archive</replaceable></command> extracts the files from
+      the archive into the current working directory, <command>ar d
+      <replaceable>archive</replaceable>
+      <replaceable>file</replaceable></command> deletes a file from the
+      archive, etc. Its man page
+      (<citerefentry><refentrytitle>ar</refentrytitle><manvolnum>1</manvolnum></citerefentry>)
+      documents all its other features. <command>ar</command> is a very
+      rudimentary tool that a Unix administrator would only use on rare
+      occasions, but admins routinely use <command>tar</command>, a more
+      evolved archive and file management program. This is why it is easy
+      to restore <command>dpkg</command> in the event of an erroneous
+      deletion. You would only have to download the Debian package and
+      extract the content from the <filename>data.tar.xz</filename> archive
+      in the system's root (<filename>/</filename>):</para>
+
+      <screen>
+<computeroutput># </computeroutput><userinput>ar x dpkg_1.18.24_amd64.deb</userinput>
+<computeroutput># </computeroutput><userinput>tar -C / -p -xJf data.tar.xz</userinput>
+</screen>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>BACK TO BASICS</emphasis> man ページの表記</title>
+
+      <para>初心者にとって、文献から「<citerefentry><refentrytitle>ar</refentrytitle><manvolnum>1</manvolnum></citerefentry>」の資料を探すことは、わかりにくいことかもしれません。<citerefentry><refentrytitle>ar</refentrytitle><manvolnum>1</manvolnum></citerefentry> は第 1 セクションにある <literal>ar</literal> と名付けられた man ページを参照する便利な表記です。</para>
+
+      <para>man ページの表記は曖昧さをなくすために使われる場合があります。たとえば、<command>printf</command> コマンドの man ページは <citerefentry><refentrytitle>printf</refentrytitle><manvolnum>1</manvolnum></citerefentry> と表記し、C 言語の <function>printf</function> 関数の man ページは <citerefentry><refentrytitle>printf</refentrytitle><manvolnum>3</manvolnum></citerefentry> と表記することで、両者を区別します。</para>
+
+      <para>詳細は<xref linkend="solving-problems" />で議論されています (<xref linkend="sect.manual-pages" />をご覧ください)。</para>
+    </sidebar>
+
+    <para>それでは <filename>.deb</filename> ファイルの内容を見てみましょう。</para>
+
+    <screen><computeroutput>$ </computeroutput><userinput>ar t dpkg_1.18.24_amd64.deb</userinput>
+<computeroutput>debian-binary
+control.tar.gz
+data.tar.xz
+$ </computeroutput><userinput>ar x dpkg_1.18.24_amd64.deb</userinput>
+<computeroutput>$ </computeroutput><userinput>ls</userinput>
+<computeroutput>control.tar.gz  data.tar.xz  debian-binary  dpkg_1.18.24_amd64.deb
+$ </computeroutput><userinput>tar tJf data.tar.xz | head -n 15</userinput>
+<computeroutput>./
+./etc/
+./etc/alternatives/
+./etc/alternatives/README
+./etc/cron.daily/
+./etc/cron.daily/dpkg
+./etc/dpkg/
+./etc/dpkg/dpkg.cfg
+./etc/dpkg/dpkg.cfg.d/
+./etc/logrotate.d/
+./etc/logrotate.d/dpkg
+./sbin/
+./sbin/start-stop-daemon
+./usr/
+./usr/bin/
+$ </computeroutput><userinput>tar tzf control.tar.gz</userinput>
+<computeroutput>./
+./conffiles
+./postinst
+./md5sums
+./prerm
+./control
+./postrm
+$ </computeroutput><userinput>cat debian-binary</userinput>
+<computeroutput>2.0</computeroutput>
+</screen>
+
+    <para>ご覧の通り、Debian パッケージの <command>ar</command> アーカイブは以下の 3 つのファイルから成り立っています。</para>
+    <itemizedlist>
+      <listitem>
+	<para><filename>debian-binary</filename>. This is a text file which
+	simply indicates the version of the <filename>.deb</filename> file
+	used (in 2017: version 2.0).</para>
+      </listitem>
+      <listitem>
+	<para><filename>control.tar.gz</filename>。このアーカイブファイルには、パッケージの名前やバージョンなど、利用できるすべてのメタ情報が含まれています。このメタ情報の一部と、たとえば、マシンにインストールされているパッケージのリストを照らし合わせて、パッケージ管理ツールはパッケージをインストールまたはアンインストールが可能かを決定します。</para>
+      </listitem>
+      <listitem>
+	<para><filename>data.tar.xz</filename>. This archive contains all
+	of the files to be extracted from the package; this is where the
+	executable files, documentation, etc., are all stored. Some
+	packages may use other compression formats, in which case the file
+	will be named differently (<filename>data.tar.bz2</filename> for
+	bzip2, <filename>data.tar.gz</filename> for gzip).</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+
+  <section id="sect.package-meta-information">
+    <title>パッケージのメタ情報</title>
+    <indexterm><primary>パッケージのメタ情報</primary></indexterm>
+    <indexterm><primary>パッケージ</primary><secondary>メタ情報</secondary></indexterm>
+
+    <para>Debian パッケージはインストールされるファイルのアーカイブというだけではありません。Debian パッケージには他の Debian パッケージとの関係性 (依存関係、衝突、提案) を表す情報が含まれています。さらに Debian パッケージにはスクリプトも含まれています。このスクリプトはパッケージライフサイクルのある時点 (インストール、削除、アップグレード) にコマンドを実行するためのものです。これらのデータはパッケージ管理ツールによって使われますが、パッケージングされたソフトウェアの一部ではありません。しかし、これらのデータはパッケージの「メタ情報」(ソフトウェア以外の情報のデータ) と呼ばれて、パッケージに含まれています。</para>
+
+    <section id="sect.control">
+      <title>説明、<filename>control</filename> ファイル</title>
+      <indexterm><primary>パッケージのメタ情報</primary></indexterm>
+      <indexterm><primary>パッケージ</primary><secondary>メタ情報</secondary></indexterm>
+      <indexterm><primary><filename>control</filename></primary></indexterm>
+
+      <para><filename>control</filename> ファイルは (RFC 2822 の定義する) 電子メールヘッダとよく似た構造を使っています。たとえば、<emphasis role="pkg">apt</emphasis> の <filename>control</filename> ファイルは以下のような内容を持っています。</para>
+
+      <screen>
+<computeroutput>$ </computeroutput><userinput>apt-cache show apt</userinput>
+<computeroutput>Package: apt
+Version: 1.4.8
+Installed-Size: 3539
+Maintainer: APT Development Team &lt;deity@lists.debian.org&gt;
+Architecture: amd64
+Replaces: apt-utils (&lt;&lt; 1.3~exp2~)
+Depends: adduser, gpgv | gpgv2 | gpgv1, debian-archive-keyring, init-system-helpers (&gt;= 1.18~), libapt-pkg5.0 (&gt;= 1.3~rc2), libc6 (&gt;= 2.15), libgcc1 (&gt;= 1:3.0), libstdc++6 (&gt;= 5.2)
+Recommends: gnupg | gnupg2 | gnupg1
+Suggests: apt-doc, aptitude | synaptic | wajig, dpkg-dev (&gt;= 1.17.2), powermgmt-base, python-apt
+Breaks: apt-utils (&lt;&lt; 1.3~exp2~)
+Description-en: commandline package manager
+ This package provides commandline tools for searching and
+ managing as well as querying information about packages
+ as a low-level access to all features of the libapt-pkg library.
+ .
+ These include:
+  * apt-get for retrieval of packages and information about them
+    from authenticated sources and for installation, upgrade and
+    removal of packages together with their dependencies
+  * apt-cache for querying available information about installed
+    as well as installable packages
+  * apt-cdrom to use removable media as a source for packages
+  * apt-config as an interface to the configuration settings
+  * apt-key as an interface to manage authentication keys
+Description-md5: 9fb97a88cb7383934ef963352b53b4a7
+Tag: admin::package-management, devel::lang:ruby, hardware::storage,
+ hardware::storage:cd, implemented-in::c++, implemented-in::perl,
+ implemented-in::ruby, interface::commandline, network::client,
+ protocol::ftp, protocol::http, protocol::ipv6, role::program,
+ scope::application, scope::utility, sound::player, suite::debian,
+ use::downloading, use::organizing, use::searching, works-with::audio,
+ works-with::software:package, works-with::text
+Section: admin
+Priority: important
+Filename: pool/main/a/apt/apt_1.4.8_amd64.deb
+Size: 1231676
+MD5sum: 4963240f23156b2dda3affc9c0d416a3
+SHA256: bc319a3abaf98d76e7e13ac97ab0ee7c238a48e2d4ab85524be8b10cfd23d50d</computeroutput>
+</screen>
+
+      <sidebar>
+        <title><emphasis>BACK TO BASICS</emphasis> RFC — インターネット標準</title>
+        <indexterm><primary>RFC</primary></indexterm>
+        <indexterm><primary>Request For Comments</primary></indexterm>
+
+	<para>RFC は「Request For Comments」の略称です。RFC は一般的にインターネット標準になり得る技術の仕様を説明した技術文書です。標準化と決定の前に、これらの文書は公開レビューされます (そんなわけでこの名前が付いています)。IETF (インターネット技術タスクフォース) はこれらの文書の状態の進化 (標準化への提唱、標準化への草稿、標準) を決定します。</para>
+
+	<para>RFC 2026 ではインターネットプロトコル標準化の手続きが定義されています。<ulink type="block" url="http://www.faqs.org/rfcs/rfc2026.html" /></para>
+      </sidebar>
+      <section>
+        <title>依存関係、<literal>Depends</literal> フィールド</title>
+        <indexterm><primary>依存</primary></indexterm>
+        <indexterm><primary><literal>Depends</literal>、ヘッダフィールド</primary></indexterm>
+        <indexterm><primary>パッケージ</primary><secondary>依存関係</secondary></indexterm>
+
+	<para>依存関係はパッケージヘッダの <literal>Depends</literal> フィールドで定義されています。依存関係はパッケージを正しく動かすために必要な条件を定義しています。すなわち <command>apt</command> などのツールはこの情報を使ってインストールしたいパッケージの依存関係を満たすために必要なバージョンのライブラリをインストールします。それぞれの依存パッケージについて、要求を満たすパッケージのバージョン範囲を指定することが可能です。言い換えれば、バージョン「2.15」以上の <emphasis role="pkg">libc6</emphasis> パッケージが必要という条件を表現する (「<command>libc6 (&gt;= 2.15)</command>」と表記する) ことが可能です。バージョン比較演算子は次の通りです。</para>
+        <itemizedlist>
+          <listitem>
+	    <para><command>&lt;&lt;</command> はより低いことを意味します。</para>
+          </listitem>
+          <listitem>
+	    <para><command>&lt;=</command> は以下を意味します。</para>
+          </listitem>
+          <listitem>
+	    <para><command>=</command> は等しいことを意味します (「<literal>2.6.1</literal>」は「<literal>2.6.1-1</literal>」と等しくありません)。</para>
+          </listitem>
+          <listitem>
+	    <para><command>&gt;=</command> は以上を意味します。</para>
+          </listitem>
+          <listitem>
+	    <para><command>&gt;&gt;</command> はより高いことを意味します。</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>In a list of conditions to be met, the comma serves as a
+	separator. It must be interpreted as a logical “and”.
+	In conditions, the vertical bar (“|”) expresses a logical “or”
+	(it is an inclusive “or”, not an exclusive
+	“either/or”). Carrying greater priority than “and”, it can
+	be used as many times as necessary. Thus, the dependency “(A or
+	B) and C” is written <command>A | B, C</command>. In contrast,
+	the expression “A or (B and C)” should be written as “(A or
+	B) and (A or C)”, since the <literal>Depends</literal> field does
+	not tolerate parentheses that change the order of priorities
+	between the logical operators “or” and “and”. It would thus
+	be written <command>A | B, A | C</command>. <ulink type="block" url="https://www.debian.org/doc/debian-policy/#document-ch-relationships" /></para>
+
+        <indexterm><primary>メタパッケージ</primary></indexterm>
+	<para>依存関係システムはプログラムの動作を保証する良いメカニズムですが、「メタパッケージ」を使う手もあります。メタパッケージは依存関係を表記するだけの空のパッケージです。メタパッケージはメンテナが事前に選んだ一連のプログラムグループのインストールを楽にします。すなわち <command>apt install <replaceable>meta-package</replaceable></command> はメタパッケージが依存するすべてのプログラムを自動的にインストールします。<emphasis role="pkg">gnome</emphasis>、<emphasis role="pkg">kde-full</emphasis>、<emphasis role="pkg">linux-image-amd64</emphasis> パッケージはメタパッケージの例です。</para>
+
+        <sidebar>
+          <title><emphasis>DEBIAN POLICY</emphasis> <literal>Pre-Depends</literal>、<literal>Depends</literal> よりも厳しい要求</title>
+          <indexterm><primary><literal>Pre-Depends</literal> ヘッダフィールド</primary></indexterm>
+          <indexterm><primary>先行依存</primary></indexterm>
+
+	  <para>「先行依存」はパッケージヘッダの「<literal>Pre-Depends</literal>」フィールドに書かれており、通常の依存関係を完全なものにします。条件の書式は <literal>Depends</literal> フィールドと同じです。通常の依存関係とは、依存関係が記述されたパッケージの設定前に、依存関係にあるパッケージの展開および設定を行わなければいけないことを示しています。先行依存とは、先行依存関係が記述されたパッケージのインストール前スクリプトの実行前 (インストールの前) に、先行依存関係にあるパッケージの展開および設定を行わなければいけないことを規定しています。</para>
+
+	  <para>先行依存は <command>apt</command> にとってとても重要です。なぜなら、先行依存関係はパッケージをインストールする順番を厳しく制約するからです。先行依存関係それ自体は、絶対に必要でない限り勧められません。先行依存関係を追加する前に、<email>debian-devel@lists.debian.org</email> の他の開発者に相談することをお勧めします。通常、次善策として別の解決策を見つけることが可能です。</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>DEBIAN POLICY</emphasis> <literal>Recommends</literal>、<literal>Suggests</literal>、<literal>Enhances</literal> フィールド</title>
+          <indexterm><primary><literal>Recommends</literal>、ヘッダフィールド</primary></indexterm>
+          <indexterm><primary><literal>Suggests</literal>、ヘッダフィールド</primary></indexterm>
+
+	  <para><literal>Recommends</literal> (推奨) と <literal>Suggests</literal> (提案) フィールドは必須ではない依存関係を表すためのものです。最も重要な「推奨」依存関係のパッケージは、パッケージの提供する機能を大幅に改善するけれども、動作に必要不可欠ではないパッケージです。2 番目に重要な「提案」依存関係のパッケージは、そのユーティリティの機能を補完したり強化する可能性があり、他のパッケージではなくこのパッケージをインストールするのが極めて合理的であるようなパッケージです。</para>
+
+	  <para>「推奨」パッケージは、それを必要としない理由を理解している場合を除いて、常にインストールされるべきです。逆に「提案」パッケージは、それを必要とする理由を理解している場合を除いて、インストールしなくても構いません。</para>
+
+          <indexterm><primary><literal>Enhances</literal>、ヘッダフィールド</primary></indexterm>
+
+	  <para><literal>Enhances</literal> フィールドは <literal>Recommends</literal> や <literal>Suggests</literal> フィールドと同様にパッケージを提案するためのものですが、使用法が少し違います。自分があるパッケージから利益を得る場合は Suggests フィールドにそのパッケージを追加し、自分があるパッケージに利益を与える場合は Enhances フィールドにそのパッケージを追加します。Enhances フィールドの良いところは、提案される側のパッケージを変更せずにそのパッケージにとって自分が有用であるという提案を追加できる、という点です。つまり、あるソフトウェアのアドオン、プラグイン、機能拡張のパッケージはそのソフトウェアを Enhances フィールドに載せることが可能です。数年前から存在したにも関わらず、Enhances フィールドはいまだに <command>apt</command> や <command>synaptic</command> など多くのプログラムから無視されています。<literal>Enhances</literal> フィールドの目的とは、<literal>Suggests</literal> フィールドによる伝統的な提案ではカバーできない提案をユーザに示すことです。</para>
+        </sidebar>
+      </section>
+      <section>
+        <title>衝突、<literal>Conflicts</literal> フィールド</title>
+        <indexterm><primary>衝突</primary></indexterm>
+        <indexterm><primary><literal>Conflicts</literal>、ヘッダフィールド</primary></indexterm>
+        <indexterm><primary>パッケージ</primary><secondary>衝突</secondary></indexterm>
+
+	<para><literal>Conflicts</literal> フィールドでは、同時にインストールできないパッケージを指定します。このフィールドが使われるケースで最も多いのは、両方のパッケージが同名のファイルを含む場合、同種のサービスを同じ TCP ポートで提供する場合、互いの動作を妨げる場合です。</para>
+
+	<para><command>dpkg</command> は、あるパッケージがインストール済みのパッケージと衝突を引き起こす場合、新しいパッケージがインストール済みのパッケージを「置換」するものでない限り、そのパッケージのインストールを拒否するでしょう (「置換」するものの場合、<command>dpkg</command> はインストール済みパッケージを新パッケージで置換します)。これに対して <command>apt</command> は常にあなたの指示に従います。つまり、もし <command>apt</command> に新しいパッケージをインストールするよう指示したのなら、<command>apt</command> は新しいパッケージをインストールする際に障害となるインストール済みパッケージを自動的にアンインストールします。</para>
+      </section>
+      <section>
+        <title>不適合性、<literal>Breaks</literal> フィールド</title>
+        <indexterm><primary>不適合性</primary></indexterm>
+        <indexterm><primary><literal>Breaks</literal>、ヘッダフィールド</primary></indexterm>
+        <indexterm><primary>パッケージ</primary><secondary>両立不可能</secondary></indexterm>
+
+	<para><literal>Breaks</literal> フィールドは <literal>Conflicts</literal> フィールドとよく似た効果を持っていますが、特別な意味があります。すなわち、<literal>Breaks</literal> フィールドを持つパッケージは <literal>Breaks</literal> フィールドに指定された他のパッケージ (または他のパッケージの特定バージョン) を「破壊する」という意味があります。一般的に、このような 2 つのパッケージの不適合性は一時的なもので、<literal>Breaks</literal> フィールドでは不適合性がある特定のバージョンだけを指定します。</para>
+
+	<para><command>dpkg</command> はインストール済みのパッケージを破壊するようなパッケージのインストールを拒否します。<command>apt</command> は破壊されるパッケージを新しいバージョンに更新することで (新しいバージョンではこの問題が修正され、両パッケージが適合すると期待されます) この問題の解決を試みます。</para>
+
+	<para>この手の状況は更新によって後方互換性がなくなる場合に起こりうるかもしれません。具体的に言えば、新しいバージョンが古いバージョンと同時に動かない場合、特別な設定をしないと別のプログラムがうまく動かない場合です。<literal>Breaks</literal> フィールドはユーザがこのような問題に遭遇することがないようにしています。</para>
+      </section>
+      <section>
+        <title>提供されるアイテム、<literal>Provides</literal> フィールド</title>
+        <indexterm><primary><literal>Provides</literal>、ヘッダフィールド</primary></indexterm>
+
+	<para><literal>Provides</literal> フィールドはとても興味深い「仮想パッケージ」の構想を生み出しました。<literal>Provides</literal> フィールドは多くの役割を持っていますが、特に重要な 2 つを説明します。最初の役割は、<literal>Provides</literal> フィールドを持つパッケージは <literal>Provides</literal> フィールドに指定された一般的なサービスを意味する仮想パッケージに関連付けられている (サービスを「提供する」のは <literal>Provides</literal> フィールドを持つパッケージ自身です)、という意味を持たせる役割です。2 番目の役割は、<literal>Provides</literal> フィールドを持つパッケージは <literal>Provides</literal> フィールドに指定されたパッケージの機能を完全に置き換えており、<literal>Provides</literal> フィールドに指定されたパッケージの代替として <literal>Provides</literal> フィールドに指定されたパッケージに依存する他のパッケージの依存関係を満足できる、という意味を持たせる役割です。そのため、あるパッケージの機能を代替する別パッケージを必ずしも同じパッケージ名を使わずに作ることが可能です。</para>
+
+        <sidebar>
+          <title><emphasis>VOCABULARY</emphasis> メタパッケージと仮想パッケージ</title>
+          <indexterm><primary>メタパッケージ</primary></indexterm>
+          <indexterm><primary>パッケージ</primary><secondary>仮想パッケージ</secondary></indexterm>
+          <indexterm><primary>仮想パッケージ</primary></indexterm>
+
+	  <para>メタパッケージと仮想パッケージを明確に区別することは絶対に不可欠です。メタパッケージは真のパッケージで (真の <filename>.deb</filename> ファイルを含んでいます)、その目的は依存関係を表現するだけです。</para>
+
+	  <para>これに対して、仮想パッケージは実体がありません。そして、仮想パッケージの目的は、一般的で論理的な基準 (提供するサービス、一般的なプログラムまたは既存のパッケージなどとの互換性) に従って複数の実体を持つパッケージを同一視することです。</para>
+        </sidebar>
+        <section>
+          <title>「サービス」の提供</title>
+
+	  <para>最初の場合について、例を挙げて詳細に議論しましょう。すなわち、すべてのメールサーバ、たとえば <emphasis role="pkg">postfix</emphasis> や <emphasis role="pkg">sendmail</emphasis> などは <emphasis role="pkg">mail-transport-agent</emphasis> 仮想パッケージ「提供」しています。このため、動作にメールサービスを必要とするパッケージ (たとえば <emphasis role="pkg">smartlist</emphasis> や <emphasis role="pkg">sympa</emphasis> などのメーリングリストマネージャ) は、おそらくメールサービスを提供するであろうパッケージをたくさん依存関係に宣言する (たとえば、<command>postfix | sendmail | exim4 | …</command>のように宣言する) のではなく、たった 1 つ <emphasis role="pkg">mail-transport-agent</emphasis> を宣言するだけで十分です。さらに、1 台のマシンに 2 つのメールサーバをインストールすることは無駄なため、メールサーバの機能を提供するパッケージは <emphasis role="pkg">mail-transport-agent</emphasis> 仮想パッケージとの衝突を宣言します。例外的にあるパッケージとそれ自身との衝突はシステムによって無視されます。この手法により、2 つのメールサーバを同時にインストールできなくなります。</para>
+
+          <sidebar>
+            <title><emphasis>DEBIAN POLICY</emphasis> 仮想パッケージのリスト</title>
+            <indexterm><primary>パッケージ</primary><secondary>仮想パッケージ</secondary></indexterm>
+
+	    <para>仮想パッケージを有益なものにするためには、全員がその名前に同意しなければいけません。このため、仮想パッケージの名前は Debian ポリシーで標準化されています。メールサーバ用に <emphasis role="pkg">mail-transport-agent</emphasis>、C 言語コンパイラ用に <emphasis role="pkg">c-compiler</emphasis>、ウェブブラウザ用に <emphasis role="pkg">www-browser</emphasis>、ウェブサーバ用に <emphasis role="pkg">httpd</emphasis>、FTP サーバ用に <emphasis role="pkg">ftp-server</emphasis>、グラフィカルモードのターミナルエミュレータ (<command>xterm</command>) 用に <emphasis role="pkg">x-terminal-emulator</emphasis>、ウィンドウマネージャ用に <emphasis role="pkg">x-window-manager</emphasis> などが定められています。</para>
+
+	    <para>完全なリストはウェブの情報を参照してください。<ulink type="block" url="http://www.debian.org/doc/packaging-manuals/virtual-package-names-list.txt" /></para>
+          </sidebar>
+        </section>
+        <section>
+          <title>他のパッケージとの互換性</title>
+
+	  <para>The <literal>Provides</literal> field is also interesting
+	  when the content of a package is included in a larger package.
+	  For example, the <emphasis role="pkg">libdigest-md5-perl</emphasis> Perl module was an
+	  optional module in Perl 5.6, and has been integrated as standard
+	  in Perl 5.8 (and later versions, such as 5.24 present in
+	  <emphasis role="distribution">Stretch</emphasis>). As such, the
+	  package <emphasis role="pkg">perl</emphasis> has since version
+	  5.8 declared <literal>Provides: libdigest-md5-perl</literal> so
+	  that the dependencies on this package are met if the user has
+	  Perl 5.8 (or newer). The <emphasis role="pkg">libdigest-md5-perl</emphasis> package itself has
+	  eventually been deleted, since it no longer had any purpose when
+	  old Perl versions were removed.</para>
+
+          <figure>
+            <title>依存関係を壊さないための <literal>Provides</literal> フィールドの使い方</title>
+            <mediaobject>
+              <imageobject>
+                <imagedata fileref="images/virtual-package.png" width="50%" />
+              </imageobject>
+            </mediaobject>
+          </figure>
+
+	  <para>この機能はとても役立ちます。なぜなら、開発方向性の変化を予測することは絶対に不可能ですし、パッケージ名を変更したり他の時代遅れのソフトウェアを自動に置き換えたりすることを可能な状態にしておくことが必要だからです。</para>
+
+          <sidebar>
+            <title><emphasis>BACK TO BASICS</emphasis> Perl、プログラミング言語</title>
+            <indexterm><primary>Perl</primary></indexterm>
+            <indexterm><primary>CPAN</primary></indexterm>
+
+	    <para>Perl (Practical Extraction and Report Language) はとても人気の高いプログラミング言語です。Perl にはすぐに使えるモジュールが数多くあります。これらのモジュールは非常に広い分野における応用をカバーし、Perl パッケージの包括的ネットワークである CPAN (Comprehensive Perl Archive Network) サーバで配布されています。<ulink type="block" url="http://www.perl.org/" /><ulink type="block" url="http://www.cpan.org/" /></para>
+
+	    <para>Perl はインタプリタ型言語であるため、Perl で書かれたプログラムは実行前にコンパイルする必要がありません。このためプログラムは「Perl スクリプト」と呼ばれています。</para>
+          </sidebar>
+        </section>
+        <section>
+          <title>過去に設けられていた制限</title>
+
+	  <para>かつて仮想パッケージにはいくつかの制限がありました。最も重要な制限はバージョン番号がなかったことでした。先に挙げた例に戻ると、Perl 5.10 が存在する場合、<literal>Depends: libdigest-md5-perl (&gt;= 1.6)</literal> という依存関係は満足されています (正しく言えば、十中八九は満足されています)。しかしながら、パッケージシステムはこの依存関係が満足されていることに気が付きませんでした。そして、パッケージシステムは指定されたバージョンが一致しないと仮定して最もリスクの低いオプションを選んでいました。</para>
+
+          <para>This limitation has been lifted in <emphasis role="pkg">dpkg</emphasis> 1.17.11, and is no longer
+          relevant in Stretch. Packages can assign a version
+          to the virtual packages they provide with a
+          dependency such as <literal>Provides: libdigest-md5-perl (=
+          1.8)</literal>.
+          </para>
+        </section>
+      </section>
+
+      <section>
+        <title>ファイルの置き換え、<literal>Replaces</literal> フィールド</title>
+        <indexterm><primary>置換</primary></indexterm>
+        <indexterm><primary><literal>Replaces</literal>、ヘッダフィールド</primary></indexterm>
+        <indexterm><primary>パッケージ</primary><secondary>置換</secondary></indexterm>
+
+	<para><literal>Replaces</literal> フィールドは、<literal>Replaces</literal> フィールドを持つパッケージが <literal>Replaces</literal> フィールドに指定された他のパッケージからも提供されるファイルを含んでおり、合法的に <literal>Replaces</literal> フィールドに指定されたパッケージから提供されたファイルを置き換える権利を持っていることを示すためのものです。<literal>Replaces</literal> フィールドがなければ、<command>dpkg</command> は別パッケージから提供されたファイルをインストール中のパッケージに含まれるファイルで置き換えることはできません。すなわちこれは他のパッケージのファイルは上書きできないことを意味しています (技術的に言えば、<literal>--force-overwrite</literal> オプションを付けることで強制的に上書き可能ですが、これは一般に認められていません)。このような <command>dpkg</command> の挙動により潜在的な問題を識別できるようになりますし、メンテナはこのフィールドを追加する前に問題の原因を追及できるようになります。</para>
+
+	<para><literal>Replaces</literal> フィールドはパッケージ名が変更された時やパッケージが別のパッケージに統合された時に使われます。この状況はメンテナが同じソースパッケージから複数のバイナリパッケージを作成し、各バイナリパッケージから異なるファイルを配布するように方針を決めた場合に発生します。つまり、古いパッケージに含まれていたファイルがソースパッケージは同じでもバイナリパッケージの名前が異なる新しいパッケージに含まれるようになった場合に発生します。</para>
+
+	<para>インストール済みパッケージのすべてのファイルが置き換えられたら、このパッケージは削除されたとみなされます。最後に、<literal>Replaces</literal> フィールドは衝突がある場合に <command>dpkg</command> に置き換えられたパッケージを削除させる際に使われます。</para>
+
+        <sidebar id="sidebar.debtags">
+          <title><emphasis>GOING FURTHER</emphasis> <literal>Tag</literal> フィールド</title>
+
+	  <para>In the <emphasis role="pkg">apt</emphasis> example above,
+	  we can see the presence of a field that we have not yet
+	  described, the <literal>Tag</literal> field. This field does not
+	  describe a relationship between packages, but is simply a way of
+	  categorizing a package in a thematic taxonomy. This
+	  classification of packages according to several criteria (type of
+	  interface, programming language, domain of application, etc.) has
+	  been available for a long time. Despite this, not all packages have
+	  accurate tags and it is not yet
+	  integrated in all Debian tools; <command>aptitude</command>
+	  displays these tags, and allows them to be used as search
+	  criteria. For those who are repelled by
+	  <command>aptitude</command>'s search criteria, the following website
+	  allows navigation of the tag database:
+	  <ulink type="block" url="https://wiki.debian.org/Debtags" />
+	  </para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.configuration-scripts">
+      <title>設定スクリプト</title>
+      <indexterm><primary><filename>postinst</filename></primary></indexterm>
+      <indexterm><primary><filename>preinst</filename></primary></indexterm>
+      <indexterm><primary><filename>postrm</filename></primary></indexterm>
+      <indexterm><primary><filename>prerm</filename></primary></indexterm>
+      <indexterm><primary><filename>control.tar.gz</filename></primary></indexterm>
+
+      <para>それぞれの Debian パッケージには <filename>control</filename> ファイルだけでなく <filename>control.tar.gz</filename> アーカイブが含まれており、<filename>control.tar.gz</filename> には <command>dpkg</command> がパッケージ処理の各段階で呼び出す多数のスクリプトが含まれているかもしれません。Debian ポリシーでは、呼び出されるスクリプトとスクリプトが受け取る引数を明記することで、スクリプトの使われ方が詳しく説明されています。スクリプトが呼び出される順番はわかりにくいかもしれません。なぜなら、スクリプトのうち 1 つでも失敗したら、<command>dpkg</command> はインストールを中止するか (可能ならば) 進行中の削除を中止することでシステムを整合性のある状態に戻そうとするからです。</para>
+
+      <sidebar>
+        <title><emphasis>GOING FURTHER</emphasis> <command>dpkg</command> データベース</title>
+        <indexterm><primary><filename>/var/lib/dpkg/</filename></primary></indexterm>
+	<indexterm><primary>dpkg</primary><secondary>データベース</secondary></indexterm>
+
+	<para>インストール済みパッケージの設定スクリプトはすべて <filename>/var/lib/dpkg/info/</filename> ディレクトリに、ファイル名がパッケージ名から始まるファイルの形で保存されています。このディレクトリには、ファイル名がパッケージ名に <filename>.list</filename> 拡張子を付けたファイルが含まれています。このファイルの内容はパッケージに含まれるファイルのリストです。</para>
+
+	<para><filename>/var/lib/dpkg/status</filename> ファイルは (有名なメールヘッダ、RFC 2822、の形で) 一連のデータブロックを含んでおり、各データブロックは各パッケージの状態に対応します。この情報はインストール済みのパッケージの <filename>control</filename> ファイルから複製されています。</para>
+      </sidebar>
+
+      <para>一般的に言って、<filename>preinst</filename> スクリプトはパッケージのインストール前に実行され、<filename>postinst</filename> はインストール後に実行されます。同様に、<filename>prerm</filename> はパッケージの削除前に実行され、<filename>postrm</filename> は削除後に実行されます。パッケージの更新とは、パッケージの古いバージョンを削除して新しいバージョンをインストールすることと等価です。ここで起こりうるすべてのシナリオを詳細に説明することは不可能なので、最も一般的なケースを 2 種類だけ挙げます。具体的に言えば、インストール/更新と削除について説明します。</para>
+
+      <sidebar>
+        <title><emphasis>CAUTION</emphasis> スクリプト名の表記規則</title>
+
+	<para>この節の説明文では、<command>old-prerm</command> や <command>new-postinst</command> などの特定の名前を持つ設定スクリプトが登場します。<command>old-prerm</command> はパッケージの (更新の前にインストールされていた) 古いバージョンに含まれる <command>prerm</command> スクリプト、<command>new-postinst</command> は (更新によってインストールされる) 新しいバージョンに含まれる <command>postinst</command> スクリプトを指します。</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>TIP</emphasis> 状態遷移図</title>
+
+	<para>Manoj Srivastava made these diagrams explaining how the
+	configuration scripts are called by <command>dpkg</command>.
+	Similar diagrams have also been developed by the Debian Women
+	project; they are a bit simpler to understand, but less complete.
+	<ulink type="block" url="https://people.debian.org/~srivasta/MaintainerScripts.html" />
+	<ulink type="block" url="https://www.debian.org/doc/debian-policy/#maintainer-script-flowcharts" /></para>
+      </sidebar>
+      <section>
+        <title>パッケージのインストールとアップグレード</title>
+        <indexterm><primary><command>dpkg</command></primary><secondary>内部動作</secondary></indexterm>
+
+	<para>以下にパッケージのインストール中 (または更新中) に何が起きるかを説明します。</para>
+        <orderedlist>
+          <listitem>
+	    <para>更新する場合、<command>dpkg</command> は <command>old-prerm upgrade <replaceable>new-version</replaceable></command> を呼び出します。</para>
+          </listitem>
+          <listitem>
+	    <para>更新する場合、引き続き <command>dpkg</command> は <command>new-preinst upgrade <replaceable>old-version</replaceable></command> を実行します。これに対して、初めてインストールする場合、<command>new-preinst install</command> を実行します。過去にもしパッケージがインストールされてさらに削除されていた場合 (完全削除されていない場合、古い設定ファイルがまだ残っている場合)、最後の引数に古いバージョンを追加します。</para>
+          </listitem>
+          <listitem>
+	    <para>そして新しいパッケージのファイルが展開されます。あるファイルが既に存在した場合、そのファイルは置換されますが、一時的にバックアップコピーが作られます。</para>
+          </listitem>
+          <listitem>
+	    <para>更新する場合、<command>dpkg</command> は <command>old-postrm upgrade <replaceable>new-version</replaceable></command> を実行します。</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> はすべての内部データ (ファイルリスト、設定スクリプトなど) を更新し、置換されたファイルのバックアップを削除します。これ以降はもう後戻りできません。つまり、前の状態に戻るために必要な情報がすべて失われたため、<command>dpkg</command> は状態を復元できません。</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> は設定ファイルを更新します。自動的にこの作業を完了できない場合にはユーザにどうするか尋ねます。この作業の詳細は<xref linkend="sect.conffiles" />をご覧ください。</para>
+          </listitem>
+          <listitem>
+	    <para>最後に、<command>dpkg</command> は <command>new-postinst configure <replaceable>last-version-configured</replaceable></command> を実行して、パッケージを設定します。</para>
+          </listitem>
+        </orderedlist>
+      </section>
+      <section>
+        <title>パッケージの削除</title>
+
+	<para>以下にパッケージの削除中に何が起きるかを説明します。</para>
+        <orderedlist>
+          <listitem>
+	    <para><command>dpkg</command> は <command>prerm remove</command> を呼び出します。</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> は設定ファイルと設定スクリプトを除くすべてのパッケージのファイルを削除します。</para>
+          </listitem>
+          <listitem>
+	    <para><command>dpkg</command> は <command>postrm remove</command> を実行します。すべての設定スクリプトは <filename>postrm</filename> を除いて削除されます。ユーザが「purge」オプションを指定しない限り、作業はここで終了します。</para>
+          </listitem>
+          <listitem>
+	    <para>パッケージを完全削除する (<command>dpkg --purge</command> または <command>dpkg -P</command> が実行された) 場合、設定ファイルおよびそのコピー (<filename>*.dpkg-tmp</filename>、<filename>*.dpkg-old</filename>、<filename>*.dpkg-new</filename>) と一時ファイルも削除されます。さらに <command>dpkg</command> は <command>postrm purge</command> を実行します。</para>
+          </listitem>
+        </orderedlist>
+
+        <sidebar>
+          <title><emphasis>VOCABULARY</emphasis> Purge、完全削除</title>
+          <indexterm><primary>パッケージの完全削除</primary></indexterm>
+
+	  <para>Debian パッケージが削除されても、パッケージの設定ファイルは後々の再インストールを楽にするために削除されません。同様に、デーモンが作成したデータ (LDAP サーバディレクトリの内容、SQL サーバのデータベースの内容など) も削除されません。</para>
+
+	  <para>パッケージに関連するすべてのデータを削除するには、<command>dpkg -P <replaceable>package</replaceable></command>、<command>apt-get remove --purge <replaceable>package</replaceable></command>、<command>aptitude purge <replaceable>package</replaceable></command> などのコマンドを使ってパッケージを「完全削除」する必要があります。</para>
+
+	  <para>「完全削除」によって削除されるデータに含まれる内容を考慮すると、安易に完全削除を実行するべきではありません。</para>
+        </sidebar>
+
+        <indexterm><primary><filename>config</filename>、<command>debconf</command> スクリプト</primary></indexterm>
+
+	<para>上で詳細を述べた 4 つのスクリプトの実行を補助するのが <filename>config</filename> スクリプトです。<filename>config</filename> スクリプトはパッケージから提供され、<command>debconf</command> を用いて設定に必要な情報をユーザに入力させるために使われます。ユーザからの情報は <command>debconf</command> データベースに保存され、後から利用されます。このスクリプトは通常 <command>apt</command> によって各パッケージインストールの前に実行され、処理が始まるとすべての質問をまとめてユーザに尋ねます。インストール前後に実行されるスクリプトは、ユーザの希望を反映させるために、<command>debconf</command> データベースに保存された情報を利用します。</para>
+
+        <sidebar>
+          <title><emphasis>TOOL</emphasis> <command>debconf</command></title>
+          <indexterm><primary><command>debconf</command></primary></indexterm>
+
+	  <para><command>debconf</command> は Debian で繰り返し発生する問題を解決するために作られました。その昔、最低限の設定なしにはうまく動作しないすべての Debian パッケージは、最低限の設定を行うために <filename>postinst</filename> シェルスクリプト (と同様の別のスクリプト) の中で <command>echo</command> や <command>read</command> コマンドを呼び出すことにより、設定内容について質問していました。しかしこの方法では、ユーザは長時間かかるインストールや更新の最中、いつあるかわからないさまざまな質問に答えるために、コンピュータの前に居続けなければいけませんでした。<command>debconf</command> ツールのおかげで、今やほとんどの場合、このような手動設定法を採る必要はなくなりました。</para>
+
+	  <para><command>debconf</command> には多くの興味深い機能があります。具体的に言えば <command>debconf</command> を使うことで開発者は、ユーザに入力させる内容を規定したり、ユーザに向けて表示されるすべての文字列を地域化したり (すべての翻訳は入力内容を説明している <filename>templates</filename> ファイルに保存されます)、ユーザに質問を表示するためのさまざまなフロントエンド (テキストモード、グラフィカルモード、非対話型モード) に自前で対応させる必要がなくなり、複数のコンピュータで同じ設定を共有するためにユーザが入力した内容の中央データベースを作成したり、することが可能になります。しかし <command>debconf</command> の最も重要な機能はユーザに対するすべての質問が長時間かかるインストールや更新作業の前に行われる点です。ユーザはシステムがインストールを行っている間に自分の仕事をできます。質問に答えるために画面の前に居続ける必要はありません。</para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.conffiles">
+      <title>チェックサム、設定ファイルのリスト</title>
+      <indexterm><primary><filename>md5sums</filename></primary></indexterm>
+      <indexterm><primary><filename>conffiles</filename></primary></indexterm>
+      <indexterm><primary>チェックサム</primary></indexterm>
+      <indexterm><primary>ファイル</primary><secondary>設定ファイル</secondary></indexterm>
+      <indexterm><primary>設定</primary><secondary>ファイル</secondary></indexterm>
+
+      <para>前の節で既に説明したメンテナスクリプトと管理情報に加えて、Debian パッケージの <filename>control.tar.gz</filename> アーカイブは興味深いファイルを含んでいる場合があります。1 つ目は <filename>md5sums</filename> です。<filename>md5sums</filename> にはパッケージに含まれる全ファイルの MD5 チェックサムが列挙されています。<filename>md5sums</filename> のおかげで <command>dpkg --verify</command> はインストール以降ファイルが変更されたか否かを判断できるようになります (詳しくは<xref linkend="sect.dpkg-verify" />を参照してください)。パッケージが <filename>md5sums</filename> を提供しない場合、<command>dpkg</command> がインストール時に動的に <filename>md5sums</filename> を生成します (そして他の管理情報ファイルと同様に dpkg データベースに内容を保存します)。</para>
+
+      <para><filename>conffiles</filename> では、設定ファイルとして取り扱われるべきパッケージファイルが指定されています。管理者は設定ファイルを変更でき、<command>dpkg</command> はパッケージの更新中に設定ファイルの変更を保存しようとします。</para>
+
+      <para>実際のところ、システムに現存する設定ファイルをパッケージから提供された設定ファイルで更新する際に <command>dpkg</command> はできるだけ賢明に振る舞います。以下に <command>dpkg</command> のデフォルトの設定ファイル更新処理規則を述べます。パッケージの更新前後でパッケージから提供される標準設定ファイルの内容が同じ場合、<command>dpkg</command> は何もしません。しかしながら、パッケージの更新前後でパッケージから提供される標準設定ファイルの内容が違う場合、<command>dpkg</command> はシステムに現存する設定ファイルを更新しようとします。ここでさらに 2 つの場合が考えられます。システムに現存する設定ファイルと古いバージョンのパッケージから提供される標準設定ファイルの内容が同じ場合、<command>dpkg</command> は自動的に新しいパッケージから提供される標準設定ファイルをパッケージ更新完了後の設定ファイルとして採用します。一方で、システムに現存する設定ファイルと古いバージョンのパッケージから提供される標準設定ファイルの内容が違う場合、<command>dpkg</command> は管理者に対してシステムに現存する設定ファイルまたは新しいバージョンのパッケージから提供される標準設定ファイルのどちらを更新後の設定ファイルとして採用するかを尋ねます。この判断を手助けするために、<command>dpkg</command> は「<command>diff</command>」を使って 2 つの設定ファイルの内容の違いを表示します。管理者が現存する設定ファイルを選んだ場合、新しいバージョンのパッケージから提供される標準設定ファイルは同じ場所にファイル名の末尾に <filename>.dpkg-dist</filename> を追加して保存されます。管理者が新しいバージョンのパッケージから提供される標準設定ファイルを選んだ場合、現存する設定ファイルは同じ場所にファイル名の末尾に <filename>.dpkg-old</filename> を追加して保存されます。この段階では、一時的に <command>dpkg</command> の処理を中断してファイルを編集したり、もう一度バージョン間の違いを表示したり (先と同様に <command>diff</command> コマンドを実行する) することも可能です。</para>
+
+      <sidebar id="sidebar.questions-conffiles">
+        <title><emphasis>GOING FURTHER</emphasis> 設定ファイルの更新に関連する質問を回避する</title>
+
+	<para><command>dpkg</command> は設定ファイルの更新を担当しますが、更新中に管理者からの入力を要求するため、更新作業は定期的に中断されます。この状況は非対話的に更新作業を行いたいと思う管理者にとって都合がよいとは言えません。そのため、<command>dpkg</command> には設定ファイル更新処理規則を指定して自動的に処理を進めるオプションが用意されています。具体的に言えば、<command>--force-confold</command> を使った場合はいかなる状況でも常にシステムに現存する設定ファイルがパッケージ更新完了後の設定ファイルとして採用され、<command>--force-confnew</command> を使った場合はいかなる状況でも常に新しいバージョンのパッケージから提供される標準設定ファイルが採用されます (これらのオプションを単独で使った場合、システムに現存する設定ファイルおよび更新前後のバージョンのパッケージから提供される標準設定ファイルの互いの内容の違いは一切考慮されないので、期待通りの結果を得られないことが多いです)。上記オプションに加えて <command>--force-confdef</command> オプションを使うと、<command>dpkg</command> は設定ファイル更新処理時に管理者の判断を仰ぐ必要が生じた場合に限り (言い換えれば、システムに現存する設定ファイルの内容が更新前後のどちらのバージョンのパッケージから提供される標準設定ファイルの内容とも違う場合に限り) 管理者からの入力を待つ代わりに <command>--force-confnew</command> または <command>--force-confold</command> に従って設定ファイルを更新し、それ以外の場合はデフォルトの設定ファイル更新処理規則に従って設定ファイルを更新するようになります。</para>
+
+	<para><command>--force-confold</command>、<command>--force-confnew</command>、<command>--force-confdef</command> は <command>dpkg</command> のオプションです。しかしながらほとんどの場合、管理者は <command>aptitude</command> または <command>apt-get</command> プログラムを使って作業を行います。そのため、<command>aptitude</command> または <command>apt-get</command> プログラムから <command>dpkg</command> コマンドにオプションを渡すための構文を知らなければいけません (<command>aptitude</command> および <command>apt-get</command> プログラムのコマンドラインインターフェースはとてもよく似ています)。</para>
+
+        <screen>
+<computeroutput># </computeroutput><userinput>apt -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" full-upgrade</userinput></screen>
+
+	<para><command>dpkg</command> に渡すオプションを <command>apt</command> の設定に直接保存しておくことも可能です。これを行うには、<filename>/etc/apt/apt.conf.d/local</filename> ファイルに以下の行を追加してください。</para>
+        <informalexample>
+          <programlisting>
+DPkg::options { "--force-confdef"; "--force-confold"; }</programlisting>
+        </informalexample>
+
+	<para><command>dpkg</command> に渡すオプションを <command>apt</command> の設定ファイルに保存した場合、<command>aptitude</command> のようなグラフィカルインターフェースでもここで指定したオプションが使われるようになります。</para>
+      </sidebar>
+
+      <sidebar id="sidebar.questions-conffiles-bis">
+        <title><emphasis>GOING FURTHER</emphasis> 設定ファイルの更新に関連する質問を強制する</title>
+
+	<para><command>--force-confask</command> オプションを使うと、<command>dpkg</command> は通常は質問の必要がない場合でも設定ファイルの更新に関する質問を表示します。このため、<command>--force-confask</command> を付けてパッケージを再インストールすると、<command>dpkg</command> は管理者が修正したすべての設定ファイルの更新に関してもう一度質問します。特にこれはインストール済みパッケージの設定ファイルが削除され、コピーも残っていない状態でパッケージから提供される設定ファイルを再インストールしたい場合にとても便利です。つまり、通常の再インストールでは駄目な場合にこれを使います。なぜなら、<command>dpkg</command> は設定ファイルの削除を意味のある変更の一種とみなしており、<command>--force-confask</command> が使われていなければシステムに現存する設定ファイルの状態 (削除状態) を維持してパッケージから提供される設定ファイルをインストールしないからです。</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.source-package-structure">
+    <title>ソースパッケージの構造</title>
+    <indexterm><primary>パッケージ</primary><secondary>ソースパッケージ</secondary></indexterm>
+    <indexterm><primary>ソース</primary><secondary>パッケージ</secondary></indexterm>
+    <section>
+      <title>フォーマット</title>
+      <indexterm><primary>DSC ファイル</primary></indexterm>
+      <indexterm><primary><filename>diff.gz</filename> ファイル</primary></indexterm>
+      <indexterm><primary><filename>debian.tar.gz</filename> ファイル</primary></indexterm>
+      <indexterm><primary><filename>orig.tar.gz</filename> ファイル</primary></indexterm>
+
+      <para>A source package is usually comprised of three files, a
+      <filename>.dsc</filename>, a <filename>.orig.tar.gz</filename>, and a
+      <filename>.debian.tar.xz</filename> (or <filename>.diff.gz</filename>).
+      They allow creation of binary packages (<filename>.deb</filename>
+      files described above) from the source code files of the program,
+      which are written in a programming language.</para>
+
+      <para><filename>.dsc</filename> (Debian Source Control) ファイルは RFC 2822 ヘッダを含む短いテキストファイルで (<xref linkend="sect.control" />で述べた <filename>control</filename> ファイルと似ています)、ソースパッケージを説明し、他のどのファイルがパッケージの一部であるかを表明しています。メンテナは <filename>.dsc</filename> ファイルに署名することで、信頼性を保証しています。より詳しい情報は<xref linkend="sect.package-authentication" />をご覧ください。</para>
+
+      <example>
+        <title><filename>.dsc</filename> ファイルの一例</title>
+
+        <programlisting>
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Format: 3.0 (quilt)
+Source: zim
+Binary: zim
+Architecture: all
+Version: 0.65-4
+Maintainer: Emfox Zhou &lt;emfox@debian.org&gt;
+Uploaders: Raphaël Hertzog &lt;hertzog@debian.org&gt;
+Homepage: http://zim-wiki.org
+Standards-Version: 3.9.8
+Vcs-Browser: https://anonscm.debian.org/cgit/collab-maint/zim.git
+Vcs-Git: https://anonscm.debian.org/git/collab-maint/zim.git
+Build-Depends: debhelper (&gt;= 9), xdg-utils, python (&gt;= 2.6.6-3~), libgtk2.0-0 (&gt;= 2.6), python-gtk2, python-xdg, dh-python
+Package-List:
+ zim deb x11 optional arch=all
+Checksums-Sha1:
+ 4a9be85c98b7f4397800f6d301428d64241034ce 1899614 zim_0.65.orig.tar.gz
+ 0ec38c990ec7662205dd0c843bf81f9033906a2e 10332 zim_0.65-4.debian.tar.xz
+Checksums-Sha256:
+ 5442f3334395a2beafc5b9a2bbec2e53e38270d4bad696b5c4053dd51dc1ed96 1899614 zim_0.65.orig.tar.gz
+ 78271df16aa166dce916b3ff4ecd705ed3a8832e49d3ef0bd8738a4fe8dd2b4f 10332 zim_0.65-4.debian.tar.xz
+Files:
+ 63ab7a2070e6d1d3fb32700a851d7b8b 1899614 zim_0.65.orig.tar.gz
+ 648559b38e04eaf4f6caa97563c057ff 10332 zim_0.65-4.debian.tar.xz
+
+-----BEGIN PGP SIGNATURE-----
+Comment: Signed by Raphael Hertzog
+
+iQEzBAEBCgAdFiEE1823g1EQnhJ1LsbSA4gdq+vCmrkFAlgzZXkACgkQA4gdq+vC
+mrnyXAf+M/PzZFjqk6Hvv1QSbocIDZ3bEqRjVpNLApubsPsEZZT6yw9vypzNE2hZ
+/BbLPa0Ntbhew4U+SJpuujV7VnLs9mZgOFuKRHKWYQBQ+oxw+gtM6iePwVj58aP/
+LW7K5gE428ohMdjIkf42Lz4Fve3dVPgPLIzQxRZ87N6OKqmS81M6/RRIF3TS/gJp
+CwpN1yifCfQs46gxL5/CgA4uhI8taz+g+8ZDd6fL5BQeFuNsgplY4QL1uGno3F7G
+VY7WZhM601Re2ePnv+6vjh8kDWMjZhfB4RJy0+hHezuoVGKljyaxc1O4P/fxvXus
+CEETju6cAE/HgDubDXDqExMwEd4odA==
+=HUvj
+-----END PGP SIGNATURE----- </programlisting>
+      </example>
+
+      <indexterm><primary><literal>Build-Depends</literal>、ヘッダフィールド</primary></indexterm>
+
+      <para>バイナリパッケージと同様にソースパッケージにも依存関係 (<literal>Build-Depends</literal>) がある点に注意してください。依存関係の意味は、バイナリパッケージのそれとは全く異なり、このソフトウェアをコンパイルしてバイナリパッケージを作るのに必要なツールを表しています。</para>
+
+      <sidebar>
+        <title><emphasis>CAUTION</emphasis> 別の名前空間</title>
+
+	<para>ここで、ソースパッケージの名前とそのソースパッケージから生成したバイナリパッケージの名前を一致させる必要がないという点によく注意してください。単一のソースパッケージから複数のバイナリパッケージが生成されていることを知ったら、これはすぐに理解できるでしょう。このため <filename>.dsc</filename> ファイルにはソースパッケージ名を明確に指定するための <literal>Source</literal> フィールドおよび生成されるバイナリパッケージ名のリストを指定するための <literal>Binary</literal> フィールドが含まれています。</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>CULTURE</emphasis> 複数のパッケージに分割する理由</title>
+
+	<para>極めて多くの場合において、単独のソフトウェアのソースパッケージは複数のバイナリパッケージを生成できます。しかしながら、この方針が正当化されるのはソースパッケージから生成されるそれぞれのソフトウェアが異なる目的で使われる可能性がある場合だけです。共有ライブラリについて考えてみましょう。共有ライブラリはアプリケーションを動作させるためにインストールされる場合もあれば (たとえば <emphasis role="pkg">libc6</emphasis>)、新しいプログラムを開発するためにインストールされる場合もあります (開発する場合は <emphasis role="pkg">libc6-dev</emphasis> が適切です)。クライアント/サーバサービスに対しても同じことが言えます。あるマシンにはサーバ部分だけを、別のマシンにはクライアント部分だけをインストールしたいと考えるのは真っ当な考え方です (サーバマシンに <emphasis role="pkg">openssh-server</emphasis> を、クライアントマシンに <emphasis role="pkg">openssh-client</emphasis> をインストールするような場合がこれに該当します)。</para>
+
+	<para>同じくらいの頻度で、ソースパッケージの文書部分は専用パッケージとして提供されている場合が多いです。なぜなら、ユーザは文書とソフトウェアを別々にインストールしたいかもしれませんし、ディスク領域を節約するために文書を削除したいと考えるかもしれないからです。加えて、こうすることで Debian アーカイブミラーのディスク領域も節約できます。なぜなら、文書パッケージはアーキテクチャに依存しないのですべてのアーキテクチャで共有できるからです (各アーキテクチャ向けに用意されたバイナリパッケージに文書を含めるとアーキテクチャの数だけ文書を複製したことになり、余分にディスク領域を消費します)。</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>PERSPECTIVE</emphasis> ソースパッケージのさまざまなフォーマット</title>
+
+	<para>もともとソースパッケージのフォーマットは 1 種類だけでした。これが <literal>1.0</literal> フォーマットです。<literal>1.0</literal> フォーマットでは <filename>.orig.tar.gz</filename> アーカイブに <filename>.diff.gz</filename>「debianization」パッチを当てるようにしていました (<literal>1.0</literal> フォーマットには亜種があります。亜種には <filename>.tar.gz</filename> アーカイブだけが含まれており、<filename>.orig.tar.gz</filename> がなければ自動的に <filename>.tar.gz</filename> アーカイブが使われます)。</para>
+
+	<para>Since Debian <emphasis role="distribution">Squeeze</emphasis>, Debian developers have the
+	option to use new formats that correct many problems of the
+	historical format. Format <literal>3.0 (quilt)</literal> can
+	combine multiple upstream archives in the same source package: in
+	addition to the usual <filename>.orig.tar.gz</filename>,
+	supplementary
+	<filename>.orig-<replaceable>component</replaceable>.tar.gz</filename>
+	archives can be included. This is useful with software that is distributed in
+	several upstream components but for which a single source package
+	is desired. These archives can also be compressed with
+        <command>xz</command> rather than
+        <command>gzip</command>, which saves disk space and network resources. Finally,
+	the monolithic patch, <filename>.diff.gz</filename> is replaced by
+	a <filename>.debian.tar.xz</filename> archive containing the
+	compiling instructions and a set of upstream patches contributed by
+	the package maintainer. These last are recorded in a format
+	compatible with <command>quilt</command> — a tool that facilitates
+	the management of a series of patches.</para>
+      </sidebar>
+
+      <para><filename>.orig.tar.gz</filename> ファイルはオリジナルの開発者が提供するソースコードと同じ内容を含むアーカイブです。Debian パッケージメンテナはファイルの出所と整合性を簡単に (チェックサムによる単純な比較で) 確認できるようにするために、そして一部の作者からの希望を尊重するためにアーカイブを変更しないことを要求されます。</para>
+
+      <para>The <filename>.debian.tar.xz</filename> contains all of the
+      modifications made by the Debian maintainer, especially the addition
+      of a <filename>debian</filename> directory containing the instructions to
+      execute to construct a Debian package.</para>
+
+      <sidebar>
+        <title><emphasis>TOOL</emphasis> ソースパッケージの展開</title>
+        <indexterm><primary><command>dpkg-source</command></primary></indexterm>
+	<indexterm><primary>展開、ソースパッケージ</primary></indexterm>
+	<indexterm><primary>展開、ソースパッケージ</primary></indexterm>
+	<indexterm><primary>展開</primary><secondary>ソースパッケージの</secondary></indexterm>
+
+	<para>ソースパッケージを持っていれば、<command>dpkg-source</command> コマンド (<emphasis role="pkg">dpkg-dev</emphasis> パッケージに含まれます) を使ってソースパッケージを展開できます。</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>dpkg-source -x package_0.7-1.dsc</userinput></screen>
+
+	<para><command>apt-get</command> を使えば、ソースパッケージをダウンロードしてすぐに展開することも可能です。しかしながら、これを行うには、適切な <literal>deb-src</literal> 行が <filename>/etc/apt/sources.list</filename> ファイルに書かれていなければいけません (より詳しい情報は<xref linkend="sect.apt-sources.list" />を参照してください)。<literal>deb-src</literal> 行はソースパッケージの「ソース」(ソースパッケージがホストされているサーバ群) を表すために使われます。</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>apt-get source <replaceable>package</replaceable></userinput></screen>
+      </sidebar>
+    </section>
+    <section>
+      <title>Debian 内での使われ方</title>
+
+      <para>ソースパッケージは Debian のすべての基礎です。すべての Debian パッケージはソースパッケージから作られ、Debian パッケージに対する変更はソースパッケージを変更することで行われます。Debian メンテナはソースパッケージに対する作業の成果がどのようにバイナリパッケージに反映されるかを理解しているため、ソースパッケージに対して作業を行っています。そんなわけで、Debian メンテナの労苦の成果は Debian から入手できるソースパッケージの中にあります。すなわち、簡単にソースパッケージに戻り、すべてをソースパッケージから生成することも可能です。</para>
+
+      <para>パッケージの新バージョン (ソースパッケージと 1 つ以上のバイナリパッケージ) が Debian サーバにアップロードされた際に、最も重要なのがソースパッケージです。そして、異なるアーキテクチャのマシンのネットワークがソースパッケージを使い、Debian がサポートするさまざまなアーキテクチャ上でコンパイルを行います。開発者はソースパッケージだけでなく適当なアーキテクチャ (通常 i386 または amd64) 向けの 1 つ以上のバイナリパッケージを送信しますが、こちらはそれほど重要ではありません。なぜなら、送信されたバイナリパッケージと同じアーキテクチャ用のバイナリパッケージはビルドマシンによって自動的に生成されるからです。</para>
+    </section>
+  </section>
+  <section id="sect.manipulating-packages-with-dpkg">
+    <title><command>dpkg</command> を用いたパッケージの操作</title>
+    <indexterm><primary><command>dpkg</command></primary></indexterm>
+
+    <para><command>dpkg</command> はシステムの Debian パッケージを操作する基礎的なコマンドです。<filename>.deb</filename> パッケージがあれば、<command>dpkg</command> でパッケージ内容をインストールしたり解析したりすることが可能です。しかし <command>dpkg</command> は Debian 世界のある一部分だけを見ているに過ぎません。つまり、<command>dpkg</command> は、システムにインストール済みのパッケージとコマンドラインで与えられたパッケージについては理解していますが、他の利用できるパッケージについては理解していません。このため、<command>dpkg</command> は依存関係が満足されていなければパッケージを操作できません。これに対して、<command>apt</command> などのツールは、可能な限り自動的にすべてをインストールするために、依存関係のリストを作成します。</para>
+
+    <sidebar>
+      <title><emphasis>NOTE</emphasis> <command>dpkg</command> か <command>apt</command> か?</title>
+
+      <para><command>dpkg</command> はシステムツール (バックエンド)、<command>apt</command> はユーザに近いツールとみなすべきです。<command>apt</command> は <command>dpkg</command> の制限を克服しています。これらのツールは互いに協力して作業を行います。両者は互いに異なる得意分野を持っており、それぞれが特定の作業を担当しています。</para>
+    </sidebar>
+    <section>
+      <title>パッケージのインストール</title>
+      <indexterm><primary>インストール</primary><secondary>パッケージのインストール</secondary></indexterm>
+      <indexterm><primary>パッケージ</primary><secondary>インストール</secondary></indexterm>
+
+      <para><command>dpkg</command> は既に利用できる Debian パッケージのインストールを担当しているツールです (ダウンロード機能を持っていません)。<command>dpkg</command> を使ってパッケージをインストールするには、<literal>-i</literal> または <literal>--install</literal> オプションを使ってください。</para>
+
+      <example>
+        <title><command>dpkg</command> を使ったパッケージのインストール</title>
+
+        <screen role="scale">
+<computeroutput># </computeroutput><userinput>dpkg -i man-db_2.7.6.1-2_amd64.deb</userinput>
+<computeroutput>(Reading database ... 110431 files and directories currently installed.)
+Preparing to unpack man-db_2.7.6.1-2_amd64.deb ...
+Unpacking man-db (2.7.6.1-2) over (2.7.6.1-1) ...
+Setting up man-db (2.7.6.1-2) ...
+Updating database of manual pages ...
+Processing triggers for mime-support (3.60) ...</computeroutput>
+</screen>
+      </example>
+
+      <para><command>dpkg</command> の実行する各作業段階が見て取れます。このため、どの時点でエラーが起きたかを識別できます。インストールを 2 段階に分けて実行することも可能です。具体的に言えば、最初が展開、その後に設定です。<command>apt-get</command> はこれをうまく利用して、<command>dpkg</command> を呼び出す回数を減らしています (なぜなら <command>dpkg</command> は呼び出される度にデータベース、特にインストール済みファイルのリスト、をメモリに読み込むため効率が悪いからです)。</para>
+
+      <example>
+        <title>展開と設定を分けて実行</title>
+
+        <screen role="scale">
+<computeroutput># </computeroutput><userinput>dpkg --unpack man-db_2.7.6.1-2_amd64.deb</userinput>
+<computeroutput>(Reading database ... 110431 files and directories currently installed.)
+Preparing to unpack man-db_2.7.6.1-2_amd64.deb ...
+Unpacking man-db (2.7.6.1-2) over (2.7.6.1-2) ...
+Processing triggers for mime-support (3.60) ...
+# </computeroutput><userinput>dpkg --configure man-db</userinput>
+<computeroutput>Setting up man-db (2.7.6.1-2) ...
+Updating database of manual pages ...
+</computeroutput>
+</screen>
+      </example>
+      <indexterm><primary>パッケージ</primary><secondary>展開</secondary></indexterm>
+      <indexterm><primary>展開</primary><secondary>バイナリパッケージ</secondary></indexterm>
+
+      <para><command>dpkg</command> がパッケージのインストールに失敗し、エラーを返すことがあります。さらに、ユーザがインストールの失敗を無視するように命令すれば、警告が表示されるでしょう。すなわちこれが多くの <literal>--force-*</literal> 系オプションが用意されている理由です。<command>dpkg</command> の文書によれば <command>dpkg --force-help</command> コマンドでこれらのオプションの完全なリストを見ることが可能です。最もよく目にするエラーはファイルの衝突で、遅かれ早かれこのエラーに遭遇するのは避けられません。パッケージが他のパッケージによってインストール済みのファイルを含んでいる場合、<command>dpkg</command> はパッケージのインストールを拒否します。その場合、以下のメッセージが表示されます。</para>
+
+      <screen>
+<computeroutput>libgdm (.../libgdm_3.8.3-2_amd64.deb) を展開しています...
+パッケージ /var/cache/apt/archives/libgdm_3.8.3-2_amd64.deb の処理中にエラーが発生しました (--unpack):
+'/usr/bin/gdmflexiserver' を上書きしようとしています。これはパッケージ gdm3 3.4.1-9 にも存在します</computeroutput></screen>
+
+      <para>この場合、ファイルを置き換えてもシステムの安定度は大きく損なわれない (通常は損なわれません) と考えるなら、<literal>--force-overwrite</literal> オプションを使うことで <command>dpkg</command> はこのエラーを無視してファイルを上書きします。</para>
+
+      <para><literal>--force-*</literal> 系のオプションはたくさんありますが、日常的に使うのは <literal>--force-overwrite</literal> だけです。<literal>--force-*</literal> 系のオプションは例外的状況のためだけに用意されており、パッケージングメカニズムの定める標準規則を尊重するためには、これらのオプションを使うことは可能な限り避けるべきです。これらの標準規則はシステムの整合性と安定性を守るものであることを忘れないでください。</para>
+
+      <sidebar>
+        <title><emphasis>CAUTION</emphasis> <literal>--force-*</literal> の効果的な使い方</title>
+        <indexterm><primary>破壊された依存性</primary></indexterm>
+
+	<para>下手をすると <literal>--force-*</literal> 系オプションを使うことにより、そのシステム上で APT ファミリーのコマンドが動かなくなる場合があります。事実上、<literal>--force-*</literal> 系オプションを使えば、依存関係が満足されていなくても、衝突していても、パッケージをインストールできてしまいます。この結果、システムは依存関係の観点からすると整合性のない状況になります。APT コマンドはシステムを整合性のある状態に戻せるような操作 (依存関係を満足させるために必要なパッケージのインストール、問題のあるパッケージの削除などの操作) を除き、その実行を拒否しますから、APT コマンドが実行できなくなります。その場合、たとえば以下のようなメッセージが表示されることがあります。これは、<emphasis role="pkg">rdesktop</emphasis> の新しいバージョンが <emphasis role="pkg">libc6</emphasis> のシステムにインストールされているバージョンよりも新しいバージョンに依存しているにも関わらず、その依存関係を無視して <emphasis role="pkg">rdesktop</emphasis> をインストールした結果です。</para>
+
+        <screen><computeroutput># </computeroutput><userinput>apt full-upgrade
+</userinput><computeroutput>[...]
+これらを直すためには 'apt-get -f install' を実行する必要があるかもしれません。
+以下のパッケージには満たせない依存関係があります:
+  rdesktop: Depends: libc6 (&gt;= 2.5) しかし、2.3.6.ds1-13etch7 はインストールされています
+E: 未解決の依存関係があります。-f オプションを試してください。</computeroutput></screen>
+
+	<para>自分の解析の正確さに自信を持っている勇気ある管理者なら、依存関係や衝突を無視して、対応する <literal>--force-*</literal> 系オプションを使うことを選ぶかもしれません。この場合に、管理者が <command>apt</command> や <command>aptitude</command> を使い続けたいと思うなら、管理者は無効にしたい依存関係や衝突を削除/変更するために <filename>/var/lib/dpkg/status</filename> を編集しなければいけません。</para>
+
+	<para><filename>/var/lib/dpkg/status</filename> の編集は最悪の対応策であり、本当にどうしても必要な場合を除いて、絶対に使うべきではありません。ほとんどの場合、問題を生じさせているパッケージを再コンパイルしたり (<xref linkend="sect.rebuilding-package" />をご覧ください)、<literal>stable-backports</literal> などのリポジトリから新しい (修正済みの可能性がある) バージョンを使ったり (<xref linkend="sect.backports" />をご覧ください) するほうが適切な解決策です。</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>パッケージの削除</title>
+      <indexterm><primary>パッケージの削除</primary></indexterm>
+      <indexterm><primary>パッケージの完全削除</primary></indexterm>
+      <indexterm><primary>パッケージ</primary><secondary>削除</secondary></indexterm>
+      <indexterm><primary>パッケージ</primary><secondary>完全削除</secondary></indexterm>
+
+      <para><command>dpkg</command> に <literal>-r</literal> または <literal>--remove</literal> オプションを付け、さらにパッケージの名前を指定して実行すれば、指定したパッケージが削除されます。しかしながらこの削除は完璧ではありません。具体的に言えば、パッケージが取り扱うすべての設定ファイル、メンテナスクリプト、ログファイル (システムログ)、その他のユーザデータは残されたままです。プログラムを無効化するには、この方法でパッケージをアンインストールしてください。そうすれば、削除したパッケージを同じ設定で再インストールして素早く利用できる状態にすることもまだ可能です。パッケージに関連するすべてを完全に削除するには、<command>dpkg</command> に <literal>-P</literal> または <literal>--purge</literal> オプションを付け、さらにパッケージの名前を指定して実行してください。</para>
+
+      <example>
+        <title><emphasis role="pkg">debian-cd</emphasis> パッケージの削除と完全削除</title>
+
+        <screen><computeroutput># </computeroutput><userinput>dpkg -r debian-cd</userinput>
+<computeroutput>(Reading database ... 112188 files and directories currently installed.)
+Removing debian-cd (3.1.20) ...
+# </computeroutput><userinput>dpkg -P debian-cd</userinput>
+<computeroutput>(Reading database ... 111613 files and directories currently installed.)
+Purging configuration files for debian-cd (3.1.20) ...
+</computeroutput>
+</screen>
+      </example>
+    </section>
+    <section>
+      <title><command>dpkg</command> のデータベースへの問い合わせと <filename>.deb</filename> ファイルの調査</title>
+      <indexterm><primary>パッケージ</primary><secondary>状態</secondary></indexterm>
+      <indexterm><primary>パッケージ</primary><secondary>ファイルリスト</secondary></indexterm>
+      <indexterm><primary>パッケージ</primary><secondary>内容の調査</secondary></indexterm>
+
+      <sidebar>
+        <title><emphasis>BACK TO BASICS</emphasis> オプションの構文</title>
+
+	<para>多くのオプションには「長い」もの (1 語以上の関連する単語を使い、二重ダッシュで始まるもの) と「短い」もの (1 文字で、長いオプションの頭文字の場合が多く、単独のダッシュで始まるもの) があります。これは POSIX 標準のプログラムでよく見られる慣例です。</para>
+      </sidebar>
+
+      <para>この節を締め括る前に、内部データベースに問い合わせて情報を得る際に使う <command>dpkg</command> のオプションについて学びましょう。各オプションは最初に長いオプション、その後に対応する短いオプション (両者は同じ引数を取るのは明らかです) のように記載しています。<literal>--listfiles <replaceable>package</replaceable></literal> (または <literal>-L</literal>) は与えられたパッケージがインストールするファイルを表示します。<literal>--search <replaceable>file</replaceable></literal> (または <literal>-S</literal>) はファイルを含むパッケージを探します。<literal>--status <replaceable>package</replaceable></literal> (または <literal>-s</literal>) はインストールされたパッケージのヘッダを表示します。<literal>--list</literal> (または <literal>-l</literal>) はシステムが把握しているパッケージのリストとその状態を表示します。<literal>--contents <replaceable>file.deb</replaceable></literal> (または <literal>-c</literal>) は指定された Debian パッケージに含まれるファイルを表示します。<literal>--info <replaceable>file.deb</replaceable></literal> (または <literal>-I</literal>) は指定された Debian パッケージのヘッダを表示します。</para>
+
+      <example>
+        <title><command>dpkg</command> にさまざまな情報を問い合わせる</title>
+
+        <screen role="scale" width="80">
+<computeroutput>$ </computeroutput><userinput>dpkg -L base-passwd</userinput>
+<computeroutput>/.
+/usr
+/usr/sbin
+/usr/sbin/update-passwd
+/usr/share
+/usr/share/base-passwd
+/usr/share/base-passwd/group.master
+/usr/share/base-passwd/passwd.master
+/usr/share/doc
+/usr/share/doc/base-passwd
+/usr/share/doc/base-passwd/README
+/usr/share/doc/base-passwd/changelog.gz
+/usr/share/doc/base-passwd/copyright
+/usr/share/doc/base-passwd/users-and-groups.html
+/usr/share/doc/base-passwd/users-and-groups.txt.gz
+/usr/share/doc-base
+/usr/share/doc-base/users-and-groups
+/usr/share/lintian
+/usr/share/lintian/overrides
+/usr/share/lintian/overrides/base-passwd
+/usr/share/man
+/usr/share/man/de
+/usr/share/man/de/man8
+/usr/share/man/de/man8/update-passwd.8.gz
+/usr/share/man/es
+/usr/share/man/es/man8
+/usr/share/man/es/man8/update-passwd.8.gz
+/usr/share/man/fr
+/usr/share/man/fr/man8
+/usr/share/man/fr/man8/update-passwd.8.gz
+/usr/share/man/ja
+/usr/share/man/ja/man8
+/usr/share/man/ja/man8/update-passwd.8.gz
+/usr/share/man/man8
+/usr/share/man/man8/update-passwd.8.gz
+/usr/share/man/pl
+/usr/share/man/pl/man8
+/usr/share/man/pl/man8/update-passwd.8.gz
+/usr/share/man/ru
+/usr/share/man/ru/man8
+/usr/share/man/ru/man8/update-passwd.8.gz
+$ </computeroutput><userinput>dpkg -S /bin/date</userinput>
+<computeroutput>coreutils: /bin/date
+$ </computeroutput><userinput>dpkg -s coreutils</userinput>
+<computeroutput>Package: coreutils
+Essential: yes
+Status: install ok installed
+Priority: required
+Section: utils
+Installed-Size: 15103
+Maintainer: Michael Stone &lt;mstone@debian.org&gt;
+Architecture: amd64
+Multi-Arch: foreign
+Version: 8.26-3
+Replaces: mktemp, realpath, timeout
+Pre-Depends: libacl1 (&gt;= 2.2.51-8), libattr1 (&gt;= 1:2.4.46-8), libc6 (&gt;= 2.17), libselinux1 (&gt;= 2.1.13)
+Conflicts: timeout
+Description: GNU core utilities
+ This package contains the basic file, shell and text manipulation
+ utilities which are expected to exist on every operating system.
+ .
+ Specifically, this package includes:
+ arch base64 basename cat chcon chgrp chmod chown chroot cksum comm cp
+ csplit cut date dd df dir dircolors dirname du echo env expand expr
+ factor false flock fmt fold groups head hostid id install join link ln
+ logname ls md5sum mkdir mkfifo mknod mktemp mv nice nl nohup nproc numfmt
+ od paste pathchk pinky pr printenv printf ptx pwd readlink realpath rm
+ rmdir runcon sha*sum seq shred sleep sort split stat stty sum sync tac
+ tail tee test timeout touch tr true truncate tsort tty uname unexpand
+ uniq unlink users vdir wc who whoami yes
+Homepage: http://gnu.org/software/coreutils
+$ </computeroutput><userinput>dpkg -l 'b*'</userinput>
+<computeroutput>Desired=Unknown/Install/Remove/Purge/Hold
+| Status=Not/Inst/Conf-files/Unpacked/halF-conf/Half-inst/trig-aWait/Trig-pend
+|/ Err?=(none)/Reinst-required (Status,Err: uppercase=bad)
+||/ Name                 Version         Architecture    Description
++++-====================-===============-===============-=============================================
+un  backupninja          &lt;none&gt;          &lt;none&gt;          (no description available)
+un  backuppc             &lt;none&gt;          &lt;none&gt;          (no description available)
+un  baekmuk-ttf          &lt;none&gt;          &lt;none&gt;          (no description available)
+un  base                 &lt;none&gt;          &lt;none&gt;          (no description available)
+un  base-config          &lt;none&gt;          &lt;none&gt;          (no description available)
+ii  base-files           9.9+deb9u1      amd64           Debian base system miscellaneous files
+ii  base-passwd          3.5.43          amd64           Debian base system master password and group 
+ii  bash                 4.4-5           amd64           GNU Bourne Again SHell
+[...]
+$ </computeroutput><userinput>dpkg -c /var/cache/apt/archives/gnupg_2.1.18-8~deb9u1_amd64.deb</userinput>
+<computeroutput>drwxr-xr-x root/root         0 2017-09-18 20:41 ./
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/bin/
+-rwxr-xr-x root/root    996648 2017-09-18 20:41 ./usr/bin/gpg
+-rwxr-xr-x root/root      3444 2017-09-18 20:41 ./usr/bin/gpg-zip
+-rwxr-xr-x root/root    161192 2017-09-18 20:41 ./usr/bin/gpgconf
+-rwxr-xr-x root/root     26696 2017-09-18 20:41 ./usr/bin/gpgparsemail
+-rwxr-xr-x root/root     76112 2017-09-18 20:41 ./usr/bin/gpgsplit
+-rwxr-xr-x root/root    158344 2017-09-18 20:41 ./usr/bin/kbxutil
+-rwxr-xr-x root/root      1081 2014-06-25 16:17 ./usr/bin/lspgpot
+-rwxr-xr-x root/root      2194 2017-09-18 20:41 ./usr/bin/migrate-pubring-from-classic-gpg
+-rwxr-xr-x root/root     14328 2017-09-18 20:41 ./usr/bin/watchgnupg
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/sbin/
+-rwxr-xr-x root/root      3078 2017-09-18 20:41 ./usr/sbin/addgnupghome
+-rwxr-xr-x root/root      2219 2017-09-18 20:41 ./usr/sbin/applygnupgdefaults
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/share/
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/share/doc/
+drwxr-xr-x root/root         0 2017-09-18 20:41 ./usr/share/doc/gnupg/
+-rw-r--r-- root/root     18964 2017-01-23 18:39 ./usr/share/doc/gnupg/DETAILS.gz
+[...]
+$ </computeroutput><userinput>dpkg -I /var/cache/apt/archives/gnupg_2.1.18-8~deb9u1_amd64.deb</userinput>
+<computeroutput> new debian package, version 2.0.
+ size 1124042 bytes: control archive=2221 bytes.
+    1388 bytes,    24 lines      control              
+    2764 bytes,    43 lines      md5sums              
+ Package: gnupg
+ Source: gnupg2
+ Version: 2.1.18-8~deb9u1
+ Architecture: amd64
+ Maintainer: Debian GnuPG Maintainers &lt;pkg-gnupg-maint@lists.alioth.debian.org&gt;
+ Installed-Size: 2088
+ Depends: gnupg-agent (= 2.1.18-8~deb9u1), libassuan0 (&gt;= 2.0.1), libbz2-1.0, libc6 (&gt;= 2.15), libgcrypt20 (&gt;= 1.7.0), libgpg-error0 (&gt;= 1.14), libksba8 (&gt;= 1.3.4), libreadline7 (&gt;= 6.0), libsqlite3-0 (&gt;= 3.7.15), zlib1g (&gt;= 1:1.1.4)
+ Recommends: dirmngr (= 2.1.18-8~deb9u1), gnupg-l10n (= 2.1.18-8~deb9u1)
+ Suggests: parcimonie, xloadimage
+ Breaks: debsig-verify (&lt;&lt; 0.15), dirmngr (&lt;&lt; 2.1.18-8~deb9u1), gnupg2 (&lt;&lt; 2.1.11-7+exp1), libgnupg-interface-perl (&lt;&lt; 0.52-3), libgnupg-perl (&lt;= 0.19-1), libmail-gnupg-perl (&lt;= 0.22-1), monkeysphere (&lt;&lt; 0.38~), php-crypt-gpg (&lt;= 1.4.1-1), python-apt (&lt;= 1.1.0~beta4), python-gnupg (&lt;&lt; 0.3.8-3), python3-apt (&lt;= 1.1.0~beta4)
+ Replaces: gnupg2 (&lt;&lt; 2.1.11-7+exp1)
+ Provides: gpg
+ Section: utils
+ Priority: optional
+ Multi-Arch: foreign
+ Homepage: https://www.gnupg.org/
+ Description: GNU privacy guard - a free PGP replacement
+  GnuPG is GNU's tool for secure communication and data storage.
+  It can be used to encrypt data and to create digital signatures.
+  It includes an advanced key management facility and is compliant
+  with the proposed OpenPGP Internet standard as described in RFC4880.
+[...]</computeroutput>
+</screen>
+      </example>
+
+      <sidebar>
+        <title><emphasis>GOING FURTHER</emphasis> バージョンの比較</title>
+        <indexterm><primary>バージョン、比較</primary></indexterm>
+        <indexterm><primary>バージョンの比較</primary></indexterm>
+
+	<para><command>dpkg</command> は Debian パッケージを取り扱うプログラムですから、バージョン番号の比較ロジックのリファレンス実装も提供しています。<command>dpkg</command> にはバージョンを比較するための <literal>--compare-versions</literal> オプションが用意されており、外部プログラム (特に <command>dpkg</command> 自身が呼び出す設定スクリプト) の中でバージョンを簡単に比較できるようにしています。<literal>--compare-versions</literal> オプションは 3 つの引数を取ります。具体的に言えば引数としてバージョン番号、比較演算子、2 番目のバージョン番号を取ります。比較演算子として使える演算子は <literal>lt</literal> (より小さい)、<literal>le</literal> (以下)、<literal>eq</literal> (等しい)、<literal>ne</literal> (等しくない)、<literal>ge</literal> (以上)、<literal>gt</literal> (より大きい) です。比較式が真ならば <command>dpkg</command> は 0 (成功) を返します。一方で偽ならば非ゼロ (失敗) を返します。</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>dpkg --compare-versions 1.2-3 gt 1.1-4</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>0
+$ </computeroutput><userinput>dpkg --compare-versions 1.2-3 lt 1.1-4</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>1
+$ </computeroutput><userinput>dpkg --compare-versions 2.6.0pre3-1 lt 2.6.0-1</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>1</computeroutput></screen>
+
+	<para>最後の比較式は一見 0 (成功) を返すように思われますが、1 (失敗) を返しています。この点に注意しましょう。つまり、文字通りに解釈すれば <literal>pre</literal> は事前リリースを意味しますが、<command>dpkg</command> にとって <literal>pre</literal> は特別な意味を持つものではありません。<command>dpkg</command> はアルファベット文字を数字と同じ方法で (a &lt; b &lt; c ...)、アルファベット順に比較します。このため、「<literal>0pre3</literal>」は「<literal>0</literal>」より大きいというわけです。パッケージのバージョン番号に事前リリースであるという意味を持たせたい場合、チルダ文字「<literal>~</literal>」を使ってください。</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>dpkg --compare-versions 2.6.0~pre3-1 lt 2.6.0-1</userinput>
+<computeroutput>$ </computeroutput><userinput>echo $?</userinput>
+<computeroutput>0</computeroutput></screen>
+      </sidebar>
+    </section>
+    <section>
+      <title><command>dpkg</command> のログファイル</title>
+
+      <para><command>dpkg</command> は <filename>/var/log/dpkg.log</filename> に作業のすべてを記録します。<filename>/var/log/dpkg.log</filename> は極めて詳細です。なぜなら <filename>/var/log/dpkg.log</filename> には <command>dpkg</command> がパッケージに対して行った操作の各段階すべてが詳しく記録されているからです。dpkg の挙動を追跡する方法を提供することに加えて、<filename>/var/log/dpkg.log</filename> はシステムの変化の履歴を保存するのに役立ちます。すなわち、パッケージがインストールされたり更新された正確な日時を探すことが可能ですし、この情報は最近の挙動変化を理解するのに極めて役立ちます。加えて、すべてのバージョンが記録されていますから、注目しているパッケージの <filename>changelog.Debian.gz</filename> またはオンラインバグ報告と情報を簡単に照合できます。</para>
+    </section>
+    <section id="sect.multi-arch">
+      <title>マルチアーキテクチャサポート</title>
+      <indexterm><primary>マルチアーキテクチャ</primary></indexterm>
+      <indexterm><primary>アーキテクチャ</primary><secondary>マルチアーキテクチャサポート</secondary></indexterm>
+
+      <para>すべての Debian パッケージは control ファイルの中に <literal>Architecture</literal> フィールドを持っています。<literal>Architecture</literal> フィールドでは「<literal>all</literal>」(アーキテクチャに依存しないパッケージ) または対象のアーキテクチャの名前 (「amd64」、「armhf」など) のどちらか一方を指定します。対象アーキテクチャの名前が指定されていた場合、初期設定では <command>dpkg</command> は <command>dpkg --print-architecture</command> で返されるホストのアーキテクチャと一致するアーキテクチャ向けのパッケージのインストールだけを受け入れます。</para>
+
+      <para>この制約は、ユーザが異なるアーキテクチャ向けにコンパイルされたバイナリを使う羽目にならないようにしています。コンピュータが複数のアーキテクチャのバイナリを実行できる場合、たとえば元から可能な場合 (「amd64」システムは「i386」バイナリを実行できます) やエミュレータを介すことで可能になる場合、を除けばこの制約は合理的と言えます。</para>
+      
+      <section>
+        <title>マルチアーキテクチャの有効化</title>
+	<para><command>dpkg</command> のマルチアーキテクチャサポートのおかげで、ユーザは現在のシステムにインストールできる「外来アーキテクチャ」を定義できます。これを行うには、以下に示す通り <command>dpkg --add-architecture</command> を使ってください。関連して、<command>dpkg --remove-architecture</command> は外来アーキテクチャのサポートを取り消しますが、取り消したいアーキテクチャのパッケージが残っていた場合には失敗します。</para>
+
+	<screen>
+<computeroutput># </computeroutput><userinput>dpkg --print-architecture</userinput>
+<computeroutput>amd64
+# </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput># </computeroutput><userinput>dpkg -i gcc-6-base_6.3.0-18_armhf.deb</userinput>
+<computeroutput>dpkg: error processing archive gcc-6-base_6.3.0-18_armhf.deb (--install):
+ package architecture (armhf) does not match system (amd64)
+Errors were encountered while processing:
+ gcc-6-base_6.3.0-18_armhf.deb
+# </computeroutput><userinput>dpkg --add-architecture armhf</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --add-architecture armel</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput>armhf
+armel
+# </computeroutput><userinput>dpkg -i gcc-6-base_6.3.0-18_armhf.deb</userinput>
+<computeroutput>Selecting previously unselected package gcc-6-base:armhf.
+(Reading database ... 112000 files and directories currently installed.)
+Preparing to unpack gcc-6-base_6.3.0-18_armhf.deb ...
+Unpacking gcc-6-base:armhf (6.3.0-18) ...
+Setting up gcc-6-base:armhf (6.3.0-18) ...
+# </computeroutput><userinput>dpkg --remove-architecture armhf</userinput>
+<computeroutput>dpkg: error: cannot remove architecture 'armhf' currently in use by the database
+# </computeroutput><userinput>dpkg --remove-architecture armel</userinput>
+<computeroutput># </computeroutput><userinput>dpkg --print-foreign-architectures</userinput>
+<computeroutput>armhf</computeroutput>
+</screen>
+
+	<sidebar>
+	  <title><emphasis>NOTE</emphasis> APT のマルチアーキテクチャサポート</title>
+	  <para>APT は dpkg が外来アーキテクチャをサポートするように設定されているかを自動的に検出し、更新作業中に対応する <filename>Packages</filename> ファイルをダウンロードします。</para>
+	  <para>外来パッケージをインストールするには <command>apt install <replaceable>package</replaceable>:<replaceable>architecture</replaceable></command> を使ってください。</para>
+	</sidebar>
+
+	<sidebar>
+	  <title><emphasis>IN PRACTICE</emphasis> amd64 上でプロプライエタリな i386 バイナリを使う</title>
+	  <para>There are multiple use cases for multi-arch, but the most
+	  popular one is the possibility to execute 32 bit binaries (i386)
+	  on 64 bit systems (amd64).</para>
+	</sidebar>
+      </section>
+      <section>
+	<title>マルチアーキテクチャ関連の変更</title>
+
+	<para>To make multi-arch actually useful and usable, libraries had to
+	be repackaged and moved to an architecture-specific directory so that
+	multiple copies (targeting different architectures) can be installed
+	alongside. Such updated packages contain the “<literal>Multi-Arch:
+	same</literal>” header field to tell the packaging system that the
+	various architectures of the package can be safely co-installed (and
+	that those packages can only satisfy dependencies of packages of the
+        same architecture). The most important libraries have been converted
+        since the introduction of multi-arch in Debian
+        <emphasis role="distribution">Wheezy</emphasis>, but there are many
+        libraries that will likely never be converted unless someone
+        specifically requests it (through a bug report for example).
+	</para>
+
+	<screen><computeroutput>$ </computeroutput><userinput>dpkg -s gcc-6-base
+</userinput><computeroutput>dpkg-query: error: --status needs a valid package name but 'gcc-6-base' is not: ambiguous package name 'gcc-6-base' with more than one installed instance
+
+Use --help for help about querying packages.
+$ </computeroutput><userinput>dpkg -s gcc-6-base:amd64 gcc-6-base:armhf | grep ^Multi
+</userinput><computeroutput>Multi-Arch: same
+Multi-Arch: same
+$ </computeroutput><userinput>dpkg -L libgcc1:amd64 |grep .so
+</userinput><computeroutput>/lib/x86_64-linux-gnu/libgcc_s.so.1
+$ </computeroutput><userinput>dpkg -S /usr/share/doc/gcc-6-base/copyright
+</userinput><computeroutput>gcc-6-base:amd64, gcc-6-base:armhf: /usr/share/doc/gcc-6-base/copyright
+</computeroutput></screen>
+
+	<para><literal>Multi-Arch: same</literal> パッケージを取り扱う際には、パッケージの名前にアーキテクチャの限定詞を付けて対象を明確に識別しなければいけない点は注目に値します。<literal>Multi-Arch: same</literal> パッケージは対象アーキテクチャの異なる同じパッケージ間でファイルを共有しているかもしれません。さらに対象アーキテクチャの異なる同じパッケージ間でファイルが共有されている場合、<command>dpkg</command> は共有されているファイルがビット単位で一致することを確認します。最後に重要なことですが、パッケージは対象アーキテクチャごとにバージョンが違ってはいけません。対象アーキテクチャの異なるパッケージも必ず同時にアップグレードされなければいけません。</para>
+
+	<para>マルチアーキテクチャサポートによって、依存関係の取り扱い方法にいくつかの興味深い挑戦がなされました。あるパッケージの依存関係を満足させるためには、必要とされる側のパッケージは「<literal>Multi-Arch: foreign</literal>」と宣言されているか、依存パッケージ群の 1 つのパッケージとアーキテクチャが一致しているかのどちらか一方を満足させる必要があります (依存関係解決処理中、アーキテクチャに依存しないパッケージはホストと同じアーキテクチャと仮定されます)。<literal><replaceable>package</replaceable>:any</literal> 構文はどんなアーキテクチャでも依存関係を満足できることを意味しますが、外来パッケージを使って <literal><replaceable>package</replaceable>:any</literal> 構文で表記された依存関係を満足できるのは「<literal>Multi-Arch: allowed</literal>」と宣言されていた場合のみです。</para>
+      </section>
+    </section>
+  </section>
+  <section id="sect.coexistence-with-other-packaging-systems">
+    <title>他のパッケージングシステムとの共存</title>
+    <indexterm><primary>RPM</primary></indexterm>
+    <indexterm><primary>Red Hat パッケージマネージャ</primary></indexterm>
+    <indexterm><primary><command>alien</command></primary></indexterm>
+
+    <para>フリーソフトウェア世界では Debian パッケージ以外のソフトウェアパッケージも使われています。Debian にとって最大の競争相手は Red Hat Linux ディストリビューションとその派生物が使う RPM フォーマットです。Red Hat は非常に人気のある商用ディストリビューションです。そのため一般に、サードパーティが提供するソフトウェアは Debian パッケージではなく RPM パッケージで用意されます。</para>
+
+    <para>Debian パッケージが提供されなかったとしても、Debian には RPM パッケージを取り扱うプログラム <command>rpm</command> がパッケージとして用意されており、Debian では RPM パッケージフォーマットを取り扱うことができます。しかしながら、パッケージから情報を引き出したり、整合性を検証するための操作は制限されていることに注意してください。実のところ、RPM を Debian システムにインストールするために <command>rpm</command> を使うのは合理的ではありません。さらに RPM はネイティブソフトウェア (<command>dpkg</command> など) とは異なる自分自身のデータベースを使います。このため、2 つのパッケージングシステムを安定に共存させることを保証するのは不可能です。</para>
+
+    <para>他方で、<emphasis role="pkg">alien</emphasis> ユーティリティを使えば以下に示す通り RPM パッケージを Debian パッケージに変換したりその逆を行うことが可能です。</para>
+
+    <sidebar>
+      <title><emphasis>COMMUNITY</emphasis> <filename>.deb</filename> の採用を働きかける</title>
+
+      <para>If you regularly use the <command>alien</command> program to
+      install RPM packages coming from one of your providers, do not
+      hesitate to write to them and amicably express your strong preference
+      for the <filename>.deb</filename> format. Note that the format of the
+      package is not everything: a <filename>.deb</filename> package built
+      with <command>alien</command> or prepared for a version of Debian
+      different than that which you use, or even for a derivative distribution
+      like Ubuntu, would probably not offer the same level of quality and
+      integration as a package specifically developed for Debian <emphasis role="distribution">Stretch</emphasis>.</para>
+    </sidebar>
+
+    <screen>
+<computeroutput>$ </computeroutput><userinput>fakeroot alien --to-deb phpMyAdmin-4.7.5-2.fc28.noarch.rpm</userinput>
+<computeroutput>phpmyadmin_4.7.5-3_all.deb generated
+$ </computeroutput><userinput>ls -s phpmyadmin_4.7.5-3_all.deb</userinput>
+<computeroutput>  4356 phpmyadmin_4.7.5-3_all.deb</computeroutput>
+</screen>
+
+    <para>見ての通り <command>alien</command> を使った変換作業は極めて単純です。しかしながら、生成されたパッケージには依存関係の情報が含まれないことを知らなければいけません。なぜなら、2 つのパッケージフォーマットの依存関係の間に系統的な対応関係がないからです。管理者は変換されたパッケージが正しく動くことを手作業で保証しなければいけません。そのため、生成された Debian パッケージを使うのは可能な限り避けるべきです。幸いなことに、Debian が用意しているソフトウェアパッケージの数はすべてのディストリビューションの中で最も多く、依存関係の解決に苦労することはないでしょう。</para>
+
+    <para><command>alien</command> コマンドの man ページを見ると、<command>alien</command> が他のパッケージフォーマット、特に (単純な <filename>tar.gz</filename> アーカイブで作られている) Slackware ディストリビューションで使われているフォーマット、を取り扱うことも可能なことに気が付くでしょう。</para>
+
+    <para><command>dpkg</command> ツールを使って配備されたソフトウェアの安定性は Debian の名声に寄与しています。次の章で説明する APT ツール集はこの長所を引き継いで、さらに、管理者が不可欠だが難しい作業であるパッケージの状態管理をしなくても済むようにしました。</para>
+  </section>
+</chapter>
