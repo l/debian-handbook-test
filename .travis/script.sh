@@ -120,9 +120,9 @@ configure_git () {
 
 configure_git_repository () {
 	readonly _GIT_REMOTE_ORIGIN_NAME='origin';
-	readonly _GIT_REMOTE_ORIGIN_FETCH='git://anonscm.debian.org/debian-handbook/debian-handbook.git';
+	readonly _GIT_REMOTE_ORIGIN_FETCH='https://salsa.debian.org/hertzog/debian-handbook.git';
 	readonly _GIT_REMOTE_ORIGIN_PUSH="${_GIT_REMOTE_ORIGIN_FETCH}";
-	readonly _GIT_REMOTE_ORIGIN_BRANCH='jessie/master';
+	readonly _GIT_REMOTE_ORIGIN_BRANCH='stretch/master';
 	readonly _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
 
 	readonly _GIT_REMOTE_WEBLATE_NAME='weblate';
@@ -130,7 +130,7 @@ configure_git_repository () {
 	readonly _GIT_REMOTE_WEBLATE_PUSH="${_GIT_REMOTE_WEBLATE_FETCH}";
 	readonly _GIT_REMOTE_WEBLATE_BRANCH='jessie/master';
 	readonly _GIT_LOCAL_WEBLATE_BRANCH="${_GIT_REMOTE_WEBLATE_BRANCH}/translation/${_GIT_REMOTE_WEBLATE_NAME}";
-	readonly _GIT_LOCAL_BUILD_BRANCH="jessie/master/build";
+	readonly _GIT_LOCAL_BUILD_BRANCH="stretch/master/build";
 
 	readonly _GIT_REMOTE_TWEEK_NAME='tweek';
 	readonly _GIT_REMOTE_TWEEK_FETCH='https://github.com/l/debian-handbook.git';
@@ -143,7 +143,7 @@ configure_git_repository () {
 	readonly _GIT_REMOTE_GITHUB_FETCH='https://github.com/l/debian-handbook-test.git';
 	readonly _GIT_REMOTE_GITHUB_PUSH='git@github.com:l/debian-handbook-test.git';
 	readonly _GIT_REMOTE_GITHUB_BRANCH='gh-pages';
-	readonly _GIT_LOCAL_GITHUB_BRANCH="jessie/master/${_GIT_REMOTE_GITHUB_BRANCH}";
+	readonly _GIT_LOCAL_GITHUB_BRANCH="stretch/master/${_GIT_REMOTE_GITHUB_BRANCH}";
 
 	return 0;
 }
@@ -544,7 +544,7 @@ build_html_lang () {
 	local _EXIT_STATUS=0;
 	if ! sh \
 		-eu \
-		./build/build-html \
+		./bin/build-html \
 		--opts='--quiet' \
 		--lang="${_LANG}" \
 		1> "${_LOG_STDOUT}" \
