@@ -4,7 +4,7 @@
     xmlns="http://www.w3.org/1999/xhtml"><head><meta
         http-equiv="Content-Type"
         content="text/html; charset=UTF-8" /><title
-        xmlns:d="http://docbook.org/ns/docbook">9.11. ホットプラグ機能、hotplug</title><link
+        xmlns:d="http://docbook.org/ns/docbook">9.11. Hot Plugging: hotplug</title><link
         rel="stylesheet"
         type="text/css"
         href="Common_Content/css/default.css" /><link
@@ -19,19 +19,19 @@
         name="package"
         content="Debian-debian-handbook-9-ja-JP-1.0-1" /><meta
         name="keywords"
-        content="システム起動, 初期化スクリプト, SSH, Telnet, 権限, パーミッション, 管理, inetd, cron, バックアップ, ホットプラグ, PCMCIA, APM, ACPI" /><link
+        content="System boot, Initscripts, SSH, Telnet, Rights, Permissions, Supervision, Inetd, Cron, Backup, Hotplug, PCMCIA, APM, ACPI" /><link
         rel="home"
         href="index.html"
         title="Debian 管理者ハンドブック" /><link
         rel="up"
         href="unix-services.html"
-        title="第 9 章 Unix サービス" /><link
+        title="第 9 章 Unix Services" /><link
         rel="prev"
         href="sect.backup.html"
-        title="9.10. バックアップ" /><link
+        title="9.10. Backup" /><link
         rel="next"
         href="sect.power-management.html"
-        title="9.12. 電源管理、Advanced Configuration and Power Interface (ACPI)" /><meta
+        title="9.12. Power Management: Advanced Configuration and Power Interface (ACPI)" /><meta
         xmlns=""
         name="flattr:id"
         content="4pz9jq" /><link
@@ -62,23 +62,22 @@
           class="titlepage"><div><div><h2
                 class="title"><a
                   xmlns=""
-                  id="sect.hotplug"></a>9.11. ホットプラグ機能、<span
+                  id="sect.hotplug"></a>9.11. Hot Plugging: <span
                   class="emphasis"><em>hotplug</em></span></h2></div></div></div><div
           class="section"><div
             class="titlepage"><div><div><h3
                   class="title"><a
                     xmlns=""
-                    id="id-1.12.14.2"></a>9.11.1. 前書き</h3></div></div></div><div
+                    id="id-1.12.14.2"></a>9.11.1. Introduction</h3></div></div></div><div
             class="para">
-				<span
-              class="emphasis"><em>hotplug</em></span> カーネルサブシステムはデバイスの追加と削除を、<code
-              class="command">udevd</code> の助けを借りて適切なドライバを読み込んだり関連するデバイスファイルを作成することで、動的に取り扱います。現代的なハードウェアと仮想化を使えば、ほとんどすべてのデバイスはホットプラグ対応と言ってよいでしょう。具体的に言えば、USB/PCMCIA/IEEE 1394 周辺機器から SATA ハードドライブ、さらには CPU やメモリにいたるまでのほとんどすべてがホットプラグに対応しています。
+				The <span
+              class="emphasis"><em>hotplug</em></span> kernel subsystem dynamically handles the addition and removal of devices, by loading the appropriate drivers and by creating the corresponding device files (with the help of <code
+              class="command">udevd</code>). With modern hardware and virtualization, almost everything can be hotplugged: from the usual USB/PCMCIA/IEEE 1394 peripherals to SATA hard drives, but also the CPU and the memory.
 			</div><div
             class="para">
-				カーネルは必要なドライバとデバイス ID を関連付けるデータベースを持っています。このデータベースは起動中にさまざまなバスで検出された周辺機器用のすべてのドライバを読み込んだりする際、追加的なホットプラグデバイスが接続された際に使われます。デバイスの使用準備が整ったら、メッセージが <code
-              class="command">udevd</code> に送信され、<code
-              class="command">udevd</code> は対応するエントリを <code
-              class="filename">/dev/</code> 内に作成します。
+				The kernel has a database that associates each device ID with the required driver. This database is used during boot to load all the drivers for the peripheral devices detected on the different buses, but also when an additional hotplug device is connected. Once the device is ready for use, a message is sent to <code
+              class="command">udevd</code> so it will be able to create the corresponding entry in <code
+              class="filename">/dev/</code>.
 			</div><a
             id="id-1.12.14.2.4"
             class="indexterm"></a><a
@@ -96,19 +95,19 @@
             class="titlepage"><div><div><h3
                   class="title"><a
                     xmlns=""
-                    id="id-1.12.14.3"></a>9.11.2. 命名問題</h3></div></div></div><div
+                    id="id-1.12.14.3"></a>9.11.2. The Naming Problem</h3></div></div></div><div
             class="para">
-				ホットプラグ接続の出現前、デバイスに固定された名前を割り当てることは簡単でした。名前は単純にデバイスが接続されたバスの位置を基にしていました。しかしこのやり方はデバイスが接続されるバスの位置が決まっていない場合に問題となります。典型的な例は、コンピュータがディスクドライブとして認識するデジタルカメラや USB メモリを使う場合です。最初に接続されたデバイスは <code
-              class="filename">/dev/sdb</code>、2 番目に接続されたデバイスは <code
-              class="filename">/dev/sdc</code> と名付けられるかもしれません (<code
-              class="filename">/dev/sda</code> はコンピュータのハードドライブを表します)。デバイスに対するデバイス名は固定されませんし、デバイス名はデバイスが接続された順番に依存します。
+				Before the appearance of hotplug connections, it was easy to assign a fixed name to a device. It was based simply on the position of the devices on their respective bus. But this is not possible when such devices can come and go on the bus. The typical case is the use of a digital camera and a USB key, both of which appear to the computer as disk drives. The first one connected may be <code
+              class="filename">/dev/sdb</code> and the second <code
+              class="filename">/dev/sdc</code> (with <code
+              class="filename">/dev/sda</code> representing the computer's own hard drive). The device name is not fixed; it depends on the order in which devices are connected.
 			</div><div
             class="para">
-				さらに、デバイスのメジャー/マイナー番号に動的な値を使うドライバが増えています。動的なメジャー/マイナー番号を使うことで、あるデバイスに対する静的なエントリを持つことが不可能になります。なぜなら、これらのエントリは再起動の後に変化するかもしれないからです。
+				Additionally, more and more drivers use dynamic values for devices' major/minor numbers, which makes it impossible to have static entries for the given devices, since these essential characteristics may vary after a reboot.
 			</div><div
             class="para">
 				<span
-              class="emphasis"><em>udev</em></span> はまさにこの問題を解決するために作られました。
+              class="emphasis"><em>udev</em></span> was created precisely to solve this problem.
 			</div></div><div
           class="section"><div
             class="titlepage"><div><div><h3
@@ -117,194 +116,192 @@
                     id="id-1.12.14.4"></a>9.11.3. <span
                     class="emphasis"><em>udev</em></span> の動作原理</h3></div></div></div><div
             class="para">
-				<span
-              class="emphasis"><em>udev</em></span> は新しいデバイスの出現についてカーネルから通知を受けると、<code
-              class="filename">/sys/</code> 内の対応するエントリを調べて、与えられたデバイスに関するさまざまな情報 (特にデバイスを一意に識別する情報 (ネットワークカードの MAC アドレス、USB デバイスのシリアル番号など)) を収集します。
+				When <span
+              class="emphasis"><em>udev</em></span> is notified by the kernel of the appearance of a new device, it collects various information on the given device by consulting the corresponding entries in <code
+              class="filename">/sys/</code>, especially those that uniquely identify it (MAC address for a network card, serial number for some USB devices, etc.).
 			</div><div
             class="para">
-				この情報を武器にして、<span
-              class="emphasis"><em>udev</em></span> は <code
-              class="filename">/etc/udev/rules.d/</code> と <code
-              class="filename">/lib/udev/rules.d/</code> に含まれるすべてのルールを調査します。この過程で <span
-              class="emphasis"><em>udev</em></span> はデバイスに割り当てる名前、作成するシンボリックリンクの名前 (シンボリックリンクはデバイスに別名を与えるために作成されます)、実行するコマンドを決定します。上記ディレクトリに含まれるすべてのファイルが調査され、すべてのルールが順番に評価されます (「GOTO」指示文を使う場合を除きます)。そのため、与えられたイベントに対応する複数のルールがあるかもしれません。
+				Armed with all of this information, <span
+              class="emphasis"><em>udev</em></span> then consults all of the rules contained in <code
+              class="filename">/etc/udev/rules.d/</code> and <code
+              class="filename">/lib/udev/rules.d/</code>. In this process it decides how to name the device, what symbolic links to create (to give it alternative names), and what commands to execute. All of these files are consulted, and the rules are all evaluated sequentially (except when a file uses “GOTO” directives). Thus, there may be several rules that correspond to a given event.
 			</div><div
             class="para">
-				ルールの構文はとても単純です。つまり各行には、選択基準と変数代入命令が含まれます。選択基準は反応を必要とするイベントを選ぶのに使われ、変数代入命令はイベントに対して行う動作を定義します。選択基準と変数代入命令は単純にコンマで区切られており、演算子を使って選択基準 (<code
-              class="literal">==</code> または <code
-              class="literal">!=</code> などの比較演算子を付ける) と変数代入命令 (<code
-              class="literal">=</code>、<code
-              class="literal">+=</code>、<code
-              class="literal">:=</code> などの演算子を付ける) を暗黙のうちに区別します。
+				The syntax of rules files is quite simple: each row contains selection criteria and variable assignments. The former are used to select events for which there is a need to react, and the latter defines the action to take. They are all simply separated with commas, and the operator implicitly differentiates between a selection criterion (with comparison operators, such as <code
+              class="literal">==</code> or <code
+              class="literal">!=</code>) or an assignment directive (with operators such as <code
+              class="literal">=</code>, <code
+              class="literal">+=</code> or <code
+              class="literal">:=</code>).
 			</div><div
             class="para">
-				比較演算子は以下の変数に使われます。
+				Comparison operators are used on the following variables:
 			</div><div
             xmlns:d="http://docbook.org/ns/docbook"
             class="itemizedlist"><ul><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">KERNEL</code>。カーネルがデバイスに割り当てた名前を意味します。
+                    class="literal">KERNEL</code>: the name that the kernel assigns to the device;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">ACTION</code>。イベントに対する動作を意味します (デバイスが追加されたら「add」で、デバイスが取り外されたら「remove」です)。
+                    class="literal">ACTION</code>: the action corresponding to the event (“add” when a device has been added, “remove” when it has been removed);
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">DEVPATH</code>。デバイスの <code
-                    class="filename">/sys/</code> エントリのパスを意味します。
+                    class="literal">DEVPATH</code>: the path of the device's <code
+                    class="filename">/sys/</code> entry;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">SUBSYSTEM</code>。要求を生成したカーネルサブシステムを意味します (たくさんの種類がありますが、「usb」、「ide」、「net」、「firmware」などがその例です)。
+                    class="literal">SUBSYSTEM</code>: the kernel subsystem which generated the request (there are many, but a few examples are “usb”, “ide”, “net”, “firmware”, etc.);
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
                     class="literal">ATTR{<em
-                      class="replaceable">attribute</em>}</code>。デバイスの <code
+                      class="replaceable">attribute</em>}</code>: file contents of the <em
+                    class="replaceable">attribute</em> file in the <code
                     class="filename">/sys/<em
-                      class="replaceable">$devpath</em>/</code> ディレクトリ内の <em
-                    class="replaceable">attribute</em> ファイルの内容を意味します。これで MAC アドレスやその他のバス固有識別子がわかります。
+                      class="replaceable">$devpath</em>/</code> directory of the device. This is where you find the MAC address and other bus specific identifiers;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">KERNELS</code>、<code
-                    class="literal">SUBSYSTEMS</code>、<code
+                    class="literal">KERNELS</code>, <code
+                    class="literal">SUBSYSTEMS</code> and <code
                     class="literal">ATTRS{<em
-                      class="replaceable">attributes</em>}</code>。対象のデバイスの親デバイスの 1 つに対するさまざまなオプションに対して一致を検査します。
+                      class="replaceable">attributes</em>}</code> are variations that will try to match the different options on one of the parent devices of the current device;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">PROGRAM</code>。指定されたプログラムを使ってテストを実行することを意味します (プログラムが 0 を返したら真、それ以外を返したら偽になります)。プログラムの標準出力の内容は保存され、<code
-                    class="literal">RESULT</code> テストによって再利用されます。
+                    class="literal">PROGRAM</code>: delegates the test to the indicated program (true if it returns 0, false if not). The content of the program's standard output is stored so that it can be reused by the <code
+                    class="literal">RESULT</code> test;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">RESULT</code>。<code
-                    class="literal">PROGRAM</code> が最後に呼び出された時に保存された標準出力に対してテストを実行することを意味します。
+                    class="literal">RESULT</code>: execute tests on the standard output stored during the last call to <code
+                    class="literal">PROGRAM</code>.
 					</div></li></ul></div><div
             class="para">
-				演算子の右側引数には、複数の値に同時にマッチするようなパターン式を使うことが可能です。たとえば、<code
-              class="literal">*</code> は任意の文字列に (空文字列にも) マッチします。そして <code
-              class="literal">?</code> は任意の文字にマッチし、<code
-              class="literal">[]</code> は角括弧の間にリストされた文字セットにマッチします (最初の文字が <code
-              class="literal">!</code> の場合は、その否定にマッチします。また、文字の連続範囲は <code
-              class="literal">a-z</code> のように表記します)。
+				The right operands can use pattern expressions to match several values at the same time. For instance, <code
+              class="literal">*</code> matches any string (even an empty one); <code
+              class="literal">?</code> matches any character, and <code
+              class="literal">[]</code> matches the set of characters listed between the square brackets (or the opposite thereof if the first character is an exclamation point, and contiguous ranges of characters are indicated like <code
+              class="literal">a-z</code>).
 			</div><div
             class="para">
-				代入演算子に関して、<code
-              class="literal">=</code> は値を代入します (そして現在の値を入れ替えます)。さらに、リストに代入する場合、リストを空にした後、割り当てた値だけを代入します。<code
-              class="literal">:=</code> は同じことをしますが、後から値を変更できなくなります。<code
-              class="literal">+=</code> はリストにアイテムを追加します。代入演算子を使って変更できる変数は以下です。
+				Regarding the assignment operators, <code
+              class="literal">=</code> assigns a value (and replaces the current value); in the case of a list, it is emptied and contains only the value assigned. <code
+              class="literal">:=</code> does the same, but prevents later changes to the same variable. As for <code
+              class="literal">+=</code>, it adds an item to a list. The following variables can be changed:
 			</div><div
             xmlns:d="http://docbook.org/ns/docbook"
             class="itemizedlist"><ul><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">NAME</code>。<code
-                    class="filename">/dev/</code> 内に作成するデバイスファイル名を意味します。最初に代入された値だけが考慮され、他は無視されます。
+                    class="literal">NAME</code>: the device filename to be created in <code
+                    class="filename">/dev/</code>. Only the first assignment counts; the others are ignored;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">SYMLINK</code>。同じデバイスを指すシンボリックリンクのリストです。
+                    class="literal">SYMLINK</code>: the list of symbolic links that will point to the same device;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">OWNER</code>、<code
-                    class="literal">GROUP</code>、<code
-                    class="literal">MODE</code>。デバイスを所有するユーザとグループおよびパーミッションを定義します。
+                    class="literal">OWNER</code>, <code
+                    class="literal">GROUP</code> and <code
+                    class="literal">MODE</code> define the user and group that owns the device, as well as the associated permission;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">RUN</code>。イベントに応答する際に実行するプログラムのリストを意味します。
+                    class="literal">RUN</code>: the list of programs to execute in response to this event.
 					</div></li></ul></div><div
             class="para">
-				これらの変数に割り当てる値の中で、以下の置換変数を使うことが可能な場合があります。
+				The values assigned to these variables may use a number of substitutions:
 			</div><div
             xmlns:d="http://docbook.org/ns/docbook"
             class="itemizedlist"><ul><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">$kernel</code> または <code
-                    class="literal">%k</code>。<code
-                    class="literal">KERNEL</code> と同じ値です。
+                    class="literal">$kernel</code> or <code
+                    class="literal">%k</code>: equivalent to <code
+                    class="literal">KERNEL</code>;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">$number</code> または <code
-                    class="literal">%n</code>。デバイスの割り当て番号を意味します。たとえば、<code
-                    class="literal">sda3</code> の場合「3」です。
+                    class="literal">$number</code> or <code
+                    class="literal">%n</code>: the order number of the device, for example, for <code
+                    class="literal">sda3</code>, it would be “3”;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">$devpath</code> または <code
-                    class="literal">%p</code>。<code
-                    class="literal">DEVPATH</code> と同じ値です。
+                    class="literal">$devpath</code> or <code
+                    class="literal">%p</code>: equivalent to <code
+                    class="literal">DEVPATH</code>;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
                     class="literal">$attr{<em
-                      class="replaceable">attribute</em>}</code> または <code
+                      class="replaceable">attribute</em>}</code> or <code
                     class="literal">%s{<em
-                      class="replaceable">attribute</em>}</code>。<code
+                      class="replaceable">attribute</em>}</code>: equivalent to <code
                     class="literal">ATTRS{<em
-                      class="replaceable">attribute</em>}</code> と同じ値です。
+                      class="replaceable">attribute</em>}</code>;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">$major</code> または <code
-                    class="literal">%M</code>。デバイスのカーネルメジャー番号を意味します。
+                    class="literal">$major</code> or <code
+                    class="literal">%M</code>: the kernel major number of the device;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">$minor</code> または <code
-                    class="literal">%m</code>。デバイスのカーネルマイナー番号を意味します。
+                    class="literal">$minor</code> or <code
+                    class="literal">%m</code>: the kernel minor number of the device;
 					</div></li><li
                 class="listitem"><div
                   class="para">
 						<code
-                    class="literal">$result</code> または <code
-                    class="literal">%c</code>。<code
-                    class="literal">PROGRAM</code> によって起動された最後のプログラムの出力文字列を意味します。
+                    class="literal">$result</code> or <code
+                    class="literal">%c</code>: the string output by the last program invoked by <code
+                    class="literal">PROGRAM</code>;
 					</div></li><li
                 class="listitem"><div
                   class="para">
-						そして最後に、<code
-                    class="literal">%%</code> と <code
-                    class="literal">$$</code>。それぞれパーセントとドル記号を意味します。
+						and, finally, <code
+                    class="literal">%%</code> and <code
+                    class="literal">$$</code> for the percent and dollar sign, respectively.
 					</div></li></ul></div><div
             class="para">
-				上のリストは完全なものではありません (最も重要なパラメータの抜粋です)。完全なリストは <span
+				The above lists are not complete (they include only the most important parameters), but the <span
               class="citerefentry"><span
-                class="refentrytitle">udev</span>(7)</span> マニュアルページをご覧ください。
+                class="refentrytitle">udev</span>(7)</span> manual page should be exhaustive.
 			</div></div><div
           class="section"><div
             class="titlepage"><div><div><h3
                   class="title"><a
                     xmlns=""
-                    id="id-1.12.14.5"></a>9.11.4. 具体例</h3></div></div></div><div
+                    id="id-1.12.14.5"></a>9.11.4. A concrete example</h3></div></div></div><div
             class="para">
-				単純な USB メモリに固定された名前を割り当てる場合を考えましょう。最初に、一意的な方法で USB メモリを識別するために必要な要素を見つけなければいけません。このために、USB メモリを取り付け、<code
-              class="command">udevadm info -a -n /dev/sdc</code> を実行してください (ここで、<em
-              class="replaceable">/dev/sdc</em> は USB メモリに割り当てられた実際のデバイス名で置き換えてください)。
+				Let us consider the case of a simple USB key and try to assign it a fixed name. First, you must find the elements that will identify it in a unique manner. For this, plug it in and run <code
+              class="command">udevadm info -a -n /dev/sdc</code> (replacing <em
+              class="replaceable">/dev/sdc</em> with the actual name assigned to the key).
 			</div><pre
             class="screen"><code
               class="computeroutput"># </code><strong
@@ -359,32 +356,33 @@
 [...]
 </code></pre><div
             class="para">
-				新しいルールを作るために、デバイスの変数および親デバイスの変数に対するテストを行います。上の例から、以下のような 2 つのルールを作成します。
+				To create a new rule, you can use tests on the device's variables, as well as those of one of the parent devices. The above case allows us to create two rules like these:
 			</div><pre
             class="programlisting">KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
-KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</pre><div
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"
+</pre><div
             class="para">
-				これらのルールをたとえば <code
-              class="filename">/etc/udev/rules.d/010_local.rules</code> という 1 つのファイルに書き込んだら、USB メモリを取り外し、もう一度取り付けてください。この USB キーに関連付けられたディスクを表す <code
-              class="filename">/dev/usb_key/disk</code> と第 1 パーティションを表す <code
-              class="filename">/dev/usb_key/part1</code> が生成されたことと思います。
+				Once these rules are set in a file, named for example <code
+              class="filename">/etc/udev/rules.d/010_local.rules</code>, you can simply remove and reconnect the USB key. You can then see that <code
+              class="filename">/dev/usb_key/disk</code> represents the disk associated with the USB key, and <code
+              class="filename">/dev/usb_key/part1</code> is its first partition.
 			</div><div
             class="sidebar"><div
               class="titlepage"><div><div><p
                     class="title"><strong><span
-                        class="emphasis"><em>GOING FURTHER</em></span> <span
-                        class="emphasis"><em>udev</em></span> 設定のデバッグ</strong></p></div></div></div><div
+                        class="emphasis"><em>GOING FURTHER</em></span> Debugging <span
+                        class="emphasis"><em>udev</em></span>'s configuration</strong></p></div></div></div><div
               class="para">
-				多くのデーモンと同様に、<code
-                class="command">udevd</code> は <code
-                class="filename">/var/log/daemon.log</code> にログを保存します。しかしデフォルトの状態だとログはそれほど詳細でなく、何が起きているかを理解するには不十分な場合が多いです。<code
-                class="command">udevadm control --log-priority=info</code> コマンドを使ってログの詳細度を上げることで、この問題は解決されます。デフォルトの詳細度に戻すには、<code
-                class="command">udevadm control --log-priority=err</code> を使ってください。
+				Like many daemons, <code
+                class="command">udevd</code> stores logs in <code
+                class="filename">/var/log/daemon.log</code>. But it is not very verbose by default, and it is usually not enough to understand what is happening. The <code
+                class="command">udevadm control --log-priority=info</code> command increases the verbosity level and solves this problem. <code
+                class="command">udevadm control --log-priority=err</code> returns to the default verbosity level.
 			</div></div></div></div><ul
         class="docnav"><li
           class="previous"><a
             accesskey="p"
-            href="sect.backup.html"><strong>戻る</strong>9.10. バックアップ</a></li><li
+            href="sect.backup.html"><strong>戻る</strong>9.10. Backup</a></li><li
           class="up"><a
             accesskey="u"
             href="#"><strong>上に戻る</strong></a></li><li
@@ -393,4 +391,4 @@ KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+
             href="index.html"><strong>ホーム</strong></a></li><li
           class="next"><a
             accesskey="n"
-            href="sect.power-management.html"><strong>次へ</strong>9.12. 電源管理、Advanced Configuration and Power Inter...</a></li></ul></body></html>
+            href="sect.power-management.html"><strong>次へ</strong>9.12. Power Management: Advanced Configuration an...</a></li></ul></body></html>
