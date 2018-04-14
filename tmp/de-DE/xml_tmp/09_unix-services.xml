@@ -839,129 +839,66 @@ up. </para></listitem>
     <section id="sect.syslog-config">
       <title>Die Konfigurationsdatei</title>
 
-      <para>The syntax of the <filename>/etc/rsyslog.conf</filename> file
-      is detailed in the
-      <citerefentry><refentrytitle>rsyslog.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry>
-      manual page, but there is also HTML documentation available in the
-      <emphasis role="pkg">rsyslog-doc</emphasis> package
-      (<filename>/usr/share/doc/rsyslog-doc/html/index.html</filename>).
-      The overall principle is to write “selector” and “action”
-      pairs. The selector defines all relevant messages, and the actions
-      describes how to deal with them.</para>
+      <para>Die Syntax der Datei <filename>/etc/rsyslog.conf</filename> ist auf der Handbuchseite <citerefentry><refentrytitle>rsyslog.conf</refentrytitle><manvolnum>5</manvolnum></citerefentry> ausführlich erläutert, im Paket <emphasis role="pkg">rsyslog-doc</emphasis> findet sich aber auch eine HTML-Dokumentation (<filename>/usr/share/doc/rsyslog-doc/html/index.html</filename>). Das Grundprinzip besteht darin, Paare von „selector“ und „action“ zu verfassen. Der Selektor bestimmt alle relevanten Meldungen, und die Aktionen beschreiben, wie mit ihnen umzugehen ist.</para>
       <section id="sect.syslog-selector-syntax">
-        <title>Syntax of the Selector</title>
+        <title>Syntax des Selektors</title>
 
-	<para>The selector is a semicolon-separated list of
-	<literal><replaceable>subsystem</replaceable>.<replaceable>priority</replaceable></literal>
-	pairs (example: <literal>auth.notice;mail.info</literal>). An
-	asterisk may represent all subsystems or all priorities (examples:
-	<literal>*.alert</literal> or <literal>mail.*</literal>). Several
-	subsystems can be grouped, by separating them with a comma
-	(example: <literal>auth,mail.info</literal>). The priority
-	indicated also covers messages of equal or higher priority; thus
-	<literal>auth.alert</literal> indicates the <literal>auth</literal>
-	subsystem messages of <literal>alert</literal> or
-	<literal>emerg</literal> priority. Prefixed with an exclamation
-	point (!), it indicates the opposite, in other words the strictly
-	lower priorities; <literal>auth.!notice</literal>, thus, indicates
-	messages issued from <literal>auth</literal>, with
-	<literal>info</literal> or <literal>debug</literal> priority.
-	Prefixed with an equal sign (=), it corresponds to precisely and
-	only the priority indicated (<literal>auth.=notice</literal> only
-	concerns messages from <literal>auth</literal> with
-	<literal>notice</literal> priority).</para>
+	<para>Der Selektor ist eine durch Semikolon getrennte Liste von <literal><replaceable>subsystem</replaceable>.<replaceable>priorität</replaceable></literal>-Paaren (Beispiel: <literal>auth.notice;mail.info</literal>). Ein Stern kann für alle Subsysteme oder alle Prioritäten stehen (Beispiele: <literal>*.alert</literal> oder <literal>mail.*</literal>). Mehrere Subsysteme können in einer Gruppe zusammengefasst werden, indem sie durch ein Komma getrennt werden (Beispiel: <literal>auth,mail.info</literal>). Die angezeigte Priorität bezieht sich auch auf Meldungen gleicher oder höherer Priorität; so bezeichnet <literal>auth.alert</literal> Meldungen des <literal>auth</literal>-Subsystems mit der Priorität <literal>alert</literal> oder <literal>emerg</literal>. Mit einem vorangestellten Ausrufezeichen (!) bezeichnen sie das Gegenteil, mit anderen Worten nur die niedrigeren Prioritäten; so bezeichnet <literal>auth.!notice</literal> Meldungen, die von <literal>auth</literal> mit den Prioritäten <literal>info</literal> oder <literal>debug</literal> verschickt worden sind. Mit einem vorangestellten Gleichheitszeichen (=) beziehen sie sich genau und ausschließlich auf die angegebene Priorität (bei <literal>auth.=notice</literal> handelt es sich ausschließlich um Meldungen von <literal>auth</literal> mit der Priorität <literal>notice</literal>).</para>
 
-	<para>Each element in the list on the selector overrides previous
-	elements. It is thus possible to restrict a set or to exclude
-	certain elements from it. For example,
-	<literal>kern.info;kern.!err</literal> means messages from the
-	kernel with priority between <literal>info</literal> and
-	<literal>warn</literal>. The <literal>none</literal> priority
-	indicates the empty set (no priorities), and may serve to exclude a
-	subsystem from a set of messages. Thus,
-	<literal>*.crit;kern.none</literal> indicates all the messages of
-	priority equal to or higher than <literal>crit</literal> not coming
-	from the kernel.</para>
+	<para>Jedes Element in der Auswahlliste setzt vorhergehende Elemente außer Kraft. Es ist somit möglich, die Menge einzugrenzen oder bestimmte Elemente von ihr auszuschließen. Zum Beispiel bezeichnet <literal>kern.info;kern.!err</literal> Meldungen vom Kernel mit einer Priorität zwischen <literal>info</literal> und <literal>warn</literal>. Die Priorität <literal>none</literal> bezeichnet die leere Menge (keine Prioritäten) und kann dazu dienen, ein Subsystem von einer Menge von Meldungen auszuschließen. So bezeichnet <literal>*.crit;kern.none</literal> alle Meldungen mit der Priorität <literal>crit</literal> oder höher, die nicht vom Kernel kommen.</para>
       </section>
       <section id="sect.syslog-action-syntax">
-        <title>Syntax of Actions</title>
+        <title>Syntax der Aktionen</title>
 
         <sidebar>
-          <title><emphasis>BACK TO BASICS</emphasis> The named pipe, a persistent pipe</title>
-          <indexterm><primary>named pipe</primary></indexterm>
-          <indexterm><primary>pipe, named pipe</primary></indexterm>
+          <title><emphasis>ZURÜCK ZU DEN GRUNDLAGEN</emphasis> Die benannte Pipe, eine beständige Pipe</title>
+          <indexterm><primary>benannte Pipe</primary></indexterm>
+          <indexterm><primary>Pipe, benannte Pipe</primary></indexterm>
 
-	  <para>A named pipe is a particular type of file that operates
-	  like a traditional pipe (the pipe that you make with the “|”
-	  symbol on the command line), but via a file. This mechanism has
-	  the advantage of being able to relate two unrelated processes.
-	  Anything written to a named pipe blocks the process that writes
-	  until another process attempts to read the data written. This
-	  second process reads the data written by the first, which can
-	  then resume execution.</para>
+	  <para>Eine benannte Pipe ist eine besondere Dateiart, die wie eine gewöhnliche Pipe funktioniert (die Pipe, die man mit dem Symbol „|“ auf der Befehlszeile erstellt), aber mittels einer Datei. Dieses Vorgehen hat den Vorteil, dass sich so zwei unzusammenhängende Prozesse verknüpfen lassen. Alles, was in eine benannte Pipe geschrieben wird, hält den schreibenden Prozess an, bis ein anderer Prozess die geschriebenen Daten zu lesen versucht. Dieser zweite Prozess liest die Daten, die vom ersten geschrieben wurden, der daraufhin seinen Ablauf wieder aufnehmen kann.</para>
 
-	  <para>Such a file is created with the <command>mkfifo</command>
-	  command.</para>
+	  <para>Eine derartige Datei wird durch den Befehl <command>mkfifo</command> erstellt.</para>
         </sidebar>
 
-	<para>The various possible actions are:</para>
+	<para>Die verschiedenen möglichen Aktionen sind:</para>
         <itemizedlist>
           <listitem>
-	    <para>add the message to a file (example:
-	    <filename>/var/log/messages</filename>);</para>
+	    <para>die Meldung zu einer Datei hinzufügen (Beispiel: <filename>/var/log/messages</filename>);</para>
           </listitem>
           <listitem>
-	    <para>send the message to a remote <command>syslog</command>
-	    server (example: <literal>@log.falcot.com</literal>);</para>
+	    <para>die Meldung an einen entfernten <command>syslog</command>-Server schicken (Beispiel: <literal>@log.falcot.com</literal>);</para>
           </listitem>
           <listitem>
-	    <para>send the message to an existing named pipe (example:
-	    <literal>|/dev/xconsole</literal>);</para>
+	    <para>die Meldung an eine bestehende benannte Pipe schicken (Beispiel: <literal>|/dev/xconsole</literal>);</para>
           </listitem>
           <listitem>
-	    <para>send the message to one or more users, if they are logged
-	    in (example: <literal>root,rhertzog</literal>);</para>
+	    <para>die Meldung an einen oder mehrere Benutzer schicken, falls sie angemeldet sind (Beispiel: <literal>root,rhertzog</literal>);</para>
           </listitem>
           <listitem>
-	    <para>send the message to all logged in users (example:
-	    <literal>*</literal>);</para>
+	    <para>die Meldung an alle angemeldeten Benutzer schicken (Beispiel: <literal>*</literal>);</para>
           </listitem>
           <listitem>
-	    <para>write the message in a text console (example:
-	    <literal>/dev/tty8</literal>).</para>
+	    <para>die Nachricht in eine Textkonsole schreiben (Beispiel: <literal>/dev/tty8</literal>).</para>
           </listitem>
         </itemizedlist>
 
         <sidebar>
-          <title><emphasis>SECURITY</emphasis> Forwarding logs</title>
-          <indexterm><primary>log</primary><secondary>forwarding</secondary></indexterm>
+          <title><emphasis>SICHERHEIT</emphasis> Protokolle weiterleiten</title>
+          <indexterm><primary>Protokoll</primary><secondary>weiterleiten</secondary></indexterm>
 
-	  <para>It is a good idea to record the most important logs on a
-	  separate machine (perhaps dedicated for this purpose), since this
-	  will prevent any possible intruder from removing traces of their
-	  intrusion (unless, of course, they also compromise this other
-	  server). Furthermore, in the event of a major problem (such as a
-	  kernel crash), you have the logs available on another machine,
-	  which increases your chances of determining the sequence of
-	  events that caused the crash.</para>
+	  <para>Es empfiehlt sich, die wichtigsten Protokolle auf einem getrennten Rechner aufzuzeichnen (vielleicht auf einem, der speziell diesem Zweck dient), da dies einen möglichen Eindringling daran hindert, Spuren seines Eindringens zu verwischen (es sei denn natürlich, dass er auch diesen anderen Server kompromittiert). Außerdem sind im Falle eines wesentlichen Problems (wie einem Kernel-Crash) die Protokolle auf einem anderen Rechner verfügbar, was die Chancen erhöht, den Ablauf der Ereignisse, die den Crash verursacht haben, zu bestimmen.</para>
 
-	  <para>To accept log messages sent by other machines, you must
-	  reconfigure <emphasis>rsyslog</emphasis>: in practice, it is
-	  sufficient to activate the ready-for-use entries in
-	  <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad
-	  imudp</literal> and <literal>$UDPServerRun 514</literal>).</para>
+	  <para>Für den Empfang von Protokollmeldungen, die von anderen Rechnern geschickt werden, müssen Sie die Konfiguration von <emphasis>rsyslog</emphasis> ändern: im Prinzip reicht es aus, die gebrauchsfertigen Einträge in <filename>/etc/rsyslog.conf</filename> (<literal>$ModLoad imudp</literal> und <literal>$UDPServerRun 514</literal>) zu aktivieren.</para>
         </sidebar>
       </section>
     </section>
   </section>
   <section id="sect.inetd">
-    <title>The <command>inetd</command> Super-Server</title>
+    <title>Der Superserver <command>inetd</command></title>
 
-    <para>Inetd (often called “Internet super-server”) is a server of
-    servers. It executes rarely used servers on demand, so that they do not
-    have to run continuously.</para>
+    <para>Inetd (häufig „Internet-Superserver“ genannt) ist ein Server der Server. Er führt selten genutzte Server nach Bedarf aus, so dass sie nicht ständig laufen müssen.</para>
     <indexterm><primary><command>inetd</command></primary></indexterm>
-    <indexterm><primary>super-server</primary></indexterm>
+    <indexterm><primary>Superserver</primary></indexterm>
 
     <para>The <filename>/etc/inetd.conf</filename> file lists these servers
     and their usual ports. The <command>inetd</command> command listens to
