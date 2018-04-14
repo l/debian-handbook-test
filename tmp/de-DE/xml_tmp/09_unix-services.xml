@@ -900,120 +900,66 @@ up. </para></listitem>
     <indexterm><primary><command>inetd</command></primary></indexterm>
     <indexterm><primary>Superserver</primary></indexterm>
 
-    <para>The <filename>/etc/inetd.conf</filename> file lists these servers
-    and their usual ports. The <command>inetd</command> command listens to
-    all of them; when it detects a connection to any such port, it executes
-    the corresponding server program.</para>
+    <para>Die Datei <filename>/etc/inetd.conf</filename> listet diese Server und ihre üblichen Ports auf. Der Befehl <command>inetd</command> wartet an allen diesen Ports auf Anfragen; wenn er eine Verbindung zu einem dieser Ports entdeckt, führt er das entsprechende Serverprogramm aus.</para>
 
     <sidebar>
-      <title><emphasis>DEBIAN POLICY</emphasis> Register a server in <filename>inetd.conf</filename></title>
+      <title><emphasis>DEBIAN-RICHTLINIEN</emphasis> Einen Server in <filename>inetd.conf</filename> registrieren</title>
 
-      <para>Packages frequently want to register a new server in the
-      <filename>/etc/inetd.conf</filename> file, but Debian Policy
-      prohibits any package from modifying a configuration file that it
-      doesn't own. This is why the <command>update-inetd</command> script
-      (in the package with the same name) was created: It manages the
-      configuration file, and other packages can thus use it to register a
-      new server to the super-server's configuration.</para>
+      <para>Häufig möchten Pakete einen neuen Server in der Datei <filename>/etc/inetd.conf</filename> registrieren, aber die Debian-Richtlinien verbieten es einem Paket, eine Konfigurationsdatei zu verändern, die ihm nicht gehört. Deshalb wurde das <command>update-inetd</command>-Skript (in dem gleichnamigen Paket) geschaffen: es verwaltet die Konfigurationsdatei, und andere Pakete können es daher benutzen, um einen neuen Server bei der Konfiguration des Superservers zu registrieren.</para>
     </sidebar>
 
-    <para>Each significant line of the <filename>/etc/inetd.conf</filename>
-    file describes a server through seven fields (separated by
-    spaces):</para>
+    <para>Jede bedeutende Zeile der Datei <filename>/etc/inetd.conf</filename> beschreibt einen Server in sieben Feldern (getrennt durch Leerzeichen):</para>
     <itemizedlist>
       <listitem>
-	<para>The TCP or UDP port number, or the service name (which is
-	mapped to a standard port number with the information contained in
-	the <filename>/etc/services</filename> file).</para>
+	<para>Die TCP- oder UDP-Portnummer oder der Dienstname (der einer Standardportnummer mit der Information, die in der Datei <filename>/etc/services</filename> enthalten ist, zugeordnet ist).</para>
       </listitem>
       <listitem>
-	<para>The socket type: <literal>stream</literal> for a TCP
-	connection, <literal>dgram</literal> for UDP datagrams.</para>
+	<para>Der Socket-Typ: <literal>stream</literal> für eine TCP-Verbindung, <literal>dgram</literal> für UDP-Datagramme.</para>
       </listitem>
       <listitem>
-	<para>The protocol: <literal>tcp</literal> or
-	<literal>udp</literal>.</para>
+	<para>Das Protokoll: <literal>tcp</literal> oder <literal>udp</literal>.</para>
       </listitem>
       <listitem>
-	<para>The options: two possible values: <literal>wait</literal> or
-	<literal>nowait</literal>, to tell <command>inetd</command> whether
-	it should wait or not for the end of the launched process before
-	accepting another connection. For TCP connections, easily
-	multiplexable, you can usually use <literal>nowait</literal>. For
-	programs responding over UDP, you should use
-	<literal>nowait</literal> only if the server is capable of managing
-	several connections in parallel. You can suffix this field with a
-	period, followed by the maximum number of connections authorized
-	per minute (the default limit is 256).</para>
+	<para>Die Optionen: zwei mögliche Werte: <literal>wait</literal> oder <literal>nowait</literal>, um <command>inetd</command> mitzuteilen, ob er auf das Ende des gestarteten Prozesses warten soll, bevor er eine andere Verbindung annimmt oder nicht. Für TCP-Verbindungen, die einen Kanal leicht mehrfach nutzen können, können Sie normalerweise <literal>nowait</literal> verwenden. Für Programme, die über UDP antworten, sollten Sie <literal>nowait</literal> nur dann verwenden, wenn der Server in der Lage ist, mehrere Verbindungen parallel zu verwalten. Sie können an dieses Feld einen Punkt anhängen, gefolgt von der Höchstzahl der Verbindungen, die pro Minute erlaubt ist (der Standardgrenzwert ist 256).</para>
       </listitem>
       <listitem>
-	<para>The user name of the user under whose identity the server
-	will run.</para>
+	<para>Der Benutzername des Benutzers, unter dessen Identität der Server laufen wird.</para>
       </listitem>
       <listitem>
-	<para>The full path to the server program to execute.</para>
+	<para>Der vollständige Pfad zu dem auszuführenden Serverprogramm.</para>
       </listitem>
       <listitem>
-	<para>The arguments: this is a complete list of the program's
-	arguments, including its own name (<literal>argv[0]</literal> in
-	C).</para>
+	<para>Die Argumente: dies ist eine vollständige Liste der Argumente des Programms einschließlich seines eigenen Namens (<literal>argv[0]</literal> in C).</para>
       </listitem>
     </itemizedlist>
 
-    <para>The following example illustrates the most common cases:</para>
+    <para>Das folgende Beispiel illustriert die häufigsten Fälle:</para>
 
     <example id="example.inetd-conf">
-      <title>Excerpt from <filename>/etc/inetd.conf</filename></title>
+      <title>Auszug aus <filename>/etc/inetd.conf</filename></title>
 
       <programlisting>talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
 finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
-ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i
-</programlisting>
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</programlisting>
     </example>
     <indexterm><primary><command>tcpd</command></primary></indexterm>
 
-    <para>The <command>tcpd</command> program is frequently used in the
-    <filename>/etc/inetd.conf</filename> file. It allows limiting incoming
-    connections by applying access control rules, documented in the
-    <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry>
-    manual page, and which are configured in the
-    <filename>/etc/hosts.allow</filename> and
-    <filename>/etc/hosts.deny</filename> files. Once it has been determined
-    that the connection is authorized, <command>tcpd</command> executes the
-    real server (like <command>in.fingerd</command> in our
-    example). It is worth noting that <command>tcpd</command> relies on the
-    name under which it was invoked (that is the first argument,
-    <literal>argv[0]</literal>) to identify the real program
-    to run. So you should not start the arguments list with <literal>tcpd</literal>
-    but with the program that must be wrapped.</para>
+    <para>Das Programm <command>tcpd</command> wird in <filename>/etc/inetd.conf</filename> häufig benutzt. Es ermöglicht ankommende Verbindungen durch die Verwendung von Zugangskontrollregeln einzuschränken, die auf der Handbuchseite <citerefentry><refentrytitle>hosts_access</refentrytitle><manvolnum>5</manvolnum></citerefentry> dokumentiert sind, und die in den Dateien <filename>/etc/hosts.allow</filename> und <filename>/etc/hosts.deny</filename> konfiguriert sind. Sobald feststeht, dass die Verbindung autorisiert ist, führt <command>tcpd</command> den eigentlich zuständigen Server aus (wie <command>/usr/bin/in.fingerd</command> in unserem Beispiel). Es ist erwähnenswert, dass <command>tcpd</command> auf den Namen zurückgreift, mit welchem es aufgerufen wurde (das ist das erste Argument, <literal>argv[0]</literal>), um das tatsächlich auszuführende Programm zu ermitteln. Sie sollten deshalb die Parameterliste nicht mit <literal>tcpd</literal> beginnen, sondern mit dem Programm, zu dem umgeleitet werden soll.</para>
 
     <sidebar>
-      <title><emphasis>COMMUNITY</emphasis> Wietse Venema</title>
+      <title><emphasis>GEMEINSCHAFT</emphasis> Wietse Venema</title>
       <indexterm><primary>Wietse Venema</primary></indexterm>
       <indexterm><primary>Venema, Wietse</primary></indexterm>
 
-      <para>Wietse Venema, whose expertise in security has made him a
-      renowned programmer, is the author of the <command>tcpd</command>
-      program. He is also the main creator of Postfix, the modular e-mail
-      server (SMTP, Simple Mail Transfer Protocol), designed to be safer
-      and more reliable than <command>sendmail</command>, which features a
-      long history of security vulnerabilities.</para>
+      <para>Wietse Venema, dessen Fachkenntnis im Bereich Sicherheit ihn zu einem angesehenen Programmierer gemacht hat, ist der Verfasser des <command>tcpd</command>-Programms. Er ist auch der Haupturheber von Postfix, dem modularen E-Mail-Server (SMTP, Simple Mail Transfer Protocol), der dafür ausgelegt ist, sicherer und verlässlicher zu sein als <command>sendmail</command>, das sich durch eine lange Vorgeschichte von Sicherheitsschwachstellen auszeichnet.</para>
     </sidebar>
 
     <sidebar>
-      <title><emphasis>ALTERNATIVE</emphasis> Other <command>inetd</command> commands</title>
+      <title><emphasis>ALTERNATIVE</emphasis> Weitere <command>inetd</command> Befehle</title>
 
-      <para>While Debian installs <emphasis role="pkg">openbsd-inetd</emphasis> by default, there is no lack of
-      alternatives: we can mention <emphasis role="pkg">inetutils-inetd</emphasis>,
-      <emphasis role="pkg">micro-inetd</emphasis>,
-      <emphasis role="pkg">rlinetd</emphasis> and
-      <emphasis role="pkg">xinetd</emphasis>.</para>
+      <para>Debian installiert zwar standardmäßig <emphasis role="pkg">openbsd-inetd</emphasis>, aber es gibt genügend Alternativen: <emphasis role="pkg">inetutils-inetd</emphasis>, <emphasis role="pkg">micro-inetd</emphasis>, <emphasis role="pkg">rlinetd</emphasis> and <emphasis role="pkg">xinetd</emphasis>, um nur einige zu nennen.</para>
 
-      <para>This last incarnation of a super-server offers very interesting
-      possibilities. Most notably, its configuration can be split into
-      several files (stored, of course, in the
-      <filename>/etc/xinetd.d/</filename> directory), which can make an
-      administrator's life easier.</para>
+      <para>Diese jüngste Verkörperung eines Superservers bietet sehr interessante Möglichkeiten. Dazu gehört vor allem, dass seine Konfiguration in mehrere Dateien aufgeteilt werden kann (die natürlich im Verzeichnis <filename>/etc/xinetd.d/</filename> gespeichert werden), wodurch das Leben eines Administrators erleichtert werden kann.</para>
 
       <para>Last but not least, it is even possible to emulate <command>inetd</command>'s
       behaviour with <command>systemd</command>'s socket-activation
@@ -1021,45 +967,34 @@ ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i
     </sidebar>
   </section>
   <section id="sect.task-scheduling-cron-atd">
-    <title>Scheduling Tasks with <command>cron</command> and <command>atd</command></title>
+    <title>Aufgaben mit <command>cron</command> und <command>atd</command> zeitlich festlegen</title>
     <indexterm><primary><command>cron</command></primary></indexterm>
     <indexterm><primary><command>atd</command></primary></indexterm>
-    <indexterm><primary>scheduled commands</primary></indexterm>
-    <indexterm><primary>command scheduling</primary></indexterm>
+    <indexterm><primary>zeitlich geplante Befehle</primary></indexterm>
+    <indexterm><primary>Befehle zeitlich planen</primary></indexterm>
 
-    <para><command>cron</command> is the daemon responsible for executing
-    scheduled and recurring commands (every day, every week, etc.);
-    <command>atd</command> is that which deals with commands to be executed
-    a single time, but at a specific moment in the future.</para>
+    <para><command>cron</command> ist der für die Ausführung zeitlich geplanter und sich wiederholender Befehle (täglich, wöchentlich usw.) zuständige Daemon; <command>atd</command> erledigt nur einmal auszuführende Befehle, jedoch zu einem bestimmten Zeitpunkt in der Zukunft.</para>
 
-    <para>In a Unix system, many tasks are scheduled for regular
-    execution:</para>
+    <para>In einem Unix-System sind viele Aufgaben für eine regelmäßige Ausführung zeitlich geplant:</para>
     <itemizedlist>
       <listitem>
-	<para>rotating the logs;</para>
+	<para>die Protokolldateien rotieren;</para>
       </listitem>
       <listitem>
-	<para>updating the database for the <command>locate</command>
-	program;</para>
+	<para>die Datenbank für das Programm <command>locate</command> aktualisieren;</para>
       </listitem>
       <listitem>
-	<para>back-ups;</para>
+	<para>Daten sichern;</para>
       </listitem>
       <listitem>
-	<para>maintenance scripts (such as cleaning out temporary
-	files).</para>
+	<para>Wartungsskripten ausführen (wie das Entfernen temporärer Dateien).</para>
       </listitem>
     </itemizedlist>
 
-    <para>By default, all users can schedule the execution of tasks. Each
-    user has thus their own <emphasis>crontab</emphasis> in which they can
-    record scheduled commands. It can be edited by running <command>crontab
-    -e</command> (its content is stored in the
-    <filename>/var/spool/cron/crontabs/<replaceable>user</replaceable></filename>
-    file).</para>
+    <para>Standardmäßig können alle Benutzer die Ausführung von Aufgaben planen. Daher hat jeder Benutzer sein eigenes <emphasis>crontab</emphasis>, in dem er seine geplanten Befehle eintragen kann. Es kann mit dem Aufruf von <command>crontab -e</command> editiert werden (sein Inhalt ist in der Datei <filename>/var/spool/cron/crontabs/<replaceable>benutzer</replaceable></filename> gespeichert).</para>
 
     <sidebar>
-      <title><emphasis>SECURITY</emphasis> Restricting <command>cron</command> or <command>atd</command></title>
+      <title><emphasis>SICHERHEIT</emphasis> <command>cron</command> und <command>atd</command> einschränken</title>
 
       <para>You can restrict access to <command>cron</command> by creating
       an explicit authorization file (whitelist) in
