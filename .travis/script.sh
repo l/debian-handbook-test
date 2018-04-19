@@ -272,6 +272,17 @@ EOT
 	} | tee \
 		"/etc/apt/apt.conf.d/03allow-unauthenticated" \
 	;
+	{
+	cat << 'EOT'
+Explanation: apt-get update was failed.
+Explanation: Remove this entry if update is successfully finished.
+Package: oracle-java9-installer
+Pin: version 9.0.1-1~webupd8~0
+Pin-Priority: 1001
+EOT
+	} | tee \
+		"/etc/apt/preferences.d/01exclude-package-upgrade" \
+	;
 	apt_get_install \
 		debian-keyring \
 		debian-archive-keyring \
@@ -402,9 +413,6 @@ apt_get_install_pre () {
 		--regexp='DPkg::options' \
 		--regexp='APT::Get::' \
 	;
-	apt-cache \
-		policy \
-	;
 	if ! apt-key \
 		list \
 	;
@@ -413,6 +421,9 @@ apt_get_install_pre () {
 	fi
 	apt-get \
 		update \
+	;
+	apt-cache \
+		policy \
 	;
 	apt-get \
 		--assume-yes \
