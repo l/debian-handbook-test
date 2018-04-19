@@ -32,7 +32,7 @@
     graphical applications to display windows on screen. It includes a
     driver that makes efficient use of the video card. The features offered
     to the graphical applications are exported through a standard
-    interface, <emphasis>X11</emphasis> (<emphasis role="distribution">Jessie</emphasis> contains version
+    interface, <emphasis>X11</emphasis> (<emphasis role="distribution">Stretch</emphasis> contains version
     <emphasis>X11R7.7</emphasis>).</para>
 
     <sidebar>
@@ -50,10 +50,14 @@
       evolution slowed down near the end when the software only gained new
       drivers. That situation, along with a very controversial license
       change, led to the X.org fork in 2004. This is now the reference
-      implementation, and Debian <emphasis role="distribution">Jessie</emphasis> uses X.org version 7.7.</para>
+      implementation, and Debian <emphasis role="distribution">Stretch</emphasis> uses X.org version 7.7.</para>
     </sidebar>
 
-    <para>Nåværende versjoner av X.org er i stand til automatisk å oppdage den tilgjengelige maskinvaren: Dette gjelder skjermkortet og skjermen, samt tastatur og mus; i virkeligheten er det så praktisk at pakken ikke lenger selv lager en <filename>/etc/X11/xorg.conf</filename>-oppsettsfil. Dette er gjort mulig av funksjonene som tilbys av Linux-kjernen (spesielt for tastatur og mus), ved at hver driver lister skjermkortene den støtter, og ved å bruke DDC-protokollen til å hente skjermegenskaper.</para>
+    <para>Current versions of X.org are able to autodetect the available
+    hardware: this applies to the video card and the monitor, as well as
+    keyboards and mice; in fact, it is so convenient that the package no
+    longer even creates a <filename>/etc/X11/xorg.conf</filename>
+    configuration file.</para>
     <indexterm><primary>oppløsning</primary></indexterm>
 
     <para>Tastaturoppsettet er for tiden definert i <filename>/etc/default/keyboard</filename>. Denne filen brukes både til å sette opp tekstkonsollen og det grafiske grensesnittet, og det håndteres av <emphasis role="pkg">keyboard-configuration</emphasis>-pakken. Detaljer om å sette opp tastaturet er tilgjengelig i <xref linkend="sect.keyboard-config" />.</para>
@@ -68,10 +72,14 @@
     everywhere, but with limited capabilities (fewer available
     resolutions, no hardware acceleration for games and visual effects
     for the desktop, and so on) while fbdev works on top of the
-    kernel's framebuffer device. The X server writes its messages to
-    the <filename>/var/log/Xorg.0.log</filename> log file, which is
-    where one would look to know what driver is currently in use. For
-    example, the following snippet matches what the
+    kernel's framebuffer device. Nowadays the X server runs without
+    any administrative privileges (this used to be required to be able
+    to configure the screen) and thus its log file is now stored
+    in the user's home directory in <filename>~/.local/share/xorg/Xorg.0.log</filename>
+    (whereas it used to be in <filename>/var/log/Xorg.0.log</filename>
+    for versions older than <emphasis role="distribution">Stretch</emphasis>).
+    That log file is where one would look to know what driver is currently
+    in use. For example, the following snippet matches what the
     <literal>intel</literal> driver outputs when it is loaded:</para>
 
     <programlisting>
@@ -92,13 +100,13 @@
 
       <para>If you still end up with such a card, you will find the
       required packages in the <emphasis>non-free</emphasis> section:
-      <emphasis role="pkg">nvidia-glx</emphasis> for nVidia cards, and
-      <emphasis role="pkg">fglrx-driver</emphasis> for some ATI cards. Both
-      cases require matching kernel modules. Building these modules can be
-      automated by installing the packages <emphasis role="pkg">nvidia-kernel-dkms</emphasis> (for nVidia), or <emphasis role="pkg">fglrx-modules-dkms</emphasis> (for ATI).</para>
+      <emphasis role="pkg">nvidia-driver</emphasis> for nVidia cards.
+      It requires a matching kernel module. Building the module can be
+      automated by installing the package <emphasis role="pkg">nvidia-kernel-dkms</emphasis> (for nVidia).</para>
 
       <para>The “nouveau” project aims to develop a free software
-      driver for nVidia cards. As of <emphasis role="distribution">Jessie</emphasis>, its feature set does not
+        driver for nVidia cards and is the default driver that you get
+        for nVidia cards in Debian. As of <emphasis role="distribution">Stretch</emphasis>, its feature set and performance do not
       match the proprietary driver. In the developers' defense, we should
       mention that the required information can only be gathered by reverse
       engineering, which makes things difficult. The free driver for ATI
@@ -114,10 +122,31 @@
       <title>Valg av skjermstyrer</title>
       <indexterm><primary>styrer</primary><secondary>skjerm</secondary></indexterm>
       <indexterm><primary><command>gdm</command></primary></indexterm>
-      <indexterm><primary><command>kdm</command></primary></indexterm>
+      <indexterm><primary><command>sddm</command></primary></indexterm>
       <indexterm><primary><command>xdm</command></primary></indexterm>
 
-      <para>Det grafiske grensesnittet gir bare skjermplass. Å kjøre X-serveren selvstendig gir bare en tom skjerm, noe som er grunnen til at de fleste installasjoner bruker en <emphasis>skjermstyrer</emphasis> for å vise innloggingsskjerm, og starte det grafiske skrivebordet så snart brukeren logger inn. De tre mest populære skjermstyrerne er for tiden <emphasis role="pkg">gdm3</emphasis> (<foreignphrase>GNOME Display Manager</foreignphrase>), <emphasis role="pkg">kdm</emphasis> (<foreignphrase>KDE Display Manager</foreignphrase>), og <emphasis role="pkg">lightdm</emphasis> (<foreignphrase>Light Display Manager</foreignphrase>). Ettersom Falcot Corp-administratorene har valgt å bruke skrivebordsmiljøet GNOME, plukket de ganske logisk ut <command>gdm3</command> som skjermstyrer. Oppsettsfil <filename>/etc/gdm3/daemon.conf</filename> har mange valgmuligheter (listen kan finnes i skjemafilen <filename>/usr/share/gdm/gdm.schemas</filename>) for å kontrollere virksomheten, mens <filename>/etc/gdm3/greeter.dconf-defaults</filename> har innstillinger for «velkomstsesjonen» (mer enn bare et påloggingsvindu, den er et begrenset skrivebord med strømstyring og tilgjengelighetsverktøy). Vær oppmerksom på at noen av de mest nyttige innstillingene for sluttbrukere kan bli justert med GNOMEs kontrollsenter.</para>
+      <para>The graphical interface only provides display
+      space. Running the X server by itself only leads to an empty
+      screen, which is why most installations use a <emphasis>display
+      manager</emphasis> to display a user authentication screen and
+      start the graphical desktop once the user has authenticated. The
+      three most popular display managers in current use are <emphasis role="pkg">gdm3</emphasis> (<foreignphrase>GNOME Display
+      Manager</foreignphrase>), <emphasis role="pkg">sddm</emphasis>
+      (for KDE) and
+      <emphasis role="pkg">lightdm</emphasis> (<foreignphrase>Light Display
+      Manager</foreignphrase>). Since the Falcot Corp administrators
+      have opted to use the GNOME desktop environment, they logically
+      picked <command>gdm3</command> as a display manager too. The
+      <filename>/etc/gdm3/daemon.conf</filename> configuration file
+      has many options (the list can be found in the
+      <filename>/usr/share/gdm/gdm.schemas</filename> schema file)
+      to control its behaviour while
+      <filename>/etc/gdm3/greeter.dconf-defaults</filename> contains
+      settings for the greeter “session” (more than just a login
+      window, it is a limited desktop with power management and
+      accessibility related tools). Note that some of the most
+      useful settings for end-users can be tweaked with GNOME's
+      control center.</para>
 
     </section>
     <section>
@@ -133,9 +162,9 @@
       but following the recommendations allows an administrator to
       best take advantage of the integration efforts led by each
       project.</para>
-      <indexterm><primary><command>metacity</command></primary></indexterm>
       <indexterm><primary><command>mutter</command></primary></indexterm>
       <indexterm><primary><command>kwin</command></primary></indexterm>
+      <indexterm><primary><command>xfwm</command></primary></indexterm>
 
       <sidebar>
         <title><emphasis>DET GRUNNLEGGENDE</emphasis> Vindushåndterer</title>
@@ -193,9 +222,24 @@
       <indexterm><primary><command>menu</command></primary></indexterm>
       <indexterm><primary><command>update-menus</command></primary></indexterm>
 
-      <para>Moderne skrivebordsmiljøer og mange vindusbehandlere tilbyr menyer som lister de tilgjengelige brukerprogrammene. For å holde menyer oppdatert med de faktisk tilgjengelige programmer gir vanligvis hver pakke en <filename>.desktop</filename>-fil i <filename>/usr/share/applications</filename>. Formatet på disse filene har blitt standardisert av FreeDesktop.org: <ulink type="block" url="http://standards.freedesktop.org/desktop-entry-spec/latest/" /></para>
+      <para>Modern desktop environments and many window managers provide
+      menus listing the available applications for the user. In order to
+      keep menus up-to-date in relation to the actual set of available
+      applications, each package usually provides a <filename>.desktop</filename>
+      file in <filename>/usr/share/applications</filename>. The format
+      of those files has been standardized by FreeDesktop.org:
+      <ulink type="block" url="https://standards.freedesktop.org/desktop-entry-spec/latest/" />
+      </para>
 
-      <para>Administratorer kan ytterligere tilpasse programmenyene gjennom hele systemet av oppsettfiler som «Desktop Meny Specification» beskriver. Sluttbrukere kan også tilpasse menyene med grafiske verktøy som <emphasis role="pkg">kmenuedit</emphasis> (i KDE), <emphasis role="pkg">alacarte</emphasis> (i GNOME) eller <emphasis role="pkg">menulibre</emphasis>. <ulink type="block" url="http://standards.freedesktop.org/menu-spec/latest/" /></para>
+      <para>
+        The applications menus can be further customized by administrators through
+        system-wide configuration files as described by the “Desktop Menu Specification”.
+        End-users can also customize the menus with graphical tools such
+        as <emphasis role="pkg">kmenuedit</emphasis> (in Plasma),
+        <emphasis role="pkg">alacarte</emphasis> (in GNOME) or
+        <emphasis role="pkg">menulibre</emphasis>.
+        <ulink type="block" url="https://standards.freedesktop.org/menu-spec/latest/" />
+      </para>
 
 
       <sidebar>
@@ -208,21 +252,27 @@
   <section id="sect.graphical-desktops">
     <title>Grafiske skrivebord</title>
 
-    <para>Det frie grafiske skrivebordfeltet er dominert av to store programvaresamlinger: GNOME og KDE. Begge er svært populære. Dette er et temmelig sjeldent eksempel i den fri programvareverdenen; for eksempel har Apache nett-tjener svært få av samme type.</para>
+    <para>The free graphical desktop field is dominated by two large
+    software collections: GNOME and Plasma by KDE. Both of them are very popular.
+    This is rather a rare instance in the free software world; the Apache
+    web server, for instance, has very few peers.</para>
     <indexterm><primary>grafisk skrivebord </primary></indexterm>
     <indexterm><primary>GNOME</primary></indexterm>
     <indexterm><primary>KDE</primary></indexterm>
     <indexterm><primary>GTK+</primary></indexterm>
     <indexterm><primary>Qt</primary></indexterm>
 
-    <para>This diversity is rooted in history. KDE was the first graphical
-    desktop project, but it chose the Qt graphical toolkit and that choice
+    <para>This diversity is rooted in history. Plasma (initially only KDE,
+    which is now the name of the community) was the first graphical desktop
+    project, but it chose the Qt graphical toolkit and that choice
     wasn't acceptable for a large number of developers. Qt was not free
     software at the time, and GNOME was started based on the GTK+ toolkit.
     Qt has since become free software, but the projects still evolved in
     parallel.</para>
 
-    <para>GNOME og KDE arbeider fortsatt sammen under FreeDesktop.org-paraplyen. Prosjektene samarbeidet om å definere standarder for interoperabilitet på tvers av applikasjoner.</para>
+    <para>The GNOME and KDE communities still work together: under the FreeDesktop.org
+    umbrella, the projects collaborated in defining standards for
+    interoperability across applications.</para>
     <indexterm><primary>FreeDesktop.org</primary></indexterm>
 
     <para>Å velge «beste» grafiske skrivebord er et følsomt tema som vi foretrekker å styre klar av. Vi vil bare beskrive de mange mulighetene, og gi noen tips for videre tenking. Det beste valget vil være det du gjør etter litt eksperimentering.</para>
@@ -230,7 +280,10 @@
     <section id="sect.gnome-desktop">
       <title>GNOME</title>
 
-      <para>Debian <emphasis role="distribution">Jessie</emphasis> inkluderer GNOME version 3.14, som kan installeres med en enkel <command>apt-get install gnome</command> (Det kan også installeres ved å velge oppgaven «Debian desktop environment»).</para>
+      <para>Debian <emphasis role="distribution">Stretch</emphasis>
+      includes GNOME version 3.22, which can be installed by a simple
+      <command>apt install gnome</command> (it can also be installed by
+      selecting the “Debian desktop environment” task).</para>
       <indexterm><primary><emphasis role="pkg">gnome</emphasis></primary></indexterm>
 
       <para>GNOME is noteworthy for its efforts in usability and
@@ -267,18 +320,20 @@
       <indexterm><primary><command>dconf</command></primary></indexterm>
     </section>
     <section>
-      <title>KDE</title>
+      <title>KDE and Plasma</title>
 
-      <para>Debian <emphasis role="distribution">Jessie</emphasis> inkluderer versjon 4.14 av KDE, som kan bli installert med <command>apt-get install kde-standard</command>.</para>
+      <para>Debian <emphasis role="distribution">Stretch</emphasis>
+      includes version 4.16 of KDE Plasma, which can be installed with
+      <command>apt install kde-standard</command>.</para>
 
-      <para>KDE has had a rapid evolution based on a very hands-on
+      <para>Plasma has had a rapid evolution based on a very hands-on
       approach. Its authors quickly got very good results, which allowed
       them to grow a large user-base. These factors contributed to the
-      overall project quality. KDE is a mature desktop
+      overall project quality. Plasma is a mature desktop
       environment with a wide range of applications.</para>
 
       <figure>
-        <title>KDE-skrivebordet</title>
+        <title>The Plasma desktop</title>
         <mediaobject>
           <imageobject>
             <imagedata fileref="images/kde.png" scalefit="1" width="70%" />
@@ -289,16 +344,20 @@
       <para>Since the Qt 4.0 release, the last remaining license problem
       with KDE has been solved. This version was released under the GPL both
       for Linux and Windows (the Windows version was previously
-      released under a non-free license). Note that KDE applications must
-      be developed using the C++ language.</para>
+      released under a non-free license). KDE applications are primarily
+      developed using the C++ language.</para>
     </section>
     <section>
       <title>Xfce og andre</title>
 
-      <para>Xfce er et enkelt og lett grafisk skrivebord, en perfekt match for datamaskiner med begrensede ressurser. Det kan installeres med <command>apt-get install xfce4</command>. Som GNOME, Xfce er basert på verktøykassen GTK+, og en rekke komponenter er felles for begge skrivebord.</para>
+      <para>Xfce is a simple and lightweight graphical desktop, which is a
+      perfect match for computers with limited resources. It can be
+      installed with <command>apt install xfce4</command>. Like GNOME,
+      Xfce is based on the GTK+ toolkit, and several components are common
+      across both desktops.</para>
       <indexterm><primary>Xfce</primary></indexterm>
 
-      <para>Unlike GNOME and KDE, Xfce does not aim to become a vast
+      <para>Unlike GNOME and Plasma, Xfce does not aim to become a vast
       project. Beyond the basic components of a modern desktop (file
       manager, window manager, session manager, a panel for application
       launchers and so on), it only provides a few specific applications: 
@@ -316,7 +375,7 @@
       </figure>
 
       <para>Another desktop environment provided in
-      <emphasis role="distribution">Jessie</emphasis> is LXDE,
+      <emphasis role="distribution">Stretch</emphasis> is LXDE,
       which focuses on the “lightweight” aspect. It can be installed
       with the <emphasis role="pkg">lxde</emphasis>
       meta-package.</para>
@@ -347,7 +406,8 @@
 
 	<para>Denne informasjonen er til stor hjelp for Debian-prosjektet. Den brukes til å bestemme hvilke pakker som skal være med på de første installasjonsdiskene. Installasjonsdata er også en viktig faktor for å bestemme om en vil fjerne en pakke med svært få brukere fra distribusjonen. Vi anbefaler hjertelig å installere <emphasis role="pkg">popularity-contest</emphasis>-pakken, og delta i kartleggingen.</para>
 
-        <para>De innsamlede data blir offentliggjort hver dag. <ulink type="block" url="http://popcon.debian.org/" /></para>
+        <para>The collected data are made public every day.
+        <ulink type="block" url="https://popcon.debian.org/" /></para>
 
 	<para>These statistics can also help users to choose between two
 	packages that seem otherwise equivalent. Choosing the more popular
@@ -355,7 +415,7 @@
       </sidebar>
 
       <para>Evolution is the GNOME email client and can be installed with
-      <command>apt-get install evolution</command>. Evolution is more than
+      <command>apt install evolution</command>. Evolution is more than
       a simple email client: it also provides a calendar, an address
       book, a task list, and a memo (free-form note) application. Its
       email component includes a powerful message indexing system, and
@@ -383,7 +443,12 @@
       <title>KMail</title>
       <indexterm><primary>KMail</primary></indexterm>
 
-      <para>KDEs e-postprogramvare kan installeres med <command>apt-get install kmail</command>. KMail håndterer bare e-post, men det hører til en programvarepakke som kalles KDE-PIM (for <emphasis>Personal Information Manager</emphasis>) som inneholder funksjoner som adressebøker, en kalenderkomponent, og så videre. KMail har alle funksjonene man kan forvente fra en utmerket e-postklient .</para>
+      <para>The KDE email software can be installed with <command>apt
+      install kmail</command>. KMail only handles email, but it belongs
+      to a software suite called KDE-PIM (for <emphasis>Personal
+      Information Manager</emphasis>) that includes features such as
+      address books, a calendar component, and so on. KMail has all the
+      features one would expect from an excellent email client.</para>
 
       <figure>
 	<title>KMails e-postprogram</title>
@@ -397,24 +462,24 @@
     <section>
       <title>Thunderbird og Icedove</title>
 
-      <para>The <emphasis role="pkg">icedove</emphasis> package provides the
-      Debian version of Thunderbird, the email client from the Mozilla software
-      suite.  For legal reasons detailed in the sidebar
-      <xref linkend="sidebar.firefox-iceweasel" />, Debian <emphasis role="distribution">Jessie</emphasis> contains Icedove, and not
-      Thunderbird, but the only real differences between them are their
-      names and icons.</para>
+      <para>The <emphasis role="pkg">thunderbird</emphasis> package provides
+      the email client from the Mozilla software
+      suite. Until <emphasis role="distribution">Jessie</emphasis> Debian
+      contained Icedove and not Thunderbird for legal reasons detailed in
+      the sidebar <xref linkend="sidebar.firefox-iceweasel" />.  You may find
+      references to Icedove as the switch has been done recently.</para>
 
       <para>
       Various localization sets are available in
-      <emphasis role="pkg">icedove-l10n-*</emphasis> packages; the
+      <emphasis role="pkg">thunderbird-l10n-*</emphasis> packages; the
       <emphasis role="pkg">enigmail</emphasis> extension handles message
       encrypting and signing, but it is not available in all languages.</para>
 
       <figure>
-	<title>Icedoves e-postprogram</title>
+	<title>The Thunderbird email software</title>
 	<mediaobject>
 	  <imageobject>
-	    <imagedata fileref="images/icedove.png" scalefit="1" width="70%" />
+	    <imagedata fileref="images/thunderbird.png" scalefit="1" width="70%" />
 	  </imageobject>
 	</mediaobject>
       </figure>
@@ -432,36 +497,82 @@
     <indexterm><primary>WebKit</primary></indexterm>
     <indexterm><primary>Epiphany</primary></indexterm>
 
-    <para>Konqueror, available in the <emphasis role="pkg">konqueror</emphasis>
-    package, is the KDE file manager, which also functions as a web browser.
-    It uses the KDE-specific KHTML rendering engine; KHTML is an
-    excellent engine, as witnessed by the fact that Apple's WebKit is
-    based on KHTML.
-    <indexterm><primary>Konqueror</primary></indexterm></para>
+    <para>
+      Konqueror, available in the <emphasis role="pkg">konqueror</emphasis> package, is KDE's web browser (but
+      can also assume the role of a file manager). It uses the
+      KDE-specific KHTML rendering engine; KHTML is an excellent engine,
+      as witnessed by the fact that Apple's WebKit is based on KHTML.
+      <indexterm><primary>Konqueror</primary></indexterm>
+    </para>
 
-    <para>Brukere som ikke er fornøyd med noen av de ovennevnte kan bruke Iceweasel. Denne nettleseren, tilgjengelig i <emphasis role="pkg">iceweasel</emphasis>-pakken, bruker Mozilla-prosjektets Gecko gjengivelsesmotor, med et tynt og utvidbart grensesnitt på toppen. <indexterm><primary>Gecko</primary></indexterm> <indexterm><primary>Mozilla</primary><secondary>Firefox</secondary></indexterm> <indexterm><primary>Firefox, Mozilla</primary></indexterm></para>
+    <para>Users not satisfied by either of the above can use Firefox.
+    This browser, available in the <emphasis role="pkg">firefox-esr</emphasis> package, uses the Mozilla project's
+    Gecko renderer, with a thin and extensible interface on top.
+    <indexterm><primary>Gecko</primary></indexterm>
+    <indexterm><primary>Mozilla</primary><secondary>Firefox</secondary></indexterm>
+    <indexterm><primary>Firefox, Mozilla</primary></indexterm></para>
 
     <figure>
-      <title>Iceweasel nettleser</title>
+      <title>The Firefox web browser</title>
       <mediaobject>
 	<imageobject>
-	  <imagedata fileref="images/iceweasel.png" scalefit="1" width="70%" />
+	  <imagedata fileref="images/firefox.png" scalefit="1" width="70%" />
 	</imageobject>
       </mediaobject>
     </figure>
+
+    <sidebar>
+      <title><emphasis>VOCABULARY</emphasis> Firefox ESR</title>
+      <indexterm><primary><emphasis role="pkg">firefox-esr</emphasis></primary></indexterm>
+      <para>
+        Mozilla has a very fast-paced release cycle for Firefox. New
+        releases are published every six to eight weeks and only the
+        latest version is supported for security issues. This doesn't
+        suit all kind of users so, every 10 cycles, they are promoting
+        one of their release to an <emphasis>Extended Support Release</emphasis>
+        (ESR) which will get security updates (and no functional changes)
+        during the next 10 cycles (which covers a bit more than a year).
+      </para>
+      <para>
+        Debian has both versions packaged. The ESR one, in the package
+        <emphasis role="pkg">firefox-esr</emphasis>, is used by default
+        since it is the only version suitable for Debian <emphasis role="distribution">Stable</emphasis> with its long support
+        period (and even there Debian has to upgrade from
+        one ESR release to the next multiple times during a Debian Stable
+        lifecycle). The regular Firefox is available in the
+        <emphasis role="pkg">firefox</emphasis> package but it is only
+        available to users of Debian
+        <emphasis role="distribution">Unstable</emphasis>.
+      </para>
+    </sidebar>
 
     <sidebar id="sidebar.firefox-iceweasel">
       <title><emphasis>KULTUR</emphasis> Iceweasel, Firefox og andre</title>
       <indexterm><primary>Iceweasel</primary></indexterm>
       <indexterm><primary>Icedove</primary></indexterm>
 
-      <para>Mange brukere vil uten tvil bli overrasket over fraværet av Mozilla Firefox i Debians <emphasis role="distribution">Jessie</emphasis>-menyer. Ingen grunn til panikk: <emphasis role="pkg">iceweasel</emphasis>-pakken inneholder Iceweasel, som i utgangspunktet er Firefox under et annet navn.</para>
+      <para>Before Debian <emphasis role="distribution">Stretch</emphasis>,
+	Firefox and Thunderbird were missing. The <emphasis role="pkg">iceweasel</emphasis> package contained Iceweasel,
+	which was basically Firefox under another name.</para>
 
-      <para>Begrunnelsen for dette navneskiftet er bruksreglene pålagt av Mozilla Foundation i <trademark>Firefox</trademark>, det registerte varemerket: all programvare kalt Firefox må bruke den offisielle Firefox-logoen og ikoner. Men siden disse elementene ikke er utgitt under en fri lisens, kan Debian ikke distribuere dem i sin <emphasis>main (hoved)</emphasis>-seksjon. Heller enn å flytte hele nettleseren til <emphasis>non-free (ikke-fri)</emphasis>, har pakkevedlikeholderen valgt å bruke et annet navn.</para>
-
-      <para>Kommandoen <command>firefox</command> eksisterer fremdeles i <emphasis role="pkg">iceweasel</emphasis>-pakken, men bare for kompatibilitet med verktøy som vil prøve å bruke den.</para>
+      <para>The rationale behind this renaming was a result of the usage
+      rules imposed by the Mozilla Foundation on the
+      <trademark>Firefox</trademark> registered trademark: any software
+      named Firefox had to use the official Firefox logo and icons.
+      However, since these elements are not released under a free
+      license, Debian could not distribute them in its
+      <emphasis>main</emphasis> section. Rather than moving the whole
+      browser to <emphasis>non-free</emphasis>, the package maintainer
+      choose to use a different name.</para>
 
       <para>Av samme grunner skiftet e-postklienten <trademark>Thunderbird</trademark> navn til Icedove på en tilsvarende måte.</para>
+
+      <para>
+        Nowadays, the logo and icons are distributed under a free software
+        license and Mozilla recognized that the changes made by the Debian
+        project are respecting their trademark license so Debian is again able
+        to ship Mozilla's applications under their official name.
+      </para>
     </sidebar>
     <indexterm><primary>Mozilla</primary><secondary>Firefox</secondary></indexterm>
     <indexterm><primary>Firefox, Mozilla</primary></indexterm>
@@ -486,23 +597,50 @@
       <indexterm><primary>Netscape</primary></indexterm>
     </sidebar>
 
-    <para>Sist men ikke minst inneholder Debian også <emphasis>Chromium</emphasis>-nettjener (tilgjengelig i <emphasis role="pkg">chromium-browser</emphasis>-pakken). Denne nettleseren er utviklet av Google i så raskt tempo at å opprettholde en enkelt versjon av den over hele levetiden for Debian <emphasis role="distribution">Jessie</emphasis>, er neppe mulig. Dens klare formål er å gjøre nett-tjenester mer attraktive, både ved å optimalisere nettleserens ytelse, og ved å øke brukerens sikkerhet. Gratiskoden som driver Chromium blir også brukt av sin proprietære versjon som heter Google Chrome.</para>
+    <para>Last but not least, Debian also contains the
+    <emphasis>Chromium</emphasis> web browser (available in
+    the <emphasis role="pkg">chromium</emphasis> package). This
+    browser is developed by Google at such a fast pace that maintaining a
+    single version of it across the whole lifespan of Debian <emphasis role="distribution">Stretch</emphasis> is unlikely to be possible.
+    Its clear purpose is to make web services more attractive, both by
+    optimizing the browser for performance and by increasing the user's
+    security. The free code that powers Chromium is also used by its
+    proprietary version called Google Chrome.</para>
   </section>
   <section id="sect.development">
     <title>Utvikling</title>
     <section>
       <title>Verktøy for GTK+ på GNOME</title>
 
-      <para>Anjuta (i <emphasis role="pkg">anjuta</emphasis>-pakken) er et utviklingsmiljø optimalisert for å lage GTK+ applikasjoner for GNOME. Glade (i <emphasis role="pkg">glade</emphasis>-pakken) er et program utviklet for å skape GTK+ grafiske grensesnitt for GNOME, og lagre dem i en XML-fil. Disse XML-filene kan deretter lastes av det <emphasis>libglade</emphasis>-delte biblioteket, som dynamisk kan gjenskape de lagrede grensesnittene. En slik funksjon kan være interessant, for eksempel for programtillegg som krever dialoger.</para>
+      <para>Anjuta (in the <emphasis role="pkg">anjuta</emphasis>
+      package) and GNOME Builder (in the <emphasis role="pkg">gnome-builder</emphasis> package) are
+      Integrated Development Environments (<acronym>IDE</acronym>)
+      optimized for creating GTK+ applications for GNOME.
+      Glade (in the <emphasis role="pkg">glade</emphasis> package) is
+      an application designed to create GTK+ graphical interfaces for
+      GNOME and save them in an XML file. These XML files can then be
+      loaded by the GTK+ shared library though its
+      <literal>GtkBuilder</literal> component to recreate the saved
+      interfaces; such a feature can be interesting, for instance for
+      plugins that require dialogs.
+      <ulink type="block" url="https://wiki.gnome.org/Apps/Builder" />
+      <ulink type="block" url="http://anjuta.org/" />
+      <ulink type="block" url="https://glade.gnome.org/" />
+      </para>
       <indexterm><primary>Anjuta</primary></indexterm>
+      <indexterm><primary>Builder, GNOME Builder</primary></indexterm>
       <indexterm><primary>Glade</primary></indexterm>
-
-      <para>Anjutas formål er å kombinere, på en modulær måte, alle de funksjonene man forventer fra et integrert utviklingsmiljø.</para>
     </section>
     <section>
       <title>Verktøy for Qt i KDE</title>
 
-      <para>Den tilsvarende applikasjonen for KDE er KDevelop (i <emphasis role="pkg">kdevelop</emphasis>-pakken) for utviklingsmiljøet, og Qt Designer (i <emphasis role="pkg">qttools5-dev-tools</emphasis>-pakken) for utforming av grafiske grensesnitt for Qt-applikasjoner på KDE.</para>
+      <para>The equivalent applications for Qt applications are KDevelop by KDE (in the
+      <emphasis role="pkg">kdevelop</emphasis> package) for the
+      development environment, and Qt Designer (in the <emphasis role="pkg">qttools5-dev-tools</emphasis> package) for the design of
+      graphical interfaces for Qt applications.</para>
+
+      <para>KDevelop is also a generic IDE and provides plugins for other
+      languages like Python and PHP and different build systems.</para>
 
       <indexterm><primary>KDevelop</primary></indexterm>
       <indexterm><primary>Qt</primary><secondary>Designer</secondary></indexterm>
@@ -524,11 +662,9 @@
       or incompatibility with other (newer) software in Debian.
       This has been the case with PHPGroupware, eGroupware, and
       Kolab.
-      <ulink type="block" url="http://www.phpgroupware.org/" />
       <ulink type="block" url="http://www.egroupware.org/" />
-      <ulink type="block" url="http://www.kolab.org/" />
+      <ulink type="block" url="https://www.kolab.org/" />
       </para>
-      <indexterm><primary>PHPGroupware</primary></indexterm>
       <indexterm><primary>eGroupware</primary></indexterm>
       <indexterm><primary>Kolab</primary></indexterm>
 
@@ -539,7 +675,7 @@
       software. On the other hand, this usually requires a specific
       server. Citadel (in the <emphasis role="pkg">citadel-suite</emphasis> package) and Sogo (in the
       <emphasis role="pkg">sogo</emphasis> package) are alternatives
-      that are available in Debian <emphasis role="distribution">Jessie</emphasis>.</para>
+      that are available in Debian <emphasis role="distribution">Stretch</emphasis>.</para>
 
     </section>
     <section>
@@ -579,6 +715,13 @@
       <para>Most of these tools can be accessed or even managed through
       a web interface, with a fine-grained permission system, and email
       notifications for some events.</para>
+
+      <para>
+        Unfortunately, FusionForge is not part of Debian <emphasis role="distribution">Stretch</emphasis>. It is a large software
+        stack that is hard to maintain properly and benefits only few
+        users who are usually expert enough to be able to backport the
+        package from Debian <emphasis role="distribution">Unstable</emphasis>.
+      </para>
 
     </section>
   </section>
@@ -629,7 +772,7 @@
       <para>After a period of relative stagnation on OpenOffice.org, Oracle
       donated the code and associated rights to the Apache Software Foundation,
       and OpenOffice is now an Apache project. This project is not currently
-      available in Debian.</para>
+      available in Debian and is rather moribund when compared to Libre Office.</para>
 
     </sidebar>
     <indexterm><primary>Word, Microsoft</primary></indexterm>
@@ -657,7 +800,11 @@
     <sidebar>
       <title><emphasis>SUPPLEMENT</emphasis> CrossOver Linux</title>
 
-      <para><emphasis>CrossOver</emphasis>, produsert av CodeWeavers, er en rekke forbedringer for Wine som utvider det tilgjengelige sett av emulerte funksjoner til et punkt der Microsoft Office blir fullt brukbart. Noen av forbedringene blir periodisk fusjonert inn i Wine.<ulink type="block" url="http://www.codeweavers.com/products/" /></para>
+      <para><emphasis>CrossOver</emphasis>, produced by CodeWeavers, is a
+      set of enhancements to Wine that broadens the available set of
+      emulated features to a point at which Microsoft Office becomes fully
+      usable. Some of the enhancements are periodically merged into Wine.
+      <ulink type="block" url="https://www.codeweavers.com/products/" /></para>
       <indexterm><primary><emphasis>CrossOver</emphasis></primary></indexterm>
       <indexterm><primary>CodeWeavers</primary></indexterm>
     </sidebar>
@@ -670,7 +817,8 @@
     <para>Nå, la oss installere de nødvendige pakkene (<emphasis role="pkg">ttf-mscorefonts-installer</emphasis> som er i contrib-seksjonen):</para>
 
     <screen>
-<computeroutput># </computeroutput><userinput>apt-get install wine ttf-mscorefonts-installer</userinput></screen>
+<computeroutput># </computeroutput><userinput>apt install wine ttf-mscorefonts-installer</userinput>
+</screen>
     <indexterm><primary><command>winecfg</command></primary></indexterm>
 
     <para>På et 64-bit system (amd64), hvis Windows-programmene er 32-bit programmer, må du aktivere multi-arch for å kunne installere wine32 fra i386-arkitekturen (se <xref linkend="sect.multi-arch" />).</para>
@@ -714,19 +862,26 @@
     <indexterm><primary>SIP</primary></indexterm>
     <indexterm><primary>XMPP</primary></indexterm>
 
-    <para>Standard GNOME-skrivebord inkluderer Empathy kommunikasjonsklient. Empathy kan støtte både SIP og XMPP. Det støtter lynmeldingstjeneste (IM), tale og video. KDE-skrivebordet har KDE Telepathy, en kommunikasjonsklient basert på de samme underliggende Telepathy API-er som brukes av GNOME Empathy-klienten.</para>
+    <para>The default GNOME desktop suggests the Empathy communications
+    client. Empathy can support both SIP and XMPP. It supports instant
+    messaging (IM), voice and video. The KDE project provides KDE Telepathy,
+    a communications client based on the same underlying Telepathy APIs
+    used by the GNOME Empathy client.</para>
     <indexterm><primary>Empathy</primary></indexterm>
     <indexterm><primary>Telepathy</primary></indexterm>
 
-    <para>Populære alternativer til Eempathy/Telepathy omfatter Ekiga, Jitsi, Linphone, Psi og Ring (tidligere kjent som SFLphone).</para>
+    <para>Popular alternatives to Empathy/Telepathy include Ekiga,
+    Linphone, Psi and Ring (formerly known as SFLphone).</para>
     <indexterm><primary>Ekiga</primary></indexterm>
-    <indexterm><primary>Jitsi</primary></indexterm>
     <indexterm><primary>Linphone</primary></indexterm>
     <indexterm><primary>Psi</primary></indexterm>
     <indexterm><primary>Ring (programvaretelefon)</primary></indexterm>
     <indexterm><primary>SFLphone</primary></indexterm>
 
-    <para>Noen av disse programmene kan også samhandle med mobile brukere som bruker apper som Lumicall på Android.<ulink type="block" url="http://lumicall.org" /></para>
+    <para>Some of these applications can also interact with mobile users
+    using apps such as Lumicall on Android.
+    <ulink type="block" url="https://lumicall.org" />
+    </para>
     <indexterm><primary>Lumicall</primary></indexterm>
 
     <para><emphasis>Real-Time Communications Quick Start Guide (Hurtigstartveileder til sanntidskommunikasjon)</emphasis> har et kapittel øremerket for klientprogrammer. <ulink type="block" url="http://rtcquickstart.org/guide/multi/useragents.html" /></para>
@@ -752,7 +907,12 @@
 
      <para>IRC-klienter er litt mer kompliserte, og de gir vanligvis mange funksjoner med begrenset bruksverdi i et bedriftsmiljø. For eksempel er kanal-«operatører» brukere utstyrt med muligheten til å sparke andre brukere ut av en kanal, eller utestenge dem permanent, når den normale diskusjonen blir forstyrret.</para>
 
-     <para>Ettersom IRC-protokollen er svært gammel, og mange klienter er tilgjengelige for å ta imot mange brukergrupper; eksempler er XChat og Smuxi (grafiske klienter basert på GTK+), Irssi (tekstmodus), Erc (integrert i Emacs), og så videre.</para>
+     <para>Since the IRC protocol is very old, many clients are available
+       to cater for many user groups; examples include XChat (only
+       available in <emphasis role="distribution">stretch-backports</emphasis>,
+       not in <emphasis role="distribution">stretch</emphasis>), and Smuxi
+       (graphical clients based on GTK+), Irssi (text mode), Circe
+       (integrated to Emacs), and so on.</para>
     </sidebar>
 
     <sidebar>
