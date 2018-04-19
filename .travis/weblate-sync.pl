@@ -111,6 +111,136 @@ our $table = {
     ],
 };
 
+our $table2 = [
+
+    # Norwegian Bokmål (nb_NO)
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '00a_preface.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '00b_foreword.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '01_the-debian-project.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '02_case-study.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '03_existing-setup.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '04_installation.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '05_packaging-system.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '06_apt.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '07_solving-problems.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '08_basic-configuration.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '09_unix-services.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '10_network-infrastructure.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '11_network-services.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '12_advanced-administration.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '13_workstation.po',
+        weblate_lang => 'nb_NO',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '14_security.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '15_debian-packaging.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '70_conclusion.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '90_derivative-distributions.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '92_short-remedial-course.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '99_backcover.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => '99_website.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => 'Author_Group.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => 'Book_Info.po',
+        weblate_lang => 'nb',
+    },
+    {
+        local_lang   => 'nb-NO',
+        local_file   => 'Revision_History.po',
+        weblate_lang => 'nb',
+    },
+];
+
 sub update_file {
     my $ua     = shift;
     my $local  = shift;
@@ -170,8 +300,17 @@ sub file_find_wanted {
 sub to_weblate {
     my $lang     = shift;
     my $file     = shift;
-    my $language = first { $lang eq $_->{file} } @{ $table->{lang} };
-    $language = $language->{weblate};
+    my $language = '';
+    if ( $lang eq 'nb-NO' ) {
+        $language =
+          first { $lang eq $_->{local_lang} && $file eq $_->{local_file} }
+        @{$table2};
+        $language = $language->{weblate_lang};
+    }
+    else {
+        $language = first { $lang eq $_->{file} } @{ $table->{lang} };
+        $language = $language->{weblate};
+    }
     my ( $component, $dirs, $suffix ) = fileparse( $file, qr/\.[^.]*/ );
     $component = lc $component;
     return URI->new(
