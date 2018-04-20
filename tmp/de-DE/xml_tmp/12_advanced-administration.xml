@@ -805,42 +805,15 @@ Device    Boot     Start       End   Sectors Size Id Type
 
 	<para>Der Grund für die erste Unterteilung (in <filename>md0</filename> und die übrigen) liegt in der Datensicherheit: Daten, die auf beide Komponenten eines RAID-1-Spiegels geschrieben werden, sind identisch, und es ist daher möglich, die RAID-Ebene zu umgehen und eine der Platten direkt einzuhängen. Im Falle eines Kernelfehlers oder falls die LVM-Metadaten beschädigt werden, ist es immer noch möglich, ein minimales System zu starten, um damit auf wichtige Daten wie die Belegung der Platten in den RAID- und LVM-Volumes zuzugreifen. Die Metadaten können dann wiederhergestellt und die Dateien wieder zugänglich gemacht werden, so dass das System in seinen Ausgangszustand zurückversetzt werden kann.</para>
 
-	<para>The rationale for the second split (<filename>md1</filename>
-	vs. <filename>md2</filename>) is less clear-cut, and more related
-	to acknowledging that the future is uncertain. When the workstation
-	is first assembled, the exact storage requirements are not
-	necessarily known with perfect precision; they can also evolve over
-	time. In our case, we can't know in advance the actual storage
-	space requirements for video rushes and complete video clips. If
-	one particular clip needs a very large amount of rushes, and the VG
-	dedicated to redundant data is less than halfway full, we can
-	re-use some of its unneeded space. We can remove one of the
-	physical volumes, say <filename>md2</filename>, from
-	<filename>vg_raid</filename> and either assign it to
-	<filename>vg_bulk</filename> directly (if the expected duration of
-	the operation is short enough that we can live with the temporary
-	drop in performance), or undo the RAID setup on
-	<filename>md2</filename> and integrate its components
-	<filename>sda6</filename> and <filename>sdc6</filename> into the
-	bulk VG (which grows by 200 GB instead of 100 GB); the
-	<filename>lv_rushes</filename> logical volume can then be grown
-	according to requirements.</para>
+	<para>Der Grund für die zweite Unterteilung (in <filename>md1</filename> und <filename>md2</filename>) ist weniger offensichtlich und hängt eher mit der Erkenntnis zusammen, dass die Zukunft unsicher ist. Wenn der Arbeitsplatzrechner erstmals eingerichtet wird, sind die genauen Speichererfordernisse nicht unbedingt mit absoluter Sicherheit bekannt; außerdem können sie sich im Laufe der Zeit verändern. In unserem Fall können wir den tatsächlichen Bedarf an Speicherplatz für Videoszenen und vollständige Videoclips nicht im Vorhinein kennen. Falls ein bestimmter Clip eine sehr hohe Anzahl an Szenen benötigt, und die VG für redundante Daten weniger als halb voll ist, können wir einen Teil ihres nicht genutzten Platzes anderweitig verwenden. Wir können einen der physischen Datenträger entfernen, zum Beispiel <filename>md2</filename> aus <filename>vg_raid</filename> und ihn entweder direkt <filename>vg_bulk</filename> zuordnen (falls die voraussichtliche Dauer des Einsatzes kurz genug ist, um den vorübergehenden Leistungsabfall in Kauf zu nehmen), oder die RAID-Anordnung auf <filename>md2</filename> auflösen und seine Komponenten <filename>sda6</filename> und <filename>sdc6</filename> in die Massen-VG integrieren (die damit um 200 GB statt um 100 GB anwächst). Der logische Datenträger <filename>lv_rushes</filename> kann dann nach Maßgabe des Bedarfs vergrößert werden.</para>
       </sidebar>
     </section>
   </section>
   <section id="sect.virtualization">
     <title>Virtualisierung</title>
-    <indexterm><primary>virtualization</primary></indexterm> 
+    <indexterm><primary>Virtualizierung</primary></indexterm> 
 
-    <para>Virtualization is one of the
-    most major advances in the recent years of computing. The term covers
-    various abstractions and techniques simulating virtual computers with a
-    variable degree of independence on the actual hardware. One physical
-    server can then host several systems working at the same time and in
-    isolation. Applications are many, and often derive from this isolation:
-    test environments with varying configurations for instance, or
-    separation of hosted services across different virtual machines for
-    security.</para>
+    <para>Virtualisierung ist einer der größten Fortschritte der letzten Jahre im Computerwesen. Der Ausdruck umfasst verschiedene Abstraktionen und Techniken der Simulation virtueller Rechner mit unterschiedlichen Graden der Unabhängigkeit von der tatsächlichen Hardware. Dabei kann ein physischer Server mehrere Systeme beherbergen, die gleichzeitig und getrennt voneinander funktionieren. Es gibt zahlreiche Anwendungen, und sie rühren häufig von dieser Trennung her: zum Beispiel Testumgebungen mit unterschiedlichen Konfigurationen, oder die getrennte Unterbringung von Diensten auf unterschiedlichen virtuellen Rechnern aus Sicherheitsgründen.</para>
 
     <para>Es gibt zahlreiche Virtualisierungslösungen, jede mit ihren eigenen Vor- und Nachteilen. Dieses Buch konzentriert sich auf Xen, LXC und KVM, es gibt jedoch weitere bemerkenswerte Umsetzungen einschließlich der folgenden:</para>
     <indexterm><primary><emphasis>VMware</emphasis></primary></indexterm>
@@ -888,13 +861,7 @@ Device    Boot     Start       End   Sectors Size Id Type
 
 	<para>Xensource, das Unternehmen, das hinter Xen steht, musste daher Xen auf dieses neue System portieren, so dass die Xen-Patches mit dem offiziellen Linux-Kernel zusammengeführt werden konnten. Dies bedeutete, dass eine Menge Code umgeschrieben werden musste, und obwohl Xensource bald eine funktionierende Version hatte, die auf der paravirt_ops-Schnittstelle basierte, wurden die Patches nur schrittweise mit dem offiziellen Kernel zusammengeführt. Die Zusammenführung war mit Linux 3.0 abgeschlossen. <ulink type="block" url="http://wiki.xenproject.org/wiki/XenParavirtOps" /></para>
 
-	<para>Since <emphasis role="distribution">Jessie</emphasis> is
-	based on version 3.16 of the Linux kernel, the standard
-	<emphasis role="pkg">linux-image-686-pae</emphasis> and
-	<emphasis role="pkg">linux-image-amd64</emphasis> packages
-	include the necessary code, and the distribution-specific
-	patching that was required for <emphasis role="distribution">Squeeze</emphasis> and earlier versions of
-	Debian is no more. <ulink type="block" url="http://wiki.xenproject.org/wiki/Xen_Kernel_Feature_Matrix" /></para>
+	<para>Da <emphasis role="distribution">Jessie</emphasis> auf der Version 3.16 des Linux-Kernels basiert, enthalten die Standardpakete <emphasis role="pkg">linux-image-686-pae</emphasis> und <emphasis role="pkg">linux-image-amd64</emphasis> bereits die nötigen Programmzeilen und die distributionsspezifischen Patches, die für <emphasis role="distribution">Squeeze</emphasis> und frühere Versionen von Debian noch erforderlich waren, werden nicht mehr benötigt. <ulink type="block" url="http://wiki.xenproject.org/wiki/Xen_Kernel_Feature_Matrix" /></para>
       </sidebar>
 
       <sidebar>
@@ -906,15 +873,7 @@ Device    Boot     Start       End   Sectors Size Id Type
       <sidebar>
         <title><emphasis>KULTUR</emphasis> Xen und Nicht-Linux-Kernel</title>
 
-	<para>Xen requires modifications to all the operating systems
-	one wants to run on it; not all kernels have the same level of
-	maturity in this regard. Many are fully-functional, both as
-	dom0 and domU: Linux 3.0 and later, NetBSD 4.0 and later, and
-        OpenSolaris. Others only work as a domU. You can check the status
-        of each operating system in the Xen wiki:
-        <ulink type="block" url="http://wiki.xenproject.org/wiki/Dom0_Kernels_for_Xen" />
-        <ulink type="block" url="http://wiki.xenproject.org/wiki/DomU_Support_for_Xen" />
-	</para>
+	<para>Xen erfordert Anpassungen bei allen Betriebssystemen, die man darauf laufen lassen möchte; nicht alle Kernel haben in dieser Hinsicht den gleichen Grad an Reife. Viele sind voll funktionsfähig, sowohl als dom0 als auch als domU: Linux 3.0 und später, NetBSD 4.0 und später sowie OpenSolaris. Andere arbeiten nur als domU. Sie können den Status jedes Betriebssystems im Xen-Wiki überprüfen: <ulink type="block" url="http://wiki.xenproject.org/wiki/Dom0_Kernels_for_Xen" /><ulink type="block" url="http://wiki.xenproject.org/wiki/DomU_Support_for_Xen" /></para>
 
 	<para>Wenn Xen sich jedoch auf die speziell für eine Virtualisierung vorgesehenen Hardwarefunktionen (die es nur bei neueren Prozessoren gibt) stützen kann, können selbst nicht modifizierte Betriebssysteme (einschließlich Windows) als domU laufen.</para>
       </sidebar>
@@ -929,28 +888,14 @@ Device    Boot     Start       End   Sectors Size Id Type
           or <emphasis role="pkg">xen-hypervisor-4.4-arm64</emphasis>.</para>
         </listitem>
         <listitem>
-	  <para>A kernel that runs on that hypervisor. Any kernel more
-	  recent than 3.0 will do, including the 3.16 version present
-	  in <emphasis role="distribution">Jessie</emphasis>.</para>
+	  <para>Ein Kernel, der auf diesem Hypervisor läuft. Jeder jüngere Kernel als 3.0 läuft, einschließlich der Version 3.16 in <emphasis role="distribution">Jessie</emphasis>.</para>
         </listitem>
         <listitem>
 	  <para>Die i386-Architektur erfordert zudem eine Standardbibliothek mit passenden Patches, um Xen nutzen zu können; diese befindet sich im Paket <emphasis role="pkg">libc6-xen</emphasis>.</para>
         </listitem>
       </itemizedlist>
 
-      <para>In order to avoid the hassle of selecting these components
-      by hand, a few convenience packages (such as <emphasis role="pkg">xen-linux-system-amd64</emphasis>) have been made
-      available; they all pull in a known-good combination of the
-      appropriate hypervisor and kernel packages. The hypervisor also
-      brings <emphasis role="pkg">xen-utils-4.4</emphasis>, which
-      contains tools to control the hypervisor from the dom0. This in
-      turn brings the appropriate standard library. During the
-      installation of all that, configuration scripts also create a
-      new entry in the Grub bootloader menu, so as to start the chosen
-      kernel in a Xen dom0. Note however that this entry is not
-      usually set to be the first one in the list, and will therefore
-      not be selected by default. If that is not the desired behavior,
-      the following commands will change it:</para>
+      <para>Um den Aufwand der manuellen Auswahl dieser Komponenten zu vermeiden, stehen komfortablerweise einige fertige Pakete bereit (wie zum Beispiel <emphasis role="pkg">xen-linux-system-amd64</emphasis>); sie alle installieren eine als gut bekannte Kombination aus passendem Hypervisor und Kernelpaketen. Der Hypervisor bringt zudem das Paket <emphasis role="pkg">xen-utils-4.4</emphasis> mit sich, das Hilfsprogramme zur Steuerung des Hypervisors von dom0 aus enthält. Dieses wiederum bringt die passende Standardbibliothek mit sich. Während der Installation all dieser Komponenten erstellen Konfigurationsskripten außerdem einen neuen Eintrag im Menü des Grub Boot-Loaders, mit dem der ausgewählte Kernel in einer Xen dom0 gestartet wird. Man beachte jedoch, dass dieser Eintrag gewöhnlich nicht zuoberst in der Liste steht und deshalb nicht standardmäßig ausgewählt wird. Falls dies nicht das erwünschte Verhalten ist, kann es mit folgenden Befehlen verändert werden:</para>
 
       <screen><computeroutput># </computeroutput><userinput>mv /etc/grub.d/20_linux_xen /etc/grub.d/09_linux_xen
 </userinput><computeroutput># </computeroutput><userinput>update-grub
@@ -967,10 +912,7 @@ Device    Boot     Start       End   Sectors Size Id Type
 	  <para><literal>--size</literal> und <literal>--swap</literal>, um die Größe der „virtuellen Platten“ zu definieren, die der domU zur Verfügung stehen;</para>
         </listitem>
         <listitem>
-	  <para><literal>--debootstrap</literal>, to cause the new system
-	  to be installed with <command>debootstrap</command>; in that
-	  case, the <literal>--dist</literal> option will also most often
-	  be used (with a distribution name such as <emphasis role="distribution">jessie</emphasis>).</para>
+	  <para><literal>--debootstrap</literal>, um zu veranlassen, dass das neue System mit <command>debootstrap</command> installiert wird; in diesem Fall wird meistens auch die Option <literal>--dist</literal> verwendet (mit dem Namen einer Distribution wie zum Beispiel <emphasis role="distribution">jessie</emphasis>).</para>
 
           <sidebar>
             <title><emphasis>WEITERE SCHRITTE</emphasis> Ein Nicht-Debian-System in einer domU installieren</title>
@@ -1020,8 +962,7 @@ MAC Address     :  00:16:3E:8E:67:5C
 IP-Address(es)  :  dynamic
 RSA Fingerprint :  0a:6e:71:98:95:46:64:ec:80:37:63:18:73:04:dd:2b
 Root Password   :  adaX2jyRHNuWm8BDJS7PcEJ
-</computeroutput>
-</screen>
+</computeroutput></screen>
 
       <para>Wir haben jetzt einen virtuellen Rechner, er läuft zur Zeit jedoch nicht (und belegt daher lediglich Platz auf der Festplatte der dom0). Wir können selbstverständlich weitere Abbilder erstellen, möglicherweise mit anderen Parametern.</para>
 
@@ -1040,16 +981,7 @@ Root Password   :  adaX2jyRHNuWm8BDJS7PcEJ
 
       <para>Zu diesen drei Netzknoten gehören eine Reihe von Schnittstellen mit ungewöhnlichen Bezeichnungen, wie zum Beispiel <filename>vif*</filename>, <filename>veth*</filename>, <filename>peth*</filename> und <filename>xenbr0</filename>. Der Xen-Hypervisor ordnet sie gemäß dem an, was auch immer als Layout festgelegt worden ist, unter der Kontrolle der Hilfsprogramme auf der Anwenderebene. Da die NAT- und Routing-Modelle besonderen Fällen vorbehalten sind, beschäftigen wir uns hier nur mit dem Bridging-Modell.</para>
 
-      <para>The standard configuration of the Xen packages does not change
-      the system-wide network configuration. However, the
-      <command>xend</command> daemon is configured to integrate virtual
-      network interfaces into any pre-existing network bridge (with
-      <filename>xenbr0</filename> taking precedence if several such bridges
-      exist). We must therefore set up a bridge in
-      <filename>/etc/network/interfaces</filename> (which requires
-      installing the <emphasis role="pkg">bridge-utils</emphasis> package,
-      which is why the <emphasis role="pkg">xen-utils-4.4</emphasis> package
-      recommends it) to replace the existing eth0 entry:</para>
+      <para>Die Standardkonfiguration der Xen-Pakete verändert die systemweite Netzwerk-Konfiguration nicht. Jedoch ist der <command>xend</command>-Daemon so konfiguriert, dass er virtuelle Netzwerkschnittstellen in eine bereits bestehende Netzwerkbrücke integriert (wobei <filename>xenbr0</filename> Vorrang erhält, falls es mehrere solcher Brücken gibt). Wir müssen daher eine Brücke in <filename>/etc/network/interfaces</filename> einrichten (wozu das Paket <emphasis role="pkg">bridge-utils</emphasis> installiert werden muss, weshalb es vom Paket <emphasis role="pkg">xen-utils-4.4</emphasis> empfohlen wird), um den bestehenden eth0-Eintrag zu ersetzen:</para>
 
       <programlisting>auto xenbr0
 iface xenbr0 inet dhcp
@@ -1057,11 +989,7 @@ iface xenbr0 inet dhcp
     bridge_maxwait 0
     </programlisting>
 
-      <para>After rebooting to make sure the bridge is automatically
-      created, we can now start the domU with the Xen control tools, in
-      particular the <command>xl</command> command. This command allows
-      different manipulations on the domains, including listing them and,
-      starting/stopping them.</para>
+      <para>Nach einem Neustart, um sicherzustellen, dass die Brücke automatisch erstellt wird, können wir jetzt die domU mit den Xen-Steuerprogrammen starten, insbesondere mit dem Befehl <command>xl</command>. Mit diesem Befehl ist es möglich, Verschiedenes mit den Domains zu machen, unter anderem sie aufzulisten und sie zu starten oder zu beenden.</para>
 
       <screen><computeroutput># </computeroutput><userinput>xl list</userinput>
 <computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
@@ -1071,11 +999,10 @@ Domain-0                                     0   463     1     r-----      9.8
 # </computeroutput><userinput>xl list</userinput>
 <computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
 Domain-0                                     0   366     1     r-----     11.4
-testxen                                      1   128     1     -b----      1.1</computeroutput>
-</screen>
+testxen                                      1   128     1     -b----      1.1</computeroutput></screen>
 
       <sidebar>
-        <title><emphasis>TOOL</emphasis> Choice of toolstacks to manage Xen VM</title>
+        <title><emphasis>WERKZEUG</emphasis> Auswahl an Toolstacks für die Verwaltung von Xen VMs</title>
         <indexterm><primary><command>xm</command></primary></indexterm>
         <indexterm><primary><command>xe</command></primary></indexterm>
         <para>In Debian 7 und älteren Versionen war <command>xm</command> das Referenz-Kommandozeilen-Tool zur Verwaltung von virtuellen Xen-Maschinen. Es wurde nun durch <command>xl</command> ersetzt, das weitgehend abwärtskompatibel ist. Aber das sind nicht die einzigen verfügbaren Tools: <command>virsh</command> von libvirt und <command>xe</command> von XenServers XAPI (kommerzielles Angebot von Xen) sind alternative Tools.</para>
@@ -1089,77 +1016,38 @@ testxen                                      1   128     1     -b----      1.1</
 
       <para>Man beachte, dass die domU <filename>testxen</filename> wirklichen Speicher des RAM verwendet, der ansonsten für die dom0 verfügbar wäre, und keinen simulierten Speicher. Man sollte daher darauf achten, das physische RAM entsprechend zuzuteilen, wenn man einen Server einrichtet, auf dem Xen-Instanzen laufen sollen.</para>
 
-      <para>Voilà! Our virtual machine is starting up. We can access it in
-      one of two modes. The usual way is to connect to it “remotely”
-      through the network, as we would connect to a real machine; this will
-      usually require setting up either a DHCP server or some DNS
-      configuration. The other way, which may be the only way if the
-      network configuration was incorrect, is to use the
-      <filename>hvc0</filename> console, with the <command>xl
-      console</command> command:</para>
+      <para>Voilà! Unser virtueller Rechner startet. Wir können auf ihn auf zweifache Art zugreifen. Der normale Weg besteht darin, sich mit ihm „aus der Ferne“ über das Netzwerk zu verbinden, wie wir es auch bei einem wirklichen Rechner tun würden; hierzu ist es normalerweise erforderlich, entweder einen DHCP-Server oder eine DNS-Konfiguration einzurichten. Der andere Weg, der der einzige sein könnte, falsch die Netzwerk-Konfiguration nicht korrekt war, besteht darin, über den Befehl <command>xl console</command> die Konsole <filename>hvc0</filename> zu benutzen:</para>
 
       <screen><computeroutput># </computeroutput><userinput>xl console testxen</userinput>
 <computeroutput>[...]
 
 Debian GNU/Linux 8 testxen hvc0
 
-testxen login: </computeroutput>
-</screen>
+testxen login: </computeroutput></screen>
 
       <para>Man kann dann eine Sitzung öffnen, als säße man an der Tastatur des virtuellen Rechners. Zur Trennung von dieser Konsole dient die Tastenkombination <keycombo action="simul"><keycap>Strg</keycap> <keycap>]</keycap></keycombo>.</para>
 
       <sidebar>
         <title><emphasis>TIPP</emphasis> Direkt zur Konsole gelangen</title>
 
-	<para>Sometimes one wishes to start a domU system and get to its
-	console straight away; this is why the <command>xl create</command>
-	command takes a <literal>-c</literal> switch. Starting a domU with
-	this switch will display all the messages as the system
-	boots.</para>
+	<para>Manchmal möchte man ein domU-System starten und direkt zu seiner Konsole gelangen; deshalb kann dem Befehl <command>xl create</command> der Schalter <literal>-c</literal> übergeben werden. Wenn man eine domU mit diesem Schalter startet, werden während des Hochfahrens des Systems alle Meldungen angezeigt.</para>
       </sidebar>
 
       <sidebar>
         <title><emphasis>TOOL</emphasis> OpenXenManager</title>
 
-	<para>OpenXenManager (in the <emphasis role="pkg">openxenmanager</emphasis>
-	package) is a graphical interface allowing remote management
-	of Xen domains via Xen's API. It can thus control Xen domains remotely. It
-	provides most of the features of the <command>xl</command> command.
-	</para>
+	<para>OpenXenManager (im Paket <emphasis role="pkg">openxenmanager</emphasis>) ist ein grafisches Interface das entfernte Verwaltung von Xen Domänen über das API von Xen ermöglicht. Es kann so Xen Domänen aus der Ferne kontrollieren. Es stellt den Großteil der Funktionalität des Befehls <command>xl</command> zur Verfügung.</para>
       </sidebar>
 
-      <para>Once the domU is up, it can be used just like any other server
-      (since it is a GNU/Linux system after all). However, its virtual
-      machine status allows some extra features. For instance, a domU can
-      be temporarily paused then resumed, with the <command>xl
-      pause</command> and <command>xl unpause</command> commands. Note that
-      even though a paused domU does not use any processor power, its
-      allocated memory is still in use. It may be interesting to consider
-      the <command>xl save</command> and <command>xl restore</command>
-      commands: saving a domU frees the resources that were previously used
-      by this domU, including RAM. When restored (or unpaused, for that
-      matter), a domU doesn't even notice anything beyond the passage of
-      time. If a domU was running when the dom0 is shut down, the packaged
-      scripts automatically save the domU, and restore it on the next boot.
-      This will of course involve the standard inconvenience incurred when
-      hibernating a laptop computer, for instance; in particular, if the
-      domU is suspended for too long, network connections may expire. Note
-      also that Xen is so far incompatible with a large part of ACPI power
-      management, which precludes suspending the host (dom0) system.</para>
+      <para>Sobald eine domU läuft, kann sie so wie jeder andere Server verwendet werden (da sie schließlich ein GNU/Linux-System ist). Ihr Status als virtueller Rechner ermöglicht jedoch einige zusätzliche Funktionen. So kann eine domU zum Beispiel mit den Befehlen <command>xl pause</command> und <command>xl unpause</command> vorübergehend angehalten und dann wieder fortgesetzt werden. Man beachte, dass bei einer angehaltenen domU, obwohl sie keine Prozessorleistung in Anspruch nimmt, der ihr zugeordnete Speicherplatz weiterhin belegt ist. Es könnte interessant sein, hier die Befehle <command>xl save</command> und <command>xl restore</command> in Erwägung zu ziehen: das Speichern einer domU gibt die Ressourcen frei, die vorher von dieser domU verwendet wurden, einschließlich des RAM. Wenn sie fortgesetzt wird (oder eigentlich ihr Pausieren beendet wird), bemerkt eine domU außer dem Fortschreiten der Zeit nichts. Falls eine domU läuft, wenn die dom0 heruntergefahren wird, speichern die gebündelten Skripten automatisch die domU, und stellen sie beim nächsten Hochfahren wieder her. Dies schließt natürlich die gleichen Unannehmlichkeiten ein, die entstehen, wenn man zum Beispiel einen Laptop in den Ruhezustand versetzt; insbesondere, dass Netzwerkverbindungen verfallen, falls die domU zu lange ausgesetzt ist. Man beachte auch, dass Xen insofern mit einem Großteil der ACPI-Energieverwaltung inkompatibel ist, als es nicht möglich ist, das Host-System (die dom0) in den Bereitschaftsbetrieb zu versetzen.</para>
 
       <sidebar>
-        <title><emphasis>DOCUMENTATION</emphasis> <command>xl</command> options</title>
+        <title><emphasis>DOKUMENTATION</emphasis> <command>xl</command>-Optionen</title>
 
-	<para>Most of the <command>xl</command> subcommands expect one or
-	more arguments, often a domU name. These arguments are well
-	described in the <citerefentry><refentrytitle>xl</refentrytitle>
-	<manvolnum>1</manvolnum></citerefentry> manual page.</para>
+	<para>Die meisten der <command>xl</command>-Unterbefehle erwarten ein oder mehrere Argumente, häufig einen domU-Namen. Diese Argumente sind auf der Handbuchseite <citerefentry><refentrytitle>xl</refentrytitle> <manvolnum>1</manvolnum></citerefentry> gut beschrieben.</para>
       </sidebar>
 
-      <para>Halting or rebooting a domU can be done either from within the
-      domU (with the <command>shutdown</command> command) or from the dom0,
-      with <command>xl shutdown</command> or <command>xl
-      reboot</command>.</para>
+      <para>Das Anhalten oder Neustarten einer domU kann entweder aus dieser domU heraus geschehen (mit dem Befehl <command>shutdown</command>) oder von der dom0 aus mit <command>xl shutdown</command> oder <command>xl reboot</command>.</para>
 
       <sidebar>
         <title><emphasis>WEITERE SCHRITTE</emphasis> Weitergehendes Xen</title>
@@ -1206,12 +1094,7 @@ testxen login: </computeroutput>
         </itemizedlist>
       </sidebar>
 
-      <para>Since we are dealing with isolation and not plain
-      virtualization, setting up LXC containers is more complex than just
-      running debian-installer on a virtual machine. We will describe a few
-      prerequisites, then go on to the network configuration; we will then
-      be able to actually create the system to be run in the
-      container.</para>
+      <para>Da wir es hier mit einer Isolierung und nicht mit einer einfachen Virtualisierung zu tun haben, ist es schwieriger, einen LXC-Container einzurichten, als nur ein Debian-Installationsprogramm auf einem virtuellen Rechner auszuführen. Wir werden einige Voraussetzungen beschreiben und dann zur Netzwerkkonfigurierung übergehen; damit werden wir in der Lage sein, das System, das in dem Container laufen soll, zu erstellen.</para>
       <section>
         <title>Vorbereitende Schritte</title>
 
@@ -1290,12 +1173,7 @@ root@mirwiz:~# </computeroutput>
 
 	<para>Man beachte, dass das Skript zum Erstellen des Debian Beispiels eine Option <option>--arch</option> akzeptiert, um die Architaktur anzugeben, die Installiert werden soll, sowie eine Option <option>--release</option>, wenn Sie etwas anderes als das aktuelle "stable" Release von Debian installieren wollen. Sie können auch die Umgebungsvariable <literal>MIRROR</literal> auf einen lokalen Debain Spiegel zeigen lassen.</para>
 
-	<para>The newly-created filesystem now contains a minimal Debian
-        system, and by default the container has no network interface
-        (besides the loopback one). Since this is not really wanted, we will
-	edit the container's configuration file
-	(<filename>/var/lib/lxc/testlxc/config</filename>) and add a
-	few <literal>lxc.network.*</literal> entries:</para>
+	<para>Das neu erstellte Dateisystem enthält jetzt ein minimales Debian-System, und per Voreinstellung hat der Container keine Netzwerkschnittstelle (außer Loopback). Da wir das nicht wollen, editieren wir die Konfigurationsdatei des Containers (<filename>/var/lib/lxc/testlxc/config</filename>) und fügen einige <literal>lxc.network.*</literal>-Einträge hinzu:</para>
 
         <programlisting>lxc.network.type = veth
 lxc.network.flags = up
@@ -1347,11 +1225,7 @@ root@testlxc:~# </computeroutput></screen>
 
 	<para>Wir befinden uns nun in dem Container; unser Zugriff auf diejenigen Prozesse beschränkt, die vom Container selbst gestartet wurden, und unser Zugriff auf das Dateisystem ist in ähnlicher Weise auf die zugehörige Teilmenge des gesamten Dateisystems (<filename>/var/lib/lxc/testlxc/rootfs</filename>) eingeschränkt. Wir können die Konsole mit <keycombo action="simul"><keycap>Control</keycap> <keycap>a</keycap></keycombo> <keycombo><keycap>q</keycap></keycombo> wieder verlassen.</para>
 
-	<para>Note that we ran the container as a background process,
-	thanks to the <option>--daemon</option> option of
-	<command>lxc-start</command>. We can interrupt the
-	container with a command such as <command>lxc-stop
-	--name=testlxc</command>.</para>
+	<para>Beachten Sie, dass wir den Container beim Aufruf von <command>lxc-start</command> durch die Option <option>--daemon</option> als Hintergrundprozess laufen lassen. Wir können den Container dann mit einem Befehl wie <command>lxc-stop --name=testlxc</command> schließen.</para>
 
 	<para>Das Paket <emphasis role="pkg">lxc</emphasis> enthält ein Initialisierungsskript, das automatisch einen oder mehrere Container starten kann, wenn der Host bootet (es basiert auf <command>lxc-autostart</command> welches Container startet, deren Option <literal>lxc.start.auto</literal> auf 1 gesetzt ist). Eine feinere Steuerung der Startreihenfolge ist mit <literal>lxc.start.order</literal> und <literal>lxc.group</literal> möglich: standardmäßig startet das Initialisierungsskript zuerst Container, die Teil der Gruppe <literal>onboot</literal> sind und dann die Container, die nicht Teil einer Gruppe sind. In beiden Fällen wird die Reihenfolge innerhalb einer Gruppe durch die Option <literal>lxc.start.order</literal> definiert.</para>
 
