@@ -673,7 +673,7 @@ sub _print_result {
                 my ( $filename, $dirs, $suffix ) =
                   fileparse( $_->{$target}->{file}->{value} );
                 $uri = URI->new_abs( $filename,
-"../../../publish/$_->{$target}->{file}->{lang}/Debian/8/html/debian-handbook/images/"
+"../../../publish/$_->{$target}->{file}->{lang}/Debian/9/html/debian-handbook/images/"
                 );
                 $uri = $uri->canonical;
                 $uri =~ s#^/##;
