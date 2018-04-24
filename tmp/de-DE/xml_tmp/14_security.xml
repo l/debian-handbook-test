@@ -534,44 +534,18 @@ iface eth0 inet static
       <para>AppArmor ist  ein <emphasis>Mandatory Access Control</emphasis> System (MAC), das auf der LSM-Schnittstelle (<emphasis>Linux Security Modules</emphasis>) von Linux aufbaut. In der Praxis befragt der Kernel AppAmor vor jedem Systemaufruf, um herauszufinden, ob der Prozess autorisiert ist, den jeweiligen Vorgang auszuführen.</para>
       <indexterm><primary><emphasis>Mandatory Access Control</emphasis></primary></indexterm>
       <indexterm><primary><emphasis>Linux Security Modules</emphasis></primary></indexterm>
-      <para>
-        AppArmor applies a set of rules (known as “profile”) on each
-        program. The profile applied by the kernel depends on the
-        installation path of the program being executed.
-        Contrary to SELinux (discussed in <xref linkend="sect.selinux" />),
-        the rules applied do not depend on the user. All users 
-        face the same set of rules when they are executing the same
-        program (but traditional user permissions still apply and
-        might result in different behaviour!).
-      </para>
-      <para>
-        AppArmor profiles are stored in <filename>/etc/apparmor.d/</filename>
-        and they contain a list of access control rules on resources that
-        each program can make use of.
-        The profiles are compiled and loaded into the kernel by the
-        <command>apparmor_parser</command> command. Each profile can
-        be loaded either in enforcing or complaining mode. The former
-        enforces the policy and reports violation attempts, while the
-        latter does not enforce the policy but still logs the system
-        calls that would have been denied.
-      </para>
+      <para>AppArmor wendet eine Reihe von Regeln (bekannt als "Profil") auf jedes Programm an. Das vom Kernel verwendete Profil hängt vom Installationspfad des ausgeführten Programms ab. Im Gegensatz zu SELinux (beschrieben in <xref linkend="sect.selinux" />) sind die angewandten Regeln nicht vom Benutzer abhängig. Alle Benutzer haben die gleichen Regeln, wenn sie das gleiche Programm ausführen (aber die traditionellen Benutzerberechtigungen gelten weiterhin und können zu unterschiedlichem Verhalten führen!).</para>
+      <para>AppArmor-Profile werden in <filename>/etc/apparmor.d/</filename> gespeichert und enthalten eine Liste von Zugriffskontrollregeln für Ressourcen, die jedes Programm verwenden kann. Die Profile werden mit dem Befehl <command>apparmor_parser</command> in den Kernel geladen. Jedes Profil kann entweder im Erzwingungs- oder im Beschwerdemodus geladen werden. Ersterer setzt die Richtlinie durch und meldet Verstöße, während Letzterer die Richtlinie nicht durchsetzt, aber dennoch die Systemaufrufe protokolliert, die abgelehnt worden wären.</para>
     </section>
     <section id="sect.apparmor-setup">
       <title>AppArmor Profile einschalten und verwalten</title>
-      <para>
-        AppArmor support is built into the standard kernels provided by Debian.
-        Enabling AppArmor is thus just a matter of installing a few
-        packages and adding some parameters to the kernel command line:
-      </para>
+      <para>AppArmor-Unterstützung ist in die von Debian bereitgestellten Standardkernel integriert. Das Aktivieren von AppArmor ist also nur eine Frage der Installation einiger Pakete und des Hinzufügens einiger Parameter zur Kernel-Befehlszeile:</para>
       <screen><computeroutput># </computeroutput><userinput>apt install apparmor apparmor-profiles apparmor-utils
 </userinput><computeroutput>[...]
 # </computeroutput><userinput>perl -pi -e 's,GRUB_CMDLINE_LINUX="(.*)"$,GRUB_CMDLINE_LINUX="$1 apparmor=1 security=apparmor",' /etc/default/grub
 </userinput><computeroutput># </computeroutput><userinput>update-grub
 </userinput></screen>
-      <para>
-        After a reboot, AppArmor is now functional and <command>aa-status</command>
-        will confirm it quickly:
-      </para>
+      <para>Nach einem Neustart ist AppArmor nun funktionsfähig und <command>aa-status</command> bestätigt das schnell:</para>
       <screen>
 <computeroutput># </computeroutput><userinput>aa-status</userinput>
 <computeroutput>apparmor module is loaded.
@@ -592,23 +566,9 @@ iface eth0 inet static
 0 processes are unconfined but have a profile defined.</computeroutput></screen>
       <sidebar>
         <title><emphasis>HINWEIS</emphasis>Wetere AppArmor-Profile</title>
-        <para>
-          The <emphasis role="pkg">apparmor-profiles</emphasis> package
-          contains profiles managed by the upstream AppArmor community.
-          To get even more profiles you can install
-          <emphasis role="pkg">apparmor-profiles-extra</emphasis> which
-          contains profiles developed by Ubuntu and Debian.
-        </para>
+        <para>Das Paket <emphasis role="pkg">apparmor-profiles</emphasis> enthält Profile, die von der vorgelagerten AppArmor-Community verwaltet werden. Um noch mehr Profile zu erhalten, können Sie <emphasis role="pkg">apparmor-profiles-extra</emphasis> installieren, das von Ubuntu und Debian entwickelte Profile enthält.</para>
       </sidebar>
-      <para>
-        The state of each profile can be switched between
-        enforcing and complaining with calls to <command>aa-enforce</command>
-        and <command>aa-complain</command> giving as parameter either
-        the path of the executable or the path to the policy file.
-        Additionaly a profile can be entirely disabled with
-        <command>aa-disable</command> or put in audit mode (to log
-        accepted system calls too) with <command>aa-audit</command>.
-      </para>
+      <para>Der Zustand jedes Profils kann zwischen Erzwingen und Beschweren mit Aufrufen von <command>aa-enforce</command> und <command>aa-complain</command> umgeschaltet werden, wobei als Parameter entweder der Pfad der ausführbaren Datei oder der Pfad zur Policy-Datei angegeben wird. Zusätzlich kann ein Profil mit <command>aa-disable</command> vollständig deaktiviert werden oder mit <command>aa-audit</command> in den Audit-Modus versetzt werden (um auch akzeptierte Systemaufrufe zu protokollieren).</para>
       <screen>
 <computeroutput># </computeroutput><userinput>aa-enforce /usr/sbin/avahi-daemon</userinput>
 <computeroutput>Setting /usr/sbin/avahi-daemon to enforce mode.</computeroutput>
@@ -618,23 +578,8 @@ iface eth0 inet static
     </section>
     <section id="sect.apparmor-new-profile">
       <title>Ein neues Profil erstellen</title>
-      <para>
-        Even though creating an AppArmor profile is rather easy, most
-        programs do not have one. This section will show you how to
-        create a new profile from scratch just by using the target
-        program and letting AppArmor monitor the system call it makes
-        and the resources it accesses.
-      </para>
-      <para>
-        The most important programs that need to be confined
-        are the network facing programs as those are the most likely
-        targets of remote attackers. That is why AppArmor conveniently
-        provides an <command>aa-unconfined</command> command to list
-        the programs which have no associated profile and which expose
-        an open network socket. With the <literal>--paranoid</literal>
-        option you get all unconfined processes that have at least one
-        active network connection.
-      </para>
+      <para>Obwohl die Erstellung eines AppArmor-Profils recht einfach ist, haben die meisten Programme keins. Dieser Abschnitt zeigt Ihnen, wie Sie ein neues Profil von Grund auf neu erstellen, indem Sie das Zielprogramm verwenden und AppArmor den Systemaufruf und die Ressourcen, auf die es zugreift, überwachen lassen.</para>
+      <para>Die wichtigsten Programme, die eingeschränkt werden sollen, sind die Programme, die mit dem Netzwerk verbunden sind, da diese die wahrscheinlichsten Ziele von entfernten Angreifern sind. Das ist der Grund, warum AppArmor bequem einen Befehl <command>aa-unconfined</command> zur Verfügung stellt, um die Programme aufzulisten, die kein zugehöriges Profil haben und einen offenen Netzwerk-Socket anbieten. Mit der Option <literal>--paranoid</literal> erhalten Sie alle unbeschränkten Prozesse, die mindestens eine aktive Netzwerkverbindung haben.</para>
       <screen>
 <computeroutput># </computeroutput><userinput>aa-unconfined</userinput>
 <computeroutput>801 /sbin/dhclient not confined
@@ -648,17 +593,7 @@ iface eth0 inet static
 1751 /usr/lib/erlang/erts-6.2/bin/beam.smp not confined
 19592 /usr/lib/dleyna-renderer/dleyna-renderer-service not confined</computeroutput>
       </screen>
-      <para>
-        In the following example, we will thus try to create a
-        profile for <command>/sbin/dhclient</command>. For this
-        we will use <command>aa-genprof dhclient</command>. It
-        will invite you to use the application in another window
-        and when done to come back to <command>aa-genprof</command>
-        to scan for AppArmor events in the system logs and
-        convert those logs into access rules. For each logged event,
-        it will make one or more rule suggestions that you can
-        either approve or further edit in multiple ways:
-      </para>
+      <para>Im folgenden Beispiel wird also versucht, ein Profil für <command>/sbin/dhclient</command> zu erstellen. Dazu verwenden wir <command>aa-genprof dhclient</command>. Es wird Sie einladen, die Anwendung in einem anderen Fenster zu benutzen, und wenn es fertig ist, zu <command>aa-genprof</command> zurückzukehren, um nach AppArmor-Ereignissen in den Systemprotokollen zu suchen und diese Protokolle in Zugriffsregeln umzuwandeln. Für jedes protokollierte Ereignis macht es einen oder mehrere Regelvorschläge, die Sie entweder genehmigen oder auf mehrere Arten weiter bearbeiten können:</para>
       <screen>
 <computeroutput># </computeroutput><userinput>aa-genprof dhclient</userinput>
 <computeroutput>Writing updated profile for /sbin/dhclient.
@@ -809,95 +744,28 @@ See the following wiki page for more information:
 http://wiki.apparmor.net/index.php/Profiles
 
 Finished generating profile for /sbin/dhclient.</computeroutput></screen>
-      <para>
-        Note that the program does not display back the control
-        characters that you type but for the clarity of the explanation I
-        have included them in the previous transcript.
-      </para>
+      <para>Beachten Sie, dass das Programm die von Ihnen eingegebenen Steuerzeichen nicht wiedergibt, aber zur besseren Übersichtlichkeit der Erklärung habe ich sie in die Abschrift oben aufgenommen.</para>
       <calloutlist>
         <callout arearefs="aa-genprof-execute">
-          <para>
-            The first event detected is the execution of another program.
-            In that case, you have multiple choices: you can run the program
-            with the profile of the parent process (the “Inherit” choice),
-            you can run it with its own dedicated profile (the
-            “Profile” and the “Named” choices, differing only by the
-            possibility to use an arbitrary profile name), you can run it
-            with a sub-profile of the parent process (the “Child” choice),
-            you can run it without any profile (the “Unconfined” choice)
-            or you can decide to not run it at all (the “Deny” choice).
-          </para>
-          <para>
-            Note that when you opt to run it under a dedicated profile
-            that doesn't exist yet, the tool will create the missing profile
-            for you and will make rule suggestions for that profile in the
-            same run.
-          </para>
+          <para>Das erste erkannte Ereignis ist die Ausführung eines anderen Programms. In diesem Fall haben Sie mehrere Möglichkeiten: Sie können das Programm mit dem Profil des übergeordneten Prozesses ausführen (Auswahl "Vererben"), Sie können es mit einem eigenen Profil ausführen (Auswahl "Profil" und "Benannt", die sich nur durch die Möglichkeit unterscheiden, einen beliebigen Profilnamen zu verwenden), Sie können es mit einem Unterprofil des übergeordneten Prozesses ausführen (Auswahl "Kind"), Sie können es ohne Profil ausführen (Auswahl "Unbegrenzt") oder Sie können entscheiden, es überhaupt nicht auszuführen (Auswahl "Verweigern").</para>
+          <para>Beachten Sie, dass das Tool, wenn Sie es unter einem speziellen, not nicht existierenden Profil ausführen, das fehlende Profil für Sie erstellt und Regelvorschläge für dieses Profil im selben Lauf macht.</para>
         </callout>
         <callout arearefs="aa-genprof-capability">
-          <para>
-            At the kernel level, the special powers of the root user have been split
-            in “capabilities”. When a system call requires a specific capability,
-            AppArmor will verify whether the profile allows the program to make
-            use of this capability.
-          </para>
+          <para>Auf der Kernel-Ebene wurden die speziellen Befugnisse des root-Benutzers in "Fähigkeiten" aufgeteilt. Wenn ein Systemaufruf eine bestimmte Fähigkeit erfordert, prüft AppArmor, ob das Profil dem Programm erlaubt, diese Fähigkeit zu nutzen.</para>
         </callout>
         <callout arearefs="aa-genprof-read">
-          <para>
-            Here the program seeks read permissions for
-            <filename>/etc/nsswitch.conf</filename>. <command>aa-genprof</command>
-            detected that this permission was also granted by multiple
-            “abstractions” and offers them as alternative choices. An
-            abstraction provides a reusable set of access rules grouping
-            together multiple resources that are commonly used together.
-            In this specific case, the file is generally accessed through
-            the nameservice related functions of the C library and we type
-            “3” to first select the “#include
-            &lt;abstractions/nameservice&gt;” choice and then “A” to allow
-            it.
-          </para>
+          <para>Hier sucht das Programm Leserechte für <filename>/etc/nsswitch.conf</filename>. <command>aa-genprof</command> hat festgestellt, dass diese Erlaubnis auch von mehreren "Abstraktionen" erteilt wurde und bietet sie als Alternative an. Eine Abstraktion bietet einen wiederverwendbaren Satz von Zugriffsregeln, die mehrere gemeinsam genutzte Ressourcen zusammenfassen. In diesem speziellen Fall wird die Datei im Allgemeinen über die Nameservice-bezogenen Funktionen der C-Bibliothek aufgerufen, und wir geben "3" ein, um zuerst die Option "#include &lt;abstractions/nameservice&gt;" und dann "A" auszuwählen, um sie zuzulassen.</para>
         </callout>
         <callout arearefs="aa-genprof-write">
-          <para>
-            The program wants to create the <filename>/run/dhclient-eth0.pid</filename>
-            file. If we allow the creation of this specific file only, the program
-            will not work when the user will use it on another network interface.
-            Thus we select “New” to replace the filename with the more generic
-            “/run/dhclient*.pid” before recording the rule with “Allow”.
-          </para>
+          <para>Das Programm möchte die Datei <filename>/run/dhclient-eth0.pid</filename> erstellen. Wenn wir nur die Erstellung dieser speziellen Datei zulassen, wird das Programm nicht funktionieren, wenn der Benutzer sie auf einer anderen Netzwerkschnittstelle verwendet. Daher wählen wir "Neu", um den Dateinamen durch die allgemeinere "/run/dhclient*.pid" zu ersetzen, bevor wir die Regel mit "Zulassen" aufnehmen.</para>
         </callout>
         <callout arearefs="aa-genprof-other-profile">
-          <para>
-            Notice that this access request is not part of the dhclient
-            profile but of the new profile that we created when we allowed
-            <filename>/usr/lib/NetworkManager/nm-dhcp-helper</filename> to
-            run with its own profile.
-          </para>
-          <para>
-            After having gone through all the logged events, the program
-            offers to save all the profiles that were created during the
-            run. In this case, we have two profiles that we save at once
-            with “Save” (but you can save them individually too) before
-            leaving the program with “Finish”.
-          </para>
+          <para>Beachten Sie, dass diese Zugriffsanforderung nicht Teil des dhclient-Profils ist, sondern des neuen Profils, das wir erstellt haben, als wir <filename>/usr/lib/NetworkManager/nm-dhcp-helper</filename> mit seinem eigenen Profil laufen ließen.</para>
+          <para>Nach Durchlaufen aller protokollierten Ereignisse bietet das Programm an, alle während des Laufs erstellten Profile zu speichern. In diesem Fall haben wir zwei Profile, die wir mit "Speichern" auf einmal speichern (Sie können sie aber auch einzeln speichern), bevor wir das Programm mit "Beenden" verlassen.</para>
         </callout>
       </calloutlist>
-      <para>
-        <command>aa-genprof</command> is in fact only a smart wrapper
-        around <command>aa-logprof</command>: it creates an empty profile,
-        loads it in complain mode and then run
-        <command>aa-logprof</command> which is a tool to update a profile
-        based on the profile violations that have been logged. So you can
-        re-run that tool later to improve the profile that you just
-        created.
-      </para>
-      <para>
-        If you want the generated profile to be complete, you should use the
-        program in all the ways that it is legitimately used. In the case
-        of dhclient, it means running it via Network Manager, running it via
-        ifupdown, running it manually, etc. In the end, you might get
-        a <filename>/etc/apparmor.d/sbin.dhclient</filename> close to this:
-      </para>
+      <para><command>aa-genprof</command> ist eigentlich nur ein intelligenter Wrapper um <command>aa-logprof</command>: er erstellt ein leeres Profil, lädt es im Beschwerdemodus und führt dann <command>aa-logprof</command> aus, das ein Werkzeug ist, um ein Profil basierend auf den protokollierten Profilverletzungen zu aktualisieren. So können Sie dieses Tool später erneut ausführen, um das gerade erstellte Profil zu verbessern.</para>
+      <para>Wenn Sie möchten, dass das generierte Profil vollständig ist, sollten Sie das Programm so verwenden, wie es berechtigterweise verwendet wird. Im Falle von dhclient bedeutet dies, dass es über den Netzwerk-Manager, über ifupdown, manuell usw. ausgeführt wird. Am Ende könnte <filename>/etc/apparmor.d/sbin.dhclient</filename> in der Nähe stehen von:</para>
       <programlisting>
 # Last Modified: Tue Sep  8 21:40:02 2015
 #include &lt;tunables/global&gt;
@@ -1017,24 +885,9 @@ Finished generating profile for /sbin/dhclient.</computeroutput></screen>
       <para>Der Befehl <command>apt install selinux-basics selinux-policy-default</command> installiert selbstständig die zur Konfigurierung eines SELinux-Systems erforderlichen Pakete.</para>
 
       <sidebar>
-        <title><emphasis>CAUTION</emphasis> Reference policy not in jessie</title>
-        <para>
-          Unfortunately the maintainers of the <emphasis role="pkg">refpolicy</emphasis> source package did not handle
-          release critical bugs on their package and the package got
-          removed from jessie. This means that the <emphasis role="pkg">selinux-policy-*</emphasis> packages are currently not
-          installable in jessie and need to be fetched from another
-          place. Hopefully they will come back in one of the point releases
-          or in jessie-backports. In the meantime, you can grab them
-          from unstable.
-        </para>
-        <para>
-          This sad situation at least proves that SELinux is not very popular
-          in the set of users/developers who are running the development
-          versions of Debian. Thus, if you opt to use SELinux, you
-          should expect the default policy to not work perfectly and
-          you will have to invest quite some time to make it suitable
-          to your specific needs.
-        </para>
+        <title><emphasis>VORSICHT</emphasis> Referenzrichtlinie nicht in jessie</title>
+        <para>Leider haben die Betreuer des <emphasis role="pkg">refpolicy</emphasis> Quellpaketes kritische Fehler in ihrem Paket nicht behandelt und das Paket wurde von jessie entfernt. Das bedeutet, dass die <emphasis role="pkg">selinux-policy-*</emphasis> Pakete derzeit nicht in jessie installiert werden können und von einem anderen Ort geholt werden müssen. Hoffentlich kommen sie in einem der Point-Releases oder in Jessie-Backports wieder. In der Zwischenzeit können Sie sie aus der unstable holen.</para>
+        <para>Diese traurige Situation beweist zumindest, dass SELinux in der Menge der Benutzer/Entwickler, die die Entwicklungsversionen von Debian ausführen, nicht sehr beliebt ist. Wenn Sie sich also für SELinux entscheiden, sollten Sie davon ausgehen, dass die Standardrichtlinie nicht einwandfrei funktioniert und Sie einige Zeit investieren müssen, um sie an Ihre speziellen Bedürfnisse anzupassen.</para>
       </sidebar>
 
       <para>Das Paket <emphasis role="pkg">selinux-policy-default</emphasis> enthält einen Satz von Standardregeln. Standardmäßig beschränkt dieses Regelwerk nur den Zugang für einige besonders gefährdete Dienste. Die Nutzersitzungen sind nicht eingeschränkt, und es ist daher unwahrscheinlich, dass SELinux legitime Nutzeraktionen blockieren würde. Dieses erhöht jedoch die Sicherheit von Systemdiensten, die auf dem Rechner laufen. Um ein Regelwerk einzurichten, das den alten „strengen“ Regeln entspricht, müssen Sie nur das Modul <literal>unconfined</literal> deaktivieren (die Modulverwaltung wird in diesem Kapitel ausführlich beschrieben).</para>
@@ -1066,12 +919,7 @@ Finished generating profile for /sbin/dhclient.</computeroutput></screen>
 
 	<para>Verfügbare SELinux-Module sind im Verzeichnis <filename>/usr/share/selinux/default/</filename> gespeichert. Um eines dieser Module in der aktuellen Konfiguration zu aktivieren, sollten Sie den Befehl <command>semodule -i <replaceable>Modul.pp.bz2</replaceable></command> benutzen. Die Erweiterung <emphasis>pp.bz2</emphasis> steht für <emphasis>policy package</emphasis> (komprimiert mit bzip2).</para>
 
-	<para>Removing a module from the current configuration is done with
-	<command>semodule -r <replaceable>module</replaceable></command>.
-	Finally, the <command>semodule -l</command> command lists the
-	modules which are currently installed. It also outputs their version
-        numbers. Modules can be selectively enabled with <command>semodule -e</command>
-        and disabled with <command>semodule -d</command>.</para>
+	<para>Das Entfernen eines Moduls aus der aktuellen Konfiguration erfolgt mit <command>semodule -r <replaceable>module</replaceable></command>. Letztendlich listet der Befehl <command>semodule -l</command> die aktuell installierten Module auf. Es gibt auch deren Versionsnummern aus. Module können selektiv mit <command>semodul -e</command> aktiviert und mit <command>semodul -d</command> deaktiviert werden.</para>
 
         <screen><computeroutput># </computeroutput><userinput>semodule -i /usr/share/selinux/default/abrt.pp.bz2</userinput>
 <computeroutput># </computeroutput><userinput>semodule -l</userinput>
@@ -1129,8 +977,7 @@ system_u        user       SystemLow  SystemLow-SystemHigh  system_r
 test_u          staff      SystemLow  SystemLow             staff_r user_r
 unconfined_u    unconfined SystemLow  SystemLow-SystemHigh  system_r unconfined_r
 user_u          user       SystemLow  SystemLow             user_r
-# </computeroutput><userinput>semanage user -d test_u</userinput>
-</screen>
+# </computeroutput><userinput>semanage user -d test_u</userinput></screen>
       </section>
       <section>
         <title>Dateikontexte, Ports und Boolesche Optionen verwalten</title>
@@ -1160,14 +1007,7 @@ user_u          user       SystemLow  SystemLow             user_r
 <computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.if ./</userinput>
 <computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.te ./</userinput></screen>
 
-      <para>The <filename>.te</filename> file is the most important one. It
-      defines the rules. The <filename>.fc</filename> file defines the
-      “file contexts”, that is the types assigned to files related to
-      this module. The data within the <filename>.fc</filename> file are
-      used during the file labeling step. Finally, the
-      <filename>.if</filename> file defines the interface of the module:
-      it is a set of “public functions” that other modules can use to
-      properly interact with the module that you're creating.</para>
+      <para>Die Datei <filename>.te</filename> ist die wichtigste. Sie legt die Regeln fest. Die Datei <filename>.fc</filename> bestimmt die „Dateikontexte“, das heißt, die Typen, die den auf diese Module bezogenen Dateien zugeordnet sind. Die in der Datei <filename>.fc</filename> befindlichen Daten werden während des Dateikennzeichnungsschrittes benutzt. Schließlich legt die Datei <filename>.if</filename> die Schnittstelle der Module fest: es ist ein Satz „öffentlicher Funktionen“, die andere Module verwenden können, um ordnungsgemäß mit dem Modul, das Sie erstellen, zu interagieren.</para>
       <section>
         <title>Eine <filename>.fc</filename>-Datei schreiben</title>
 
@@ -1352,7 +1192,7 @@ files_tmp_filetrans(myapp_t,myapp_tmp_t,file)</programlisting>
               </row>
               <row>
                 <entry><computeroutput>name="xconsole"</computeroutput></entry>
-                <entry>The target object was named <literal>xconsole</literal>. Sometimes you can also have a “path” variable — with the full path — instead.</entry>
+                <entry>Das Zielobjekt wurde <literal>xconsole</literal> genannt. Manchmal kann man stattdessen eine "path"-Variable - mit dem vollen Pfad - haben.</entry>
               </row>
               <row>
                 <entry><computeroutput>dev=tmpfs</computeroutput></entry>
@@ -1382,8 +1222,8 @@ files_tmp_filetrans(myapp_t,myapp_tmp_t,file)</programlisting>
 
         <sidebar>
           <title><emphasis>ERGÄNZUNGEN</emphasis> Keine Rollen in den Richtlinien</title>
-          <indexterm><primary>Type Enforcement</primary></indexterm>
-          <indexterm><primary>Enforcement, Type Enforcement</primary></indexterm>
+          <indexterm><primary>Typerzwingung</primary></indexterm>
+          <indexterm><primary>Erzwingung, Typerzwingung</primary></indexterm>
 
 	  <para>Es mag seltsam erscheinen, dass bei der Erstellung neuer Regeln Rollen überhaupt nicht auftreten. SELinux verwendet nur die Domains um herauszufinden, welche Vorgänge erlaubt sind. Die Rolle kommt nur indirekt zum Tragen, indem sie es dem Benutzer erlaubt, zu einer anderen Domain zu wechseln. SELinux basiert auf einer Theorie, die <emphasis>Type Enforcement</emphasis> heißt, und der Typ ist das einzige Element, das bei der Gewährung von Berechtigungen zählt.</para>
         </sidebar>
@@ -1425,10 +1265,7 @@ files_tmp_filetrans(myapp_t,myapp_tmp_t,file)</programlisting>
 
 	<para>Das Einrichten dieser Überprüfungen kann eine lange und mühsame Aufgabe sein, sie kann sich aber auszahlen, wenn die Web-Anwendung, die eingesetzt werden soll, in Sicherheitsfragen eine zweifelhafte Erfolgsbilanz hat.</para>
 
-	<para><emphasis>mod-security2</emphasis> (in the <emphasis role="pkg">libapache2-mod-security2</emphasis> package) is the main
-        such module. It even comes with many ready-to-use rules of its own
-        (in the <emphasis role="pkg">modsecurity-crs</emphasis> package)
-        that you can easily enable.</para>
+	<para><emphasis>mod-security2</emphasis> (im Paket <emphasis role="pkg">libapache2-mod-security2</emphasis>) ist das wichtigste derartige Modul. Es kommt sogar mit vielen eigenen, gebrauchsfertigen Regeln (im <emphasis role="pkg">mod-crs</emphasis> Paket), die Sie leicht aktivieren können.</para>
         <indexterm><primary><emphasis role="pkg">libapache-mod-security</emphasis></primary></indexterm>
         <indexterm><primary><emphasis>mod-security</emphasis></primary></indexterm>
       </sidebar>
