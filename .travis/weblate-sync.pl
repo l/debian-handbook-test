@@ -301,7 +301,7 @@ sub to_weblate {
     my $lang     = shift;
     my $file     = shift;
     my $language = '';
-    if ( $lang eq 'nb-NO' ) {
+    if ( 0 && $lang eq 'nb-NO' ) {
         $language =
           first { $lang eq $_->{local_lang} && $file eq $_->{local_file} }
         @{$table2};
