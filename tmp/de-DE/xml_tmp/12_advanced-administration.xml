@@ -1,0 +1,1894 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="advanced-administration">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-advanced-administration.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>RAID</keyword>
+      <keyword>LVM</keyword>
+      <keyword>FAI</keyword>
+      <keyword>Voreinstellung</keyword>
+      <keyword>Überwachung</keyword>
+      <keyword>Virtualisierung</keyword>
+      <keyword>Xen</keyword>
+      <keyword>LXC</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>Erweiterte Verwaltung</title>
+  <highlights>
+    <para>Dieses Kapitel greift noch einmal einige Aspekte, die wir bereits beschrieben haben, aus einer anderen Perspektive auf: anstatt einen einzelnen Rechner zu installieren, werden wir Systeme für den Masseneinsatz untersuchen; anstatt RAID- oder LVM-Volumes während der Installierung zu erstellen, lernen wir, dies von Hand zu tun, so dass wir später unsere ursprünglichen Entscheidungen revidieren können. Schließlich werden wir Überwachungsprogramme und Virtualisierungstechniken besprechen. Daher richtet sich dieses Kapitel in erster Linie an professionelle Administratoren und weniger an Einzelpersonen, die für ihr Heimnetzwerk zuständig sind.</para>
+  </highlights>
+  <section id="sect.raid-and-lvm">
+    <title>RAID und LVM</title>
+
+    <para><xref linkend="installation" /> hat diese Techniken aus der Sicht des Installationsprogramms dargestellt und wie es sie so integriert, dass ihr Einsatz von Beginn an einfach ist. Nach der anfänglichen Installation muss ein Administrator in der Lage sein, neu auftretendem Bedarf an Speicherplatz zu begegnen, ohne auf eine aufwändige Neuinstallation zurückgreifen zu müssen. Er muss daher die Hilfsprogramme zur Handhabung von RAID- und LVM-Volumes verstehen.</para>
+
+    <para>Sowohl RAID als auch LVM sind Verfahren, um die eingehängten Speicherbereiche von ihren physischen Entsprechungen (Festplatten oder ihre Partitionen) zu lösen, wobei ersteres die Daten durch redundante Speicherung vor einem Hardwareausfall schützt und letzteres die Datenverwaltung flexibler und unabhängig von der tatsächlichen Größe der zugrunde liegenden Speicherplatten macht. In beiden Fällen führt dies zu einem System mit neuen Blockgeräten, die zur Erstellung von Dateisystemen oder Auslagerungsspeicher verwendet werden können, ohne diese notwendigerweise einer physischen Speicherplatte zuordnen zu müssen. RAID und LVM haben recht unterschiedliche Ursprünge, ihre Funktionsweise überschneidet sich jedoch teilweise, weshalb sie häufig gemeinsam erwähnt werden.</para>
+
+    <sidebar>
+      <title><emphasis>AUSBLICK</emphasis> Btrfs vereint LVM und RAID</title>
+
+      <para>Während LVM und RAID zwei unterschiedliche Subsysteme des Kernels sind, die zwischen den Blockgeräten und ihren Dateisystemen liegen, ist <emphasis>btrfs</emphasis> ein neues Dateisystem, das ursprünglich bei Oracle entwickelt wurde und darauf abzielt, die Funktionen von LVM und RAID und noch vieles mehr zu vereinen. Es ist weitgehend funktionsfähig, wird aber noch als „experimentell“ bezeichnet, da seine Entwicklung noch nicht abgeschlossen ist (einige Funktionsmerkmale sind noch nicht umgesetzt), und hat auch seine Brauchbarkeit schon in Produktionsumgebungen unter Beweis gestellt. <ulink type="block" url="http://btrfs.wiki.kernel.org/" /></para>
+
+      <para>Zu den erwähnenswerten Funktionsmerkmalen gehört die Fähigkeit, zu jedem beliebigen Zeitpunkt einen Schnappschuss des Dateisystembaums festhalten zu können. Das Abbild des Schnappschusses nimmt anfangs keinen Speicherplatz ein, da Daten nur kopiert werden, wenn etwas verändert wird. Das Dateisystem kann auch Dateien transparent komprimieren, und Prüfsummen gewährleisten die Integrität aller gespeicherten Daten.</para>
+    </sidebar>
+
+    <para>Sowohl bei RAID als auch bei LVM stellt der Kernel eine Gerätedatei bereit in ähnlicher Weise, wie bei denen, die sich auf ein Festplattenlaufwerk oder eine Partition beziehen. Wenn eine Anwendung oder ein anderer Teil des Kernels auf einen Block eines derartigen Geräts zugreifen muss, lenkt das entsprechende Subsystem den Block zu der entsprechenden physischen Ebene. Je nach Konfiguration kann dieser Block auf einer oder mehreren physischen Platten gespeichert sein, wobei sein physischer Ort nicht unbedingt direkt dem Ort des Blocks in dem logischen Gerät entspricht.</para>
+    <section id="sect.raid-soft">
+      <title>Software-RAID</title>
+      <indexterm><primary>RAID</primary></indexterm>
+
+      <para>RAID bedeutet <emphasis>Redundant Array of Independent Disks</emphasis> (Redundante Anordnung unabhängiger Festplatten). Ziel dieses Systems ist es, Datenverluste im Falle eines Festplattenausfalls zu vermeiden. Das allgemeine Prinzip ist recht einfach: Daten werden mit einem einstellbaren Grad von Redundanz auf mehreren physischen Platten gespeichert statt nur auf einer. In Abhängigkeit vom Ausmaß dieser Redundanz können Daten selbst bei einem unerwarteten Plattenausfall ohne Verluste von den verbleibenden Platten wieder hergestellt werden.</para>
+
+      <sidebar>
+        <title><emphasis>KULTUR</emphasis> <foreignphrase>Unabhängig</foreignphrase> oder <foreignphrase>preiswert</foreignphrase>?</title>
+
+	<para>Das I in RAID stand ursprünglich für <emphasis>inexpensive</emphasis> (preiswert), da RAID eine erhebliche Steigerung bzgl. der Datensicherheit ermöglichte, ohne in teure und hochwertige Platten investieren zu müssen. Wahrscheinlich aus Imagegründen ist es inzwischen jedoch üblicher, es als Abkürzung für  <emphasis>independent</emphasis> (unabhängig) anzusehen, das nicht den unangenehmen Beigeschmack des Billigen hat.</para>
+      </sidebar>
+
+      <para>RAID kann entweder mit speziell hierfür vorgesehener Hardware eingerichtet werden (mit RAID-Modulen, die in SCSI- oder SATA-Controllerkarten integriert sind) oder durch Softwareabstraktion (den Kernel). Ob Hard- oder Software, ein RAID-System mit ausreichender Redundanz kann in transparenter Weise funktionsfähig bleiben, wenn eine Platte ausfällt. Die oberen Abstraktionsschichten (Anwendungen) können trotz des Ausfalls weiterhin auf die Daten zugreifen. Dieser „eingeschränkte Modus“ kann natürlich Auswirkungen auf die Leistung haben, und die Redundanz ist geringer, so dass ein weiterer Plattenausfall dann zu Datenverlust führen kann. Daher wird man in der Praxis versuchen, nur solange in diesem eingeschränkten Modus zu verbleiben, wie das Ersetzen der ausgefallenen Platte dauert. Sobald die neue Platte eingebaut ist, kann das RAID-System die erforderlichen Daten wieder herstellen, um so zu einem sicheren Modus zurückzukehren. Die Anwendungen werden hiervon nichts bemerken, abgesehen von einer möglicherweise verringerten Zugriffsgeschwindigkeit während sich die Anordnung im eingeschränkten Modus oder im Stadium der Wiederherstellung befindet.</para>
+
+      <para>Wenn RAID von der Hardware zur Verfügung gestellt wird, wird die Konfiguration im Allgemeinen innerhalb des BIOS-Setup durchgeführt und der Kernel hält das RAID-Array für eine einzelne Festplatte, die sich als physikalische Platte darstellt, obwohl der Gerätename sich davon unterscheidet (abhängig vom Treiber).</para>
+
+      <para>Wir betrachten in diesem Buch nur Software-RAID.</para>
+
+      <section id="sect.raid-levels">
+        <title>Unterschiedliche RAID-Stufen</title>
+
+	<para>RAID existiert in der Tat in mehreren Ausprägungen, gekennzeichnet durch ihre Level. Diese Level unterscheiden sich in ihrem Aufbau und in dem Ausmaß der Redundanz, die sie bereitstellen. Je mehr Redundanzen, desto ausfallsicherer, da das System auch mit mehreren ausgefallenen Platten immer noch funktioniert. Die Kehrseite ist, dass der verfügbare Platz bei gegebener Anzahl an Platten geringer wird; oder anders ausgedrückt, es werden mehr Platten benötigt, um dieselbe Datenmenge zu speichern.</para>
+        <variablelist>
+          <varlistentry>
+            <term>Lineares RAID</term>
+            <listitem>
+	      <para>Obwohl das RAID-Subsystem des Kernels die Einrichtung eines „linearen RAIDs“ ermöglicht, ist dies kein wirkliches RAID, da sein Aufbau keinerlei Redundanz enthält. Der Kernel reiht lediglich mehrere Platten von Anfang bis Ende aneinander und stellt den sich daraus ergebenden zusammengefassten Datenträger als eine virtuelle Platte (ein Blockgerät) bereit. Das ist so gut wie seine einzige Funktion. Dieser Aufbau wird selten für sich allein verwendet (Ausnahmen werden weiter unten erläutert), insbesondere da die fehlende Redundanz dazu führt, dass bei Ausfall einer Platte der gesamte Datenträger und damit alle Daten nicht mehr verfügbar sind.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>RAID-0</term>
+            <listitem>
+	      <para>Diese Stufe stellt ebenfalls keinerlei Redundanz bereit, aber die Platten werden nicht einfach aneinandergereiht: sie werden in <emphasis>Streifen</emphasis> unterteilt, und die Blöcke des virtuellen Geräts werden in Streifen abwechselnd auf den physischen Platten abgespeichert. So werden zum Beispiel bei einem RAID-0-Aufbau, der aus zwei Platten besteht, die geradzahligen Blöcke des virtuellen Geräts auf der ersten physischen Platte gespeichert, während die ungeradzahligen Blöcke auf der zweiten physischen Platte landen.</para>
+
+	      <para>Dieses System beabsichtigt nicht, die Zuverlässigkeit zu erhöhen, da (wie beim linearen RAID) die Verfügbarkeit der Daten gefährdet ist, sobald eine Platte ausfällt, sondern die Leistung zu erhöhen: beim sequentiellen Zugriff auf große Mengen zusammenhängender Daten kann der Kernel gleichzeitig von beiden Platten lesen (oder auf sie schreiben), wodurch die Datenübertragungsrate erhöht wird. Die Verwendung von RAID-0 geht jedoch zurück, da seine Nische durch LVM gefüllt wird (siehe unten).</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>RAID-1</term>
+            <listitem>
+	      <para>Diese Stufe, die auch als „RAID-Spiegelung“ bezeichnet wird, ist der einfachste und am häufigsten verwendete Aufbau. In seiner Standardform verwendet er zwei physische Platten gleicher Größe und stellt einen logischen Datenträger von ebenfalls gleicher Größe bereit. Daten werden auf beiden Platten identisch gespeichert, daher die Bezeichnung „Spiegel“. Wenn eine Platte ausfällt, sind die Daten auf der anderen weiterhin verfügbar. Für sehr kritische Daten kann RAID-1 natürlich auch auf mehr als zwei Platten eingerichtet werden, mit direkter Auswirkung auf das Verhältnis von Hardwarekosten zu nutzbarem Speicherplatz.</para>
+
+              <sidebar>
+                <title><emphasis>HINWEIS</emphasis> Platten und Clustergrößen</title>
+
+		<para>Wenn zwei Platten unterschiedlicher Größe als Spiegel eingerichtet werden, wird die größere nicht vollständig benutzt, da sie die gleichen Daten wie die kleinere enthält und sonst nichts. Der von einem RAID-1-Volume bereitgestellte nutzbare Platz entspricht daher der Größe der kleinsten Platte dieser Anordnung. Dies gilt auch für RAID-Volumes einer höheren RAID-Stufe, obwohl dort die Redundanz anders abgespeichert wird.</para>
+
+		<para>Es ist daher wichtig, beim Einrichten von RAID-Anordnungen (außer von RAID-0 und „linearem RAID“) nur Platten gleicher oder sehr ähnlicher Größe zu verbinden, um die Verschwendung von Ressourcen zu vermeiden.</para>
+              </sidebar>
+
+              <sidebar>
+                <title><emphasis>HINWEIS</emphasis> Reserveplatten</title>
+
+		<para>RAID-Stufen, die Redundanz enthalten, ermöglichen es, mehr Platten als nötig einem Verbund zuzuordnen. Diese zusätzlichen Platten dienen als Reserve für den Fall, dass eine der Hauptplatten ausfällt. Zum Beispiel wird der Kernel in einem Spiegel aus zwei Platten und einer Reserveplatte, wenn eine der ersten beiden ausfällt, automatisch (und sofort) den Spiegel unter Verwendung der Reserveplatte neu aufbauen, so dass die Redundanz nach Abschluss des Wiederaufbaus weiterhin gewährleistet ist. Dies kann als weitere Schutzmaßnahme für kritische Daten genutzt werden.</para>
+
+		<para>Man könnte sich natürlich fragen, wieso dies besser ist als gleich von Anfang an auf drei Platten zu spiegeln. Der Vorteil der Anordnung mit einer „Reserveplatte“ besteht darin, dass die Reserveplatte von mehreren RAID-Volumes gemeinsam benutzt werden kann. So kann man zum Beispiel mit nur sieben Platten (drei Paaren und einer Reserve für alle) statt neun, die für drei Dreiergruppen erforderlich wären, drei gespiegelte Volumes haben, bei denen die Redundanz selbst beim Ausfall einer Platte gewährleistet bleibt.</para>
+              </sidebar>
+
+	      <para>Diese RAID-Stufe wird in der Praxis häufig verwendet, obwohl sie kostspielig ist (da der physische Speicherplatz allenfalls zur Hälfte genutzt werden kann). Sie ist einfach zu verstehen und ermöglicht sehr einfache Sicherheitskopien: da beide Platten den gleichen Inhalt haben, kann eine von ihnen ohne Auswirkung auf das arbeitende System vorübergehend entfernt werden. Die Leseleistung ist häufig höher, da der Kernel auf jeder Platte eine Hälfte der Daten gleichzeitig lesen kann, während die Schreibleistung nicht allzu stark vermindert ist. Bei einer RAID-Anordnung von N Platten bleiben die Daten selbst bei einem Ausfall von N-1 Platten erhalten.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>RAID-4</term>
+            <listitem>
+	      <para>Diese selten verwendete RAID-Stufe verwendet N Platten zur Speicherung nutzbarer Daten und eine zusätzliche Platte zur Speicherung der Redundanzinformation. Falls diese Platte ausfällt, kann das System ihren Inhalt aus den übrigen N Platten wieder herstellen. Falls eine der N Platten ausfällt, enthalten die verbleibenden N-1 Platten zusammen mit der „Paritätsplatte“ genügend Informationen, um die erforderlichen Daten wieder herzustellen.</para>
+
+	      <para>RAID-4 ist nicht allzu kostspielig, da es nur zu zusätzlichen Kosten in Höhe von Eins-in-N führt. Es hat keinen spürbaren Einfluss auf die Leseleistung, verlangsamt aber das Schreiben. Da außerdem jeder Schreibvorgang auf einer der N Platten auch einen Schreibvorgang auf der Paritätsplatte erfordert, finden auf letzterer sehr viel mehr Schreibvorgänge als auf den anderen statt, und ihre Lebensdauer kann folglich deutlich verkürzt sein. Daten in einer RAID-4-Anordnung sind lediglich bis zum Ausfall einer Platte (der N+1 Platten) sicher.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>RAID-5</term>
+            <listitem>
+	      <para>RAID-5  behebt das Problem der Asymmetrie von RAID-4: Paritätsblöcke sind über alle N+1 Platten verteilt, ohne dass eine einzelne Platte eine besondere Rolle spielt.</para>
+
+	      <para>Die Lese- und Schreibleistung ist die gleiche wie bei RAID-4. Auch hier bleibt das System funktionsfähig, wenn eine der N+1 Platten ausfällt, jedoch nicht mehr.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>RAID-6</term>
+            <listitem>
+	      <para>RAID-6 kann als Erweiterung von RAID-5 angesehen werden, wobei jeder Reihe von N Blöcken zwei Redundanzblöcke zugeordnet sind, und jede dieser Serien von N+2 Blöcken über N+2 Platten verteilt ist.</para>
+
+	      <para>Diese RAID-Stufe ist etwas teurer als die zwei vorhergehenden, bietet jedoch etwas mehr Sicherheit, da bis zu zwei der N+2 Platten ausfallen können, ohne dass die Datenverfügbarkeit gefährdet ist. Die Kehrseite ist, dass jeder Schreibvorgang jetzt das Schreiben eines Datenblocks und zweier Redundanzblöcke erfordert, wodurch er noch langsamer wird.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>RAID-1+0</term>
+            <listitem>
+	      <para>Dies ist genau genommen keine RAID-Stufe, sondern ein Zusammenfassen zweier RAID-Gruppen. Ausgehend von 2xN Platten werden diese zunächst paarweise in N RAID-1-Volumes angeordnet. Diese N Volumes werden dann entweder durch „lineares RAID“ oder (immer häufiger) durch LVM zu einem einzigen Volume zusammengefasst. Letzteres geht über reines RAID hinaus. Das ist jedoch nicht problematisch.</para>
+
+	      <para>RAID-1+0 kann den Ausfall mehrerer Platten überstehen und zwar bis zu N der oben beschriebenen 2xN-Anordnung, vorausgesetzt, dass in jedem der RAID-1-Paare wenigstens noch eine Platte funktioniert.</para>
+
+              <sidebar id="sidebar.raid-10">
+                <title><emphasis>WEITERE SCHRITTE</emphasis> RAID-10</title>
+
+		<para>RAID-10 wird im Allgemeinen als ein Synonym für RAID-1+0 angesehen, jedoch führt eine Besonderheit von Linux zu dieser Verallgemeinerung. Diese Anordnung ermöglicht ein System, bei dem jeder Block selbst bei einer ungeraden Plattenanzahl auf zwei unterschiedlichen Platten gespeichert ist, wobei die Kopien einem konfigurierbaren Modell entsprechend verteilt werden.</para>
+
+		<para>Die Leistung kann in Abhängigkeit von dem gewählten Repartitionierungsmodell und Redundanzniveau sowie von der Arbeitslast des logischen Volumes unterschiedlich sein.</para>
+              </sidebar>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+
+	<para>Natürlich wird die RAID-Stufe in Abhängigkeit von den Beschränkungen und Erfordernissen jeder Anwendung gewählt. Man beachte, dass ein einzelner Rechner über mehrere unterschiedliche RAID-Anordnungen mit unterschiedlichen Konfigurationen verfügen kann.</para>
+      </section>
+      <section id="sect.raid-setup">
+        <title>RAID einrichten</title>
+        <indexterm><primary><emphasis role="pkg">mdadm</emphasis></primary></indexterm> 
+
+	<para>Zur Einrichtung von RAID-Volumes wird das Paket <emphasis role="pkg">mdadm</emphasis> benötigt. Es stellt den Befehl <command>mdadm</command> zur Verfügung, mit dem RAID-Anordnungen erstellt und verändert werden können, wie auch Skripten und Hilfsprogramme, mit denen es in das übrige System integriert werden kann, einschließlich eines Überwachungssystems.</para>
+
+	<para>Als Beispiel nehmen wir einen Server mit einer Anzahl von Platten, von denen einige bereits benutzt werden, während der Rest für die Einrichtung des RAID zur Verfügung steht. Zu Beginn haben wir die folgenden Platten und Partitionen:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>die Platte <filename>sdb</filename>, 4 GB, ist vollständig verfügbar;</para>
+          </listitem>
+          <listitem>
+	    <para>die Platte <filename>sdc</filename>, 4 GB, ist ebenfalls vollständig verfügbar;</para>
+          </listitem>
+          <listitem>
+	    <para>auf der Platte <filename>sdd</filename> ist nur die Partition <filename>sdg2</filename> (ungefähr 4 GB) verfügbar;</para>
+          </listitem>
+          <listitem>
+	    <para>schließlich ist die Platte <filename>sde</filename>, ebenfalls 4 GB, vollständig verfügbar.</para>
+          </listitem>
+        </itemizedlist>
+
+        <sidebar>
+          <title><emphasis>HINWEIS</emphasis> Bestehende RAID-Volumes identifizieren</title>
+
+	  <para>Die Datei <filename>/proc/mdstat</filename> führt bestehende Volumes und ihren Zustand auf. Wenn ein neues RAID-Volume erstellt wird, sollte darauf geachtet werden, es nicht wie ein bestehendes Volume zu benennen.</para>
+        </sidebar>
+
+	<para>Wir werden diese physischen Komponenten zur Einrichtung zweier Volumes verwenden, eines RAID-0 und eines Spiegels (RAID-1). Wir beginnen mit dem RAID-0-Volume:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc</userinput>
+<computeroutput>mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+# </computeroutput><userinput>mdadm --query /dev/md0</userinput>
+<computeroutput>/dev/md0: 8.00GiB raid0 2 devices, 0 spares. Use mdadm --detail for more detail.
+# </computeroutput><userinput>mdadm --detail /dev/md0</userinput>
+<computeroutput>/dev/md0:
+        Version : 1.2
+  Creation Time : Wed May  6 09:24:34 2015
+     Raid Level : raid0
+     Array Size : 8387584 (8.00 GiB 8.59 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:24:34 2015
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+     Chunk Size : 512K
+
+           Name : mirwiz:0  (local to host mirwiz)
+           UUID : bb085b35:28e821bd:20d697c9:650152bb
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0       8       16        0      active sync   /dev/sdb
+       1       8       32        1      active sync   /dev/sdc
+# </computeroutput><userinput>mkfs.ext4 /dev/md0</userinput>
+<computeroutput>mke2fs 1.42.12 (29-Aug-2014)
+Creating filesystem with 2095104 4k blocks and 524288 inodes
+Filesystem UUID: fff08295-bede-41a9-9c6a-8c7580e520a6
+Superblock backups stored on blocks: 
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
+
+Allocating group tables: done                            
+Writing inode tables: done                            
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done 
+# </computeroutput><userinput>mkdir /srv/raid-0</userinput>
+<computeroutput># </computeroutput><userinput>mount /dev/md0 /srv/raid-0</userinput>
+<computeroutput># </computeroutput><userinput>df -h /srv/raid-0</userinput>
+<computeroutput>Filesystem      Size  Used Avail Use% Mounted on
+/dev/md0        7.9G   18M  7.4G   1% /srv/raid-0
+</computeroutput></screen>
+
+	<para>Der Befehl <command>mdadm --create</command> erfordert mehrere Parameter: den Namen des zu erstellenden Volumes (<filename>/dev/md*</filename>, wobei MD <foreignphrase>Multiple Device</foreignphrase> bedeutet), die RAID-Stufe, die Anzahl der Platten (die in jedem Fall angegeben werden muss, obwohl dies nur bei RAID-1 oder höher Sinn macht) und die zu verwendenden physischen Laufwerke. Nachdem das Gerät erstellt ist, können wir es wie eine normale Partition verwenden, auf ihm ein Dateisystem einrichten, dieses Dateisystem einhängen und so weiter. Man beachte, dass unsere Einrichtung eines RAID-0-Volumes auf <filename>md0</filename> nur Zufall ist, und dass die Nummerierung der Anordnung nicht der gewählten Redundanzstufe entsprechen muss. Man kann auch einen benannten RAID-Verbund erstellen, indem man <command>mdadm</command> Parameter wie <filename>/dev/md/linear</filename> statt <filename>/dev/md0</filename> mitgibt.</para>
+
+	<para>Die Erstellung eines RAID-1 erfolgt auf ähnliche Weise; die Unterschiede machen sich erst nach der Erstellung bemerkbar:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md1 --level=1 --raid-devices=2 /dev/sdd2 /dev/sde</userinput>
+<computeroutput>mdadm: Note: this array has metadata at the start and
+    may not be suitable as a boot device.  If you plan to
+    store '/boot' on this device please ensure that
+    your boot-loader understands md/v1.x metadata, or use
+    --metadata=0.90
+mdadm: largest drive (/dev/sdd2) exceeds size (4192192K) by more than 1%
+Continue creating array? </computeroutput><userinput>y</userinput>
+<computeroutput>mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md1 started.
+# </computeroutput><userinput>mdadm --query /dev/md1</userinput>
+<computeroutput>/dev/md1: 4.00GiB raid1 2 devices, 0 spares. Use mdadm --detail for more detail.
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+        Version : 1.2
+  Creation Time : Wed May  6 09:30:19 2015
+     Raid Level : raid1
+     Array Size : 4192192 (4.00 GiB 4.29 GB)
+  Used Dev Size : 4192192 (4.00 GiB 4.29 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:30:40 2015
+          State : clean, resyncing (PENDING) 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       1       8       64        1      active sync   /dev/sde
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+          State : clean
+[...]
+</computeroutput></screen>
+
+        <sidebar>
+          <title><emphasis>TIPP</emphasis> RAID, Platten und Partitionen</title>
+
+	  <para>Wie in unserem Beispiel gezeigt, können RAID-Geräte aus Plattenpartitionen erstellt werden und erfordern keine vollständigen Platten.</para>
+        </sidebar>
+
+	<para>Einige Bemerkungen sind angebracht. Zunächst stellt <command>mdadm</command> fest, dass die physischen Komponenten von unterschiedlicher Größe sind; da dies bedeutet, dass auf der größeren Komponente einiger Platz verloren geht, ist eine Bestätigung erforderlich.</para>
+
+	<para>Wichtiger ist es aber, den Zustand des Spiegels zu beachten. Im Normalzustand eines RAID-Spiegels haben beide Platten genau denselben Inhalt. Jedoch stellt nichts sicher, dass dies der Fall ist, wenn der Datenträger erstmalig erstellt wird. Das RAID-Subsystem gewährleistet dieses daher selbst, und es gibt eine Synchronisierungsphase, sobald das RAID-Gerät erzeugt worden ist. Einige Zeit später (die genaue Dauer hängt von der jeweiligen Größe der Platten ab...), schaltet die RAID-Anordnung in den „aktiven“ oder "sauberen" Zustand um. Man beachte, dass sich der Spiegel während dieser Rekonstruktionsphase in einem eingeschränkten Zustand befindet und Redundanz nicht sichergestellt ist. Ein Plattenausfall während dieser Risikolücke könnte zu einem vollständigen Verlust aller Daten führen. Jedoch werden kritische Daten selten in großer Menge auf einer neu erstellten RAID-Anordnung vor ihrer anfänglichen Synchronisierung gespeichert. Man beachte, dass selbst im eingeschränkten Zustand <filename>/dev/md1</filename> benutzt werden kann, dass auf ihm ein Dateisystem erstellt werden kann, und dass Daten auf ihm abgelegt werden können.</para>
+
+        <sidebar>
+          <title><emphasis>TIPP</emphasis> Einen Spiegel in eingeschränktem Zustand starten</title>
+
+	  <para>Manchmal sind zwei Platten nicht unmittelbar verfügbar, wenn man einen RAID-1-Spiegel einrichten möchte, weil zum Beispiel eine der hierfür vorgesehenen Platten bereits zur Speicherung der Daten benutzt wird, die man auf die Anordnung verschieben möchte. In solch einem Fall ist es möglich, vorsätzlich eine eingeschränkte RAID-1-Anordnung zu erzeugen, indem man als eines der Argumente <filename>missing</filename> statt einer Gerätedatei an <command>mdadm</command> übergibt. Sobald dann die Daten auf den „Spiegel“ kopiert worden sind, kann die alte Platte der Anordnung hinzugefügt werden. Anschließend wird eine Synchronisierung stattfinden, die zu der Redundanz führt, die wir von vornherein angestrebt hatten.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>TIPP</emphasis> Einen Spiegel ohne Synchronisierung einrichten</title>
+
+	  <para>RAID-1-Volumes werden häufig erstellt, um als neue Platten, die oft als leer erachtet werden, verwendet zu werden. Der ursprüngliche tatsächliche Inhalt der Platte ist daher nicht sehr relevant, da man nur sicher sein will, dass die Daten, die nach der Erstellung des Datenträgers geschrieben werden, und hier insbesondere das Dateisystem, anschließend zugänglich sind.</para>
+
+	  <para>Man könnte sich daher fragen, wozu die Synchronisierung der beiden Platten zur Zeit der Erstellung gut ist. Warum sollte man sich darum kümmern, ob der Inhalt in Bereichen des Datenträgers gleich ist, von denen wir wissen, dass sie erst gelesen werden, nachdem wir etwas auf sie geschrieben haben?</para>
+
+	  <para>Glücklicherweise kann diese Synchronisierungsphase vermieden werden, indem man die Option <literal>--assume-clean</literal> an <command>mdadm</command> übergibt. Diese Option kann jedoch in den Fällen zu Überraschungen führen, in denen die ursprünglichen Daten gelesen werden (falls zum Beispiel bereits ein Dateisystem auf der physischen Platte vorhanden ist). Deshalb ist sie nicht standardmäßig aktiviert.</para>
+        </sidebar>
+
+	<para>Nun wollen wir sehen, was passiert, wenn eine der Komponenten der RAID-1-Anordnung ausfällt. Mit <command>mdadm</command>, genauer gesagt mit seiner Option <literal>--fail</literal>, lässt sich ein derartiger Plattenausfall simulieren:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --fail /dev/sde</userinput>
+<computeroutput>mdadm: set /dev/sde faulty in /dev/md1
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Update Time : Wed May  6 09:39:39 2015
+          State : clean, degraded 
+ Active Devices : 1
+Working Devices : 1
+ Failed Devices : 1
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 19
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       0        0        2      removed
+
+       1       8       64        -      faulty   /dev/sde</computeroutput></screen>
+
+	<para>Der Inhalt des Datenträgers ist weiterhin zugänglich (und falls er eingehängt ist, bemerken die Anwendungen nichts), aber die Sicherheit der Daten ist nicht mehr gewährleistet: sollte die Platte <filename>sdd</filename> ebenfalls ausfallen, wären die Daten verloren. Wir möchten dieses Risiko vermeiden und werden daher die ausgefallene Platte durch eine neue, <filename>sdf</filename>, ersetzen:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --add /dev/sdf</userinput>
+<computeroutput>mdadm: added /dev/sdf
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+   Raid Devices : 2
+  Total Devices : 3
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:48:49 2015
+          State : clean, degraded, recovering 
+ Active Devices : 1
+Working Devices : 2
+ Failed Devices : 1
+  Spare Devices : 1
+
+ Rebuild Status : 28% complete
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 26
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      spare rebuilding   /dev/sdf
+
+       1       8       64        -      faulty   /dev/sde
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Update Time : Wed May  6 09:49:08 2015
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 1
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 41
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      active sync   /dev/sdf
+
+       1       8       64        -      faulty   /dev/sde</computeroutput></screen>
+
+	<para>Auch in diesem Fall löst der Kernel automatisch eine Rekonstruktionsphase aus, während der sich der Datenträger in eingeschränktem Zustand befindet, auch wenn er weiterhin zugänglich ist. Sobald die Rekonstruktion vorüber ist, befindet sich die RAID-Anordnung wieder in normalem Zustand. Man kann dem System dann mitteilen, dass die Platte <filename>sde</filename> aus der Anordnung entfernt werden wird, um so zu einem typischen RAID-Spiegel auf zwei Platten zu gelangen:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --remove /dev/sde</userinput>
+<computeroutput>mdadm: hot removed /dev/sde from /dev/md1
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Number   Major   Minor   RaidDevice State
+       0       8       98        0      active sync   /dev/sdg2
+       1       8      128        1      active sync   /dev/sdi</computeroutput></screen>
+
+	<para>Von da an kann das Laufwerk physisch entfernt werden, sobald der Server das nächste Mal abgestellt wird, oder sogar im laufenden Betrieb, falls die Hardware-Konfiguration dies erlaubt. Zu derartigen Konfigurationen gehören einige SCSI-Controller, die meisten SATA-Platten und externe Laufwerke, die über USB oder Firewire betrieben werden.</para>
+      </section>
+      <section id="sect.backup-raid-config">
+        <title>Konfiguration sichern</title>
+
+	<para>Die meisten Meta-Daten, die RAID-Datenträger betreffen, werden direkt auf den Platten gespeichert, aus denen diese Anordnungen bestehen, so dass der Kernel diese Anordnungen und ihre Komponenten erkennen und sie selbsttätig zusammenstellen kann, wenn das System hochfährt. Es wird jedoch empfohlen, eine Sicherungskopie dieser Konfiguration zu erstellen, da diese Erkennung nicht ausfallsicher ist, und da sie voraussichtlich gerade in einer prekären Situation ausfallen wird. Wenn in unserem Beispiel der Ausfall der Platte <filename>sde</filename> tatsächlich stattgefunden hätte (statt ihn nur zu simulieren) und das System neu gestartet worden wäre, ohne die Platte <filename>sde</filename> zu entfernen, würde diese Platte möglicherweise wieder funktionieren, da sie während des Neustarts überprüft worden wäre. Der Kernel hätte dann drei physische Komponenten, von denen jede angeblich eine Hälfte desselben RAID-Volumes enthält. Weitere Verwirrung könnte entstehen, wenn RAID-Datenträger von zwei Servern auf einem zusammengefasst werden. Falls diese Anordnungen vor ihrem Umzug normal funktionierten, wäre der Kernel in der Lage, die Paare korrekt zu erkennen und neu zusammenzustellen. Falls die verlegten Platten jedoch auf dem vorherigen Server zu einem <filename>md1</filename> zusammengefasst waren, und der jetzige Server bereits ein <filename>md1</filename> hat, würde einer der Spiegel umbenannt werden.</para>
+
+	<para>Es ist daher wichtig, die Konfiguration zu sichern, selbst wenn dies nur zu Referenzzwecken geschieht. Das normale Verfahren besteht darin, die Datei <filename>/etc/mdadm/mdadm.conf</filename> zu editieren, von der hier ein Beispiel gezeigt wird:</para>
+
+        <example id="example.mdadm-conf">
+          <title>Konfigurationsdatei <command>mdadm</command></title>
+
+          <programlisting># mdadm.conf
+#
+# Please refer to mdadm.conf(5) for information about this file.
+#
+
+# by default (built-in), scan all partitions (/proc/partitions) and all
+# containers for MD superblocks. alternatively, specify devices to scan, using
+# wildcards if desired.
+DEVICE /dev/sd*
+
+# auto-create devices with Debian standard permissions
+CREATE owner=root group=disk mode=0660 auto=yes
+
+# automatically tag new arrays as belonging to the local system
+HOMEHOST &lt;system&gt;
+
+# instruct the monitoring daemon where to send mail alerts
+MAILADDR root
+
+# definitions of existing MD arrays
+ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
+ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f67464
+
+# This configuration was auto-generated on Thu, 17 Jan 2013 16:21:01 +0100
+# by mkconf 3.2.5-3</programlisting>
+        </example>
+
+	<para>Einer der nützlichsten Bestandteile ist die Option <literal>DEVICE</literal>, mit der die Geräte aufgelistet werden, bei denen das System beim Start selbstständig nach Komponenten des RAID-Volumes suchen soll. In unserem Beispiel haben wir die Voreinstellung <literal>partitions containers</literal> durch eine eindeutige Liste mit Gerätedateien ersetzt, da wir uns entschieden haben, für einige Datenträger ganze Platten und nicht nur Partitionen zu verwenden.</para>
+
+	<para>Die letzten beiden Zeilen unseres Beispiels ermöglichen es dem Kernel sicher auszuwählen, welche Volume-Nummer welcher Anordnung zugewiesen werden soll. Die auf den Platten selbst gespeicherten Meta-Daten reichen aus, die Volumes wieder zusammenzustellen, jedoch nicht, die Volume-Nummer zu bestimmen (und den dazu passenden Gerätenamen <filename>/dev/md*</filename>).</para>
+
+	<para>Glücklicherweise können diese Zeilen automatisch erstellt werden:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mdadm --misc --detail --brief /dev/md?</userinput>
+<computeroutput>ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
+ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c94a0:19bca283:95f6746</computeroutput></screen>
+
+	<para>Der Inhalt dieser letzten beiden Zeilen ist nicht von der Liste der Platten abhängig, die zu dem Volume gehören. Es ist daher nicht erforderlich, diese Zeilen neu zu erstellen, wenn eine ausgefallene Platte durch eine neue ersetzt wird. Andererseits ist darauf zu achten, dass die Datei aktualisiert wird, wenn eine RAID-Anordnung erstellt oder gelöscht wird.</para>
+      </section>
+    </section>
+    <section id="sect.lvm">
+      <title>LVM</title>
+      <indexterm><primary>LVM</primary></indexterm>
+      <indexterm><primary>Logical Volume Manager</primary></indexterm>
+
+      <para>LVM, der <emphasis>Logical Volume Manager</emphasis>, ist ein weiterer Ansatz zur Abstraktion logischer Volumes von ihren physischen Geräten, der sich auf die Erhöhung der Flexibilität und nicht auf die Erhöhung der Zuverlässigkeit konzentriert. LVM erlaubt es, ein logisches Volume transparent für die Anwendungen zu ändern; es ist beispielsweise möglich, neue Platten hinzuzufügen, die Daten darauf zu migrieren und die alten Platten zu entfernen, ohne das Volume zu deinstallieren.</para>
+      <section id="sect.lvm-concepts">
+        <title>LVM-Konzepte</title>
+
+	<para>Diese Flexibilität wird durch eine Abstraktionsstufe erreicht, zu der drei Konzepte gehören.</para>
+
+	<para>Das PV (<emphasis>Physical Volume</emphasis>) ist das Element, das der Hardware am nächsten ist: es kann aus Partitionen auf einer Platte bestehen, aus einer ganzen Platte oder auch aus jedem anderen Blockgerät (einschließlich beispielsweise einem RAID-Verbund). Man beachte, dass auf eine physische Komponente, wenn sie als PV für einen LVM eingerichtet ist, nur über den LVM zugegriffen wird, da das System sonst verwirrt wird.</para>
+
+	<para>Eine Anzahl von PVs kann zu einer VG (<emphasis>Volume Group</emphasis>) zusammengefasst werden, die als virtuelle und erweiterbare Platte angesehen werden kann. VGs sind abstrakt und erscheinen nicht in einer Gerätedatei in der <filename>/dev</filename>-Hierarchie, so dass nicht die Gefahr besteht, dass sie direkt benutzt werden.</para>
+
+	<para>Die dritte Art von Objekten ist das LV (<emphasis>Logical Volume</emphasis>), das aus einer Menge von VGs besteht. Wenn wir die Analogie beibehalten, dass eine VG eine Platte ist, kann das LV als eine Partition angesehen werden. Das LV erscheint als Blockgerät mit einem Eintrag in <filename>/dev</filename>, und es kann wie jede andere physische Partition verwendet werden (am häufigsten, um ein Dateisystem oder Auslagerungsspeicher aufzunehmen).</para>
+
+	<para>Wichtig ist, dass das Aufteilen einer VG in LVs von ihren physischen Komponenten (den PVs) völlig unabhängig ist. Eine VG, die nur aus einer einzelnen physischen Komponente besteht (zum Beispiel einer Platte), kann in ein Dutzend logischer Volumes unterteilt werden. In ähnlicher Weise kann eine VG mehrere physische Platten verwenden und dennoch als ein einziges großes logisches Volume erscheinen. Die einzige Beschränkung besteht darin, dass die Gesamtgröße, die den LVs zugeteilt ist, offensichtlich nicht größer als die Gesamtkapazität der PVs in dieser Volumegruppe sein kann.</para>
+
+	<para>Es macht jedoch häufig Sinn, eine gewisse Einheitlichkeit unter den physischen Komponenten einer VG einzuhalten, und die VG in logische Volumes zu unterteilen, die ähnliche Verwendungsmuster haben. Falls die verfügbare Hardware zum Beispiel schnellere und langsamere Platten enthält, könnten die schnelleren zu einer VG zusammengefasst werden und die langsameren zu einer anderen. Teile der ersten können dann Anwendungen zugeordnet werden, die schnellen Datenzugriff erfordern, während die zweite weniger anspruchsvollen Aufgaben vorbehalten bleibt.</para>
+
+	<para>In jedem Fall sollte man sich merken, dass ein LV nicht ausdrücklich einem bestimmten PV zugeordnet ist. Man kann den Ort, an dem die Daten eines LV physisch gespeichert werden, beeinflussen, jedoch ist diese Möglichkeit für den täglichen Gebrauch nicht notwendig. Im Gegenteil: wenn sich der Satz physischer Komponenten einer VG weiterentwickelt, können die physischen Speicherorte, die einem bestimmten LV entsprechen, über Platten hinweg verschoben werden (wobei sie natürlich innerhalb der PVs verbleiben müssen, die der VG zugeordnet sind).</para>
+      </section>
+      <section id="sect.lvm-setup">
+        <title>Einen LVM einrichten</title>
+
+	<para>Wir wollen nun Schritt für Schritt den Prozess der Einrichtung eines LVM für einen typischen Anwendungsfall verfolgen: wir wollen eine komplizierte Speichersituation vereinfachen. Eine derartige Situation entsteht normalerweise aus einer langen und verwickelten Abfolge sich anhäufender temporärer Maßnahmen. Zu Illustrationszwecken nehmen wir einen Server an, bei dem die Speicherbedürfnisse sich im Laufe der Zeit verändert und schließlich zu einem Gewirr verfügbarer Partitionen geführt haben, die über mehrere teilweise genutzte Platten verteilt sind. Genauer gesagt sind folgende Partitionen vorhanden:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>auf der Platte <filename>sdb</filename> eine Partition <filename>sdb2</filename>, 4 GB;</para>
+          </listitem>
+          <listitem>
+	    <para>auf der Platte <filename>sdc</filename> eine Partition <filename>sdc3</filename>, 3 GB;</para>
+          </listitem>
+          <listitem>
+	    <para>die Platte <filename>sdd</filename>, 4 GB, vollständig verfügbar;</para>
+          </listitem>
+          <listitem>
+	    <para>auf der Platte <filename>sdf</filename> eine Partition <filename>sdf1</filename>, 4 GB; und eine Partition <filename>sdf2</filename>, 5 GB.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>Zusätzlich nehmen wir an, dass die Platten <filename>sdb</filename> und <filename>sdf</filename> schneller als die anderen beiden sind.</para>
+
+	<para>Unser Ziel ist es, drei logische Volumes für drei verschiedene Anwendungen einzurichten: einen Dateiserver (der 5 GB Speicherplatz benötigt), eine Datenbank (1 GB) und Speicherplatz für Sicherungskopien (12 GB). Die ersten beiden erfordern eine gute Leistung, wohingegen bei den Sicherungen die Zugriffsgeschwindigkeit weniger entscheidend ist. Alle diese Einschränkungen verhindern die Verwendung einzelner Partitionen. Durch den Einsatz eines LVM kann von der physischen Größe der Geräte abstrahiert werden, so dass nur der insgesamt verfügbare Platz als Begrenzung verbleibt.</para>
+
+	<para>Die erforderlichen Hilfsprogramme befinden sich in dem Paket <emphasis role="pkg">lvm2</emphasis> und seinen Abhängigkeiten. Wenn sie installiert sind, erfolgt die Einrichtung eines LVM in drei Schritten, entsprechend den drei Konzeptstufen.</para>
+
+	<para>Zunächst erstellen wir mit <command>pvcreate</command> die physischen Volumes:</para>
+
+        <screen id="screen.pvcreate"><computeroutput># </computeroutput><userinput>pvdisplay</userinput>
+<computeroutput># </computeroutput><userinput>pvcreate /dev/sdb2</userinput>
+<computeroutput>  Physical volume "/dev/sdb2" successfully created
+# </computeroutput><userinput>pvdisplay</userinput>
+<computeroutput>  "/dev/sdb2" is a new physical volume of "4.00 GiB"
+  --- NEW Physical volume ---
+  PV Name               /dev/sdb2
+  VG Name               
+  PV Size               4.00 GiB
+  Allocatable           NO
+  PE Size               0   
+  Total PE              0
+  Free PE               0
+  Allocated PE          0
+  PV UUID               0zuiQQ-j1Oe-P593-4tsN-9FGy-TY0d-Quz31I
+
+# </computeroutput><userinput>for i in sdc3 sdd sdf1 sdf2 ; do pvcreate /dev/$i ; done</userinput>
+<computeroutput>  Physical volume "/dev/sdc3" successfully created
+  Physical volume "/dev/sdd" successfully created
+  Physical volume "/dev/sdf1" successfully created
+  Physical volume "/dev/sdf2" successfully created
+# </computeroutput><userinput>pvdisplay -C</userinput>
+<computeroutput>  PV         VG   Fmt  Attr PSize PFree
+  /dev/sdb2       lvm2 ---  4.00g 4.00g
+  /dev/sdc3       lvm2 ---  3.09g 3.09g
+  /dev/sdd        lvm2 ---  4.00g 4.00g
+  /dev/sdf1       lvm2 ---  4.10g 4.10g
+  /dev/sdf2       lvm2 ---  5.22g 5.22g
+</computeroutput></screen>
+
+	<para>So weit, so gut. Man beachte, dass ein PV sowohl auf einer vollständigen Platte als auch auf einzelnen darauf enthaltenen Partitionen eingerichtet werden kann. Wie oben gezeigt, listet der Befehl <command>pvdisplay</command> die bestehenden PVs in zwei möglichen Ausgabeformaten auf.</para>
+
+	<para>Wir wollen jetzt diese physischen Komponenten mit dem Befehl <command>vgcreate</command> zu VGs zusammenfügen. Dabei nehmen wir nur PVs von den schnellen Platten in eine VG namens <filename>vg_critical</filename> auf; die andere VG, <filename>vg_normal</filename>, enthält dagegen auch langsamere Komponenten.</para>
+
+        <screen id="screen.vgcreate"><computeroutput># </computeroutput><userinput>vgdisplay</userinput>
+<computeroutput>  No volume groups found
+# </computeroutput><userinput>vgcreate vg_critical /dev/sdb2 /dev/sdf1</userinput>
+<computeroutput>  Volume group "vg_critical" successfully created
+# </computeroutput><userinput>vgdisplay</userinput>
+<computeroutput>  --- Volume group ---
+  VG Name               vg_critical
+  System ID             
+  Format                lvm2
+  Metadata Areas        2
+  Metadata Sequence No  1
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                0
+  Open LV               0
+  Max PV                0
+  Cur PV                2
+  Act PV                2
+  VG Size               8.09 GiB
+  PE Size               4.00 MiB
+  Total PE              2071
+  Alloc PE / Size       0 / 0   
+  Free  PE / Size       2071 / 8.09 GiB
+  VG UUID               bpq7zO-PzPD-R7HW-V8eN-c10c-S32h-f6rKqp
+
+# </computeroutput><userinput>vgcreate vg_normal /dev/sdc3 /dev/sdd /dev/sdf2</userinput>
+<computeroutput>  Volume group "vg_normal" successfully created
+# </computeroutput><userinput>vgdisplay -C</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize  VFree 
+  vg_critical   2   0   0 wz--n-  8.09g  8.09g
+  vg_normal     3   0   0 wz--n- 12.30g 12.30g
+</computeroutput></screen>
+
+	<para>Auch hier sind die Befehle recht einfach (und bei <command>vgdisplay</command> kann zwischen zwei Ausgabeformaten gewählt werden). Man beachte, dass es durchaus möglich ist, zwei Partitionen derselben physischen Platte in zwei unterschiedlichen VGs zu verwenden. Außerdem beachte man, dass wir bei der Benennung unserer VGs zwar das Präfix <filename>vg_</filename> benutzt haben, dass dies aber lediglich eine Gewohnheit ist.</para>
+
+	<para>Wir haben jetzt zwei „virtuelle Platten“ mit einer Größe von etwa 8 GB und 12 GB. Wir wollen sie jetzt in „virtuelle Partitionen“ (LVs) unterteilen. Dies geschieht mit dem Befehl <command>lvcreate</command> und einer etwas komplizierteren Syntax:</para>
+
+        <screen id="screen.lvcreate"><computeroutput># </computeroutput><userinput>lvdisplay</userinput>
+<computeroutput># </computeroutput><userinput>lvcreate -n lv_files -L 5G vg_critical</userinput>
+<computeroutput>  Logical volume "lv_files" created
+# </computeroutput><userinput>lvdisplay</userinput>
+<computeroutput>  --- Logical volume ---
+  LV Path                /dev/vg_critical/lv_files
+  LV Name                lv_files
+  VG Name                vg_critical
+  LV UUID                J3V0oE-cBYO-KyDe-5e0m-3f70-nv0S-kCWbpT
+  LV Write Access        read/write
+  LV Creation host, time mirwiz, 2015-06-10 06:10:50 -0400
+  LV Status              available
+  # open                 0
+  LV Size                5.00 GiB
+  Current LE             1280
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+
+# </computeroutput><userinput>lvcreate -n lv_base -L 1G vg_critical</userinput>
+<computeroutput>  Logical volume "lv_base" created
+# </computeroutput><userinput>lvcreate -n lv_backups -L 12G vg_normal</userinput>
+<computeroutput>  Logical volume "lv_backups" created
+# </computeroutput><userinput>lvdisplay -C</userinput>
+<computeroutput>  LV         VG          Attr     LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_base    vg_critical -wi-a---  1.00g                                           
+  lv_files   vg_critical -wi-a---  5.00g                                           
+  lv_backups vg_normal   -wi-a--- 12.00g</computeroutput></screen>
+
+	<para>Zur Erstellung logischer Volumes sind zwei Parameter erforderlich; sie müssen als Optionen an den Befehl <command>lvcreate</command> übergeben werden. Der Name des zu erstellenden LV wird mit der Option <literal>-n</literal> festgelegt und seine Größe im Allgemeinen mit der Option <literal>-L</literal>. Wir müssen dem Befehl außerdem natürlich mitteilen, auf welche VG er angewendet werden soll. Dazu dient der letzte Parameter der Befehlszeile.</para>
+
+        <sidebar>
+          <title><emphasis>WEITERE SCHRITTE</emphasis> Optionen von <command>lvcreate</command></title>
+
+	  <para>Der Befehl <command>lvcreate</command> verfügt über mehrere Optionen, mit denen die Erstellung eines LV fein eingestellt werden kann.</para>
+
+	  <para>Wir wollen mit der Beschreibung der Option <literal>-l</literal> beginnen, bei der die Größe des LVs als Anzahl von Blöcken angegeben wird (im Gegensatz zu den „menschlichen“ Einheiten, die wir zuvor verwendet haben). Diese Blöcke (die in der Sprache des LVM als PEs, <emphasis>physical extents</emphasis>, bezeichnet werden) sind zusammenhängende Einheiten von Speicherplatz in den PVs, die nicht auf verschiedene LVs aufgeteilt werden können. Wenn man den Speicherplatz eines LV genau festlegen möchte, um zum Beispiel den verfügbaren Platz vollständig zu nutzen, wird man wohl die Option <literal>-l</literal> der Option <literal>-L</literal> vorziehen.</para>
+
+	  <para>Man kann auch den physischen Ort eines LV angeben, so dass seine „extents“ in einem bestimmten PV abgelegt werden (wobei sie natürlich innerhalb des Bereichs verbleiben müssen, der der VG zugewiesen ist). Da wir wissen, dass <filename>sdb</filename> schneller als <filename>sdf</filename> ist, werden wir <filename>lv_base</filename> wohl dort ablegen, wenn wir dem Datenbank-Server gegenüber dem Dateiserver einen Vorteil verschaffen möchten. So wird die Befehlszeile zu: <command>lvcreate -n lv_base -L 1G vg_critical /dev/sdb2</command>. Man beachte, dass dieser Befehl scheitern kann, wenn das PV nicht genügend freie „extents“ hat. In unserem Beispiel müssten wir wohl <filename>lv_base</filename> vor <filename>lv_files</filename> erstellen, um eine derartige Situation zu vermeiden - oder mit dem Befehl <command>pvmove</command> auf <filename>sdb2</filename> etwas Platz schaffen.</para>
+        </sidebar>
+
+	<para>Logische Volumes werden nach ihrer Erstellung zu Blockgerätedateien in <filename>/dev/mapper/</filename>:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>ls -l /dev/mapper</userinput>
+<computeroutput>total 0
+crw------- 1 root root 10, 236 Jun 10 16:52 control
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_critical-lv_base -&gt; ../dm-1
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_critical-lv_files -&gt; ../dm-0
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_normal-lv_backups -&gt; ../dm-2
+# </computeroutput><userinput>ls -l /dev/dm-*</userinput>
+<computeroutput>brw-rw---T 1 root disk 253, 0 Jun 10 17:05 /dev/dm-0
+brw-rw---- 1 root disk 253, 1 Jun 10 17:05 /dev/dm-1
+brw-rw---- 1 root disk 253, 2 Jun 10 17:05 /dev/dm-2
+</computeroutput></screen>
+
+        <sidebar>
+          <title><emphasis>HINWEIS</emphasis> LVM-Volumes automatisch erkennen</title>
+
+          <para>Wenn der Rechner hochfährt, ruft der systemd-Service <filename>Lvm2-activation</filename> den Befehl <command>vgchange -aay</command> auf um alle volume groups zu aktivieren: Diejenigen, die als physische Volumes für LVM initialisiert sind, werden im LVM-Untersystem registriert; diejenigen, die zu Volume-Gruppen gehören, werden zusammengefügt; und die entsprechenden logischen Volumes werden gestartet und bereitgestellt. Es ist daher nicht erforderlich, Konfigurationsdateien zu editieren, wenn LVM-Volumes erstellt oder verändert werden.</para>
+
+	  <para>Man beachte jedoch, dass die Anordnung der LVM-Komponenten (physische und logische Volumes und Volume-Gruppen) in der Datei <filename>/etc/lvm/backup</filename> gespeichert wird, was bei Problemen nützlich sein kann (oder auch um einfach einen Blick unter die Haube zu werfen).</para>
+        </sidebar>
+
+	<para>Zur Vereinfachung werden zudem bequeme symbolische Verknüpfungen in den Verzeichnissen angelegt, die den VGs entsprechen:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>ls -l /dev/vg_critical</userinput>
+<computeroutput>total 0
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_base -&gt; ../dm-1
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_files -&gt; ../dm-0
+# </computeroutput><userinput>ls -l /dev/vg_normal</userinput>
+<computeroutput>total 0
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_backups -&gt; ../dm-2</computeroutput></screen>
+
+	<para>Die LVs können genau wie Standard-Partitionen benutzt werden:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>mkfs.ext4 /dev/vg_normal/lv_backups</userinput>
+<computeroutput>mke2fs 1.42.12 (29-Aug-2014)
+Creating filesystem with 3145728 4k blocks and 786432 inodes
+Filesystem UUID: b5236976-e0e2-462e-81f5-0ae835ddab1d
+[...]
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done 
+# </computeroutput><userinput>mkdir /srv/backups</userinput>
+<computeroutput># </computeroutput><userinput>mount /dev/vg_normal/lv_backups /srv/backups</userinput>
+<computeroutput># </computeroutput><userinput>df -h /srv/backups</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_normal-lv_backups   12G   30M   12G   1% /srv/backups
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>cat /etc/fstab</userinput>
+<computeroutput>[...]
+/dev/vg_critical/lv_base    /srv/base       ext4 defaults 0 2
+/dev/vg_critical/lv_files   /srv/files      ext4 defaults 0 2
+/dev/vg_normal/lv_backups   /srv/backups    ext4 defaults 0 2</computeroutput></screen>
+
+	<para>Aus Sicht der Anwendungen ist die Vielzahl kleiner Partitionen jetzt zu einem großen Datenträger mit 12 GB und einem freundlicheren Namen zusammengefasst worden.</para>
+      </section>
+      <section id="sect.lvm-over-time">
+        <title>LVM im Verlauf der Zeit</title>
+
+	<para>Wenn auch die Fähigkeit, Partitionen oder physische Platten zusammenzufassen, praktisch ist, so ist dies doch nicht der wichtigste Vorteil, den LVM bietet. Die Flexibilität, die er mit sich bringt, wird erst im Laufe der Zeit richtig deutlich, wenn sich die Anforderungen weiterentwickeln. In unserem Beispiel wollen wir annehmen, dass neue große Dateien gespeichert werden müssen, und dass das für den Dateiserver reservierte LV für sie zu klein ist. Da wir noch nicht allen in <filename>vg_critical</filename> verfügbaren Platz verwendet haben, können wir <filename>lv_files</filename> vergrößern. Zu diesem Zweck benutzen wir den Befehl <command>lvresize</command> und anschließend <command>resize2fs</command>, um das Dateisystem entsprechend anzupassen:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>df -h /srv/files/</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_files  5.0G  4.6G  146M  97% /srv/files
+# </computeroutput><userinput>lvdisplay -C vg_critical/lv_files</userinput>
+<computeroutput>  LV       VG          Attr     LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_files vg_critical -wi-ao-- 5.00g
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree
+  vg_critical   2   2   0 wz--n- 8.09g 2.09g
+# </computeroutput><userinput>lvresize -L 7G vg_critical/lv_files</userinput>
+<computeroutput>  Size of logical volume vg_critical/lv_files changed from 5.00 GiB (1280 extents) to 7.00 GiB (1792 extents).
+  Logical volume lv_files successfully resized
+# </computeroutput><userinput>lvdisplay -C vg_critical/lv_files</userinput>
+<computeroutput>  LV       VG          Attr     LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_files vg_critical -wi-ao-- 7.00g
+# </computeroutput><userinput>resize2fs /dev/vg_critical/lv_files</userinput>
+<computeroutput>resize2fs 1.42.12 (29-Aug-2014)
+Filesystem at /dev/vg_critical/lv_files is mounted on /srv/files; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 1
+The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
+
+# </computeroutput><userinput>df -h /srv/files/</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_files  6.9G  4.6G  2.1G  70% /srv/files</computeroutput></screen>
+
+        <sidebar>
+          <title><emphasis>VORSICHT</emphasis> Die Größe von Dateisystemen ändern</title>
+
+	  <para>Nicht bei allen Dateisystemen lässt sich die Größe im laufenden Betrieb verändern. Zur Änderung der Größe eines Datenträgers kann es daher erforderlich sein, das Dateisystem zunächst aus- und anschließend wieder einzuhängen. Wenn man die Größe, die einem LV zugeordnet ist, verkleinern will, muss man natürlich zunächst das Dateisystem verkleinern. Die Reihenfolge ist umgekehrt, wenn die Größenänderung in die andere Richtung verläuft: das logische Volume muss vor dem darauf befindlichen Dateisystem vergrößert werden. Dies ist recht eindeutig, da zu keiner Zeit das Dateisystem größer sein darf als das Blockgerät, auf dem es sich befindet (gleichgültig, ob dieses Gerät eine physische Partition oder ein logisches Volume ist).</para>
+
+	  <para>Die Dateisysteme ext3, ext4 und xfs können im laufenden Betrieb vergrößert werden, ohne sie auszuhängen. Zu einer Verkleinerung müssen sie jedoch ausgehängt werden. Das Dateisystem reiserfs ermöglicht eine Größenänderung im laufenden Betrieb in beide Richtungen. Das altehrwürdige ext2 erlaubt keines von beiden und muss immer ausgehängt werden.</para>
+        </sidebar>
+
+	<para>Wir könnten in ähnlicher Weise vorgehen, um den Datenträger zu erweitern, auf dem sich die Datenbank befindet. Nur haben wir hier die Grenze des für die VG verfügbaren Platzes erreicht:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>df -h /srv/base/</userinput>
+<computeroutput>Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_base 1008M  854M  104M  90% /srv/base
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree 
+  vg_critical   2   2   0 wz--n- 8.09g 92.00m</computeroutput></screen>
+
+	<para>Das macht nichts, da es mit LVM möglich ist, physische Datenträger zu bestehenden Volume-Gruppen hinzuzufügen. Wir könnten zum Beispiel festgestellt haben, dass die Partition <filename>sdb1</filename>, die bisher außerhalb des LVM verwendet wurde, nur Archivdateien enthält, die nach <filename>lv_backups</filename> verschoben werden könnten. Wir können sie dann neu verwenden und in die Volume-Gruppe integrieren und so zusätzlichen Platz gewinnen. Hierzu dient der Befehl <command>vgextend</command>. Natürlich muss die Partition zunächst als physischer Datenträger eingerichtet werden. Sobald die VG erweitert worden ist, können wir ähnliche Befehle wie zuvor verwenden, um zunächst das logische Volume und anschließend das Dateisystem zu vergrößern:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>pvcreate /dev/sdb1</userinput>
+<computeroutput>  Physical volume "/dev/sdb1" successfully created
+# </computeroutput><userinput>vgextend vg_critical /dev/sdb1</userinput>
+<computeroutput>  Volume group "vg_critical" successfully extended
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree
+  vg_critical   3   2   0 wz--n- 9.09g 1.09g
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>df -h /srv/base/</userinput>
+<computeroutput>Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_base  2.0G  854M  1.1G  45% /srv/base</computeroutput></screen>
+
+        <sidebar>
+          <title><emphasis>WEITERE SCHRITTE</emphasis> Weitergehender LVM</title>
+
+	  <para>LVM wird auch weitergehenden Einsätzen gerecht, bei denen viele Einzelheiten von Hand festgelegt werden können. So kann ein Administrator zum Beispiel die Größe der Blöcke, aus denen physische oder logische Datenträger bestehen, wie auch ihre physische Anordnung genau einstellen. Es ist auch möglich, Blöcke in andere PVs zu verschieben, um zum Beispiel die Leistung fein abzustimmen, oder etwas alltäglicher, um ein PV leerzuräumen, wenn man die entsprechende physische Platte aus der VG entfernen muss (um sie einer anderen VG zuzuordnen oder vollständig aus dem LVM zu entfernen). Die Handbuchseiten, die die Befehle erläutern, sind meist deutlich und ausführlich. Ein guter Einstieg ist die Handbuchseite <citerefentry><refentrytitle>lvm</refentrytitle> <manvolnum>8</manvolnum></citerefentry>.</para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.raid-or-lvm">
+      <title>RAID oder LVM?</title>
+
+      <para>Sowohl RAID als auch LVM bieten eindeutige Vorteile, sobald man den einfachen Fall eines Arbeitsplatzrechners mit einer einzigen Festplatte, bei der sich die Art der Nutzung im Laufe der Zeit nicht ändert, verlässt. RAID und LVM gehen jedoch in zwei verschiedene Richtungen mit unterschiedlichen Zielen, und man fragt sich zu Recht, welches man anwenden soll. Die richtige Antwort hängt natürlich von den jetzigen und voraussichtlichen Anforderungen ab.</para>
+
+      <para>Es gibt einige einfache Fälle, in denen sich diese Frage nicht wirklich stellt. Wenn es erforderlich ist, Daten vor Hardwareausfällen zu schützen, wird natürlich RAID auf einer redundanten Anordnung von Platten eingerichtet, da LVM dieses Problem nicht wirklich anspricht. Falls andererseits Bedarf an einem flexiblen Speichersystem besteht, bei dem die Datenträger von der physischen Anordnung der Platten unabhängig sind, hilft RAID nicht viel, und die Wahl fällt natürlich auf LVM.</para>
+
+      <sidebar>
+        <title><emphasis>HINWEIS</emphasis> Wenn es auf Performance ankommt…</title>
+
+	<para>Wenn es auf die Schreib-/Lese-Geschwindigkeit ankommt, vor allem auf die Zugriffszeit, dann hat die Verwendung von LVM und/oder RAID in einer seiner vielen Ausprägungen möglicherweise Einfluss auf die Performance. Das kann die Entscheidung, welche Lösung gewählt werden soll, beeinflussen. Jedoch sind diese Unterschiede in der Perormance gering und nur in wenigen Fällen messbar. Wenn es auf Performance ankommt, kann man mit nicht drehenden Speichermedien die besten Resultate erzielen (<indexterm><primary>SSD</primary></indexterm><emphasis>solid-state drives</emphasis> or SSDs); Dabei sind die Kosten pro Megabyte höher als bei Standardplatten und ihre Kapazität ist üblicherweise geringer, aber sie bieten ausgezeichnete Performance bei zufällig verteilten Zugriffen. Wenn das Nutzungsprofil viele Lese-/Schreibzugriffe über das ganze Dateisystem verteilt beinhaltet, dann ist der Vorteil, wenn sie auf SSD ausgeführt werden, weit größer, als das, was Sie gewinnen können, wenn Sie LVM einem RAID vorziehen oder umgekehrt. In diesen Fällen, sollte die Entscheidung nach anderen Kriterien als der reinen Zugriffsgeschwindigkeit erfolgen, denn Geschwindigkeitsanforderungen werden am besten bei Verwendung von SSDs erfüllt.</para>
+      </sidebar>
+
+      <para>Der dritte bemerkenswerte Anwendungsfall liegt vor, wenn man einfach zwei Platten zu einem Datenträger zusammenfassen möchte, entweder aus Gründen der Leistung oder um ein einziges Dateisystem zu haben, das größer als jede der verfügbaren Platten ist. Dieser Fall kann sowohl mit einem RAID-0 (oder sogar einem linearen RAID) als auch mit einem LVM-Volume gelöst werden. In dieser Situation, und falls es keine sonstigen Anforderungen gibt (zum Beispiel, mit den übrigen Rechnern konform zu bleiben, falls diese nur RAID verwenden), wird häufig LVM die Konfiguration der Wahl sein. Die anfängliche Einrichtung ist kaum komplizierter, aber die etwas höhere Komplexität wird durch die außergewöhnliche Flexibilität wettgemacht, die LVM bietet, wenn sich die Anforderungen ändern oder wenn neue Platten hinzugefügt werden müssen.</para>
+
+      <para>Dann gibt es natürlich den wirklich interessanten Fall, bei dem das Speichersystem sowohl gegen Hardwareausfall beständig gemacht werden muss als auch flexibel bei der Datenträgeraufteilung. Weder RAID noch LVM allein kann beide Ansprüche erfüllen. Kein Problem, hier verwenden wir beide gleichzeitig - oder vielmehr übereinander. Der Aufbau, der quasi zum Standard geworden ist, seit RAID und LVM die Einsatzreife erreicht haben, besteht darin, zunächst Datenredundanz sicherzustellen, indem Platten zu einer kleinen Anzahl großer RAID-Anordnungen zusammengefasst werden, und dann diese RAID-Anordnungen als physische LVM-Volumes zu verwenden. Anschließend werden diese LVs in logische Partitionen für die Dateisysteme aufgeteilt. Der Grund für diesen Aufbau ist, dass, wenn eine Platte ausfällt, nur wenige der RAID-Anordnungen wiederhergestellt werden müssen, wodurch die Zeit, die der Administrator für die Wiederherstellung aufwenden muss, begrenzt bleibt.</para>
+
+      <para>Nehmen wir ein konkretes Beispiel: die Werbeabteilung bei Falcot Corp. benötigt einen Arbeitsplatzrechner für die Videobearbeitung, das Budget der Abteilung reicht aber nicht aus, um von Grund auf in Hochleistungsgeräte zu investieren. Es wird daher beschlossen, sich hierbei auf die Geräte zu beschränken, die für die grafische Art der Arbeit spezifisch sind (Bildschirm und Grafikkarte), und für die Speicherung bei normaler Hardware zu bleiben. Es ist jedoch allgemein bekannt, dass digitales Video einige besondere Ansprüche an die Speicherung stellt: der Umfang der zu speichernden Daten ist hoch, und die Durchsatzgeschwindigkeit für das Lesen und Schreiben dieser Daten ist für die Gesamtleistung des Systems wichtig (wichtiger als zum Beispiel die typische Zugriffszeit). Diese Anforderungen müssen mit der normalen Hardware erfüllt werden, in diesem Fall mit zwei 300 GB SATA-Festplatten. Die Systemdaten und einige Anwenderdaten müssen außerdem gegen Hardwareausfall beständig gemacht werden. Bearbeitete Videoclips müssen wirklich sicher sein, während dies bei Videoabschnitten, die noch nicht editiert wurden, weniger kritisch ist, da es sie noch auf den Videobändern gibt.</para>
+
+      <para>RAID-1 und LVM werden kombiniert, um diese Ansprüche zu erfüllen. Die Platten werden an zwei verschiedene SATA-Controller angeschlossen, um den parallelen Zugriff zu optimieren und das Risiko eines gleichzeitigen Ausfalls zu verringern, und werden demnach als <filename>sda</filename> und <filename>sdc</filename> angezeigt. Sie werden beide in gleicher Weise wie folgt partitioniert:</para>
+
+      <screen><computeroutput># </computeroutput><userinput>fdisk -l /dev/sda</userinput>
+<computeroutput>
+Disk /dev/sda: 300 GB, 300090728448 bytes, 586114704 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x00039a9f
+
+Device    Boot     Start       End   Sectors Size Id Type
+/dev/sda1 *         2048   1992060   1990012 1.0G fd Linux raid autodetect
+/dev/sda2        1992061   3984120   1992059 1.0G 82 Linux swap / Solaris
+/dev/sda3        4000185 586099395 582099210 298G 5  Extended
+/dev/sda5        4000185 203977305 199977120 102G fd Linux raid autodetect
+/dev/sda6      203977306 403970490 199993184 102G fd Linux raid autodetect
+/dev/sda7      403970491 586099395 182128904  93G 8e Linux LVM</computeroutput></screen>
+      <itemizedlist>
+        <listitem>
+	  <para>Die ersten Partitionen beider Platten (etwa 1 GB) werden zu einem RAID-1-Datenträger namens <filename>md0</filename> zusammengefasst. Dieser Spiegel wird direkt dazu benutzt, das Wurzeldateisystem aufzunehmen.</para>
+        </listitem>
+        <listitem>
+	  <para>Die Partitionen <filename>sda2</filename> und <filename>sdc2</filename> werden als Auslagerungspartitionen verwendet und stellen insgesamt 2 GB an Auslagerungsspeicher bereit. Zusammen mit 1 GB RAM hat der Arbeitsplatzrechner somit einen reichlichen Umfang an verfügbarem Speicher.</para>
+        </listitem>
+        <listitem>
+	  <para>Die Partitionen <filename>sda5</filename> und <filename>sdc5</filename> wie auch <filename>sda6</filename> und <filename>sdc6</filename> werden zu zwei neuen RAID-1-Datenträgern namens <filename>md1</filename> und <filename>md2</filename> mit einer Größe von je 100 GB zusammengefasst. Diese beiden Spiegel werden als physische Datenträger für LVM initialisiert und der Volumengruppe <filename>vg_raid</filename> zugewiesen. Diese VG umfasst somit etwa 200 GB an sicherem Speicherplatz.</para>
+        </listitem>
+        <listitem>
+	  <para>Die übrigen Partitionen, <filename>sda7</filename> und <filename>sdc7</filename> werden direkt als physische Datenträger benutzt und einer weiteren VG namens <filename>vg_bulk</filename> zugewiesen, die daher auch etwa 200 GB Speicherplatz bekommt.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Nachdem die VGs erstellt sind, können sie auf sehr flexible Weise partitioniert werden. Man muss dabei beachten, dass die in <filename>vg_raid</filename> erstellten LVs selbst dann erhalten bleiben, wenn eine der Platten ausfällt, wohingegen dies bei den in <filename>vg_bulk</filename> erstellten LVs nicht der Fall ist. Andererseits werden letztere parallel auf beiden Platten bereitgestellt, wodurch höhere Lese- und Schreibgeschwindigkeiten für große Dateien möglich sind.</para>
+
+      
+      <para>Wir erstellen daher auf <filename>vg_raid</filename> die LVs <filename>lv_usr</filename>, <filename>lv_var</filename> und <filename>lv_home</filename> zur Aufnahme der entsprechenden Dateisysteme. Ein weiteres großes LV, <filename>lv_movies</filename>, dient dazu, die endgültigen Versionen der Filme nach ihrer Editierung aufzunehmen. Die andere VG wird in ein großes <filename>lv_rushes</filename> für Daten direkt aus den digitalen Videokameras und ein <filename>lv_tmp</filename> für temporäre Dateien aufgeteilt. Für den Ort des Arbeitsbereichs ist eine weniger einfache Entscheidung zu treffen: während für diesen Datenträger einerseits gute Leistung erforderlich ist, fragt es sich, ob es andererseits wert ist, den Verlust der Arbeit zu riskieren, wenn während des Editierens eine Platte ausfällt. In Abhängigkeit von der Antwort auf diese Frage wird das entsprechende LV auf der einen oder der anderen VG erstellt.</para>
+
+      <para>Wir haben jetzt sowohl einige Redundanz für wichtige Daten als auch große Flexibilität in der Art, wie der verfügbare Platz auf die Anwendungen verteilt ist. Sollten später neue Programme installiert werden (zum Beispiel zum Editieren von Audiodateien), kann das LV, das <filename>/usr/</filename> enthält, problemlos vergrößert werden.</para>
+
+      <sidebar>
+        <title><emphasis>HINWEIS</emphasis> Warum drei RAID-1-Datenträger?</title>
+
+	<para>Wir hätten nur einen RAID-1-Datenträger einrichten können, um als physischer Datenträger für <filename>vg_raid</filename> zu dienen. Warum haben wir dann drei erstellt?</para>
+
+	<para>Der Grund für die erste Unterteilung (in <filename>md0</filename> und die übrigen) liegt in der Datensicherheit: Daten, die auf beide Komponenten eines RAID-1-Spiegels geschrieben werden, sind identisch, und es ist daher möglich, die RAID-Ebene zu umgehen und eine der Platten direkt einzuhängen. Im Falle eines Kernelfehlers oder falls die LVM-Metadaten beschädigt werden, ist es immer noch möglich, ein minimales System zu starten, um damit auf wichtige Daten wie die Belegung der Platten in den RAID- und LVM-Volumes zuzugreifen. Die Metadaten können dann wiederhergestellt und die Dateien wieder zugänglich gemacht werden, so dass das System in seinen Ausgangszustand zurückversetzt werden kann.</para>
+
+	<para>Der Grund für die zweite Unterteilung (in <filename>md1</filename> und <filename>md2</filename>) ist weniger offensichtlich und hängt eher mit der Erkenntnis zusammen, dass die Zukunft unsicher ist. Wenn der Arbeitsplatzrechner erstmals eingerichtet wird, sind die genauen Speichererfordernisse nicht unbedingt mit absoluter Sicherheit bekannt; außerdem können sie sich im Laufe der Zeit verändern. In unserem Fall können wir den tatsächlichen Bedarf an Speicherplatz für Videoszenen und vollständige Videoclips nicht im Vorhinein kennen. Falls ein bestimmter Clip eine sehr hohe Anzahl an Szenen benötigt, und die VG für redundante Daten weniger als halb voll ist, können wir einen Teil ihres nicht genutzten Platzes anderweitig verwenden. Wir können einen der physischen Datenträger entfernen, zum Beispiel <filename>md2</filename> aus <filename>vg_raid</filename> und ihn entweder direkt <filename>vg_bulk</filename> zuordnen (falls die voraussichtliche Dauer des Einsatzes kurz genug ist, um den vorübergehenden Leistungsabfall in Kauf zu nehmen), oder die RAID-Anordnung auf <filename>md2</filename> auflösen und seine Komponenten <filename>sda6</filename> und <filename>sdc6</filename> in die Massen-VG integrieren (die damit um 200 GB statt um 100 GB anwächst). Der logische Datenträger <filename>lv_rushes</filename> kann dann nach Maßgabe des Bedarfs vergrößert werden.</para>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.virtualization">
+    <title>Virtualisierung</title>
+    <indexterm><primary>Virtualizierung</primary></indexterm> 
+
+    <para>Virtualisierung ist einer der größten Fortschritte der letzten Jahre im Computerwesen. Der Ausdruck umfasst verschiedene Abstraktionen und Techniken der Simulation virtueller Rechner mit unterschiedlichen Graden der Unabhängigkeit von der tatsächlichen Hardware. Dabei kann ein physischer Server mehrere Systeme beherbergen, die gleichzeitig und getrennt voneinander funktionieren. Es gibt zahlreiche Anwendungen, und sie rühren häufig von dieser Trennung her: zum Beispiel Testumgebungen mit unterschiedlichen Konfigurationen, oder die getrennte Unterbringung von Diensten auf unterschiedlichen virtuellen Rechnern aus Sicherheitsgründen.</para>
+
+    <para>Es gibt zahlreiche Virtualisierungslösungen, jede mit ihren eigenen Vor- und Nachteilen. Dieses Buch konzentriert sich auf Xen, LXC und KVM, es gibt jedoch weitere bemerkenswerte Umsetzungen einschließlich der folgenden:</para>
+    <indexterm><primary><emphasis>VMware</emphasis></primary></indexterm>
+    <indexterm><primary><emphasis>Bochs</emphasis></primary></indexterm>
+    <indexterm><primary><emphasis>QEMU</emphasis></primary></indexterm>
+    <indexterm><primary><emphasis>VirtualBox</emphasis></primary></indexterm>
+    <indexterm><primary><emphasis>KVM</emphasis></primary></indexterm>
+    <indexterm><primary><emphasis>LXC</emphasis></primary></indexterm>
+    <itemizedlist>
+      <listitem>
+	<para>QEMU ist ein Software-Emulator eines vollständigen Rechners. Die Leistungen sind weit geringer als die Geschwindigkeit, die man mit einer tatsächlichen Ausführung erreichen könnte, aber mit ihm ist es möglich, nicht modifizierte oder experimentelle Betriebssysteme auf der emulierten Hardware auszuführen. Mit ihm kann man auch eine andere Hardware-Architektur emulieren: so kann zum Beispiel ein <emphasis>amd64</emphasis>-System einen <emphasis>arm</emphasis>-Rechner emulieren. QEMU ist freie Software. <ulink type="block" url="http://www.qemu.org/" /></para>
+      </listitem>
+      <listitem>
+	<para>Bochs ist eine weitere freie virtuelle Maschine, die jedoch nur die x86-Architektur emuliert (i386 and amd64)t.</para>
+      </listitem>
+      <listitem>
+	<para>VMware ist ein proprietärer virtueller Rechner; da er einer der ältesten ist, ist er auch einer der bekanntesten. Er funktioniert nach ähnlichen Prinzipien wie QEMU. VMware bietet erweiterte Funktionen wie Schnappschüsse eines laufenden virtuellen Rechners. <ulink type="block" url="http://www.vmware.com/" /></para>
+      </listitem>
+      <listitem>
+        <para>VirtualBox is a virtual machine that is mostly free software
+          (some extra components are available under a proprietary
+          license). Unfortunately it is in Debian's “contrib” section because it
+          includes some precompiled files that cannot be rebuilt without a
+          proprietary compiler and it currently only resides in Debian Unstable
+          as Oracle's policies make it impossible to keep it secure
+          in a Debian stable release (see <ulink url="https://bugs.debian.org/794466">#794466</ulink>). While
+          younger than VMWare and restricted to the i386 and amd64
+          architectures, it still includes some snapshotting and other
+          interesting features.
+          <ulink type="block" url="http://www.virtualbox.org/" />
+        </para>
+      </listitem>
+    </itemizedlist>
+    <section id="sect.xen">
+      <title>Xen</title>
+
+      <para>Xen <indexterm><primary>Xen</primary></indexterm> ist eine Lösung zur „Paravirtualisierung“. Es führt zwischen der Hardware und den darüber liegenden Systemen eine dünne Abstraktionsschicht ein, die „Hypervisor“ genannt wird. Diese agiert als Schiedsrichter, der den Zugang der virtuellen Rechner zur Hardware kontrolliert. Er wickelt jedoch nur einige der Instruktionen ab, der Rest wird direkt von der Hardware im Auftrag des Systems ausgeführt. Der Hauptvorteil liegt darin, dass die Leistung nicht abnimmt und die Systeme so fast dieselbe Geschwindigkeit wie bei direkter Ausführung erreichen. Die Kehrseite besteht darin, dass die Kernel der Betriebssysteme, die man mit einem Xen-Hypervisor verwenden möchte, angepasst werden müssen, um mit Xen zu funktionieren.</para>
+
+      <para>Lassen Sie uns einige Zeit bei den Ausdrücken bleiben. Der Hypervisor ist die unterste Schicht, die direkt auf der Hardware läuft, sogar unterhalb des Kernels. Dieser Hypervisor kann die übrige Software auf verschiedene  <emphasis>Domains</emphasis> aufteilen, die man als ebenso viele virtuelle Rechner ansehen kann. Eine dieser Domains (die erste, die gestartet wird) wird als <emphasis>dom0</emphasis> bezeichnet und spielt eine besondere Rolle, da nur diese Domain den Hypervisor und die Ausführung der übrigen Domains kontrollieren kann. Diese übrigen Domains werden <emphasis>domU</emphasis> genannt. Mit anderen Worten und aus der Sicht des Benutzers entspricht <emphasis>dom0</emphasis> dem „Host“ bei anderen Virtualisierungssystemen, während eine <emphasis>domU</emphasis> als „Gast“ angesehen werden kann.</para>
+
+      <sidebar>
+        <title><emphasis>KULTUR</emphasis> Xen und die verschiedenen Linux-Versionen</title>
+
+	<para>Xen ist ursprünglich als Satz von Patches entwickelt worden, die außerhalb der offiziellen Baumstruktur standen und nicht mit dem Linux-Kernel integriert waren. Zur gleichen Zeit benötigten mehrere aufkommenden Virtualisierungssysteme (einschließlich KVM) einige allgemeine virtualisierungsbezogene Funktionen zur Erleichterung ihrer Integration, und der Linux-Kernel bekam diesen Satz von Funktionen (als <emphasis>paravirt_ops</emphasis>- oder <emphasis>pv_ops</emphasis>-Schnittstelle bekannt). Da die Xen-Patches einige Funktionsweisen dieser Schnittstelle duplizierten, konnten sie nicht offiziell akzeptiert werden.</para>
+
+	<para>Xensource, das Unternehmen, das hinter Xen steht, musste daher Xen auf dieses neue System portieren, so dass die Xen-Patches mit dem offiziellen Linux-Kernel zusammengeführt werden konnten. Dies bedeutete, dass eine Menge Code umgeschrieben werden musste, und obwohl Xensource bald eine funktionierende Version hatte, die auf der paravirt_ops-Schnittstelle basierte, wurden die Patches nur schrittweise mit dem offiziellen Kernel zusammengeführt. Die Zusammenführung war mit Linux 3.0 abgeschlossen. <ulink type="block" url="http://wiki.xenproject.org/wiki/XenParavirtOps" /></para>
+
+	<para>Da <emphasis role="distribution">Jessie</emphasis> auf der Version 3.16 des Linux-Kernels basiert, enthalten die Standardpakete <emphasis role="pkg">linux-image-686-pae</emphasis> und <emphasis role="pkg">linux-image-amd64</emphasis> bereits die nötigen Programmzeilen und die distributionsspezifischen Patches, die für <emphasis role="distribution">Squeeze</emphasis> und frühere Versionen von Debian noch erforderlich waren, werden nicht mehr benötigt. <ulink type="block" url="http://wiki.xenproject.org/wiki/Xen_Kernel_Feature_Matrix" /></para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>HINWEIS</emphasis> Mit Xen kompatible Architekturen</title>
+
+        <para>Xen ist derzeit nur für die Architekturen i386, amd64, arm64 und armhf verfügbar.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>KULTUR</emphasis> Xen und Nicht-Linux-Kernel</title>
+
+	<para>Xen erfordert Anpassungen bei allen Betriebssystemen, die man darauf laufen lassen möchte; nicht alle Kernel haben in dieser Hinsicht den gleichen Grad an Reife. Viele sind voll funktionsfähig, sowohl als dom0 als auch als domU: Linux 3.0 und später, NetBSD 4.0 und später sowie OpenSolaris. Andere arbeiten nur als domU. Sie können den Status jedes Betriebssystems im Xen-Wiki überprüfen: <ulink type="block" url="http://wiki.xenproject.org/wiki/Dom0_Kernels_for_Xen" /><ulink type="block" url="http://wiki.xenproject.org/wiki/DomU_Support_for_Xen" /></para>
+
+	<para>Wenn Xen sich jedoch auf die speziell für eine Virtualisierung vorgesehenen Hardwarefunktionen (die es nur bei neueren Prozessoren gibt) stützen kann, können selbst nicht modifizierte Betriebssysteme (einschließlich Windows) als domU laufen.</para>
+      </sidebar>
+
+      <para>Zur Verwendung von Xen unter Debian sind drei Komponenten erforderlich:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>Der Hypervisor an sich. Je nach verfügbarer Hardware ist das entsprechende Paket entweder <emphasis role="pkg">xen-hypervisor-4.4-amd64</emphasis>, <emphasis role="pkg">xen-hypervisor-4.4-armhf</emphasis> oder <emphasis role="pkg">xen-hypervisor-4.4-arm64</emphasis>.</para>
+        </listitem>
+        <listitem>
+	  <para>Ein Kernel, der auf diesem Hypervisor läuft. Jeder jüngere Kernel als 3.0 läuft, einschließlich der Version 3.16 in <emphasis role="distribution">Jessie</emphasis>.</para>
+        </listitem>
+        <listitem>
+	  <para>Die i386-Architektur erfordert zudem eine Standardbibliothek mit passenden Patches, um Xen nutzen zu können; diese befindet sich im Paket <emphasis role="pkg">libc6-xen</emphasis>.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Um den Aufwand der manuellen Auswahl dieser Komponenten zu vermeiden, stehen komfortablerweise einige fertige Pakete bereit (wie zum Beispiel <emphasis role="pkg">xen-linux-system-amd64</emphasis>); sie alle installieren eine als gut bekannte Kombination aus passendem Hypervisor und Kernelpaketen. Der Hypervisor bringt zudem das Paket <emphasis role="pkg">xen-utils-4.4</emphasis> mit sich, das Hilfsprogramme zur Steuerung des Hypervisors von dom0 aus enthält. Dieses wiederum bringt die passende Standardbibliothek mit sich. Während der Installation all dieser Komponenten erstellen Konfigurationsskripten außerdem einen neuen Eintrag im Menü des Grub Boot-Loaders, mit dem der ausgewählte Kernel in einer Xen dom0 gestartet wird. Man beachte jedoch, dass dieser Eintrag gewöhnlich nicht zuoberst in der Liste steht und deshalb nicht standardmäßig ausgewählt wird. Falls dies nicht das erwünschte Verhalten ist, kann es mit folgenden Befehlen verändert werden:</para>
+
+      <screen><computeroutput># </computeroutput><userinput>mv /etc/grub.d/20_linux_xen /etc/grub.d/09_linux_xen
+</userinput><computeroutput># </computeroutput><userinput>update-grub
+</userinput></screen>
+
+      <para>Nachdem diese Voraussetzungen installiert sind, besteht der nächste Schritt darin, das Verhalten von dom0 selbst zu testen; hierzu gehört ein Neustart des Hypervisors und des Xen-Kernels. Das System sollte auf normale Art hochfahren mit einigen zusätzlichen Meldungen auf dem Terminal während der frühen Initialisierungsschritte.</para>
+
+      <para>Jetzt ist es an der Zeit, unter Verwendung der Hilfsprogramme aus <emphasis role="pkg">xen-tools</emphasis> tatsächlich brauchbare Systeme auf dem domU-System zu installieren. Dieses Paket stellt den Befehl <command>xen-create-image</command> bereit, der die Aufgabe weitgehend automatisiert. Der einzig zwingend notwendige Parameter ist <literal>--hostname</literal>, der domU einen Namen gibt. Andere Optionen sind zwar ebenfalls wichtig, können aber in der Konfigurationsdatei <filename>/etc/xen-tools/xen-tools.conf</filename> gespeichert werden, und ihr Fehlen in der Befehlszeile führt nicht zu einer Fehlermeldung. Es ist daher wichtig, entweder vor der Erstellung von Abbildern den Inhalt dieser Datei zu überprüfen oder beim Aufruf des Befehls <command>xen-create-image</command> zusätzliche Parameter zu verwenden. Zu den wichtigen und beachtenswerten Parametern gehören folgende:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>--memory</literal>, um den Umfang an RAM festzulegen, den das neu erstellte System nutzen kann;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>--size</literal> und <literal>--swap</literal>, um die Größe der „virtuellen Platten“ zu definieren, die der domU zur Verfügung stehen;</para>
+        </listitem>
+        <listitem>
+	  <para><literal>--debootstrap</literal>, um zu veranlassen, dass das neue System mit <command>debootstrap</command> installiert wird; in diesem Fall wird meistens auch die Option <literal>--dist</literal> verwendet (mit dem Namen einer Distribution wie zum Beispiel <emphasis role="distribution">jessie</emphasis>).</para>
+
+          <sidebar>
+            <title><emphasis>WEITERE SCHRITTE</emphasis> Ein Nicht-Debian-System in einer domU installieren</title>
+
+	    <para>Im Falle eines Nicht-Linux-Systems sollte man darauf achten, den Kernel, den die domU verwenden soll, mit der Option <literal>--kernel</literal> zu bestimmen.</para>
+          </sidebar>
+        </listitem>
+        <listitem>
+	  <para><literal>--dhcp</literal> legt fest, dass die Netzwerkkonfiguration der domU durch DHCP besorgt wird, während <literal>--ip</literal> die Benennung einer statischen IP-Adresse ermöglicht.</para>
+        </listitem>
+        <listitem>
+	  <para>Schließlich muss noch eine Speichermethode für die zu erstellenden Abbilder (diejenigen, die von der domU aus als Festplatten gesehen werden) gewählt werden. Die einfachste Methode besteht darin, mit der Option <literal>--dir</literal> auf der dom0 eine Datei für jedes Gerät zu erstellen, das der domU zur Verfügung stehen soll. Für Systeme, die LVM verwenden, besteht die Alternative darin, die Option <literal>--lvm</literal> zu nutzen, gefolgt von dem Namen einer Volume-Gruppe; <command>xen-create-image</command> erstellt dann ein neues logisches Volume innerhalb dieser Gruppe, und dieses logische Volume wird der domU als Festplatte zur Verfügung gestellt.</para>
+
+          <sidebar>
+            <title><emphasis>HINWEIS</emphasis> Speicherung in der domU</title>
+
+	    <para>Ganze Festplatten können ebenso in die domU exportiert werden wie auch Partitionen, RAID-Anordnungen oder bereits in LVM bestehende logische Volumes. Diese Vorgänge werden jedoch nicht durch <command>xen-create-image</command> automatisiert. Es ist daher sinnvoll, die Konfigurationsdatei des Xen-Abbildes zu editieren, nachdem sie mit dem Befehl <command>xen-create-image</command> erstmals erstellt worden ist.</para>
+          </sidebar>
+        </listitem>
+      </itemizedlist>
+
+      <para>Nachdem diese Entscheidungen getroffen sind, können wir das Abbild der zukünftigen Xen-domU erstellen:</para>
+
+      <screen><computeroutput># </computeroutput><userinput>xen-create-image --hostname testxen --dhcp --dir /srv/testxen --size=2G --dist=jessie --role=udev</userinput>
+<computeroutput>
+[...]
+General Information
+--------------------
+Hostname       :  testxen
+Distribution   :  jessie
+Mirror         :  http://ftp.debian.org/debian/
+Partitions     :  swap            128Mb (swap)
+                  /               2G    (ext3)
+Image type     :  sparse
+Memory size    :  128Mb
+Kernel path    :  /boot/vmlinuz-3.16.0-4-amd64
+Initrd path    :  /boot/initrd.img-3.16.0-4-amd64
+[...]
+Logfile produced at:
+         /var/log/xen-tools/testxen.log
+
+Installation Summary
+---------------------
+Hostname        :  testxen
+Distribution    :  jessie
+MAC Address     :  00:16:3E:8E:67:5C
+IP-Address(es)  :  dynamic
+RSA Fingerprint :  0a:6e:71:98:95:46:64:ec:80:37:63:18:73:04:dd:2b
+Root Password   :  adaX2jyRHNuWm8BDJS7PcEJ
+</computeroutput></screen>
+
+      <para>Wir haben jetzt einen virtuellen Rechner, er läuft zur Zeit jedoch nicht (und belegt daher lediglich Platz auf der Festplatte der dom0). Wir können selbstverständlich weitere Abbilder erstellen, möglicherweise mit anderen Parametern.</para>
+
+      <para>Bevor wir diese virtuellen Rechner starten, müssen wir festlegen, wie wir auf sie zugreifen werden. Sie können natürlich als eigenständige Rechner angesehen werden, auf die nur über ihre jeweilige Systemkonsole zugegriffen wird, dies entspricht jedoch nur selten dem Nutzungsmuster. Meistens wird eine domU als entfernter Server angesehen, auf den nur über ein Netzwerk zugegriffen wird. Es wäre jedoch ziemlich umständlich, für jede domU eine Netzwerkkarte hinzuzufügen. Deshalb ist es möglich, mit Xen virtuelle Schnittstellen zu erstellen, die von jeder Domain gesehen und auf übliche Weise benutzt werden können. Man beachte, dass diese Karten, obwohl sie virtuell sind, nur von Nutzen sind, wenn sie mit einem Netzwerk verbunden sind, selbst wenn dieses virtuell ist. Xen bietet zu diesem Zweck mehrere Netzwerkmodelle:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>Das einfachste Modell ist das <emphasis>bridge</emphasis>-Modell; alle eth0-Netzwerkkarten (sowohl in der dom0 als auch in den domU-Systemen) verhalten sich so, als wären sie direkt an einen Ethernet-Switch angeschlossen.</para>
+        </listitem>
+        <listitem>
+	  <para>Dann kommt das <emphasis>routing</emphasis>-Modell, bei dem dom0 als Router agiert, der zwischen den domU-Systemen und dem (physischen) externen Netzwerk steht.</para>
+        </listitem>
+        <listitem>
+	  <para>Schließlich befindet sich im <emphasis>NAT</emphasis>-Modell die dom0 ebenfalls zwischen den domU-Systemen und dem übrigen Netzwerk, jedoch sind die domU-Systeme von außen nicht direkt zugänglich, sondern der Datenverkehr wird auf der dom0 einer „Network Address Translation“ unterworfen.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>Zu diesen drei Netzknoten gehören eine Reihe von Schnittstellen mit ungewöhnlichen Bezeichnungen, wie zum Beispiel <filename>vif*</filename>, <filename>veth*</filename>, <filename>peth*</filename> und <filename>xenbr0</filename>. Der Xen-Hypervisor ordnet sie gemäß dem an, was auch immer als Layout festgelegt worden ist, unter der Kontrolle der Hilfsprogramme auf der Anwenderebene. Da die NAT- und Routing-Modelle besonderen Fällen vorbehalten sind, beschäftigen wir uns hier nur mit dem Bridging-Modell.</para>
+
+      <para>Die Standardkonfiguration der Xen-Pakete verändert die systemweite Netzwerk-Konfiguration nicht. Jedoch ist der <command>xend</command>-Daemon so konfiguriert, dass er virtuelle Netzwerkschnittstellen in eine bereits bestehende Netzwerkbrücke integriert (wobei <filename>xenbr0</filename> Vorrang erhält, falls es mehrere solcher Brücken gibt). Wir müssen daher eine Brücke in <filename>/etc/network/interfaces</filename> einrichten (wozu das Paket <emphasis role="pkg">bridge-utils</emphasis> installiert werden muss, weshalb es vom Paket <emphasis role="pkg">xen-utils-4.4</emphasis> empfohlen wird), um den bestehenden eth0-Eintrag zu ersetzen:</para>
+
+      <programlisting>auto xenbr0
+iface xenbr0 inet dhcp
+    bridge_ports eth0
+    bridge_maxwait 0
+    </programlisting>
+
+      <para>Nach einem Neustart, um sicherzustellen, dass die Brücke automatisch erstellt wird, können wir jetzt die domU mit den Xen-Steuerprogrammen starten, insbesondere mit dem Befehl <command>xl</command>. Mit diesem Befehl ist es möglich, Verschiedenes mit den Domains zu machen, unter anderem sie aufzulisten und sie zu starten oder zu beenden.</para>
+
+      <screen><computeroutput># </computeroutput><userinput>xl list</userinput>
+<computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
+Domain-0                                     0   463     1     r-----      9.8
+# </computeroutput><userinput>xl create /etc/xen/testxen.cfg</userinput>
+<computeroutput>Parsing config from /etc/xen/testxen.cfg
+# </computeroutput><userinput>xl list</userinput>
+<computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
+Domain-0                                     0   366     1     r-----     11.4
+testxen                                      1   128     1     -b----      1.1</computeroutput></screen>
+
+      <sidebar>
+        <title><emphasis>WERKZEUG</emphasis> Auswahl an Toolstacks für die Verwaltung von Xen VMs</title>
+        <indexterm><primary><command>xm</command></primary></indexterm>
+        <indexterm><primary><command>xe</command></primary></indexterm>
+        <para>In Debian 7 und älteren Versionen war <command>xm</command> das Referenz-Kommandozeilen-Tool zur Verwaltung von virtuellen Xen-Maschinen. Es wurde nun durch <command>xl</command> ersetzt, das weitgehend abwärtskompatibel ist. Aber das sind nicht die einzigen verfügbaren Tools: <command>virsh</command> von libvirt und <command>xe</command> von XenServers XAPI (kommerzielles Angebot von Xen) sind alternative Tools.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>VORSICHT</emphasis> Nur eine domU je Abbild!</title>
+
+	<para>Während mehrere domU-Systeme natürlich gleichzeitig laufen können, muss jedes von ihnen sein eigenes Abbild verwenden, da jede domU den Eindruck erhält, dass sie auf ihrer eigenen Hardware läuft (abgesehen von dem kleinen Kernelanteil, der mit dem Hypervisor kommuniziert). Vor allem ist es nicht möglich, dass zwei domU-Systeme zur selben Zeit Speicherplatz gemeinsam benutzen. Falls die domU-Systeme nicht zur selben Zeit laufen, können sie jedoch eine einzige Auslagerungspartition oder die Partition, die das Dateisystem <filename>/home</filename> enthält, wiederverwenden.</para>
+      </sidebar>
+
+      <para>Man beachte, dass die domU <filename>testxen</filename> wirklichen Speicher des RAM verwendet, der ansonsten für die dom0 verfügbar wäre, und keinen simulierten Speicher. Man sollte daher darauf achten, das physische RAM entsprechend zuzuteilen, wenn man einen Server einrichtet, auf dem Xen-Instanzen laufen sollen.</para>
+
+      <para>Voilà! Unser virtueller Rechner startet. Wir können auf ihn auf zweifache Art zugreifen. Der normale Weg besteht darin, sich mit ihm „aus der Ferne“ über das Netzwerk zu verbinden, wie wir es auch bei einem wirklichen Rechner tun würden; hierzu ist es normalerweise erforderlich, entweder einen DHCP-Server oder eine DNS-Konfiguration einzurichten. Der andere Weg, der der einzige sein könnte, falsch die Netzwerk-Konfiguration nicht korrekt war, besteht darin, über den Befehl <command>xl console</command> die Konsole <filename>hvc0</filename> zu benutzen:</para>
+
+      <screen><computeroutput># </computeroutput><userinput>xl console testxen</userinput>
+<computeroutput>[...]
+
+Debian GNU/Linux 8 testxen hvc0
+
+testxen login: </computeroutput></screen>
+
+      <para>Man kann dann eine Sitzung öffnen, als säße man an der Tastatur des virtuellen Rechners. Zur Trennung von dieser Konsole dient die Tastenkombination <keycombo action="simul"><keycap>Strg</keycap> <keycap>]</keycap></keycombo>.</para>
+
+      <sidebar>
+        <title><emphasis>TIPP</emphasis> Direkt zur Konsole gelangen</title>
+
+	<para>Manchmal möchte man ein domU-System starten und direkt zu seiner Konsole gelangen; deshalb kann dem Befehl <command>xl create</command> der Schalter <literal>-c</literal> übergeben werden. Wenn man eine domU mit diesem Schalter startet, werden während des Hochfahrens des Systems alle Meldungen angezeigt.</para>
+      </sidebar>
+
+      <sidebar>
+        <title><emphasis>TOOL</emphasis> OpenXenManager</title>
+
+	<para>OpenXenManager (im Paket <emphasis role="pkg">openxenmanager</emphasis>) ist ein grafisches Interface das entfernte Verwaltung von Xen Domänen über das API von Xen ermöglicht. Es kann so Xen Domänen aus der Ferne kontrollieren. Es stellt den Großteil der Funktionalität des Befehls <command>xl</command> zur Verfügung.</para>
+      </sidebar>
+
+      <para>Sobald eine domU läuft, kann sie so wie jeder andere Server verwendet werden (da sie schließlich ein GNU/Linux-System ist). Ihr Status als virtueller Rechner ermöglicht jedoch einige zusätzliche Funktionen. So kann eine domU zum Beispiel mit den Befehlen <command>xl pause</command> und <command>xl unpause</command> vorübergehend angehalten und dann wieder fortgesetzt werden. Man beachte, dass bei einer angehaltenen domU, obwohl sie keine Prozessorleistung in Anspruch nimmt, der ihr zugeordnete Speicherplatz weiterhin belegt ist. Es könnte interessant sein, hier die Befehle <command>xl save</command> und <command>xl restore</command> in Erwägung zu ziehen: das Speichern einer domU gibt die Ressourcen frei, die vorher von dieser domU verwendet wurden, einschließlich des RAM. Wenn sie fortgesetzt wird (oder eigentlich ihr Pausieren beendet wird), bemerkt eine domU außer dem Fortschreiten der Zeit nichts. Falls eine domU läuft, wenn die dom0 heruntergefahren wird, speichern die gebündelten Skripten automatisch die domU, und stellen sie beim nächsten Hochfahren wieder her. Dies schließt natürlich die gleichen Unannehmlichkeiten ein, die entstehen, wenn man zum Beispiel einen Laptop in den Ruhezustand versetzt; insbesondere, dass Netzwerkverbindungen verfallen, falls die domU zu lange ausgesetzt ist. Man beachte auch, dass Xen insofern mit einem Großteil der ACPI-Energieverwaltung inkompatibel ist, als es nicht möglich ist, das Host-System (die dom0) in den Bereitschaftsbetrieb zu versetzen.</para>
+
+      <sidebar>
+        <title><emphasis>DOKUMENTATION</emphasis> <command>xl</command>-Optionen</title>
+
+	<para>Die meisten der <command>xl</command>-Unterbefehle erwarten ein oder mehrere Argumente, häufig einen domU-Namen. Diese Argumente sind auf der Handbuchseite <citerefentry><refentrytitle>xl</refentrytitle> <manvolnum>1</manvolnum></citerefentry> gut beschrieben.</para>
+      </sidebar>
+
+      <para>Das Anhalten oder Neustarten einer domU kann entweder aus dieser domU heraus geschehen (mit dem Befehl <command>shutdown</command>) oder von der dom0 aus mit <command>xl shutdown</command> oder <command>xl reboot</command>.</para>
+
+      <sidebar>
+        <title><emphasis>WEITERE SCHRITTE</emphasis> Weitergehendes Xen</title>
+
+	<para>Xen verfügt über wesentlich mehr Funktionen als wir in diesen wenigen Absätzen beschreiben können. Vor allem ist das System sehr dynamisch, und viele Parameter einer Domain (wie zum Beispiel der Umfang des zugewiesenen Speichers, die sichtbaren Festplatten, das Verhalten der Aufgabensteuerung und so weiter) können eingestellt werden, selbst wenn die Domain läuft. Eine domU kann sogar auf einen anderen Server verschoben werden, ohne abgeschaltet zu werden und ohne ihre Netzwerkverbindungen zu verlieren! Die Hauptinformationsquelle für alle diese weitergehenden Aspekte ist die offizielle Xen-Dokumentation. <ulink type="block" url="http://www.xen.org/support/documentation.html" /></para>
+      </sidebar>
+    </section>
+    <section id="sect.lxc">
+      <title>LXC</title>
+      <indexterm><primary>LXC</primary></indexterm> 
+
+      <para>Obwohl es dazu benutzt wird, „virtuelle Rechner“ zu erstellen, ist LXC genaugenommen kein Virtualisierungssystem, sondern ein System, um Gruppen von Prozessen voneinander zu isolieren, obwohl sie alle auf demselben Host laufen. Es macht sich eine Reihe neuerer Entwicklungen im Linux-Kernel zunutze, die gemeinhin als <emphasis>Kontrollgruppen</emphasis> (control groups) bekannt sind, mit denen verschiedene Sätze von Prozessen, die „Gruppen“ genannt werden, bestimmte Aspekte des Gesamtsystems auf unterschiedliche Weise sehen. Dies gilt vor allem für Aspekte wie die Prozesskennungen, die Netzwerkonfiguration und die Einhängepunkte. Eine derartige Gruppe isolierter Prozesse hat keinerlei Zugriff auf die anderen Prozesse des Systems, und ihre Zugriffe auf das Dateisystem können auf einen bestimmten Teilbereich eingegrenzt werden. Sie kann auch ihre eigene Netzwerkschnittstelle und Routing-Tabelle haben, und möglicherweise ist sie so konfiguriert, dass sie nur einen Teil der auf dem System verfügbaren Geräte sieht.</para>
+
+      <para>Diese Funktionen können kombiniert werden, um eine ganze Prozessfamilie, vom <command>init</command>-Prozess angefangen, zu isolieren, und die sich daraus ergebende Gruppe sieht einem virtuellen Rechner sehr ähnlich. Die offizielle Bezeichnung für eine derartige Anordnung ist ein „Container“ (daher der Name LXC: <emphasis>LinuX Containers</emphasis>), jedoch besteht ein wichtiger Unterschied zu einem „wirklichen“ virtuellen Rechner, wie einem der durch Xen oder KVM bereitgestellt wird, darin, dass es keinen zweiten Kernel gibt; der Container verwendet denselben Kernel wie das Host-System. Dies hat Vor- und Nachteile: zu den Vorteilen gehören die exzellente Performance aufgrund fehlender Last durch Overhead, und die Tatsache, dass der Kernel einen vollständigen Überblick über alle Prozesse hat, die auf dem System laufen, wodurch die Steuerung effizienter sein kann, als wenn zwei unabhängige Kernel verschiedene Aufgabensätze steuern würden. Zu den Nachteilen gehört vor allem, dass man in einem Container keinen anderen Kernel laufen lassen kann (sei dies eine andere Linux-Version oder ein völlig anderes Betriebssystem).</para>
+
+      <sidebar>
+        <title><emphasis>HINWEIS</emphasis> Grenzen der LXC-Isolierung</title>
+
+	<para>LXC-Container bieten nicht den Grad an Isolierung, der mit schwergewichtigeren Emulatoren oder Virtualisierern erreicht wird. Insbesondere:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>können, da der Kernel vom Host-System und den Containern gemeinsam genutzt wird, in Containern gebundene Prozesse weiterhin auf Kernel-Meldungen zugreifen, wodurch Informationslecks entstehen können, falls Meldungen von einem Container abgegeben werden;</para>
+          </listitem>
+          <listitem>
+	    <para>können aus ähnlichen Gründen, falls ein Container beeinträchtigt und eine Kernel-Schwachstelle ausgenutzt wird, die übrigen Container ebenfalls betroffen sein;</para>
+          </listitem>
+          <listitem>
+	    <para>überprüft der Kernel Berechtigungen im Dateisystem anhand der numerischen Kennungen für Benutzer und Gruppen; diese Kennungen können je nach Container unterschiedliche Benutzer und Gruppen bezeichnen, woran man denken sollte, falls beschreibbare Teile des Dateisystems von mehreren Containern gemeinsam benutzt werden.</para>
+          </listitem>
+        </itemizedlist>
+      </sidebar>
+
+      <para>Da wir es hier mit einer Isolierung und nicht mit einer einfachen Virtualisierung zu tun haben, ist es schwieriger, einen LXC-Container einzurichten, als nur ein Debian-Installationsprogramm auf einem virtuellen Rechner auszuführen. Wir werden einige Voraussetzungen beschreiben und dann zur Netzwerkkonfigurierung übergehen; damit werden wir in der Lage sein, das System, das in dem Container laufen soll, zu erstellen.</para>
+      <section>
+        <title>Vorbereitende Schritte</title>
+
+	<para>Das Paket <emphasis role="pkg">lxc</emphasis> enthält die für die Ausführung von LXC erforderlichen Hilfsprogramme und muss daher installiert werden.</para>
+
+	<para>LXC benötigt außerdem das Konfigurationssystem für die <emphasis>Kontrollgruppen</emphasis>, das ein unter <filename>/sys/fs/cgroup</filename> einzuhängendes virtuelles Dateisystem ist. Weil Debian 8 auf systemd geschwenkt hat, das auch auf control groups setzt, wird es automatisch beim Starten ohne weitere Konfiguration ausgeführt.</para>
+      </section>
+      <section id="sect.lxc.network">
+        <title>Netzwerkkonfigurierung</title>
+
+	<para>LXC wird mit dem Ziel installiert, virtuelle Rechner einzurichten; während wir diese natürlich vom Netzwerk getrennt halten und mit ihnen nur über das Dateisystem kommunizieren könnten, ist es in den meisten Anwendungsfällen erforderlich, den Containern wenigstens einen minimalen Netzwerkzugang zu gewähren. Typischerweise erhält jeder Container eine virtuelle Netzwerkschnittstelle, die mit dem wirklichen Netzwerk über eine Bridge verbunden ist. Diese virtuelle Schnittstelle kann entweder direkt an die physische Schnittstelle des Hosts angeschlossen sein (wobei sich der Container dann direkt im Netzwerk befindet) oder an eine weitere virtuelle Schnittstelle, die auf dem Host festgelegt ist (und bei der der Host dann den Datenverkehr filtern oder umleiten kann). In beiden Fällen ist das Paket <emphasis role="pkg">bridge-utils</emphasis> erforderlich.</para>
+
+	<para>Der einfachste Fall besteht darin, die Datei <filename>/etc/network/interfaces</filename> zu editieren, indem die Konfiguration für die physische Schnittstelle (zum Beispiel <literal>eth0</literal>) zu einer Bridge-Schnittstelle verschoben (normalerweise <literal>br0</literal>) und die Verbindung zwischen ihnen konfiguriert wird. Wenn zum Beispiel die Konfigurationsdatei der Netzwerkschnittstellen Einträge wie die folgenden enthält:</para>
+
+        <programlisting>auto eth0
+iface eth0 inet dhcp</programlisting>
+
+	<para>sollten sie deaktiviert und durch folgende ersetzt werden:</para>
+
+        <programlisting>#auto eth0
+#iface eth0 inet dhcp
+
+auto br0
+iface br0 inet dhcp
+  bridge-ports eth0</programlisting>
+
+	<para>Die Auswirkung dieser Konfiguration ähnelt derjenigen, die einträte, falls die Container Rechner wären, die an dasselbe physische Netzwerk angeschlossen sind wie der Host. Die „Bridge“-Konfiguration verwaltet den Übergang der Ethernet-Frames zwischen allen verbundenen Schnittstellen, zu denen sowohl die physische Schnittstelle <literal>eth0</literal> als auch die für die Container festgelegten Schnittstellen gehören.</para>
+
+	<para>In Fällen, in denen diese Konfiguration nicht verwendet werden kann (falls zum Beispiel den Containern keine öffentlichen IP-Adressen zugeordnet werden können), wird eine virtuelle <emphasis>tap</emphasis>-Schnittstelle eingerichtet und mit der Bridge verbunden. Die dementsprechende Netzstruktur wird dann zu einer, bei der der Host mit einer zweiten Netzwerkkarte an einen eigenen Switch angeschlossen ist, wobei die Container ebenfalls an diesen Switch angeschlossen sind. Der Host muss in diesem Fall als Gateway für die Container agieren, falls diese mit der Außenwelt kommunizieren sollen.</para>
+
+	<para>Zusätzlich zu <emphasis role="pkg">bridge-utils</emphasis> ist für diese „üppige“ Konfiguration das Paket <emphasis role="pkg">vde2</emphasis> erforderlich; die Datei <filename>/etc/network/interfaces</filename> wird dann zu:</para>
+
+        <programlisting># Schnittstelle eth0 bleibt unverändert
+auto eth0
+iface eth0 inet dhcp
+
+# Virtuelle Schnittstelle
+auto tap0
+iface tap0 inet manual
+  vde2-switch -t tap0
+
+# Bridge für Container
+auto br0
+iface br0 inet static
+  bridge-ports tap0
+  address 10.0.0.1
+  netmask 255.255.255.0</programlisting>
+
+	<para>Das Netzwerk kann dann entweder statisch in den Containern eingerichtet werden oder dynamisch mit einem DHCP-Server, der auf dem Host läuft. Solch ein DHCP-Server muss so konfiguriert sein, dass er Anfragen auf der Schnittstelle <literal>br0</literal> beantwortet.</para>
+      </section>
+      <section>
+        <title>Das System einrichten</title>
+
+	<para>Lassen Sie uns jetzt das von dem Container zu verwendende Dateisystem einrichten. Da dieser „virtuelle Rechner“ nicht direkt auf der Hardware laufen wird, sind im Vergleich zu einem Standard-Dateisystem einige Feineinstellungen vorzunehmen, insbesondere was den Kernel, die Geräte und Konsolen betrifft. Glücklicherweise enthält das Paket <emphasis role="pkg">lxc</emphasis> Skripten, die diese Konfigurierung weitestgehend automatisieren. So installieren zum Beispiel die folgenden Befehle (die das Paket  <emphasis role="pkg">debootstrap</emphasis> und <emphasis role="pkg">rsync</emphasis> erfordern) einen Debian-Container:</para>
+
+        <screen><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-create -n testlxc -t debian
+</userinput><computeroutput>debootstrap is /usr/sbin/debootstrap
+Checking cache download in /var/cache/lxc/debian/rootfs-jessie-amd64 ... 
+Downloading debian minimal ...
+I: Retrieving Release 
+I: Retrieving Release.gpg 
+[...]
+Download complete.
+Copying rootfs to /var/lib/lxc/testlxc/rootfs...
+[...]
+Root password is 'sSiKhMzI', please change !
+root@mirwiz:~# </computeroutput>
+        </screen>
+
+	<para>Man beachte, dass das Dateisystem zunächst in <filename>/var/cache/lxc</filename> erstellt und dann in sein Zielverzeichnis verschoben wird. So lassen sich mehrere identische Container wesentlich schneller erstellen, da sie nur kopiert werden müssen.</para>
+
+	<para>Man beachte, dass das Skript zum Erstellen des Debian Beispiels eine Option <option>--arch</option> akzeptiert, um die Architaktur anzugeben, die Installiert werden soll, sowie eine Option <option>--release</option>, wenn Sie etwas anderes als das aktuelle "stable" Release von Debian installieren wollen. Sie können auch die Umgebungsvariable <literal>MIRROR</literal> auf einen lokalen Debain Spiegel zeigen lassen.</para>
+
+	<para>Das neu erstellte Dateisystem enthält jetzt ein minimales Debian-System, und per Voreinstellung hat der Container keine Netzwerkschnittstelle (außer Loopback). Da wir das nicht wollen, editieren wir die Konfigurationsdatei des Containers (<filename>/var/lib/lxc/testlxc/config</filename>) und fügen einige <literal>lxc.network.*</literal>-Einträge hinzu:</para>
+
+        <programlisting>lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = br0
+lxc.network.hwaddr = 4a:49:43:49:79:20</programlisting>
+
+	<para>Diese Einträge bedeuten jeweils, dass eine virtuelle Schnittstelle in dem Container erzeugt wird; dass sie automatisch in Gang gesetzt wird, wenn der besagte Container startet; dass sie automatisch mit der <literal>br0</literal>-Bridge auf dem Host verbunden wird; und dass ihre MAC-Adresse wie angegeben lautet. Falls diese letzte Angabe fehlt oder deaktiviert ist, wird eine zufällige MAC-Adresse erzeugt.</para>
+
+	<para>Ein anderer nützlicher Eintrag in dieser Datei ist die Angabe des Hostnamens:</para>
+
+<programlisting>lxc.utsname = testlxc</programlisting>
+
+      </section>
+      <section>
+        <title>Den Container starten</title>
+
+	<para>Nun, da das Abbild unseres virtuellen Rechners fertig ist, wollen wir den Container starten:</para>
+
+        <screen role="scale" width="94"><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-start --daemon --name=testlxc
+</userinput><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-console -n testlxc
+</userinput><computeroutput>Debian GNU/Linux 8 testlxc tty1
+
+testlxc login: </computeroutput><userinput>root</userinput><computeroutput>
+Password: 
+Linux testlxc 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1 (2015-05-24) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+root@testlxc:~# </computeroutput><userinput>ps auxwf</userinput>
+<computeroutput>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.2  28164  4432 ?        Ss   17:33   0:00 /sbin/init
+root        20  0.0  0.1  32960  3160 ?        Ss   17:33   0:00 /lib/systemd/systemd-journald
+root        82  0.0  0.3  55164  5456 ?        Ss   17:34   0:00 /usr/sbin/sshd -D
+root        87  0.0  0.1  12656  1924 tty2     Ss+  17:34   0:00 /sbin/agetty --noclear tty2 linux
+root        88  0.0  0.1  12656  1764 tty3     Ss+  17:34   0:00 /sbin/agetty --noclear tty3 linux
+root        89  0.0  0.1  12656  1908 tty4     Ss+  17:34   0:00 /sbin/agetty --noclear tty4 linux
+root        90  0.0  0.1  63300  2944 tty1     Ss   17:34   0:00 /bin/login --     
+root       117  0.0  0.2  21828  3668 tty1     S    17:35   0:00  \_ -bash
+root       268  0.0  0.1  19088  2572 tty1     R+   17:39   0:00      \_ ps auxfw
+root        91  0.0  0.1  14228  2356 console  Ss+  17:34   0:00 /sbin/agetty --noclear --keep-baud console 115200 38400 9600 vt102
+root       197  0.0  0.4  25384  7640 ?        Ss   17:38   0:00 dhclient -v -pf /run/dhclient.eth0.pid -lf /var/lib/dhcp/dhclient.e
+root       266  0.0  0.1  12656  1840 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty5 linux
+root       267  0.0  0.1  12656  1928 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty6 linux
+root@testlxc:~# </computeroutput></screen>
+
+	<para>Wir befinden uns nun in dem Container; unser Zugriff auf diejenigen Prozesse beschränkt, die vom Container selbst gestartet wurden, und unser Zugriff auf das Dateisystem ist in ähnlicher Weise auf die zugehörige Teilmenge des gesamten Dateisystems (<filename>/var/lib/lxc/testlxc/rootfs</filename>) eingeschränkt. Wir können die Konsole mit <keycombo action="simul"><keycap>Control</keycap> <keycap>a</keycap></keycombo> <keycombo><keycap>q</keycap></keycombo> wieder verlassen.</para>
+
+	<para>Beachten Sie, dass wir den Container beim Aufruf von <command>lxc-start</command> durch die Option <option>--daemon</option> als Hintergrundprozess laufen lassen. Wir können den Container dann mit einem Befehl wie <command>lxc-stop --name=testlxc</command> schließen.</para>
+
+	<para>Das Paket <emphasis role="pkg">lxc</emphasis> enthält ein Initialisierungsskript, das automatisch einen oder mehrere Container starten kann, wenn der Host bootet (es basiert auf <command>lxc-autostart</command> welches Container startet, deren Option <literal>lxc.start.auto</literal> auf 1 gesetzt ist). Eine feinere Steuerung der Startreihenfolge ist mit <literal>lxc.start.order</literal> und <literal>lxc.group</literal> möglich: standardmäßig startet das Initialisierungsskript zuerst Container, die Teil der Gruppe <literal>onboot</literal> sind und dann die Container, die nicht Teil einer Gruppe sind. In beiden Fällen wird die Reihenfolge innerhalb einer Gruppe durch die Option <literal>lxc.start.order</literal> definiert.</para>
+
+        <sidebar>
+          <title><emphasis>WEITERE SCHRITTE</emphasis> Massenvirtualisierung</title>
+
+	  <para>Da LXC ein sehr leichtgewichtiges Isolierungssystem ist, kann es insbesondere für die Bereitstellung zahlreicher virtueller Server eingerichtet werden. Die Netzwerkkonfiguration wird hierbei im Vergleich zu der, die wir oben beschrieben haben, möglicherweise etwas erweitert sein, die „üppige“ Konfiguration unter Verwendung von <literal>tap</literal>- und <literal>veth</literal>-Schnittstellen sollte in den meisten Fällen hierfür jedoch ausreichend sein.</para>
+
+	  <para>Es könnte auch sinnvoll sein, einen Teil des Dateisystems, wie zum Beispiel die Unterverzeichnisse <filename>/usr</filename> und <filename>/lib</filename>, gemeinsam zu nutzen, um so die Duplizierung von Software zu vermeiden, die bei mehreren Containern benötigt wird. Dies wird normalerweise durch <literal>lxc.mount.entry</literal>-Einträge in der Konfigurationsdatei des Containers erreicht. Ein interessanter Nebeneffekt besteht darin, dass die Prozesse in diesem Fall weniger physischen Speicher benötigen, da der Kernel erkennen kann, dass die Programme gemeinsam benutzt werden. Die zusätzliche Belastung durch einen weiteren Container kann so auf den für seine spezifischen Daten erforderlichen Plattenplatz und einige zusätzliche Prozesse, die der Kernel einplanen und verwalten muss, reduziert werden.</para>
+
+	  <para>Wir haben selbstverständlich nicht alle verfügbaren Optionen beschrieben; ausführlichere Informationen sind auf den Handbuchseiten <citerefentry> <refentrytitle>lxc</refentrytitle> <manvolnum>7</manvolnum> </citerefentry> und <citerefentry><refentrytitle>lxc.container.conf</refentrytitle> <manvolnum>5</manvolnum></citerefentry> sowie auf weiteren Seiten, auf die sie verweisen, enthalten.</para>
+        </sidebar>
+      </section>
+    </section>
+    <section>
+      <title>Virtualisierung mit KVM</title>
+      <indexterm><primary>KVM</primary></indexterm>
+
+      <para>KVM, das  <emphasis>Kernel-based Virtual Machine</emphasis> bedeutet, ist in erster Linie ein Kernel-Modul, das den größten Teil der Infrastruktur bereitstellt, die von einem Virtualisierungsprogramm benutzt werden kann, ist jedoch selbst kein Virtualisierungsprogramm. Die eigentliche Steuerung der Virtualisierung wird von einer Anwendung auf der Grundlage von QEMU vorgenommen. Wundern Sie sich nicht, dass dieser Abschnitt über <command>qemu-*</command>-Befehle spricht: er handelt dennoch von KVM.</para>
+
+      <para>Im Gegensatz zu anderen Virtualisierungssystemen war KVM von Anfang an Teil des Linux-Kernels. Seine Entwickler entschieden sich, die für eine Virtualisierung vorgesehenen Prozessor-Befehlssätze (Intel-VT und AMD-V) zu nutzen, wodurch KVM leichtgewichtig, elegant und ressourcenschonend bleibt. Die Kehrseite ist natürlich, dass KVM nicht auf allen Rechnerarchitekturen läuft, sondern nur auf denen mit entsprechenden Prozessoren. Sie können überprüfen, ob Sie einen derartigen Prozessor haben wenn unter den CPU-Flags in der Datei <filename>/proc/cpuinfo</filename> „vmx“ oder „svm“ aufgeführt ist.</para>
+
+      <para>Mit aktiver Unterstützung seiner Entwicklung durch Red Hat scheint KVM auf dem Wege zu sein, zur Referenz für Linux-Virtualisierung zu werden.</para>
+      <section>
+        <title>Vorbereitende Schritte</title>
+        <indexterm><primary><command>virt-install</command></primary></indexterm>
+
+	<para>Im Gegensatz zu Programmen wie VirtualBox enthält KVM selbst keine Benutzerschnittstelle zur Erstellung und Verwaltung virtueller Rechner. Das Paket <emphasis role="pkg">qemu-kvm</emphasis> stellt nur eine ausführbare Datei zum Start eines virtuellen Rechners bereit sowie ein Initialisierungsskript, das die passenden Kernel-Module lädt.</para>
+        <indexterm><primary>libvirt</primary></indexterm>
+        <indexterm><primary><emphasis role="pkg">virt-manager</emphasis></primary></indexterm>
+
+	<para>Glücklicherweise stellt Red Hat mit der Entwicklung der Bibliothek <emphasis>libvirt</emphasis> und der dazugehörigen Werkzeuge des <emphasis>virtual machine manager</emphasis> einen weiteren Satz von Hilfsprogrammen zur Lösung dieses Problems bereit. Mit libvirt ist es möglich, virtuelle Rechner einheitlich zu verwalten unabhängig von dem Virtualisierungssystem, das hinter den Kulissen beteiligt ist (gegenwärtig unterstützt es QEMU, KVM, Xen, LXC, OpenVZ, VirtualBox, VMWare und UML). <command>virtual-manager</command> ist eine grafische Schnittstelle, die libvirt zur Erstellung und Verwaltung virtueller Rechner benutzt.</para>
+        <indexterm><primary><emphasis role="pkg">virtinst</emphasis></primary></indexterm>
+
+	<para>Zunächst installieren wir mit <command>apt-get install qemu-kvm libvirt-bin virtinst virt-manager virt-viewer</command> die erforderlichen Pakete. <emphasis role="pkg">libvirt-bin</emphasis> stellt den Daemon <command>libvirtd</command> zur Verfügung, mit dem (unter Umständen aus der Ferne) die Verwaltung der virtuellen Rechner, die auf dem Host laufen, möglich ist, und der die erforderlichen virtuellen Rechner startet, wenn der Host hochfährt. Zusätzlich enthält dieses Paket das Befehlszeilenwerkzeug <command>virsh</command>, das die Steuerung der Rechner ermöglicht, die von <command>libvirtd</command> verwaltet werden.</para>
+
+	<para>Das Paket <emphasis role="pkg">virtinst</emphasis> stellt den Befehl <command>virt-install</command> bereit, mit dem es möglich ist, virtuelle Rechner von der Befehlszeile aus zu erstellen. Und schließlich ermöglicht  <emphasis role="pkg">virt-viewer</emphasis> den Zugriff auf die grafische Konsole eines virtuellen Rechners.</para>
+      </section>
+      <section>
+        <title>Netzwerkkonfigurierung</title>
+
+	<para>Genauso wie in Xen und LXC gehört zu der häufigsten Netzwerkkonfiguration eine Bridge, mit der die Netzwerkschnittstellen der virtuellen Rechner zusammengefasst werden (siehe <xref linkend="sect.lxc.network" />).</para>
+
+	<para>Stattdessen kann (und das ist die Voreinstellung bei KVM) dem virtuellen Rechner eine private Adresse (im Bereich von 192.168.122.0/24) zugeordnet und NAT eingerichtet werden, so dass der virtuelle Rechner auf das externe Netzwerk zugreifen kann.</para>
+
+	<para>Für den Rest dieses Abschnitts wird angenommen, dass der Host über eine  <literal>eth0</literal> als physische Schnittstelle und eine <literal>br0</literal>-Bridge verfügt, und das Erstere mit Letzterer verbunden ist.</para>
+      </section>
+      <section>
+        <title>Installation mit <command>virt-install</command></title>
+        <indexterm><primary><command>virt-install</command></primary></indexterm>
+
+	<para>Die Erstellung eines virtuellen Rechners ist der Installation eines normalen Systems sehr ähnlich, außer dass die Eigenschaften des virtuellen Rechners in einer scheinbar endlosen Befehlszeile beschrieben werden.</para>
+
+	<para>In der Praxis bedeutet dies, dass wir das Debian-Installationsprogramm verwenden, indem wir den virtuellen Rechner auf einem virtuellen DVD-ROM-Laufwerk hochfahren, dem ein auf dem Host-System gespeichertes DVD-Abbild von Debian zugeordnet ist. Der virtuelle Rechner exportiert seine grafische Konsole über das VNC-Protokoll (für Einzelheiten siehe <xref linkend="sect.remote-desktops" />), so dass wir den Installationsprozess steuern können.</para>
+
+	<para>Zunächst müssen wir libvirtd mitteilen, wo die Plattenabbilder gespeichert werden sollen, es sei denn, dass der voreingestellte Ort (<filename>/var/lib/libvirt/images/</filename>) in Ordnung ist.</para>
+
+        <screen><computeroutput>root@mirwiz:~# </computeroutput><userinput>mkdir /srv/kvm</userinput>
+<computeroutput>root@mirwiz:~# </computeroutput><userinput>virsh pool-create-as srv-kvm dir --target /srv/kvm</userinput>
+<computeroutput>Pool srv-kvm created
+
+root@mirwiz:~# </computeroutput></screen>
+
+        <sidebar>
+          <title><emphasis>TIPP</emphasis> Eigenen Benutzer zur libvirt-Gruppe hinzufügen</title>
+          <para>Alle Beispiele in diesem Abschnitt gehen davon aus, dass Sie Befehle als root ausführen. Wenn Sie einen lokalen libvirt-Daemon kontrollieren wollen, müssen Sie entweder root oder Mitglied der Gruppe <literal>libvirt</literal> sein (was standardmäßig nicht der Fall ist). Wenn Sie also nicht zu oft root-Rechte verwenden wollen, können Sie sich der Gruppe <literal>libvirt</literal> hinzufügen und die verschiedenen Befehle unter Ihrer Benutzeridentität ausführen.</para>
+        </sidebar>
+
+	<para>Wir wollen jetzt mit dem Installationsprozess für den virtuellen Rechner beginnen und uns die wichtigsten Optionen des Befehls <command>virt-install</command> ansehen. Der Befehl registriert den virtuellen Rechner und seine Parameter in libvirtd und startet ihn dann, so dass seine Installierung fortgesetzt werden kann.</para>
+
+        <screen><computeroutput># </computeroutput><userinput>virt-install --connect qemu:///system  <co id="virtinst.connect"></co>
+               --virt-type kvm           <co id="virtinst.type"></co>
+               --name testkvm            <co id="virtinst.name"></co>
+               --ram 1024                <co id="virtinst.ram"></co>
+               --disk /srv/kvm/testkvm.qcow,format=qcow2,size=10 <co id="virtinst.disk"></co>
+               --cdrom /srv/isos/debian-8.1.0-amd64-netinst.iso  <co id="virtinst.cdrom"></co>
+               --network bridge=br0      <co id="virtinst.network"></co>
+               --vnc                     <co id="virtinst.vnc"></co>
+               --os-type linux           <co id="virtinst.os"></co>
+               --os-variant debianwheezy
+</userinput><computeroutput>
+Starting install...
+Allocating 'testkvm.qcow'             |  10 GB     00:00
+Creating domain...                    |    0 B     00:00
+Guest installation complete... restarting guest.
+</computeroutput></screen>
+        <calloutlist>
+          <callout arearefs="virtinst.connect">
+	    <para>Die Option <literal>--connect</literal> legt den zu verwendenden „Hypervisor“ fest. Sie hat die Form einer URL, die ein Virtualisierungssystem enthält (<literal>xen://</literal>, <literal>qemu://</literal>, <literal>lxc://</literal>, <literal>openvz://</literal>, <literal>vbox://</literal> und so weiter) und den Rechner, der den virtuellen Rechner aufnehmen soll (dies kann leer bleiben, falls es sich dabei um den lokalen Host handelt). Zusätzlich hierzu, und im Fall vom QEMU/KVM, kann jeder Benutzer virtuelle Rechner, die mit eingeschränkten Berechtigungen laufen, verwalten, wobei der URL-Pfad es ermöglicht, „System“-Rechner (<literal>/system</literal>) von anderen (<literal>/session</literal>) zu unterscheiden.</para>
+          </callout>
+          <callout arearefs="virtinst.type">
+	    <para>Da KVM auf die gleiche Weise wie QEMU verwaltet wird, kann mit <literal>--virt-type kvm</literal> die Verwendung von KVM festgelegt werden, obwohl die URL aussieht, als würde QEMU verwendet.</para>
+          </callout>
+          <callout arearefs="virtinst.name">
+	    <para>Die Option <literal>--name</literal> legt einen (eindeutigen) Namen für den virtuellen Rechner fest.</para>
+          </callout>
+          <callout arearefs="virtinst.ram">
+	    <para>Die Option <literal>--ram</literal> ermöglicht es, die Größe des RAM (in MB) festzulegen, das dem virtuellen Rechner zugeordnet wird.</para>
+          </callout>
+          <callout arearefs="virtinst.disk">
+	    <para>Mit <literal>--disk</literal> wird der Ort der Abbild-Datei benannt, die die Festplatte unseres virtuellen Rechners darstellen soll; diese Datei wird, falls sie nicht bereits vorhanden ist, in einer Größe (in GB) erstellt, die mit dem Parameter <literal>size</literal> festgelegt wird. Der Parameter <literal>format</literal> ermöglicht die Auswahl zwischen mehreren Arten der Speicherung der Abbild-Datei. Das voreingestellte Format (<literal>raw</literal>) besteht aus einer einzelnen Datei, die in Größe und Inhalt der Platte entspricht. Wir haben hier ein weiter entwickeltes Format gewählt, das für QEMU spezifisch ist, und bei dem man mit einer kleinen Datei beginnen kann, die nur größer wird, wenn der virtuelle Rechner tatsächlich damit beginnt, Platz zu belegen.</para>
+          </callout>
+          <callout arearefs="virtinst.cdrom">
+	    <para>Die Option <literal>--cdrom</literal> wird zur Anzeige des Ortes verwendet, an dem sich die optische Platte befindet, die für die Installierung benutzt wird. Der Pfad kann entweder ein lokaler Pfad zu einer ISO-Datei sein, eine URL, von der die Datei bezogen werden kann, oder die Gerätedatei eines physischen CD-ROM-Laufwerks (das heißt <literal>/dev/cdrom</literal>).</para>
+          </callout>
+          <callout arearefs="virtinst.network">
+	    <para>Mit <literal>--network</literal> wird festgelegt, wie sich die virtuelle Netzwerkkarte in die Netzwerkkonfiguration des Hosts integriert. Das voreingestellte Verhalten (das in unserem Beispiel ausdrücklich erzwungen wird) besteht darin, sie in eine bereits bestehende Netzwerk-Bridge einzubinden. Falls es eine derartige Bridge nicht gibt, kann der virtuelle Rechner das physische Netzwerk nur über NAT erreichen, das heißt, dass er eine Adresse in einem privaten Teilnetzbereich erhält (192.168.122.0/24).</para>
+          </callout>
+          <callout arearefs="virtinst.vnc">
+	    <para><literal>--vnc</literal> gibt an, dass die grafische Konsole unter Verwendung von VNC zur Verfügung gestellt werden soll. Das voreingestellte Verhalten des zugeordneten VNC-Servers besteht darin, nur an der lokalen Schnittstelle auf Eingaben zu warten. Fall der VNC-Client auf einem anderen Host laufen soll, muss zur Herstellung der Verbindung ein SSH-Tunnel eingerichtet werden (siehe <xref linkend="sect.ssh-port-forwarding" />). Alternativ kann <literal>--vnclisten=0.0.0.0</literal> verwendet werden, so dass von allen Schnittstellen aus auf den VNC-Server zugegriffen werden kann. Man beachte jedoch, dass in diesem Fall die Firewall wirklich entsprechend eingestellt werden sollte.</para>
+          </callout>
+          <callout arearefs="virtinst.os">
+	    <para>Mit den Optionen <literal>--os-type</literal> und <literal>--os-variant</literal> lassen sich einige Parameter des virtuellen Rechners optimieren in Abhängigkeit von den bekannten Funktionen des Betriebssystems, das hier genannt wird.</para>
+          </callout>
+        </calloutlist>
+
+	<para>Jetzt läuft der virtuelle Rechner, und wir müssen uns mit der grafischen Konsole verbinden, um den Installationsprozess fortzusetzen. Falls die bisherigen Schritte in einer grafischen Arbeitsumgebung ausgeführt wurden, sollte diese Verbindung von sich aus starten. Anderenfalls, oder falls wir aus der Ferne arbeiten, kann <command>virt-viewer</command> von jeder beliebigen grafischen Umgebung aus aufgerufen werden, um die grafische Konsole zu öffnen (man beachte, dass zweimal nach dem Root-Passwort des entfernten Hosts gefragt wird, da dieser Arbeitsgang zwei SSH-Verbindungen erfordert):</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>virt-viewer --connect qemu+ssh://root@<replaceable>server</replaceable>/system testkvm
+</userinput><computeroutput>root@server's password: 
+root@server's password: </computeroutput></screen>
+
+	<para>Wenn der Installationsprozess endet, startet der virtuelle Rechner neu und ist dann einsatzbereit.</para>
+      </section>
+      <section>
+        <title>Rechner mit <command>virsh</command> verwalten</title>
+        <indexterm><primary><command>virsh</command></primary></indexterm>
+
+	<para>Nachdem die Installation nunmehr erledigt ist, wollen wir sehen, wie man mit den vorhandenen virtuellen Rechnern umgeht. Zunächst soll <command>libvirtd</command> nach einer Liste der virtuellen Rechner, die er verwaltet, gefragt werden:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system list --all
+ Id Name                 State
+----------------------------------
+  - testkvm              shut off
+</userinput></screen>
+
+	<para>Lassen Sie uns unseren virtuellen Testrechner starten:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system start testkvm
+</userinput><computeroutput>Domain testkvm started</computeroutput></screen>
+
+	<para>Wir können jetzt die Verbindungshinweise für die grafische Konsole bekommen (die angegebene VNC-Anzeige kann als Parameter an <command>vncviewer</command> übergeben werden):</para>
+
+        <screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system vncdisplay testkvm
+</userinput><computeroutput>:0</computeroutput></screen>
+
+	<para>Zu den weiteren bei <command>virsh</command> verfügbaren Unterbefehlen gehören:</para>
+        <itemizedlist>
+          <listitem>
+	    <para><literal>reboot</literal>, um einen virtuellen Rechner neu zu starten;</para>
+          </listitem>
+          <listitem>
+	    <para><literal>shutdown</literal>, um ein sauberes Herunterfahren einzuleiten;</para>
+          </listitem>
+          <listitem>
+	    <para><literal>destroy</literal>, um ihn brutal zu stoppen;</para>
+          </listitem>
+          <listitem>
+	    <para><literal>suspend</literal>, um ihn in den Bereitschaftsbetrieb zu versetzen;</para>
+          </listitem>
+          <listitem>
+	    <para><literal>resume</literal>, um ihn wieder in Betrieb zu nehmen;</para>
+          </listitem>
+          <listitem>
+	    <para><literal>autostart</literal>, um den automatischen Start des virtuellen Rechners beim Hochfahren des Hosts zu aktivieren (oder ihn mit der Option <literal>--disable</literal> zu deaktivieren);</para>
+          </listitem>
+          <listitem>
+	    <para><literal>undefine</literal>, um alle Spuren des virtuellen Rechners von <command>libvirtd</command> zu entfernen.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>Alle diese Unterbefehle erfordern als einen ihrer Parameter die Kennung eines virtuellen Rechners.</para>
+      </section>
+      <section>
+        <title>Ein RPM-basiertes System in Debian mit yum installieren</title>
+
+	<para>Wenn auf der virtuellen Maschine ein Debian-System (oder eines seiner Derivate) laufen soll, kann das System mit <command>debootstrap</command> aufgesetzt werden, wie oben beschrieben. Soll aber auf der virtuellen Maschine ein RPM-basiertes System laufen, dann muss es mit dem Utility <command>yum</command> (aus dem gleichnamigen Paket) installiert werden.</para>
+	
+        <para>Die Prozedur erfordert die Verwendung von <command>rpm</command>, um einen ersten Satz von Dateien zu extrahieren, insbesondere <command>yum</command> Konfigurationsdateien gefolgt vom Aufruf von <command>yum</command>, um den restlichen Satz von Paketen zu extrahieren. Aber da wir <command>yum</command> von außerhalb des chroot aufrufen, müssen wir einige temporäre Änderungen vornehmen. Im Beispiel unten ist das Ziel chroot <filename>/srv/centos</filename>.</para>
+
+        <screen><computeroutput># </computeroutput><userinput>rootdir="/srv/centos"
+</userinput><computeroutput># </computeroutput><userinput>mkdir -p "$rootdir" /etc/rpm
+</userinput><computeroutput># </computeroutput><userinput>echo "%_dbpath /var/lib/rpm" &gt; /etc/rpm/macros.dbpath
+</userinput><computeroutput># </computeroutput><userinput>wget http://mirror.centos.org/centos/7/os/x86_64/Packages/centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm
+</userinput><computeroutput># </computeroutput><userinput>rpm --nodeps --root "$rootdir" -i centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm
+</userinput><computeroutput>rpm: RPM should not be used directly install RPM packages, use Alien instead!
+rpm: However assuming you know what you are doing...
+warning: centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm: Header V3 RSA/SHA256 Signature, key ID f4a80eb5: NOKEY
+# </computeroutput><userinput>sed -i -e "s,gpgkey=file:///etc/,gpgkey=file://${rootdir}/etc/,g" $rootdir/etc/yum.repos.d/*.repo
+</userinput><computeroutput># </computeroutput><userinput>yum --assumeyes --installroot $rootdir groupinstall core
+</userinput><computeroutput>[...]
+# </computeroutput><userinput>sed -i -e "s,gpgkey=file://${rootdir}/etc/,gpgkey=file:///etc/,g" $rootdir/etc/yum.repos.d/*.repo
+</userinput></screen>
+      </section>
+    </section>
+  </section>
+  <section id="sect.automated-installation">
+    <title>Automatische Installation</title>
+    <indexterm><primary>Verteilung</primary></indexterm>
+    <indexterm><primary>Installation</primary><secondary>Automatische Installation</secondary></indexterm>
+
+    <para>Die Falcot Corp. Administratoren benötigen, wie viele Administratoren großer IT-Dienste, Werkzeuge, um ihre neuen Rechner schnell aufzusetzen (oder wieder aufzusetzen), und das möglichst automatisch.</para>
+
+    <para>Diese Erfordernisse können von einer großen Vielzahl von Lösungen erfüllt werden. Auf der einen Seite erledigen allgemeine Hilfsprogramme wie zum Beispiel SystemImager dies, indem sie von einem Rechner als Vorlage ein Abbild erzeugen, und dieses dann auf den Zielsystemen einrichten. Am anderen Ende des Spektrums kann das normale Debian-Installationsprogramm mit einer Konfigurationsdatei voreingestellt werden, die die Fragen, die während des Installationsprozesses gestellt werden, beantwortet. Als eine Art Mittelweg setzt ein Hybridwerkzeug wie FAI  (<emphasis>Fully Automatic Installer</emphasis>) Rechner unter Verwendung des Paketsystems auf, gleichzeitig verwendet es aber auch seine eigene Infrastruktur für Aufgaben, die für eine Massenverteilung typisch sind (wie zum Beispiel das Starten, Partitionieren, Konfigurieren und so weiter).</para>
+
+    <para>Jede dieser Lösungen hat ihre Vor- und Nachteile: SystemImager arbeitet unabhängig von einem bestimmten Paketsystem, wodurch es ihm möglich ist, eine große Anzahl von Rechnern, die mehrere unterschiedliche Linux-Distributionen verwenden, zu verwalten. Es enthält auch ein Aktualisierungssystem, das keine Neuinstallation erfordert, jedoch kann dieses Aktualisierungssystem nur zuverlässig funktionieren, wenn die Rechner nicht unabhängig von ihm modifiziert werden; mit anderen Worten, der Benutzer darf selbst keinerlei Software aktualisieren oder irgendeine andere Software installieren. Ebenso dürfen Sicherheitsaktualisierungen nicht automatisiert werden, da auch sie durch das zentrale Bezugsabbild gehen müssen, das SystemImager unterhält. Für diese Lösung ist es außerdem erforderlich, dass die Zielrechner einheitlich sind, da sonst zahlreiche unterschiedliche Abbilder aufbewahrt und verwaltet werden müssten (eine i386-Abbild würde nicht zu einem PowerPC-Rechner passen und so weiter).</para>
+
+    <para>Demgegenüber kann eine automatische Installation unter Verwendung des Debian-Installationsprogramms an die Besonderheiten jedes Rechners angepasst werden: das Installationsprogramm holt die geeigneten Kernel und Softwarepakete von den passenden Repositories, erkennt die verfügbare Hardware, partitioniert die gesamte Festplatte zur Nutzung des verfügbaren Speicherplatzes, installiert das entsprechende Debian-System und richtet den passenden Boot-Loader ein. Jedoch installiert das Standard-Installationsprogramm nur Standard-Debian-Systeme mit dem Grundsystem und einem Satz vorausgewählter „Aufgaben“; die Installation eines bestimmten Systems mit Anwendungen, die nicht im Paketsystem enthalten sind, ist ausgeschlossen. Um dieses besondere Erfordernis zu erfüllen, muss das Installationsprogramm angepasst werden... Glücklicherweise ist das Installationsprogramm sehr modular, und es gibt Hilfsprogramme, um den größten Teil der für diese Anpassung erforderlichen Arbeit zu automatisieren, vor allem Simple-CDD (CDD ist ein Akronym für <emphasis>Custom Debian Derivative</emphasis>). Jedoch handhabt selbst die Lösung mit Simple-CDD nur anfängliche Installationen; dies ist gewöhnlich kein Problem, da die Hilfsprogramme von APT später effiziente Aktualisierungen ermöglichen.</para>
+
+    <para>Wir werden nur einen groben Überblick über FAI geben, und SystemImager (das nicht mehr in Debian enthalten ist) vollständig übergehen, um stärkere Aufmerksamkeit auf das Debian-Installationsprogramm und Simple-CDD zu richten, die im Zusammenhang mit einem reinen Debian-System interessanter sind.</para>
+    <section id="sect.fai">
+      <title>Fully Automatic Installer (FAI)</title>
+      <indexterm><primary>Fully Automatic Installer (FAI)</primary></indexterm>
+
+      <para><foreignphrase>Fully Automatic Installer</foreignphrase> ist vielleicht das älteste automatische Einrichtungssystem für Debian, wodurch sich sein Status als Referenz erklärt. Seine sehr flexible Art ist jedoch nur ein schwacher Ausgleich für die mit ihm einhergehende Kompliziertheit.</para>
+
+      <para>FAI erfordert ein Server-System, um die Einrichtungsinformation zu speichern und das Hochfahren der Zielrechner über das Netzwerk zu ermöglichen. Dieser Server benötigt das Paket <emphasis role="pkg">fai-server</emphasis> (oder <emphasis role="pkg">fai-quickstart</emphasis>, das auch die für eine Standardkonfiguration erforderlichen Elemente mit sich bringt).</para>
+
+      <para>FAI verwendet einen besonderen Ansatz zur Festlegung der verschiedenen zu installierenden Profile. Es vervielfältigt nicht einfach eine Referenz-Installation, sondern ist ein vollwertiges Installationsprogramm, das durch einen auf dem Server gespeicherten Satz von Dateien und Skripten vollständig konfigurierbar ist. Der voreingestellte Speicherort <filename>/srv/fai/config/</filename> wird nicht automatisch erstellt, sondern der Administrator muss ihn zusammen mit den entsprechenden Dateien erstellen. In den meisten Fällen werden diese Dateien auf der Grundlage der Beispieldateien, die in der Dokumentation des Pakets <emphasis role="pkg">fai-doc</emphasis> oder genauer gesagt in dem Verzeichnis <filename>/usr/share/doc/fai-doc/examples/simple/</filename> vorhanden sind, angepasst.</para>
+
+      <para>Nachdem die Profile festgelegt sind, erzeugt der Befehl <command>fai-setup</command> die für den Start einer FAI-Installation erforderlichen Elemente. Dies bedeutet vor allem, ein minimales System (NFS-root) vorzubereiten und zu aktualisieren, das während der Installation benutzt wird. Alternativ kann mit dem Befehl <command>fai-cd</command> eine speziell hierfür vorgesehene Boot-CD erstellt werden.</para>
+
+      <para>Um alle diese Konfigurationsdateien erstellen zu können, ist ein gewisses Verständnis darüber erforderlich, wie FAI funktioniert. Ein typischer Installationsprozess besteht aus folgenden Schritten:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>einen Kernel aus dem Netzwerk holen und laden;</para>
+        </listitem>
+        <listitem>
+	  <para>das Wurzel-Dateisystem des NFS einhängen;</para>
+        </listitem>
+        <listitem>
+	  <para><command>/usr/sbin/fai</command> ausführen, das den Rest des Prozesses steuert (die folgenden Schritte werden daher durch dieses Skript ausgelöst);</para>
+        </listitem>
+        <listitem>
+	  <para>den Konfigurationsraum vom Server nach <filename>/fai/</filename> kopieren;</para>
+        </listitem>
+        <listitem>
+	  <para><command>fai-class</command> ausführen. Die Skripten <filename>/fai/class/[0-9][0-9]*</filename> werden nacheinander ausgeführt und ergeben Bezeichnungen für „Klassen“, die für den Rechner gelten, der gerade installiert wird; diese Information dient als Grundlage für die nachfolgenden Schritte. Es ermöglicht eine gewisse Flexibilität in der Festlegung der Dienste, die installiert und konfiguriert werden.</para>
+        </listitem>
+        <listitem>
+	  <para>eine Anzahl von Konfigurationsvariablen in Abhängigkeit von den entsprechenden Klassen holen;</para>
+        </listitem>
+        <listitem>
+	  <para>die Festplatten partitionieren und die Partitionen formatieren auf der Grundlage der in <filename>/fai/disk_config/<replaceable>klasse</replaceable></filename> bereitgestellten Informationen;</para>
+        </listitem>
+        <listitem>
+	  <para>diese Partitionen einhängen;</para>
+        </listitem>
+        <listitem>
+	  <para>das Grundsystem installieren;</para>
+        </listitem>
+        <listitem>
+	  <para>die Debconf-Datenbank mit <command>fai-debconf</command> voreinstellen;</para>
+        </listitem>
+        <listitem>
+	  <para>die Liste verfügbarer Pakete für APT holen;</para>
+        </listitem>
+        <listitem>
+	  <para>die in <filename>/fai/package_config/<replaceable>klasse</replaceable></filename> aufgelisteten Pakete installieren;</para>
+        </listitem>
+        <listitem>
+	  <para>die Nachkonfigurationsskripten <filename>/fai/scripts/<replaceable>klasse</replaceable>/[0-9][0-9]*</filename> ausführen;</para>
+        </listitem>
+        <listitem>
+	  <para>die Installationsprotokolle speichern, die Partitionen aushängen und einen Neustart durchführen.</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+    <section id="sect.d-i-preseeding">
+      <title>Das Debian-Installationsprogramm voreinstellen</title>
+      <indexterm><primary>voreinstellen</primary></indexterm>
+      <indexterm><primary>Vorkonfiguration</primary></indexterm>
+
+      <para>Letzten Endes sollte das beste Werkzeug zur Installation von Debian-Systemen logischerweise das offizielle Debian-Installationsprogramm sein. Deshalb wurde das Debian-Installationsprogramm von Anfang an für den automatischen Einsatz konzipiert, indem es sich die Infrastruktur zunutze macht, die durch <emphasis role="pkg">debconf</emphasis> bereitgestellt wird. Letzteres ermöglicht es einerseits, die Anzahl der Fragen, die gestellt werden, zu verringern (verdeckte Fragen benutzen die angebotene voreingestellte Antwort), und andererseits, die voreingestellten Antworten getrennt bereitzustellen, so dass die Installation nicht-interaktiv erfolgen kann. Diese letzte Funktion wird <emphasis>Preseeding</emphasis> genannt.</para>
+
+      <sidebar>
+        <title><emphasis>WEITERE SCHRITTE</emphasis> Debconf mit einer zentralisierten Datenbank</title>
+        <indexterm><primary><command>debconf</command></primary></indexterm>
+
+	<para>Preeseeding ermöglicht es, zur Zeit der Installation einen Satz von Antworten auf Fragen von Debconf bereitzustellen, jedoch sind diese Antworten statisch und entwickeln sich im Laufe der Zeit nicht weiter. Da bereits installierte Rechner möglicherweise aktualisiert werden müssen, und neue Antworten erforderlich werden, kann die Konfigurationsdatei <filename>/etc/debconf.conf</filename> so eingerichtet werden, dass Debconf externe Datenquellen benutzt (wie zum Beispiel einen LDAP-Verzeichnis-Server oder eine entfernte Datei, die über NFS oder Samba zugegriffen wird). Mehrere externe Datenquellen können gleichzeitig festgelegt werden, und sie ergänzen einander. Die lokale Datenbank wird weiterhin (für Lese- und Schreibzugriff) genutzt, während die entfernten Datenbanken gewöhnlich nur gelesen werden können. Die Handbuchseite <citerefentry><refentrytitle>debconf.conf</refentrytitle> <manvolnum>5</manvolnum></citerefentry> beschreibt alle Möglichkeiten im Detail (sie benötigen das <emphasis role="pkg">debconf-doc</emphasis> Paket).</para>
+      </sidebar>
+      <section>
+        <title>Eine Preseed-Datei verwenden</title>
+
+	<para>Es gibt mehrere Orte, an denen das Installationsprogramm eine Preseed-Datei erhalten kann:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>in der initrd, die zum Hochfahren des Rechners verwendet wird; in diesem Fall geschieht das Preseeding ganz zu Anfang der Installation, und alle Fragen können vermieden werden. Die Datei muss nur <filename>preseed.cfg</filename> genannt und im Hauptverzeichnis von initrd gespeichert werden.</para>
+          </listitem>
+          <listitem>
+	    <para>auf den Boot-Medien (CD oder USB-Stick); das Preseeding geschieht dann, sobald das Medium eingehängt ist, das heißt, gleich nach den Fragen nach der Sprache und der Tastaturbelegung. Der Boot-Parameter <literal>preseed/file</literal> kann benutzt werden, um den Ort der Preseed-Datei anzugeben (zum Beispiel <filename>/cdrom/preseed.cfg</filename>, wenn die Installation von einer CD-ROM aus erfolgt, oder <filename>/hd-media/preseed.cfg</filename> im Falle eines USB-Sticks).</para>
+          </listitem>
+          <listitem>
+	    <para>aus dem Netzwerk; das Preseeding geschieht dann erst, nachdem das Netzwerk (automatisch) konfiguriert worden ist; der entsprechende Boot-Parameter lautet in diesem Fall <literal>preseed/url=http://<replaceable>server</replaceable>/preseed.cfg</literal>.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>Auf den ersten Blick sieht es so aus, als bestehe die interessanteste Lösung darin, die Preseed-Datei in die initrd einzufügen; jedoch wird dies in der Praxis selten genutzt, da es recht kompliziert ist, eine Installations-initrd zu erstellen. Die anderen beiden Lösungen finden sich weit häufiger, vor allem da Boot-Parameter einen weiteren Weg zur Bereitstellung von Antworten auf die ersten Fragen des Installationsprozesses darstellen. Um sich die Mühe zu sparen, diese Boot-Parameter bei jeder Installation von Hand einzugeben, besteht der übliche Weg darin, sie in der Konfiguration für <command>isolinux</command> (im Falle der CD-ROM) oder für <command>syslinux</command> (beim USB-Stick) abzuspeichern.</para>
+      </section>
+      <section>
+        <title>Eine Preseed-Datei erstellen</title>
+
+	<para>Eine Preseed-Datei ist eine reine Textdatei, in der jede Zeile die Antwort auf eine Debconf-Frage enthält. Eine Zeile ist über vier Felder aufgeteilt, die durch Leerraum (Leerzeichen oder Tabulatoren) getrennt sind, wie zum Beispiel in <literal>d-i mirror/suite string stable</literal>:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>das erste Feld ist der „Besitzer“ der Frage; „d-i“ wird für Fragen verwendet, für die das Installationsprogramm zuständig ist, es kann aber auch ein Paketname sein für Fragen, die von Debian-Paketen kommen;</para>
+          </listitem>
+          <listitem>
+	    <para>das zweite Feld ist eine Kennung für die Frage;</para>
+          </listitem>
+          <listitem>
+	    <para>das dritte die Art der Frage;</para>
+          </listitem>
+          <listitem>
+	    <para>das vierte und letzte Feld enthält den Eingabewert für die Antwort. Man beachte, dass es vom dritten Feld durch ein einzelnes Leerzeichen getrennt sein muss; gibts es weitere, so werden alle folgenden Leerzeichen als Teil des Eingabewerts betrachtet.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>Am einfachsten lässt sich eine Preseed-Datei schreiben, indem man ein System von Hand installiert. Dabei stellt <command>debconf-get-selections --installer</command> die Antworten bereit, die das Installationsprogramm betreffen. Antworten zu anderen Paketen können mit <command>debconf-get-selections</command> erlangt werden. Eine sauberere Lösung besteht jedoch darin, die Preseed-Datei von Hand zu schreiben, indem man mit einem Beispiel und der Referenz-Dokumentation beginnt: bei dieser Herangehensweise brauchen nur Fragen, bei denen die voreingestellte Antwort geändert werden muss, angegeben zu werden; mit dem Boot-Parameter <literal>priority=critical</literal> weist man Debconf an, nur kritische Fragen zu stellen und für die übrigen die voreingestellten Antworten zu verwenden.</para>
+
+        <sidebar>
+          <title><emphasis>DOKUMENTATION</emphasis> Anhang zur Installationsanleitung</title>
+
+	  <para>Die Installationsanleitung, die online zur Verfügung steht, enthält in einem Anhang eine ausführliche Dokumentation zum Einsatz einer Preseed-Datei. Sie enthält auch eine detaillierte und kommentierte Beispieldatei, die als Grundlage für lokale Anpassungen dienen kann. <ulink type="block" url="https://www.debian.org/releases/jessie/amd64/apb.html" /><ulink type="block" url="https://www.debian.org/releases/jessie/example-preseed.txt" /></para>
+        </sidebar>
+      </section>
+      <section>
+        <title>Ein angepasstes Boot-Medium erstellen</title>
+
+	<para>Zwar ist es gut zu wissen, wo die Preseed-Datei gespeichert werden sollte, aber der Ort ist nicht alles: man muss auf die eine oder andere Weise das Boot-Medium für die Installation anpassen, um die Boot-Parameter zu ändern und die Preseed-Datei hinzuzufügen.</para>
+        <section>
+          <title>Aus dem Netzwerk hochfahren</title>
+
+	  <para>Wenn ein Rechner aus dem Netzwerk hochgefahren wird, legt der Server, der die Initialisierungselemente sendet, auch die Boot-Parameter fest. Daher müssen die Änderungen in der PXE-Konfiguration für den Boot-Server vorgenommen werden; genauer gesagt in seiner Konfigurationsdatei <filename>/tftpboot/pxelinux.cfg/default</filename>. Voraussetzung hierfür ist, dass das Hochfahren aus dem Netzwerk eingerichtet wird; siehe die Installationsanleitung für Einzelheiten. <ulink type="block" url="https://www.debian.org/releases/jessie/amd64/ch04s05.html" /></para>
+        </section>
+        <section>
+          <title>Einen bootfähigen USB-Stick herstellen</title>
+
+	  <para>Nachdem ein bootfähiger Stick hergestellt worden ist (siehe <xref linkend="sect.install-usb" />), sind einige zusätzliche Arbeitsgänge erforderlich. Angenommen der Inhalt des Sticks liegt unter <filename>/media/usbdisk/</filename> bereit:</para>
+          <itemizedlist>
+            <listitem>
+	      <para>die Preseed-Datei nach <filename>/media/usbdisk/preseed.cfg</filename> kopieren</para>
+            </listitem>
+            <listitem>
+	      <para><filename>/media/usbdisk/syslinux.cfg</filename> editieren und die erforderlichen Boot-Parameter hinzufügen (siehe unten stehendes Beispiel).</para>
+            </listitem>
+          </itemizedlist>
+
+          <example>
+            <title>syslinux.cfg-Datei und Preseeding-Parameter</title>
+
+            <programlisting>default vmlinuz
+append preseed/file=/hd-media/preseed.cfg locale=en_US.UTF-8 keymap=us language=us country=US vga=788 initrd=initrd.gz  --</programlisting>
+          </example>
+        </section>
+        <section>
+          <title>Ein CD-ROM-Abbild erstellen</title>
+          <indexterm><primary>Debian-CD</primary></indexterm>
+
+	  <para>Ein USB-Stick ist ein Lese- und Schreibmedium, von daher war es für uns einfach, auf ihm eine Datei hinzuzufügen und einige Parameter zu ändern. Im Falle einer CD-ROM ist dieser Vorgang komplizierter, da wir ein vollständiges ISO-Abbild neu erstellen müssen. Diese Aufgabe wird von <emphasis role="pkg">debian-cd</emphasis> erledigt, jedoch ist dieses Hilfsprogramm in der Anwendung recht umständlich: es benötigt einen lokalen Spiegel, und es erfordert das Verständnis aller Optionen, die <filename>/usr/share/debian-cd/CONF.sh</filename> bietet; selbst dann noch muss <command>make</command> mehrmals aufgerufen werden. Es ist daher empfehlenswert, <filename>/usr/share/debian-cd/README</filename> durchzulesen.</para>
+
+	  <para>Allerdings funktioniert debian-cd stets auf ähnliche Weise: ein „Abbild“-Verzeichnis mit dem genauen Inhalt der CD-ROM wird erzeugt und dann mit einem Hilfsprogramm wie <command>genisoimage</command>, <command>mkisofs</command> oder <command>xorriso</command> in eine ISO-Datei umgewandelt. Das Abbildverzeichnis ist endgültig fertiggestellt, nachdem in debian-cd der Schritt <command>make image-trees</command> ausgeführt wurde. An dieser Stelle fügen wir die Preseed-Datei in das passende Verzeichnis ein (normalerweise <filename>$TDIR/$CODENAME/CD1/</filename>, wobei $TDIR und $CODENAME einer der Parameter ist, die durch die Konfigurationsdatei <filename>CONF.sh</filename> festgelegt werden). Die CD-ROM benutzt <command>isolinux</command> als ihren Boot-Loader, und seine Konfigurationsdatei muss dem angepasst werden, was mit debian-cd erzeugt worden ist, um die erforderlichen Boot-Parameter einzufügen (die konkrete Datei heißt <filename>$TDIR/$CODENAME/boot1/isolinux/isolinux.cfg</filename>). Anschließend kann der „normale“ Ablauf wieder aufgenommen werden, und wir können dazu übergehen, mit <command>make image CD=1</command> das ISO-Abbild zu erzeugen (oder mit <command>make images</command>, falls mehrere CD-ROMs erzeugt werden).</para>
+        </section>
+      </section>
+    </section>
+    <section id="sect.simple-cdd">
+      <title>Simple-CDD: die Komplettlösung</title>
+      <indexterm><primary>simple-cdd</primary></indexterm>
+
+      <para>Um alle Erfordernisse zu erfüllen, die bei großen Verbreitungsaktionen auftreten, genügt es nicht, einfach eine Preseed-Datei zu verwenden. Obwohl es damit möglich ist, am Ende des normalen Installationsprozesses einige Skripten auszuführen, ist die Auswahl des zu installierenden Satzes von Paketen noch nicht sehr flexibel (im Grunde können nur „Aufgaben“ ausgewählt werden); wichtiger ist noch, dass so nur offizielle Debian-Pakete installiert werden können und lokal erstellte ausgeschlossen sind.</para>
+
+      <para>Andererseits kann debian-cd externe Pakete integrieren, und das Debian-Installationsprogramm kann durch das Hinzufügen weiterer Schritte zum Installationsprozess erweitert werden. Durch die Kombination dieser Fähigkeiten sollte es möglich sein, ein angepasstes Installationsprogramm zu erstellen, das unsere Anforderungen erfüllt; es sollte sogar in der Lage sein, einige Dienste nach dem Entpacken der erforderlichen Pakete zu konfigurieren. Glücklicherweise ist dies nicht nur eine Annahme, da dies genau das ist, was Simple-CDD (im Paket <emphasis role="pkg">simple-cdd</emphasis>) macht.</para>
+
+      <para>Der Zweck von Simple-CDD besteht darin, es jedem zu ermöglichen, auf einfache Weise eine von Debian abgeleitete Distribution zu erstellen, indem eine Teilmenge der verfügbaren Pakete ausgewählt wird, diese mit Debconf vorkonfiguriert werden, bestimmte Software hinzugefügt wird, und am Ende des Installationsprozesses angepasste Skripten ausgeführt werden. Dies entspricht der Philosophie des „universellen Betriebssystems“, da jeder es an seine Bedürfnisse anpassen kann.</para>
+      <section>
+        <title>Profile erstellen</title>
+
+	<para>Simple-CDD legt „Profile“ fest, die dem Konzept der „Klassen“ bei FAI entsprechen, und ein Rechner kann über mehrere Profile verfügen (die während der Installation bestimmt werden). Ein Profil wird durch einen Satz von Dateien namens <filename>profiles/<replaceable>profil</replaceable>.*</filename> definiert:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>die Datei <filename>.description</filename> enthält eine einzeilige Beschreibung des Profils;</para>
+          </listitem>
+          <listitem>
+	    <para>die Datei <filename>.packages</filename> listet die Pakete auf, die bei der Auswahl des Profils automatisch installiert werden;</para>
+          </listitem>
+          <listitem>
+	    <para>die Datei <filename>.downloads</filename> listet die Pakete auf, die auf den Installationsmedien gespeichert, aber nicht unbedingt installiert werden;</para>
+          </listitem>
+          <listitem>
+	    <para>die Datei <filename>.preseed</filename> enthält die Preseeding-Information für Debconf-Fragen (für das Installationsprogramm und für die Pakete);</para>
+          </listitem>
+          <listitem>
+	    <para>die Datei <filename>.postinst</filename> enthält ein Skript, das am Ende des Installationsprozesses ausgeführt wird;</para>
+          </listitem>
+          <listitem>
+	    <para>und schließlich ermöglicht es die Datei <filename>.conf</filename>, einige Parameter von Simple-CDD auf der Grundlage der Profile, die in dem Abbild enthalten sein werden, zu ändern.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>Das Profil <literal>default</literal> spielt eine besondere Rolle, da es immer ausgewählt ist; es enthält das absolute Minimum dessen, das erforderlich ist, damit Simple-CDD funktioniert. Das Einzige, das in diesem Profil normalerweise angepasst ist, ist der Preseed-Parameter <literal>simple-cdd/profiles</literal>: er vermeidet die Frage, welche Profile installiert werden sollen, die sonst von Simple-CDD gestellt würde.</para>
+
+	<para>Man beachte auch, dass die Befehle von dem Verzeichnis aus aufgerufen werden müssen, das dem Verzeichnis <filename>profiles</filename> übergeordnet ist.</para>
+      </section>
+      <section>
+        <title><command>build-simple-cdd</command> konfigurieren und benutzen</title>
+        <indexterm><primary><command>build-simple-cdd</command></primary></indexterm>
+
+        <sidebar>
+          <title><emphasis>KURZER BLICK</emphasis> Detaillierte Konfigurationsdatei</title>
+
+	  <para>Ein Beispiel einer Konfigurationsdatei für Simple-CDD mit allen möglichen Parametern ist in dem Paket enthalten (<filename>/usr/share/doc/simple-cdd/examples/simple-cdd.conf.detailed.gz</filename>). Diese kann als Ausgangspunkt genommen werden, wenn man eine angepasste Konfigurationsdatei erstellt.</para>
+        </sidebar>
+
+	<para>Simple-CDD erfordert zahlreiche Parameter, um in vollem Umfang zu wirken. Sie sind meistens in einer Konfigurationsdatei versammelt, an die <command>build-simple-cdd</command> mit der Option <literal>--conf</literal> verwiesen werden kann, sie können aber auch über besondere Parameter festgelegt werden, die an <command>build-simple-cdd</command> übergeben werden. Hier ist ein Überblick darüber, wie sich dieser Befehl verhält, und wie die Parameter eingesetzt werden:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>der Parameter <literal>profiles</literal> listet die Profile auf, die in dem erzeugten CD-ROM-Abbild enthalten sein werden;</para>
+          </listitem>
+          <listitem>
+	    <para>ausgehend von der Liste der erforderlichen Pakete lädt Simple-CDD die passenden Dateien von dem Server herunter, der unter <literal>server</literal> genannt ist, und versammelt sie in einem partiellen Spiegel (der später an debian-cd übergeben wird);</para>
+          </listitem>
+          <listitem>
+	    <para>die selbst erstellten Pakete, die in <literal>local_packages</literal> angegeben sind, werden auch in diesen lokalen Spiegel integriert;</para>
+          </listitem>
+          <listitem>
+	    <para>dann wird debian-cd mit der Liste der zu integrierenden Pakete ausgeführt (innerhalb eines voreingestellten Ortes, der mit der Variablen <literal>debian_cd_dir</literal> festgelegt werden kann);</para>
+          </listitem>
+          <listitem>
+	    <para>sobald debian-cd sein Verzeichnis erstellt hat, wendet Simple-CDD einige Änderungen auf dieses Verzeichnis an:</para>
+            <itemizedlist>
+              <listitem>
+		<para>Dateien, die die Profile enthalten, werden einem Unterverzeichnis namens <filename>simple-cdd</filename> hinzugefügt (das sich schließlich auf der CD-ROM wiederfinden wird);</para>
+              </listitem>
+              <listitem>
+		<para>weitere Dateien, die im Parameter <literal>all_extras</literal> aufgeführt sind, werden ebenfalls hinzugefügt;</para>
+              </listitem>
+              <listitem>
+		<para>die Boot-Parameter werden so angepasst, dass sie das Preseeding ermöglichen. Fragen zur Sprache und zum Land können vermieden werden, indem die erforderliche Information in den Variablen <literal>language</literal> und <literal>country</literal> gespeichert wird.</para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+          <listitem>
+	    <para>debian-cd erzeugt dann das endgültige ISO-Abbild.</para>
+          </listitem>
+        </itemizedlist>
+      </section>
+      <section>
+        <title>Ein ISO-Abbild erzeugen</title>
+
+	<para>Nachdem wir eine Konfigurationsdatei geschrieben und unsere Profile festgelegt haben, besteht der verbleibende Schritt darin, den Befehl <command>build-simple-cdd --conf simple-cdd.conf</command> aufzurufen. Nach einigen Minuten erhalten wir in <filename>images/debian-8.0-amd64-CD-1.iso</filename> das erwünschte Abbild.</para>
+      </section>
+    </section>
+  </section>
+  <section id="sect.monitoring">
+    <title>Überwachung</title>
+
+    <para>Monitoring ist ein allgemeiner Ausdruck, und die verschiedenen damit verbundenen Aktivitäten haben mehrere Ziele: einerseits ist es durch die Verfolgung der Ressourcennutzung eines Rechners möglich, seine volle Auslastung und die daraufhin erforderlichen Nachrüstungen vorherzusehen; andererseits kann ein auftretendes Problem frühzeitiger behoben werden, wenn der Administrator informiert wird, sobald ein Dienst nicht verfügbar ist oder nicht richtig funktioniert.</para>
+
+    <para><emphasis>Munin</emphasis> deckt den ersten Bereich ab, indem es Diagramme der vergangenen Werte einer Reihe von Parametern anzeigt (verwendetes RAM, belegter Plattenplatz, Prozessorlast, Netzwerkverkehr, Apache/MySQL-Auslastung und so weiter). <emphasis>Nagios</emphasis> umfasst den zweiten Bereich, indem es regelmäßig überprüft, ob die Dienste funktionieren und verfügbar sind, und indem es über geeignete Kanäle (E-Mails, Textnachrichten und so weiter) Warnungen verschickt. Beide haben eine modulare Bauweise, wodurch es einfach ist, neue Plugins zur Überwachung bestimmter Parameter oder Dienste zu erstellen.</para>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIVE</emphasis> Zabbix, ein integriertes Monitoringprogramm</title>
+      <indexterm><primary>Zabbix</primary></indexterm>
+
+      <para>Obwohl Munin und Nagios sehr weit verbreitet sind, sind sie nicht die einzigen Akteure auf dem Gebiet des Monitoring, und jedes von ihnen erledigt nur eine Hälfte der Aufgabe (grafische Darstellungen auf der einen Seite und Warnungen auf der anderen). Zabbix integriert dagegen beide Teile des Monitorings; es hat außerdem eine Web-Schnittstelle zur Konfigurierung der häufigsten Aspekte. Es hat sich in den vergangenen Jahren rasant weiterentwickelt und muss inzwischen leider als ernst zu nehmender Herausforderer angesehen werden. Den Monitoring-Server installiert man mittels <emphasis role="pkg">zabbix-server-pgsql</emphasis> (oder <emphasis role="pkg">zabbix-server-mysql</emphasis>), gegebendenfalls zusammen mit <emphasis role="pkg">zabbix-frontend-php</emphasis> um ein Web-Interface bereitzustellen. Auf dem zu überwachenden Rechner (Host) installiert man den <emphasis role="pkg">zabbix-agent</emphasis>, der die Daten an den Monitororing-Server liefert. <ulink type="block" url="http://www.zabbix.com/" /></para>
+    </sidebar>
+
+    <sidebar>
+      <title><emphasis>ALTERNATIVE</emphasis> Icinga, eine Nagios-Abspaltung</title>
+      <indexterm><primary>Icinga</primary></indexterm>
+
+      <para>Angespornt von Meinungsverschiedenheiten bezüglich des Entwicklungsmodells für Nagios (das von einem Unternehmen kontrolliert wird) hat eine Anzahl von Entwicklern eine Abspaltung von Nagios erstellt und verwendet dafür Icinga als seinen neuen Namen. Icinga ist - bisher - noch mit den Konfigurationen und Plugins für Nagios kompatibel, fügt jedoch auch zusätzliche Funktionen hinzu. <ulink type="block" url="http://www.icinga.org/" /></para>
+    </sidebar>
+    <section id="sect.munin">
+      <title>Munin einrichten</title>
+      <indexterm><primary>Munin</primary></indexterm>
+
+      <para>Munin hat die Aufgabe, zahlreiche Rechner zu überwachen; daher verwendet es natürlich eine Client/Server-Architektur. Der zentrale Host - der Grapher - sammelt Daten aller überwachten Hosts und erzeugt Verlaufsdiagramme.</para>
+      <section>
+        <title>Zu überwachende Hosts konfigurieren</title>
+
+	<para>Der erste Schritt besteht darin, das Paket <emphasis role="pkg">munin-node</emphasis> zu installieren. Der Daemon, der mit diesem Paket installiert wird, nimmt an Port 4949 Verbindungen an und sendet die Daten zurück, die von allen aktiven Plugins gesammelt werden. Jedes Plugin ist ein einfaches Programm, das sowohl eine Beschreibung der gesammelten Daten als auch die jüngsten Messwerte wiedergibt. Plugins werden in <filename>/usr/share/munin/plugins/</filename> gespeichert, aber nur diejenigen mit einer symbolischen Verknüpfung in <filename>/etc/munin/plugins/</filename> werden tatsächlich benutzt.</para>
+
+	<para>Wenn das Paket installiert ist, wird in Abhängigkeit von der verfügbaren Software und der aktuellen Konfiguration des Hosts ein Satz aktiver Plugins festgelegt. Diese Autokonfiguration hängt jedoch von einer Funktion ab, die jedes Plugin bereitstellen muss, und es empfiehlt sich normalerweise, die Ergebnisse zu überprüfen und von Hand nachzustellen. Das Duchsehen von <ulink url="http://gallery.munin-monitoring.org">Plugin Gallery</ulink> kann interessant sein, auch wenn nicht alle Plugins eine ausführliche Dokumentation aufweisen. Alle Plugins sind jedoch Skripte, und die meisten von ihnen sind recht einfach aufgebaut und ausführlich kommentiert. Das Durchsuchen von <filename>/etc/munin/plugins/</filename> ist daher eine gute Methode, um eine Vorstellung davon zu bekommen, worum es bei jedem Plugin geht, und welche entfernt werden sollten. Ebenso lässt sich ein interessantes Plugin, das man in <filename>/usr/share/munin/plugins/</filename> gefunden hat, einfach durch die Erstellung einer symbolischen Verknüpfung mit dem Befehl <command>ln -sf /usr/share/munin/plugins/<replaceable>plugin</replaceable> /etc/munin/plugins/</command> aktivieren. Beachten Sie, dass ein Plugin, dessen Name mit einem Unterstrich "_" endet, einen Parameter erwartet. Dieser Parameter muss im Namen des symbolischen Linksangegeben werden; beispielsweise muss das "if_" plugin mit einem symbolischen Link <filename>if_eth0</filename> aktiviert werden, damit es den Netzwerkverkehr auf der Schnittstelle eth0 überwacht.</para>
+
+	<para>Nachdem alle Plugins richtig eingerichtet sind, muss die Konfiguration des Daemons aktualisiert werden, um die Zugriffskontrolle für die gesammelten Daten zu beschreiben. Hierzu sind <literal>allow</literal>-Anweisungen in der Datei <filename>/etc/munin/munin-node.conf</filename> erforderlich. Die Standardkonfiguration lautet <literal>allow ^127\.0\.0\.1$</literal> und ermöglicht nur Zugriff auf den lokalen Host. Ein Administrator fügt gewöhnlich eine ähnliche Zeile mit der IP-Adresse des Grapher-Hosts hinzu und startet den Daemon anschließend mit <command>service munin-node restart</command> neu.</para>
+
+        <sidebar>
+          <title><emphasis>WEITERE SCHRITTE</emphasis> Lokale Plugins erstellen</title>
+
+	  <para>Munin enthält eine ausführliche Anleitung darüber, wie sich Plugins verhalten sollten und wie man neue Plugins entwickelt. <ulink type="block" url="http://munin-monitoring.org/wiki/plugins" /></para>
+
+	  <para>Ein Plugin wird am besten getestet, indem man es unter den gleichen Bedingungen laufen lässt, unter denen es laufen würde, wenn es durch munin-node in Gang gesetzt würde; dies kann dadurch simuliert werden, dass man <command>munin-run <replaceable>plugin</replaceable></command> als Root ausführt. Ein möglicher weiterer Parameter, der diesem Befehl hinzugefügt wird (wie zum Beispiel <literal>config</literal>), wird als Parameter an das Plugin weitergeleitet.</para>
+
+	  <para>Wenn ein Plugin mit dem Parameter <literal>config</literal> aufgerufen wird, muss es sich selbst beschreiben, indem es einen Satz von Feldern wiedergibt:</para>
+
+          <screen><computeroutput>$ </computeroutput><userinput>sudo munin-run load config
+</userinput><computeroutput>graph_title Load average
+graph_args --base 1000 -l 0
+graph_vlabel load
+graph_scale no
+graph_category system
+load.label load
+graph_info The load average of the machine describes how many processes are in the run-queue (scheduled to run "immediately").
+load.info 5 minute load average
+</computeroutput></screen>
+
+	  <para>Die verschiedenen möglichen Felder sind in der Spezifikation „Plugin Reference“ auf der Munin-Webseite beschrieben. <ulink type="block" url="http://munin.readthedocs.org/en/latest/reference/plugin.html" /></para>
+
+	  <para>Wenn es ohne einen Parameter aufgerufen wird, gibt das Plugin einfach die zuletzt gemessenen Werte wieder; so könnte zum Beispiel die Ausführung des Befehls <command>sudo munin-run load</command> die Meldung <literal>load.value 0.12</literal> ergeben.</para>
+
+	  <para>Wenn schließlich ein Plugin mit dem Parameter <literal>autoconf</literal> aufgerufen wird, sollte es mit „yes“ (und dem Beendigungsstatus 0) oder mit „no“ (und dem Beendigungsstatus 1) antworten, je nachdem, ob das Plugin auf diesem Host aktiviert sein sollte oder nicht.</para>
+        </sidebar>
+      </section>
+      <section>
+        <title>Den Grapher konfigurieren</title>
+
+	<para>Der „Grapher“ ist einfach der Rechner, der die Daten aggregiert und die entsprechenden Diagramme erzeugt. Die erforderliche Software befindet sich in dem Paket <emphasis role="pkg">munin</emphasis>. Die Standardkonfiguration führt den Befehl <command>munin-cron</command> (alle 5 Minuten) aus, der die Daten von allen Hosts, die in <filename>/etc/munin/munin.conf</filename> aufgelistet sind (nur der lokale Host ist hier standardmäßig aufgeführt), sammelt, die vergangenen Daten in RRD-Dateien (<emphasis>Round Robin Database</emphasis>, einem Dateiformat zur Speicherung von Daten, die sich im Verlaufe der Zeit ändern) unter <filename>/var/lib/munin/</filename> speichert und in <filename>/var/cache/munin/www/</filename> eine HTML-Seite mit den Diagrammen erstellt.</para>
+
+	<para>Alle überwachten Rechner müssen daher in der Konfigurationsdatei <filename>/etc/munin/munin.conf</filename> aufgeführt sein. Jeder Rechner ist als vollständiger Absatz aufgelistet mit einer Bezeichnung, die dem Rechner entspricht und wenigstens einem <literal>address</literal>-Eintrag, der die dazugehörige IP-Adresse angibt.</para>
+
+        <programlisting>[ftp.falcot.com]
+    address 192.168.0.12
+    use_node_name yes</programlisting>
+
+	<para>Die Absätze können komplexer sein und zusätzliche Diagramme beschreiben, die durch die Kombination von Daten mehrerer Rechner erzeugt werden könnten. Die in der Konfigurationsdatei bereitgestellten Beispiele sind ein guter Ausgangspunkt für die Anpassung.</para>
+
+	<para>Der letzte Schritt besteht darin, die erstellten Seiten zu veröffentlichen; hierzu muss ein Webserver konfiguriert werden, so dass der Inhalt von <filename>/var/cache/munin/www/</filename> auf einer Webseite zur Verfügung gestellt wird. Der Zugriff auf diese Webseite ist häufig beschränkt, indem entweder ein Authentifizierungsmechanismus oder eine IP-basierte Zugriffskontrolle eingesetzt wird. Siehe <xref linkend="sect.http-web-server" /> für entsprechende Einzelheiten.</para>
+      </section>
+    </section>
+    <section id="sect.nagios">
+      <title>Nagios einrichten</title>
+      <indexterm><primary>Nagios</primary></indexterm>
+
+      <para>Im Gegensatz zu Munin ist es bei Nagios nicht unbedingt erforderlich, auf den überwachten Hosts irgendetwas zu installieren; in den meisten Fällen wird Nagios dazu verwendet, die Verfügbarkeit von Netzwerkdiensten zu überprüfen. Nagios kann sich zum Beispiel mit einem Webserver verbinden und nachprüfen, ob eine bestimmte Webseite in einer bestimmten Zeit erhältlich ist.</para>
+      <section>
+        <title>Installieren</title>
+
+	<para>Der erste Schritt zur Einrichtung von Nagios besteht darin, die Pakete <emphasis role="pkg">nagios3</emphasis>, <emphasis role="pkg">nagios-plugins</emphasis> und <emphasis role="pkg">nagios3-doc</emphasis> zu installieren. Mit der Installation dieser Pakete wird die Webschnittstelle konfiguriert und ein erster <literal>nagiosadmin</literal>-Benutzer eingerichtet (für den nach einem Passwort gefragt wird). Weitere Benutzer werden einfach hinzugefügt, indem sie mit dem Apache-Befehl <command>htpasswd</command> in die Datei <filename>/etc/nagios3/htpasswd.users</filename> eingetragen werden. Falls während der Installation keine Debconf-Fragen angezeigt wurden, kann der Befehl <command>dpkg-reconfigure nagios3-cgi</command> dazu eingesetzt werden, das <literal>nagiosadmin</literal>-Passwort festzulegen.</para>
+
+	<para>Mit der Eingabe von <literal>http://<replaceable>server</replaceable>/nagios3/</literal> in einen Browser wird die Webschnittstelle angezeigt; man beachte insbesondere, dass Nagios auf dem Rechner, auf dem es läuft, bereits einige Parameter überwacht. Einige interaktive Funktionen, wie zum Beispiel das Hinzufügen von Kommentaren zu einem Host, laufen jedoch noch nicht. Diese Funktionen sind in der Standardkonfiguration für Nagios, die aus Sicherheitsgründen sehr restriktiv ist, deaktiviert.</para>
+
+	<para>Wie in <filename>/usr/share/doc/nagios3/README.Debian</filename> dargelegt, ist es zur Aktivierung einiger Funktionen erforderlich, <filename>/etc/nagios3/nagios.cfg</filename> zu editieren und ihren Parameter <literal>check_external_commands</literal> auf „1“ zu setzen. Wir müssen außerdem mit Befehlen wie den folgenden Schreibberechtigungen für das Verzeichnis einrichten, das Nagios benutzt:</para>
+
+        <screen><computeroutput># </computeroutput><userinput>service nagios3 stop</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>dpkg-statoverride --update --add nagios www-data 2710 /var/lib/nagios3/rw
+</userinput><computeroutput># </computeroutput><userinput>dpkg-statoverride --update --add nagios nagios 751 /var/lib/nagios3
+</userinput><computeroutput># </computeroutput><userinput>service nagios3 start</userinput>
+<computeroutput>[...]</computeroutput></screen>
+      </section>
+      <section>
+        <title>Konfigurieren</title>
+
+	<para>Die Webschnittstelle von Nagios ist recht schön, aber sie ermöglicht weder eine Konfigurierung noch kann sie dazu verwendet werden, überwachte Hosts und Dienste hinzuzufügen. Die gesamte Konfiguration wird über Dateien verwaltet, auf die in der zentralen Konfigurationsdatei <filename>/etc/nagios3/nagios.cfg</filename> verwiesen wird.</para>
+
+	<para>Man sollte in diese Dateien ohne ein Verständnis der Konzepte von Nagios nicht eindringen. Die Konfiguration führt Objekte der folgenden Art auf:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>ein <emphasis>host</emphasis> ist ein zu überwachender Rechner;</para>
+          </listitem>
+          <listitem>
+	    <para>eine <emphasis>hostgroup</emphasis> ist ein Satz von Rechnern, der in der Darstellung oder zur Berücksichtigung einiger gemeinsamer Konfigurationselemente zusammengefasst werden sollte;</para>
+          </listitem>
+          <listitem>
+	    <para>ein <emphasis>service</emphasis> ist ein überprüfbares Element in Bezug auf einen Host oder eine Gruppe von Hosts. In den meisten Fällen wird es sich um die Überprüfung eines Netzwerkdienstes handeln, es kann aber auch bedeuten, dass überprüft wird, ob einige Parameter innerhalb eines zulässigen Bereichs liegen (zum Beispiel der freie Plattenplatz oder die Prozessorlast);</para>
+          </listitem>
+          <listitem>
+	    <para>eine <emphasis>servicegroup</emphasis> ist ein Satz von Diensten, die zur Darstellung zusammengefasst werden sollen;</para>
+          </listitem>
+          <listitem>
+	    <para>ein <emphasis>contact</emphasis> ist eine Person, die Warnmeldungen empfangen darf;</para>
+          </listitem>
+          <listitem>
+	    <para>eine <emphasis>contactgroup</emphasis> ist ein Satz solcher Personen;</para>
+          </listitem>
+          <listitem>
+	    <para>eine <emphasis>timeperiod</emphasis> ist ein Zeitraum, innerhalb dessen einige Dienste überprüft werden müssen;</para>
+          </listitem>
+          <listitem>
+	    <para>ein <emphasis>command</emphasis> ist die Befehlszeile, die zur Überprüfung eines bestimmten Dienstes aufgerufen wird.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>Je nach seiner Art hat jedes Objekt eine Anzahl von Eigenschaften, die angepasst werden können. Eine vollständige Liste wäre zu lang, um sie hier aufzuführen, jedoch sind die wichtigsten Eigenschaften die Beziehungen zwischen den Objekten.</para>
+
+	<para>Ein <emphasis>service</emphasis> verwendet einen <emphasis>command</emphasis>, um den Zustand einer Funktion auf einem <emphasis>host</emphasis> (oder einer <emphasis>hostgroup</emphasis>) innerhalb einer <emphasis>timeperiod</emphasis> zu überprüfen. Falls ein Problem vorliegt, verschickt Nagios ein Warnmeldung an alle Mitglieder der <emphasis>contactgroup</emphasis>, die mit diesem Dienst in Zusammenhang steht. Jedes Mitglied erhält die Meldung in Abhängigkeit von dem Kanal, der in dem entsprechenden <emphasis>contact</emphasis>-Objekt beschrieben ist.</para>
+
+	<para>Ein Vererbungssystem erleichtert es, einen Satz von Eigenschaften bei vielen Objekten gemeinsam zu benutzen, ohne Informationen zu duplizieren. Außerdem enthält die anfängliche Konfiguration eine Anzahl von Standardobjekten; so können in vielen Fällen neue Hosts, Dienste und Kontakte einfach dadurch festgelegt werden, dass sie von den bereitgestellten allgemeinen Objekten abgeleitet werden. Die Dateien in <filename>/etc/nagios3/conf.d/</filename> sind eine gute Quelle für Informationen darüber, wie sie funktionieren.</para>
+
+	<para>Die Falcot Corp. Administratoren verwenden folgende Konfiguration:</para>
+
+        <example>
+          <title><filename>/etc/nagios3/conf.d/falcot.cfg</filename> file</title>
+
+          <programlisting>define contact{
+    name                            generic-contact
+    service_notification_period     24x7
+    host_notification_period        24x7
+    service_notification_options    w,u,c,r
+    host_notification_options       d,u,r
+    service_notification_commands   notify-service-by-email
+    host_notification_commands      notify-host-by-email
+    register                        0 ; Template only
+}
+define contact{
+    use             generic-contact
+    contact_name    rhertzog
+    alias           Raphael Hertzog
+    email           hertzog@debian.org
+}
+define contact{
+    use             generic-contact
+    contact_name    rmas
+    alias           Roland Mas
+    email           lolando@debian.org
+}
+
+define contactgroup{
+    contactgroup_name     falcot-admins
+    alias                 Falcot Administrators
+    members               rhertzog,rmas
+}
+
+define host{
+    use                   generic-host ; Name of host template to use
+    host_name             www-host
+    alias                 www.falcot.com
+    address               192.168.0.5
+    contact_groups        falcot-admins
+    hostgroups            debian-servers,ssh-servers
+}
+define host{
+    use                   generic-host ; Name of host template to use
+    host_name             ftp-host
+    alias                 ftp.falcot.com
+    address               192.168.0.6
+    contact_groups        falcot-admins
+    hostgroups            debian-servers,ssh-servers
+}
+
+# 'check_ftp' command with custom parameters
+define command{
+    command_name          check_ftp2
+    command_line          /usr/lib/nagios/plugins/check_ftp -H $HOSTADDRESS$ -w 20 -c 30 -t 35
+}
+
+# Generic Falcot service
+define service{
+    name                  falcot-service
+    use                   generic-service
+    contact_groups        falcot-admins
+    register              0
+}
+
+# Services to check on www-host
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   HTTP
+    check_command         check_http
+}
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   HTTPS
+    check_command         check_https
+}
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   SMTP
+    check_command         check_smtp
+}
+
+# Services to check on ftp-host
+define service{
+    use                   falcot-service
+    host_name             ftp-host
+    service_description   FTP
+    check_command         check_ftp2
+}</programlisting>
+        </example>
+
+	<para>Diese Konfigurationsdatei beschreibt zwei überwachte Hosts. Der erste ist der Webserver, und die Überprüfungen werden an den Ports für HTTP (80) und sicheres HTTP (443) durchgeführt. Nagios überprüft außerdem, ob ein SMTP-Server an Port 25 läuft. Der zweite ist der FTP-Server, und mit der Überprüfung wird unter anderem sichergestellt, dass eine Antwort innerhalb von 20 Sekunden gegeben wird. Bei einer längeren Verzögerung wird eine <emphasis>Warnung</emphasis> ausgegeben, bei mehr als 30 Sekunden gilt sie als kritisch. Die Webschnittstelle von Nagios zeigt auch an, dass der SSH-Service überwacht wird: dies geschieht wegen der Hosts, die zur Hostgruppe <literal>ssh-servers</literal> gehören. Der dazugehörige Standarddienst ist in <filename>/etc/nagios3/conf.d/services_nagios2.cfg</filename> festgelegt.</para>
+
+	<para>Man beachte die Verwendung der Vererbung: ein Objekt wird mit „use <replaceable>eltern-name</replaceable>“ dazu gebracht, von einem anderen Objekt zu erben. Das Elternobjekt muss identifizierbar sein, daher ist es erforderlich, ihm mit „name <replaceable>kennung</replaceable>“ eine Kennung zu geben. Falls das Elternobjekt kein wirkliches Objekt sein, sondern lediglich als Elter dienen soll, wird Nagios mitgeteilt, es nicht zu berücksichtigen, indem ihm die Eigenschaft „register 0“ zugeteilt wird, so dass Nagios das Fehlen einiger Parameter ignoriert, die anderenfalls erforderlich wären.</para>
+
+        <sidebar>
+          <title><emphasis>DOKUMENTATION</emphasis> Liste der Objekteigenschaften</title>
+
+	  <para>Ein vertieftes Verständnis der verschiedenen Weisen, auf die Nagios konfiguriert werden kann, kann aus der Dokumentation gewonnen werden, die mit dem Paket <emphasis role="pkg">nagios3-doc</emphasis> bereitgestellt wird. Diese Dokumentation ist direkt von der Webschnittstelle aus über den Link „Documentation“ in der oberen linken Ecke erreichbar. Sie enthält eine Liste aller Objekttypen mit allen Eigenschaften, über die sie verfügen. Sie erklärt auch, wie neue Plugins erstellt werden.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>WEITERE SCHRITTE</emphasis> Ferntests mit NRPE</title>
+
+	  <para>Mit vielen Nagios-Plugins ist es möglich, bestimmte Parameter zu überprüfen, die lokal auf einem Host verfügbar sind; wenn diese Überprüfungen für zahlreiche Rechner erforderlich sind, wobei eine zentrale Einrichtung die Daten sammelt, muss das Plugin NRPE (<emphasis>Nagios Remote Plugin Executor</emphasis>) eingesetzt werden. Hierzu muss das Paket <emphasis role="pkg">nagios-nrpe-plugin</emphasis> auf dem Nagios-Server und das Paket <emphasis role="pkg">nagios-nrpe-server</emphasis> auf den Hosts, auf denen die lokalen Tests laufen sollen, installiert werden. Letzteres erhält seine Konfiguration von <filename>/etc/nagios/nrpe.cfg</filename>. Diese Datei sollte die Tests auflisten, die aus der Ferne gestartet werden können, und die IP-Adressen der Rechner, die sie auslösen dürfen. Auf der Nagios-Seite werden diese Ferntests einfach dadurch aktiviert, dass mit dem neuen Befehl <emphasis>check_nrpe</emphasis> passende Dienste hinzugefügt werden.</para>
+        </sidebar>
+      </section>
+    </section>
+  </section>
+</chapter>
