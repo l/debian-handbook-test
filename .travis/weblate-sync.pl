@@ -70,7 +70,7 @@ our $table = {
         },
         {    # Norwegian Bokmål (nb_NO)
             file    => 'nb-NO',
-            weblate => 'nb',
+            weblate => 'nb_NO',
         },
         {    # Persian
             file    => 'fa-IR',
