@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.8. Планирование асинхронных задач: anacron</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-ru-RU-1.0-1" /><meta
+        name="keywords"
+        content="Загрузка системы, Сценарии инициализации, SSH, Telnet, Права, Привилегии, Инспектирование, Inetd, Cron, Резервное копирование, Горячее подключение, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Настольная книга администратора Debian" /><link
+        rel="up"
+        href="unix-services.html"
+        title="Глава 9. Сервисы Unix" /><link
+        rel="prev"
+        href="sect.task-scheduling-cron-atd.html"
+        title="9.7. Планирование задач с помощью cron и atd" /><link
+        rel="next"
+        href="sect.quotas.html"
+        title="9.9. Квоты" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/ru-RU/stable/sect.asynchronous-task-scheduling-anacron.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.task-scheduling-cron-atd.html"><strong>Пред.</strong></a></li><li
+          class="home">Настольная книга администратора Debian</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.quotas.html"><strong>След.</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.asynchronous-task-scheduling-anacron"></a>9.8. Планирование асинхронных задач: <code
+                  class="command">anacron</code></h2></div></div></div><div
+          class="para">
+			<code
+            class="command">anacron</code> — это демон, дополняющий <code
+            class="command">cron</code> на компьютерах, которые не включены всё время. Поскольку регулярные задачи обычно планируются на середину ночи, они никогда не будут запускаться, если компьютер в это время выключен. Назначение <code
+            class="command">anacron</code> — запустить их, принимая во внимание периоды, в которые компьютер не работает.
+		</div><a
+          id="id-1.12.11.3"
+          class="indexterm"></a><div
+          class="para">
+			Обратите внимание, что <code
+            class="command">anacron</code> зачастую будет запускать такие действия через несколько минут после загрузки машины, что может привести к ухудшению отзывчивости системы. Поэтому задачи в файле <code
+            class="filename">/etc/anacrontab</code> запускаются с помощью команды <code
+            class="command">nice</code>, понижающей приоритет их выполнения и тем самым ограничивающей их влияние на остальную систему. Будьте внимательны, формат этого файла отличается от <code
+            class="filename">/etc/crontab</code>; при необходимости использовать <code
+            class="command">anacron</code> следует ознакомиться со страницей руководства <span
+            class="citerefentry"><span
+              class="refentrytitle">anacrontab</span>(5)</span>.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>К ОСНОВАМ</em></span> Приоритеты и <code
+                      class="command">nice</code></strong></p></div></div></div><div
+            class="para">
+			Unix-системы (включая Linux) — это многозадачные и многопользовательские системы. Несколько процессов могут работать параллельно и принадлежать разным пользователям: ядро регулирует доступ различных приложений к ресурсам. Для решения этой задачи служит концепция приоритетов, позволяющая при необходимости отдавать предпочтение одним процессам перед другими. Если известно, что процесс можно запустить с низким приоритетом, можно указать это, запустив его с помощью <code
+              class="command">nice <em
+                class="replaceable">программа</em></code>. После этого программа будет получать меньше процессорного времени и оказывать меньшее влияние на другие работающие процессы. Разумеется, если других ожидающих выполнения процессов нет, программа не будет искусственно притормаживаться.
+		</div><div
+            class="para">
+			<code
+              class="command">nice</code> работает с разными уровнями «уступчивости»: положительные уровни (с 1 по 19) постепенно понижают приоритет, в то время как отрицательные уровни (от −1 до −20) увеличат его — но такие отрицательные уровни дозволено использовать только root. Если не указано что-либо другое (см. страницу руководства <span
+              class="citerefentry"><span
+                class="refentrytitle">nice</span>(1)</span>), <code
+              class="command">nice</code> повышает текущий уровень на 10.
+		</div><div
+            class="para">
+			Если вы обнаружите, что уже работающая задача должна была быть запущена с <code
+              class="command">nice</code>, то ещё не поздно исправить это; команда <code
+              class="command">renice</code> изменит приоритет уже запущенного процесса, в любом направлении (но учтите, что понижение “уступчивости” процесса зарезервировано за пользователем - администратор).
+		</div></div><div
+          class="para">
+			При установке пакета <span
+            class="pkg pkg">anacron</span> отключается выполнение <code
+            class="command">cron</code> сценариев в каталогах <code
+            class="filename">/etc/cron.hourly/</code>, <code
+            class="filename">/etc/cron.daily/</code>, <code
+            class="filename">/etc/cron.weekly/</code>, и <code
+            class="filename">/etc/cron.monthly/</code>. Это позволяет избежать их двукратного запуска как <code
+            class="command">anacron</code> так и <code
+            class="command">cron</code>. Команда <code
+            class="command">cron</code> остаётся активной и продолжает обслуживать другие запланированные задания (в частности заданные пользователями).
+		</div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.task-scheduling-cron-atd.html"><strong>Пред.</strong>9.7. Планирование задач с помощью cron и atd</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Наверх</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Начало</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.quotas.html"><strong>След.</strong>9.9. Квоты</a></li></ul></body></html>
