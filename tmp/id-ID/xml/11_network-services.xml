@@ -561,7 +561,7 @@ body_checks = regexp:/etc/postfix/body_checks</programlisting>
 				"Greylisting" adalah teknik penyaringan yang pesan awalnya ditolak dengan kode kesalahan sementara, dan hanya diterima pada percobaan lebih lanjut setelah penundaan. Hal ini sangat efisien terhadap spam yang dikirim oleh banyak mesin yang terinfeksi oleh virus dan worm karena software ini jarang bertindak sebagai agen SMTP penuh (dengan memeriksa kode kesalahan dan mencoba kembali pesan gagal kemudian), terutama karena banyak dari alamat yang dipanen sebenarnya tidak sah dan mencoba kembali berarti kehilangan waktu.
 			</para>
 			 <para>
-				Postfix doesn't provide greylisting natively, but there is a feature by which the decision to accept or reject a given message can be delegated to an external program. The <emphasis role="pkg">postgrey</emphasis> package contains just such a program, designed to interface with this access policy delegation service.
+				Postfix tidak menyediakan greylist secara native, tapi ada fitur dimana keputusan untuk menerima atau menolak pesan tertentu dapat diserahkan ke program eksternal. Paket <emphasis role="pkg">postgrey</emphasis> memuat program seperti itu, dirancang untuk berinteraksi dengan layanan delegasi kebijakan akses ini.
 			</para>
 			 <para>
 				Setelah <emphasis role="pkg">postgrey</emphasis> terinstal, itu berjalan sebagai daemon dan mendengarkan pada port 10023. Postfix kemudian dapat dikonfigurasi untuk menggunakannya, dengan menambahkan parameter <literal>check_policy_service</literal> sebagai pembatasan tambahan:
@@ -582,21 +582,21 @@ smtpd_recipient_restrictions = permit_mynetworks,
 				Secara teori, greylist hanya harus menunda surat pertama dari pengirim yang diberikan kepada penerima tertentu, dan penundaan umumnya dalam orde menit. Kenyataannya, bagaimanapun, dapat sedikit berbeda. Beberapa ISP besar menggunakan cluster server SMTP, dan ketika pesan awalnya ditolak, server yang mencoba ulang transmisi mungkin tidak akan sama seperti yang pertama. Ketika itu terjadi, kedua server mendapat pesan kesalahan sementara karena greylist, dan seterusnya; mungkin butuh beberapa jam sampai transmisi ini dicoba oleh server yang sudah telah terlibat, karena server SMTP biasanya meningkatkan penundaan antara pengulangan di setiap kegagalan.
 			</para>
 			 <para>
-				As a consequence, the incoming IP address may vary in time even for a single sender. But it goes further: even the sender address can change. For instance, many mailing-list servers encode extra information in the sender address so as to be able to handle error messages (known as <emphasis>bounces</emphasis>). Each new message sent to a mailing-list may then need to go through greylisting, which means it has to be stored (temporarily) on the sender's server. For very large mailing-lists (with tens of thousands of subscribers), this can soon become a problem.
+				Sebagai akibatnya, alamat IP yang masuk dapat bervariasi dengan berjalannya waktu bahkan untuk pengirim tunggal. Tapi lebih jauh lagi: bahkan alamat pengirim dapat berubah. Sebagai contoh, banyak milis server menyandikan tambahan informasi dalam alamat pengirim untuk dapat menangani pesan kesalahan (dikenal sebagai <emphasis>bounces</emphasis>). Setiap pesan baru yang dikirim ke milis kemudian mungkin perlu pergi melalui greylist, yang berarti itu harus disimpan (secara sementara) pada server pengirim. Untuk milis yang sangat besar (dengan puluhan ribu pelanggan), ini dapat segera menjadi masalah.
 			</para>
 			 <para>
-				To mitigate these drawbacks, Postgrey manages a whitelist of such sites, and messages emanating from them are immediately accepted without going through greylisting. This list can easily be adapted to local needs, since it is stored in the <filename>/etc/postgrey/whitelist_clients</filename> file.
+				Untuk memitigasi kelemahan ini, Postgrey mengelola daftar putih dari situs-situs seperti itu, dan pesan yang berasal dari mereka segera diterima tanpa melalui greulist. Daftar ini dengan mudah dapat disesuaikan dengan kebutuhan lokal, karena disimpan dalam berkas <filename>/etc/postgrey/whitelist_clients</filename>.
 			</para>
 			 </sidebar> <sidebar> <title><emphasis>LEBIH LANJUT</emphasis> Greylisting selektif dengan <emphasis role="pkg">milter-greylist</emphasis></title>
 			 <para>
-				The drawbacks of greylisting can be mitigated by only using greylisting on the subset of clients that are already considered as probable sources of spam (because they are listed in a DNS blacklist). This is not possible with <emphasis role="pkg">postgrey</emphasis> but <emphasis role="pkg">milter-greylist</emphasis> can be used in such a way.
+				Kelemahan dari greylist dapat dimitigsai dengan hanya menggunakan greylist pada subset dari klien yang sudah dianggap sebagai kemungkinan sumber spam (karena mereka tercantum dalam daftar hitam DNS). Hal ini tidak mungkin dengan <emphasis role="pkg">postgrey</emphasis> tapi <emphasis role="pkg">milter-greylist</emphasis> dapat digunakan dengan cara itu.
 			</para>
 			 <para>
-				In that scenario, since DNS blacklists never triggers a definitive rejection, it becomes reasonable to use aggressive blacklists, including those listing all dynamic IP addresses from ISP clients (such as <literal>pbl.spamhaus.org</literal> or <literal>dul.dnsbl.sorbs.net</literal>).
+				Dalam skenario itu, karena blacklist DNS tidak pernah memicu penolakan definitif, menjadi masuk akal untuk menggunakan blacklist agresif, termasuk daftar semua alamat IP dinamis dari klien ISP (seperti <literal>pbl.spamhaus.org</literal> atau <literal>dul.dnsbl.Sorbs.net</literal>).
 			</para>
 			 <para>
-				Since milter-greylist uses Sendmail's milter interface, the postfix side of its configuration is limited to “<literal>smtpd_milters = unix:/var/run/milter-greylist/milter-greylist.sock</literal>”. The <citerefentry><refentrytitle>greylist.conf</refentrytitle>
-				<manvolnum>5</manvolnum></citerefentry> manual page documents <filename>/etc/milter-greylist/greylist.conf</filename> and the numerous ways to configure milter-greylist. You will also have to edit <filename>/etc/default/milter-greylist</filename> to actually enable the service.
+				Karena milter-greylist menggunakan antarmuka milter Sendmail, konfigurasi sisi postfix-nya terbatas ke "<literal>smtpd_milters = unix:/var/run/milter-greylist/milter-greylist.sock</literal>". Halaman manual <citerefentry><refentrytitle>greylist.conf</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry> mendokumentasikan <filename>/etc/milter-greylist/greylist.conf</filename> dan banyak cara untuk mengkonfigurasi milter-greylist. Anda juga harus menyunting <filename>/etc/default/milter-greylist</filename> untuk benar-benar mengaktifkan layanan.
 			</para>
 			 </sidebar>
 		</section>
