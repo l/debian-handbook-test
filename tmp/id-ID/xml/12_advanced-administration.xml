@@ -718,13 +718,13 @@ brw-rw---- 1 root disk 253, 2 Jun 10 17:05 /dev/dm-2
 </computeroutput></screen>
 				 <sidebar> <title><emphasis>CATATAN</emphasis> Mendeteksi otomatis volume LVM</title>
 				 <para>
-					When the computer boots, the <filename>lvm2-activation</filename> systemd service unit executes <command>vgchange -aay</command> to “activate” the volume groups: it scans the available devices; those that have been initialized as physical volumes for LVM are registered into the LVM subsystem, those that belong to volume groups are assembled, and the relevant logical volumes are started and made available. There is therefore no need to edit configuration files when creating or modifying LVM volumes.
+					Ketika komputer boot, unit layanan systemd <filename>lvm2-activation</filename> mengeksekusi <command>vgchange -aay</command> untuk "mengaktifkan" kelompok volume: memindai perangkat yang tersedia; yang telah diinisialisasi sebagai fisik untuk LVM didaftarkan ke subsistem LVM, yang berasal dari kelompok-kelompok volume dirakit, dan volume logis yang relevan dimulai dan dibuat tersedia. Karena itu tidak perlu menyunting berkas konfigurasi ketika membuat atau memodifikasi volume-volume LVM.
 				</para>
 				 <para>
-					Note, however, that the layout of the LVM elements (physical and logical volumes, and volume groups) is backed up in <filename>/etc/lvm/backup</filename>, which can be useful in case of a problem (or just to sneak a peek under the hood).
+					Namun, perlu diketahui bahwa tata letak elemen LVM (volume fisik dan logis, dan kelompok-kelompok volume) direkam cadang dalam <filename>/etc/lvm/backup</filename>, yang dapat berguna dalam hal ada masalah (atau hanya untuk sekedar mengintip di balik layar).
 				</para>
 				 </sidebar> <para>
-					To make things easier, convenience symbolic links are also created in directories matching the VGs:
+					Untuk membuat semua lebih mudah, taut simbolik juga dibuat dalam direktori-direktori yang cocok dengan VG:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>ls -l /dev/vg_critical</userinput>
@@ -735,7 +735,7 @@ lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_files -&gt; ../dm-0
 <computeroutput>total 0
 lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_backups -&gt; ../dm-2</computeroutput></screen>
 				 <para>
-					The LVs can then be used exactly like standard partitions:
+					LV kemudian dapat digunakan persis seperti partisi standar:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>mkfs.ext4 /dev/vg_normal/lv_backups</userinput>
@@ -758,14 +758,14 @@ Writing superblocks and filesystem accounting information: done
 /dev/vg_critical/lv_files   /srv/files      ext4 defaults 0 2
 /dev/vg_normal/lv_backups   /srv/backups    ext4 defaults 0 2</computeroutput></screen>
 				 <para>
-					From the applications' point of view, the myriad small partitions have now been abstracted into one large 12 GB volume, with a friendlier name.
+					Dari sudut pandang aplikasi, berbagai partisi kecil sekarang telah diabstrakkan ke dalam satu volume 12 GB besar, dengan nama yang lebih mudah.
 				</para>
 
 			</section>
 			 <section id="sect.lvm-over-time">
-				<title>LVM Over Time</title>
+				<title>LVM Dari Waktu Ke Waktu</title>
 				 <para>
-					Even though the ability to aggregate partitions or physical disks is convenient, this is not the main advantage brought by LVM. The flexibility it brings is especially noticed as time passes, when needs evolve. In our example, let's assume that new large files must be stored, and that the LV dedicated to the file server is too small to contain them. Since we haven't used the whole space available in <filename>vg_critical</filename>, we can grow <filename>lv_files</filename>. For that purpose, we'll use the <command>lvresize</command> command, then <command>resize2fs</command> to adapt the filesystem accordingly:
+					Meskipun kemampuan untuk mengagregasi partisi atau disk fisik itu nyaman, ini bukanlah keuntungan utama yang dibawa oleh LVM. Fleksibilitas yang dibawanya terutama teramati seiring berjalannya waktu, ketika kebutuhan berevolusi. Dalam contoh kita, mari kita asumsikan bahwa berkas besar baru harus disimpan, dan bahwa LV yang didedikasikan untuk server berkas terlalu kecil untuk menampung mereka. Karena kita belum menggunakan seluruh ruang yang tersedia di <filename>vg_critical</filename>, kita bisa perbesar <filename>lv_files</filename>. Untuk tujuan tersebut, kita akan menggunakan perintah <command>lvresize</command>, lalu <command>resize2fs</command> untuk mengadaptasi sistem berkas:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>df -h /srv/files/</userinput>
@@ -792,7 +792,7 @@ The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
 # </computeroutput><userinput>df -h /srv/files/</userinput>
 <computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
 /dev/mapper/vg_critical-lv_files  6.9G  4.6G  2.1G  70% /srv/files</computeroutput></screen>
-				 <sidebar> <title><emphasis>CAUTION</emphasis> Resizing filesystems</title>
+				 <sidebar> <title><emphasis>HATI-HATI</emphasis> Mengubah ukuran sistem berkas</title>
 				 <para>
 					Not all filesystems can be resized online; resizing a volume can therefore require unmounting the filesystem first and remounting it afterwards. Of course, if one wants to shrink the space allocated to an LV, the filesystem must be shrunk first; the order is reversed when the resizing goes in the other direction: the logical volume must be grown before the filesystem on it. It's rather straightforward, since at no time must the filesystem size be larger than the block device where it resides (whether that device is a physical partition or a logical volume).
 				</para>
