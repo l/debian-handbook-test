@@ -124,6 +124,8 @@ configure_git_repository () {
 	readonly _GIT_REMOTE_ORIGIN_PUSH="${_GIT_REMOTE_ORIGIN_FETCH}";
 	readonly _GIT_REMOTE_ORIGIN_BRANCH='stretch/master';
 	readonly _GIT_LOCAL_ORIGIN_BRANCH="${_GIT_REMOTE_ORIGIN_BRANCH}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
+	readonly _GIT_REMOTE_ORIGIN_BRANCH_WEBLATE_BASE='jessie/master';
+	readonly _GIT_LOCAL_ORIGIN_BRANCH_WEBLATE_BASE="${_GIT_REMOTE_ORIGIN_BRANCH_WEBLATE_BASE}/translation/${_GIT_REMOTE_ORIGIN_NAME}";
 
 	readonly _GIT_REMOTE_WEBLATE_NAME='weblate';
 	readonly _GIT_REMOTE_WEBLATE_FETCH='git://git.weblate.org/debian-handbook.git';
@@ -888,6 +890,8 @@ setup_build_dir () {
 		"${_GIT_REMOTE_ORIGIN_PUSH}" \
 		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
 		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
+		"${_GIT_REMOTE_ORIGIN_BRANCH_WEBLATE_BASE}" \
+		"${_GIT_LOCAL_ORIGIN_BRANCH_WEBLATE_BASE}" \
 	;
 	git_log	\
 		"@{upstream}..HEAD" \
@@ -907,6 +911,7 @@ setup_build_dir () {
 		"${_GIT_REMOTE_ORIGIN_BRANCH}" \
 		"${_GIT_LOCAL_BUILD_BRANCH}" \
 		"${_GIT_LOCAL_ORIGIN_BRANCH}" \
+		"${_GIT_LOCAL_ORIGIN_BRANCH_WEBLATE_BASE}" \
 		"${_GIT_LOCAL_TWEEK_BRANCH_0}" \
 		"${_GIT_LOCAL_WEBLATE_BRANCH}" \
 	;
