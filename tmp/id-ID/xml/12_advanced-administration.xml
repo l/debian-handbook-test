@@ -187,44 +187,44 @@
 					<primary><emphasis role="pkg">mdadm</emphasis></primary>
 				</indexterm>
 				 <para>
-					Setting up RAID volumes requires the <emphasis role="pkg">mdadm</emphasis> package; it provides the <command>mdadm</command> command, which allows creating and manipulating RAID arrays, as well as scripts and tools integrating it to the rest of the system, including the monitoring system.
+					Menyiapkan volume RAID memerlukan paket <emphasis role="pkg">mdadm</emphasis>; ini menyediakan perintah <command>mdadm</command>, yang memungkinkan membuat dan memanipulasi array RAID, maupun skrip dan alat-alat yang mengintegrasikan ke seluruh sistem, termasuk sistem pemantauan.
 				</para>
 				 <para>
-					Our example will be a server with a number of disks, some of which are already used, the rest being available to setup RAID. We initially have the following disks and partitions:
+					Contoh kita akan menjadi server dengan sejumlah disk, beberapa di antaranya sudah digunakan, sisanya tersedia untuk menyiapkan RAID. Kita awalnya memiliki disk dan partisi sebagai berikut:
 				</para>
 				 <itemizedlist>
 					<listitem>
 						<para>
-							the <filename>sdb</filename> disk, 4 GB, is entirely available;
+							disk <filename>sdb</filename>, 4 GB, sepenuhnya tersedia;
 						</para>
 
 					</listitem>
 					 <listitem>
 						<para>
-							the <filename>sdc</filename> disk, 4 GB, is also entirely available;
+							disk <filename>sdc</filename>, 4 GB, ini juga sepenuhnya tersedia;
 						</para>
 
 					</listitem>
 					 <listitem>
 						<para>
-							on the <filename>sdd</filename> disk, only partition <filename>sdd2</filename> (about 4 GB) is available;
+							pada disk <filename>sdd</filename>, hanya partisi <filename>sdd2</filename> (sekitar 4 GB) tersedia;
 						</para>
 
 					</listitem>
 					 <listitem>
 						<para>
-							finally, a <filename>sde</filename> disk, still 4 GB, entirely available.
+							akhirnya, disk <filename>sde</filename>, masih 4 GB, sepenuhnya tersedia.
 						</para>
 
 					</listitem>
 
 				</itemizedlist>
-				 <sidebar> <title><emphasis>NOTE</emphasis> Identifying existing RAID volumes</title>
+				 <sidebar> <title><emphasis>CATATAN</emphasis> Mengidentifikasi volume RAID yang ada</title>
 				 <para>
-					The <filename>/proc/mdstat</filename> file lists existing volumes and their states. When creating a new RAID volume, care should be taken not to name it the same as an existing volume.
+					Berkas <filename>/proc/mdstat</filename> memuat daftar volume yang ada dan keadaan mereka. Ketika membuat volume RAID baru, mesti hati-hati untuk tidak memberi nama yang sama dengan volume yang sudah ada.
 				</para>
 				 </sidebar> <para>
-					We're going to use these physical elements to build two volumes, one RAID-0 and one mirror (RAID-1). Let's start with the RAID-0 volume:
+					Kita akan menggunakan unsur-unsur fisik ini untuk membangun dua volume, satu RAID-0 dan satu cermin (RAID-1). Mari kita mulai dengan volume RAID-0:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc</userinput>
@@ -276,10 +276,10 @@ Writing superblocks and filesystem accounting information: done
 /dev/md0        7.9G   18M  7.4G   1% /srv/raid-0
 </computeroutput></screen>
 				 <para>
-					The <command>mdadm --create</command> command requires several parameters: the name of the volume to create (<filename>/dev/md*</filename>, with MD standing for <foreignphrase>Multiple Device</foreignphrase>), the RAID level, the number of disks (which is compulsory despite being mostly meaningful only with RAID-1 and above), and the physical drives to use. Once the device is created, we can use it like we'd use a normal partition, create a filesystem on it, mount that filesystem, and so on. Note that our creation of a RAID-0 volume on <filename>md0</filename> is nothing but coincidence, and the numbering of the array doesn't need to be correlated to the chosen amount of redundancy. It's also possible to create named RAID arrays, by giving <command>mdadm</command> parameters such as <filename>/dev/md/linear</filename> instead of <filename>/dev/md0</filename>.
+					Perintah <command>mdadm --create</command> memerlukan beberapa parameter: nama volume yang akan dibuat (<filename>/dev/md*</filename>, dengan MD singkatan dari <foreignphrase>Multiple Devices</foreignphrase>), tingkat RAID, cacah disk (yang wajib meskipun sebagian besar bermakna hanya dengan RAID-1 dan di atasnya), dan drive fisik yang akan digunakan. Setelah perangkat dibuat, kita dapat menggunakannya seperti kita akan menggunakan sebuah partisi normal, membuat sebuah sistem berkas di atasnya, mengait sistem berkas itu, dan sebagainya. Perhatikan bahwa penciptaan kita atas suatu volume RAID-0 pada <filename>md0</filename> hanya kebetulan, dan penomoran array tidak perlu berkorelasi dengan pilihan banyaknya redundansi. Hal ini juga memungkinkan untuk membuat array RAID bernama, dengan memberikan parameter <command>mdadm</command> seperti misalnya <filename>/dev/md/linear</filename> bukan <filename>/dev/md0</filename>.
 				</para>
 				 <para>
-					Creation of a RAID-1 follows a similar fashion, the differences only being noticeable after the creation:
+					Penciptaan RAID-1 mengikuti cara yang sama, perbedaannya hanya menjadi terlihat setelah penciptaan:
 				</para>
 				 
 <screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md1 --level=1 --raid-devices=2 /dev/sdd2 /dev/sde</userinput>
@@ -325,19 +325,19 @@ Working Devices : 2
           State : clean
 [...]
 </computeroutput></screen>
-				 <sidebar> <title><emphasis>TIP</emphasis> RAID, disks and partitions</title>
+				 <sidebar> <title><emphasis>TIPS</emphasis> RAID, disk, dan partisi</title>
 				 <para>
-					As illustrated by our example, RAID devices can be constructed out of disk partitions, and do not require full disks.
+					Seperti digambarkan oleh contoh kita, peranti RAID dapat dibangun dari partisi disk, dan tidak memerlukan disk penuh.
 				</para>
 				 </sidebar> <para>
 					A few remarks are in order. First, <command>mdadm</command> notices that the physical elements have different sizes; since this implies that some space will be lost on the bigger element, a confirmation is required.
 				</para>
 				 <para>
-					More importantly, note the state of the mirror. The normal state of a RAID mirror is that both disks have exactly the same contents. However, nothing guarantees this is the case when the volume is first created. The RAID subsystem will therefore provide that guarantee itself, and there will be a synchronization phase as soon as the RAID device is created. After some time (the exact amount will depend on the actual size of the disks…), the RAID array switches to the “active” or “clean” state. Note that during this reconstruction phase, the mirror is in a degraded mode, and redundancy isn't assured. A disk failing during that risk window could lead to losing all the data. Large amounts of critical data, however, are rarely stored on a freshly created RAID array before its initial synchronization. Note that even in degraded mode, the <filename>/dev/md1</filename> is usable, and a filesystem can be created on it, as well as some data copied on it.
+					Lebih penting lagi, perhatikan keadaan cermin. Keadaan normal dari suatu cermin RAID adalah bahwa kedua disk memiliki isi yang tepat sama. Namun, tidak ada yang menjamin ini ketika volume pertama kali dibuat. Subsistem RAID karena itu akan memberikan jaminan itu sendiri, dan akan ada tahap sinkronisasi segera setelah perangkat RAID dibuat. Setelah beberapa waktu (lama persisnya akan tergantung pada ukuran sebenarnya dari disk...), array RAID berpindah ke keadaan "aktif" atau "bersih". Perhatikan bahwa selama fase rekonstruksi ini, cermin ada dalam mode terdegradasi, dan redundansi tidak dijamin. Sebuah disk yang gagal selama jendela risiko itu bisa mengakibatkan kehilangan semua data. Namun, sejumlah besar data penting, jarang disimpan pada sebuah array RAID yang baru dibuat sebelum sinkronisasi awalnya. Catat bahwa bahkan dalam mode terdegradasi, <filename>/dev/md1</filename> dapat digunakan, dan sebuah sistem berkas dapat dibuat di atasnya, maupun data dapat disalin ke sana.
 				</para>
 				 <sidebar> <title><emphasis>TIPS</emphasis> Memulai mirror dalam mode terdegradasi</title>
 				 <para>
-					Sometimes two disks are not immediately available when one wants to start a RAID-1 mirror, for instance because one of the disks one plans to include is already used to store the data one wants to move to the array. In such circumstances, it is possible to deliberately create a degraded RAID-1 array by passing <filename>missing</filename> instead of a device file as one of the arguments to <command>mdadm</command>. Once the data have been copied to the “mirror”, the old disk can be added to the array. A synchronization will then take place, giving us the redundancy that was wanted in the first place.
+					Kadang-kadang dua disk tidak tersedia seketika saat seseorang ingin memulai suatu cermin RAID-1, misalnya karena salah satu disk yang rencananya akan disertakan sudah digunakan untuk menyimpan data yang ingin dipindah ke array. Dalam keadaan seperti itu, dimungkinkan untuk sengaja menciptakan array RAID-1 yang terdegradasi dengan memberikan <filename>missing</filename>, bukan berkas perangkat sebagai salah satu argumen untuk <command>mdadm</command>. Setelah data telah disalin ke "cermin", disk lama dapat ditambahkan ke array. Sinkronisasi kemudian akan terjadi, memberikan kita redundansi yang diinginkan di awal.
 				</para>
 				 </sidebar> <sidebar> <title><emphasis>TIPS</emphasis> Menyiapkan cermin tanpa sinkronisasi</title>
 				 <para>
