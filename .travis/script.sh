@@ -1140,6 +1140,7 @@ systems_build_repository_build_targets_prepare () {
 		1>"${_FILES_TXT}" \
 	;
 	local _FILE_PATH='';
+	set +x;
 	while read _FILE_PATH;
 	do
 		case "${_FILE_PATH}" in
@@ -1162,6 +1163,7 @@ systems_build_repository_build_targets_prepare () {
 	done \
 		< "${_FILES_TXT}" \
 	;
+	set -x;
 	rm \
 		"${_FILES_TXT}" \
 	;
