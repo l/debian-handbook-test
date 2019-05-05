@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.11. 热插拔： 热插拔</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-zh-CN-1.0-1" /><meta
+        name="keywords"
+        content="系统启动, 启动脚本, SSH, Telnet, 权限, 许可, 管理, Inetd, Cron, 备份, 热插拔, PCMCIA接口, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Debian 管理员手册" /><link
+        rel="up"
+        href="unix-services.html"
+        title="第 9 章 Unix 服务" /><link
+        rel="prev"
+        href="sect.backup.html"
+        title="9.10. 备份" /><link
+        rel="next"
+        href="sect.power-management.html"
+        title="9.12. 电源管理：高端配置与电源接口 (ACPI)" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/zh-CN/stable/sect.hotplug.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>上一页</strong></a></li><li
+          class="home">Debian 管理员手册</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>下一页</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.hotplug"></a>9.11. 热插拔： <span
+                  class="emphasis"><em>热插拔</em></span></h2></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.2"></a>9.11.1. 介绍</h3></div></div></div><div
+            class="para">
+				<span
+              class="emphasis"><em>hotplug</em></span> 次系统核心，以动态方式加载适当的驱动程且 (在 <code
+              class="command">udevd</code> 的协助下)添加对应的设备文件，处理加入与移除设备的作业。当代的硬件与虚拟化，几乎每个对象都是热插拔：从常见的 USB/PCMCIA/IEEE 1394 周边到 SATA 硬盘，以及 CPU 与内存。
+			</div><div
+            class="para">
+				核心内的数据库有每个设备的 ID 及其驱动程序。在启动阶段加载此数据库，侦测各接口的周边设备，并在运行中侦测热插入的设备。接收到插入的设备后，送出消息给 <code
+              class="command">udevd</code>，让其添加对应的条目于 <code
+              class="filename">/dev/</code> 内。
+			</div><a
+            id="id-1.12.14.2.4"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.5"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.6"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.7"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.8"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.9"
+            class="indexterm"></a></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.3"></a>9.11.2. 命名问题</h3></div></div></div><div
+            class="para">
+				在热插拔连接出现之前，很容易给设备赋予一个固定的名字。可以通过设备在总线上的位置简单命名。但是，如果设备能够在总线上来去自如，这就行不通了。典型的例子是数码相机和U 盘，两者都表现为磁盘驱动器。前者可能链接为 <code
+              class="filename">/dev/sdb</code> ，后者可能是 <code
+              class="filename">/dev/sdc</code> （假设<code
+              class="filename">/dev/sda</code> 代表计算机自身的硬盘）。设备名是不固定的；它取决于设备连接的顺序。
+			</div><div
+            class="para">
+				另外，越来越多的驱动使用动态值作为设备的主、次设备号，这样就更不可能给设备赋予静态入口，而重启之后这些基本的特性也随之变化。
+			</div><div
+            class="para">
+				<span
+              class="emphasis"><em>udev</em></span> 正是为了解决该问题而创立的。
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.4"></a>9.11.3. <span
+                    class="emphasis"><em>udev</em></span> 如何工作</h3></div></div></div><div
+            class="para">
+				当 <span
+              class="emphasis"><em>udev</em></span> 被核心告知有个新的设备，它参考 <code
+              class="filename">/sys/</code> 里对应的条目，搜集该设备的信息，尤其是那些足辨别的独特信息 (网卡的 MAC 地址、某些 USB 设备的序号)。
+			</div><div
+            class="para">
+				有了这些信息之后，然后 <span
+              class="emphasis"><em>udev</em></span> 会查阅<code
+              class="filename">/etc/udev/rules.d/</code> 和 <code
+              class="filename">/lib/udev/rules.d/</code>中包含的所有规则。在这个过程中，它会决定如何命名设备，创建什么样的符号连接（赋予设备另外的名字），执行什么命令。查询所有的文件，顺序（除非文件中使用“GOTO”指令）检查所有的规则。这样，有可能一个事件（event）对应多个规则。
+			</div><div
+            class="para">
+				规则文件的语法很简单：每行包含选择规则和变量赋值。前者用于需要对那些事件作出相应，后者定义采取何种行动。它们通过逗号分隔，用运算符区分选择规则（使用比较运算符，例如<code
+              class="literal">==</code> or <code
+              class="literal">!=</code>）或赋值指令（使用 <code
+              class="literal">=</code>, <code
+              class="literal">+=</code> 或 <code
+              class="literal">:=</code>运算符）。
+			</div><div
+            class="para">
+				比较运算符用于如下变量：
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">内核</code>：内核赋予设备的名字；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">行动</code>：与事件相对应的行动（“add”当设备被添加，“remove”当设备被移除）；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">DEVPATH</code>：设备在 <code
+                    class="filename">/sys/</code> 记录中的路径；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SUBSYSTEM</code>：产生请求的内核子系统（有很多这样的子系统，少数的例子是“usb”，“usb”，“net”，“firmware”，等）；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">ATTR{<em
+                      class="replaceable">属性</em>}</code>：<em
+                    class="replaceable">属性</em> 文件的内容在设备的 <code
+                    class="filename">/sys/<em
+                      class="replaceable">$devpath</em>/</code> 文件夹内。可在此找到 MAC 地址及其他辨识用的总线;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KERNELS</code>， <code
+                    class="literal">SUBSYSTEMS</code> 和 <code
+                    class="literal">ATTRS{<em
+                      class="replaceable">attributes</em>}</code> 是用来匹配当前设备父设备的选项变量；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">PROGRAM</code>：指明要运行的测试程序（真则返回０）。程序的输出内容会被储存以便 <code
+                    class="literal">RESULT</code> 测试重用；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RESULT</code>：对最后一次调用 <code
+                    class="literal">PROGRAM</code>产生的结果进行检查。
+					</div></li></ul></div><div
+            class="para">
+				右操作数可以使用模式表达式来同时匹配几个值。比如， <code
+              class="literal">*</code> 匹配任何字符串（甚至是空字符串）； <code
+              class="literal">?</code> 匹配任何一个字符， <code
+              class="literal">[]</code> 匹配方括号中间的字符集（如果首字符是惊叹号标示求反集，连续的字符集可表示为如 <code
+              class="literal">a-z</code>）。
+			</div><div
+            class="para">
+				关于赋值操作符， <code
+              class="literal">=</code>用来赋值（并取代当前值）；如果用在列表上，列表被清空并只包含赋予的新值。 <code
+              class="literal">:=</code> 做同样工作，但是它会阻止随后对该变量的更改。至于 <code
+              class="literal">+=</code>，则是给列表添加新项目。如下的变量可以被更改：
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">NAME</code>：将在 <code
+                    class="filename">/dev/</code>中创建的设备文件名。只有第一次赋值起作用；其它的会被忽略；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SYMLINK</code>：指向同一个设备的符号列表清单；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">OWNER</code>, <code
+                    class="literal">GROUP</code> 和 <code
+                    class="literal">MODE</code> 指示拥有该设备的用户和组，还有相关的访问许可；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RUN</code>：响应事件时执行的程序清单。
+					</div></li></ul></div><div
+            class="para">
+				赋予这些变量的值可以使用一系列的替代表示：
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$kernel</code> 或者 <code
+                    class="literal">%k</code>：等价于 <code
+                    class="literal">KERNEL</code>；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$number</code> 或者 <code
+                    class="literal">%n</code>：设备的顺序号码，例如，对 <code
+                    class="literal">sda3</code>，它就是“３”；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$devpath</code> 或 <code
+                    class="literal">%p</code>：等价于 <code
+                    class="literal">DEVPATH</code>；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$attr{<em
+                      class="replaceable">attribute</em>}</code> 或 <code
+                    class="literal">%s{<em
+                      class="replaceable">attribute</em>}</code>: 等价于 <code
+                    class="literal">ATTRS{<em
+                      class="replaceable">attribute</em>}</code>；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$major</code> 或 <code
+                    class="literal">%M</code>：设备的内核主设备号；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$minor</code> 或 <code
+                    class="literal">%m</code>：内核次设备号码；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$result</code> 或 <code
+                    class="literal">%c</code>：<code
+                    class="literal">PROGRAM</code>设定的最后一个程序输出的字符串；
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						最后， <code
+                    class="literal">%%</code> 和 <code
+                    class="literal">$$</code> 相应代表百分号和美元符号。
+					</div></li></ul></div><div
+            class="para">
+				以上的清单仍不完备 (只包括最重要的参数)，详细的数据在 <span
+              class="citerefentry"><span
+                class="refentrytitle">udev</span>(7)</span> 手册页面。
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.5"></a>9.11.4. 一个具体例子</h3></div></div></div><div
+            class="para">
+				我们来考虑一个Ｕ盘并给它指派固定名字的例子。首先，必须要找到能唯一识别它的元素。可以插入并运行 <code
+              class="command">udevadm info -a -n /dev/sdc</code> （ 用指派给Ｕ盘的名字代替<em
+              class="replaceable">/dev/sdc</em> ）。
+			</div><pre
+            class="screen"><code
+              class="computeroutput"># </code><strong
+              class="userinput"><code>udevadm info -a -n /dev/sdc</code></strong>
+<code
+              class="computeroutput">[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</code></pre><div
+            class="para">
+				可以通过检测设备变量，还有父设备变量创建新的规则。上面的例子运行我们创建两个这样的规则：
+			</div><pre
+            class="programlisting">KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</pre><div
+            class="para">
+				这些规则在文件中设定，例如该文件名为 <code
+              class="filename">/etc/udev/rules.d/010_local.rules</code>，就可以移除和重新插入Ｕ盘了。可以看到文件<code
+              class="filename">/dev/usb_key/disk</code> 代表和Ｕ盘相关联的磁盘，<code
+              class="filename">/dev/usb_key/part1</code> 是它的第一个扇区。
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>进阶</em></span> 调试<span
+                        class="emphasis"><em>udev</em></span>配置</strong></p></div></div></div><div
+              class="para">
+				如同其他的后台进程，<code
+                class="command">udevd</code> 把日志保存在 <code
+                class="filename">/var/log/daemon.log</code>。但是缺省是不啰唆的，且不足以了解发生的事。<code
+                class="command">udevadm control --log-priority=info</code> 命令增加其详细的内容并可解决此问题。<code
+                class="command">udevadm control --log-priority=err</code> 则回到缺省的层次。
+			</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>上一页</strong>9.10. 备份</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>上一级</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>起始页</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>下一页</strong>9.12. 电源管理：高端配置与电源接口 (ACPI)</a></li></ul></body></html>
