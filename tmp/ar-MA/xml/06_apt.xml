@@ -1,0 +1,1575 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="apt" lang="ar-MA">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>apt</keyword>
+			 <keyword>apt-get</keyword>
+			 <keyword>apt-cache</keyword>
+			 <keyword>aptitude</keyword>
+			 <keyword>synaptic</keyword>
+			 <keyword>sources.list</keyword>
+			 <keyword>apt-cdrom</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>الصيانة والتحديث: أدوات APT</title>
+	 <highlights> <para>
+		ما يجعل دبيان شهيرة جداً بين مديري النظم هو سهولة تثبيت البرمجيات وسهولة تحديث النظام بالكامل. يعود الفضل الأكبر في هذه الميزة الفريدة للبرنامج <emphasis>APT</emphasis>، الذي بحث فيه مديرو النظم في شركة فلكوت بتمعن.
+	</para>
+	 </highlights> <para>
+		<indexterm><primary>APT</primary></indexterm> <indexterm><primary>Advanced Package Tool</primary></indexterm> APT هو اختصار لأداة الحزم المتفوقة Advanced Package Tool. ما يجعل هذه الأداة ”متفوقة“ هو أسلوب تعاملها مع الحزم. فهي لا تعالجها معالجة فردية بسيطة، بل تعتبرها كياناً واحداً وتنتج أفضل تجميعة ممكنة من الحزم اعتماداً على ما هو متوفر ومتوافق (تبعاً للاعتماديات).
+	</para>
+	 <sidebar> <title><emphasis>مصطلحات</emphasis> مصدر الحزم والحزم المصدرية</title>
+	 <para>
+		يجب ألا تخلط بين الحزمة المصدرية —الحزمة التي تحوي مصدر البرنامج— وبين مصدر الحزم وهو المستودع (قد يكون موقع إنترنت، أو مخدم FTP، أو قرص ليزري، أو مجلد محلي، الخ) الذي يحوي الحزم.
+	</para>
+	 </sidebar> <para>
+		تحتاج APT أن تعطيها ”لائحة بمصادر الحزم“: يحوي الملف <filename dir="ltr">/etc/apt/sources.list</filename> قائمة بالمستودعات المختلفة (أو ”المصادر“) التي توزع حزم دبيان. بعدها تستورد APT قائمة الحزم التي يوزعها كل من هذه المصادر. تتم هذه العملية من خلال تنزيل الملف <filename dir="ltr">Packages.xz</filename> (في حال كان المصدر يوفر حزماً ثنائية) أو أحد بدائله الناتجة عن استخدام طريقة ضغط مختلفة (مثل <filename>Packages.gz</filename> أو <filename>.bz2</filename>) والملف <filename dir="ltr">Sources.xz</filename> أو أحد بدائله (في حال كان مصدراً للحزم المصدرية) وتحليل محتوياتها. عند وجود نسخة قديمة سابقة من هذه الملفات، تستطيع APT تحديثها بتنزيل الاختلافات بين الملف القديم والجديد فقط (انظر الملاحظة الجانبية <xref linkend="sidebar.apt-pdiff" />).
+	</para>
+	 <indexterm>
+		<primary><filename>Packages.xz</filename></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><filename>Sources.xz</filename></primary>
+	</indexterm>
+	 <sidebar> <title><emphasis>أساسيات</emphasis> الضغط باستخدام <command>gzip</command>، ‏<command> bzip2</command>، ‏<command>LZMA</command>‏ و<command>XZ</command></title>
+	 <indexterm>
+		<primary><command>gzip</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>bzip2</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>lzma</command></primary>
+	</indexterm>
+	 <indexterm>
+		<primary><command>xz</command></primary>
+	</indexterm>
+	 <para>
+		يشير الامتداد <filename dir="ltr">.gz</filename> إلى ملف مضغوط باستخدام الأداة <command>gzip</command>. الأداة <command>gzip</command> أداة تقليدية في يونكس سريعة وفعالة لضغط الملفات. توفر الأدوات الأحدث مستويات ضغط أعلى لكنها تتطلب موارد أكثر (زمن معالجة وذاكرة) لضغط أو فك ضغط الملفات. نذكر من بينها، وبحسب ترتيب ظهورها، <command>bzip2</command> (تولد ملفات بامتداد <filename dir="ltr">.bz2</filename>)، و<command>lzma</command> (تولد ملفات <filename dir="ltr">.lzma</filename>)، و<command>xz</command> (تولد ملفات <filename dir="ltr">.xz</filename>).
+	</para>
+	 </sidebar> <section id="sect.apt-sources.list">
+		<title>تعبئة الملف <filename>sources.list</filename></title>
+		 <indexterm>
+			<primary><filename>sources.list</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>مصدر</primary>
+			<secondary>حزم</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>حزمة</primary>
+			<secondary>مصدر</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/apt/sources.list</filename></primary>
+		</indexterm>
+		 <section>
+			<title>صيغة الملف</title>
+			 <para>
+				يحتوي كل سطر فعال من الملف <filename dir="ltr">/etc/apt/sources.list</filename> على وصف لمصدر حزم واحد، يتألف من 3 أجزاء تفصلها مسافات.
+			</para>
+			 <para>
+				يبين الحقل الأول نوع المصدر:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						”<literal>deb</literal>“ للحزم الثنائية،
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						”<literal>deb-src</literal>“ للحزم المصدرية.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				The second field gives the base URL of the source (combined with the filenames present in the <filename>Packages.xz</filename> files, it must give a full and valid URL): this can consist in a Debian mirror or in any other package archive set up by a third party. The URL can start with <literal>file://</literal> to indicate a local source installed in the system's file hierarchy, with <literal>http://</literal> to indicate a source accessible from a web server, or with <literal>ftp://</literal> for a source available on an FTP server. The URL can also start with <literal>cdrom:</literal> for CD-ROM/DVD-ROM/Blu-ray disc based installations, although this is less frequent, since network-based installation methods are more and more common.
+			</para>
+			 <para>
+				تعتمد صيغة الحقل الأخير على بنية المستودع. في أبسط الحالات، يمكنك ببساطة تحديد مجلد فرعي (تتلوه شرطة مائلة ”/“ إلزامية) من مجلدات المصدر المرغوب (غالباً ما يستعمل الرمز ”<filename dir="ltr">./</filename>“ للدلالة على عدم وجود مجلد فرعي – أي أن الحزم متوفرة مباشرة على العنوان المحدد). لكن على الأرجح، ستكون بنية المستودع كبنية مرآة دبيان، حيث يحوي عدة توزيعات كل منها تحوي عدة مكونات. في هذه الحالات، عليك إضافة اسم التوزيعة المختارة (اسمها ”الرمزي“ —انظر القائمة في الملاحظة الجانبية <xref linkend="sidebar.bruce-perens" />— أو اسم ”الفرع suite“ الموافق: <literal>stable</literal>،‏ <literal>testing</literal>،‏ <literal>unstable</literal>)، بعدها ضع أسماء المكونات (أو الأقسام) التي تريد تفعيلها (إما <literal>main</literal> أو <literal>contrib</literal> أو <literal>non-free</literal> في مرايا دبيان النموذجية).
+			</para>
+			 <sidebar id="sidebar.sections"> <title><emphasis>مصطلحات</emphasis> الأقسام <literal>main</literal>، ‏<literal>contrib</literal> و<literal>non-free</literal></title>
+			 <indexterm>
+				<primary>قسم</primary>
+				<secondary><literal>main</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>main</literal>، قسم</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>قسم</primary>
+				<secondary><literal>contrib</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>contrib</literal>، قسم</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>قسم</primary>
+				<secondary><literal>non-free</literal></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>non-free</literal>، قسم</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>جزء (من مستودع حزم)</primary>
+			</indexterm>
+			 <para>
+				تستخدم دبيان ثلاثة أقسام للتفريق بين الحزم وفقاً للرخص التي اختارها مؤلفو كل عمل. يجمع <literal>main</literal> جميع الحزم التي تتوافق تماماً مع مبادئ دبيان للبرمجيات الحرة.
+			</para>
+			 <para>
+				يختلف الأرشيف <literal>non-free</literal> بأنه يحوي برمجيات لا تتوافق (تماماً) مع هذه المبادئ لكن يمكن توزيعها دون قيود بالرغم من ذلك. هذا الأرشيف ليس جزءاً رسمياً من دبيان، بل هو خدمة للمستخدمين الذين قد يحتاجون بعضاً من هذه البرامج – مع ذلك تنصح دبيان دائماً بإعطاء الأولوية للبرمجيات الحرة. إن وجود هذا القسم يمثِّل مشكلة حقيقية من وجهة نظر ريتشارد ستولمن وهو سبب عدم تزكية مؤسسة البرمجيات الحرة لتوزيعة دبيان للمستخدمين.
+			</para>
+			 <para>
+				أما <literal>contrib</literal> (المشتركات contributions) فهو مخزن للبرمجيات مفتوحة المصدر التي لا تعمل إلا بوجود بعض العناصر غير الحرة. يمكن أن تكون هذه العناصر برمجيات من القسم <literal>non-free</literal>، أو ملفات غير حرة مثل ذواكرROM لبعض الألعاب، أو BIOS إحدى الـمنصَّات، الخ. يحوي <literal>contrib</literal> أيضاً برمجيات حرة تتطلب ترجمتها عناصر احتكارية. كانت هذه حالة طقم البرامج المكتبية OpenOffice.org في البداية، حيث كان يتطلب بيئة جافا محتكرة.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>تلميح</emphasis> الملفات <filename dir="ltr">/etc/apt/*.list</filename></title>
+			 <para>
+				في حال الإشارة للكثير من مصادر الحزم، فقد يكون فصلها إلى عدة ملفات مفيداً. يُخزَّن كل جزء عندها في <filename dir="ltr">/etc/apt/sources.list.d/<replaceable>filename</replaceable>.list</filename> (انظر الملاحظة الجانبية <xref linkend="sidebar.directory.d" />).
+			</para>
+			 </sidebar> <indexterm>
+				<primary><command>apt-cdrom</command></primary>
+			</indexterm>
+			 <para>
+				تصف مدخلات <literal>cdrom</literal> أقراص CD أو DVD. أقراص CD-ROM غير متوفرة دوماً بخلاف المدخلات الأخرى، لأنه يجب وضعها في السواقة التي لا تستطيع سوى قراءة قرص واحد في كل مرة. لهذا السبب، تدار هذه المصادر بطريقة مختلفة قليلاً، ويجب إضافتها باستخدام البرنامج <command>apt-cdrom</command>، باستخدام البارامتر <literal>add</literal> عادة. عندها سيطلب البرنامج إدخال القرص في السواقة ويتصفح محتوياته بحثاً عن ملفات <filename>Packages</filename>. ثم يستخدم هذه الملفات لتحديث قاعدة بيانات الحزم المتوفرة التي يديرها (تنفذ هذه العملية عادة بالأمر <command>apt update</command>). بعد ذلك، تستطيع APT أن تطلب إدخال القرص إذا احتاجت إحدى الحزم المخزنة عليه.
+			</para>
+
+		</section>
+		 <section>
+			<title>مستودعات مستخدمي دبيان <emphasis role="distribution">المستقرة</emphasis></title>
+			 <para>
+				هذا ملف <filename>sources.list</filename> قياسي لنظام يعمل بالنسخة <emphasis role="distribution">المستقرة</emphasis> من دبيان:
+			</para>
+			 <example id="example.stable-sources-list">
+				<title>ملف <filename dir="ltr">/etc/apt/sources.list</filename> لمستخدمي دبيان المستقرة</title>
+				 
+<programlisting># Security updates
+deb http://security.debian.org/ stretch/updates main contrib non-free
+deb-src http://security.debian.org/ stretch/updates main contrib non-free
+
+## Debian mirror
+
+# Base repository
+deb http://deb.debian.org/debian stretch main contrib non-free
+deb-src http://deb.debian.org/debian stretch main contrib non-free
+
+# Stable updates
+deb http://deb.debian.org/debian stretch-updates main contrib non-free
+deb-src http://deb.debian.org/debian stretch-updates main contrib non-free
+
+# Stable backports
+deb http://deb.debian.org/debian stretch-backports main contrib non-free
+deb-src http://deb.debian.org/debian stretch-backports main contrib non-free
+</programlisting>
+
+			</example>
+			 <para>
+				This file lists all sources of packages associated with the <emphasis role="distribution">Stretch</emphasis> version of Debian (the current <emphasis role="distribution">Stable</emphasis> as of this writing). We opted to name “stretch” explicitly instead of using the corresponding “stable“ alias (<literal>stable</literal>, <literal>stable-updates</literal>, <literal>stable-backports</literal>) because we don't want to have the underlying distribution changed outside of our control when the next stable release comes out.
+			</para>
+			 <para>
+				تتوفر معظم الحزم عبر ”المستودع الأساسي“ الذي يحوي جميع الحزم لكنه نادراً ما يتم تحديثه (يُحَدَّث هذا المستودع مرة كل شهرين تقريباً عند كل ”إصدار ثانوي point release“). أما المستودعات الأخرى فهي جزئية (لا تحوي جميع الحزم) ويمكن أن تحوي تحديثات (حزم ذات إصدارات أحدث) يمكن أن تنزلها APT. تشرح الأقسام التالية الغرض من كل واحد من هذه المستودعات والقواعد التي تحكمه.
+			</para>
+			 <para>
+				لاحظ أنه عند توفر الحزمة المرغوبة في عدة مستودعات، سيستخدم المستودع الأول حسب ترتيبها في ملف <filename>sources.list</filename>. لذلك تضاف المصادر غير الرسمية عادة إلى نهاية الملف.
+			</para>
+			 <para>
+				كملاحظة جانبية، معظم ما يذكر في هذه الأقسام عن النسخة <emphasis role="distribution">المستقرة</emphasis> ينطبق أيضاً على <emphasis role="distribution">المستقرة القديمة</emphasis> بما أن الأخيرة ليست إلا نسخة <emphasis role="distribution">مستقرة</emphasis> سابقة لا تزال صيانتها جارية على التوازي مع الحالية.
+			</para>
+			 <section id="sect.security-updates">
+				<title>التحديثات الأمنية</title>
+				 <indexterm>
+					<primary><literal>security.debian.org</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>تحديثات أمنية</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>تحديثات</primary>
+					<secondary>تحديثات أمنية</secondary>
+				</indexterm>
+				 <para>
+					تستضاف التحديثات الأمنية على <literal>security.debian.org</literal> (على مجموعة صغيرة من الأجهزة يشرف عليها <link linkend="dsa-team">Debian System Administrators</link>) بدلاً من استضافتها على شبكة مرايا دبيان العادية. يحتوي هذا الأرشيف على التحديثات الأمنية (التي يجهزها Debian Security Team وربما مشرفو الحزم أيضاً) للتوزيعة <emphasis role="distribution">المستقرة</emphasis>.
+				</para>
+				 <para>
+					يمكن أن يستضيف هذا المخدم أيضاً التحديثات الأمنية للتوزيعة <emphasis role="distribution">الاختبارية</emphasis> لكن هذا قليلاً ما يحدث لأن هذه التحديثات تصل إلى <emphasis role="distribution">الاختبارية</emphasis> غالباً عبر التحديثات المنتظمة التي ترد إليها من التوزيعة <emphasis role="distribution">غير المستقرة</emphasis>.
+				</para>
+
+			</section>
+			 <section id="sect.stable-updates">
+				<title>التحديثات المستقرة</title>
+				 <indexterm>
+					<primary>تحديثات دبيان المستقرة</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>stable-updates</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>تحديثات</primary>
+					<secondary>تحديثات مستقرة</secondary>
+				</indexterm>
+				 <para>
+					التحديثات المستقرة ليست حساسة من الناحية الأمنية لكنها تعتبر هامة بما يكفي لدفعها إلى المستخدمين قبل إطلاق الإصدار الثانوي التالي.
+				</para>
+				 <para>
+					يحوي هذا المستودع نموذجياً إصلاحات العلل الحرجة التي لم يكن إصلاحها ممكناً قبل الإصدار أو التي نتجت عن التحديثات التالية له. قد يحتوي أيضاً –حسب الضرورة– على تحديثات للحزم التي لا بد لها أن تتطور مع الزمن… مثل قواعد اكتشاف الرسائل الإلكترونية الدعائية (spam) الخاصة ببرنامج <emphasis role="pkg">spamassassin</emphasis>، وقواعد بيانات الفيروسات الخاصة ببرنامج <emphasis role="pkg">clamav</emphasis>، أو قواعد ضبط التوقيت الصيفي للمناطق الزمنية كافة (<emphasis role="pkg">tzdata</emphasis>).
+				</para>
+				 <para>
+					عملياً هذا المستودع هو جزء من المستودع <literal>proposed-updates</literal>، ينتقيه مديرو الإصدارة المستقرة بعناية.
+				</para>
+
+			</section>
+			 <section id="sect.proposed-updates">
+				<title>التحديثات المقترحة</title>
+				 <indexterm>
+					<primary><literal>proposed-updates</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><literal>stable-proposed-updates</literal></primary>
+				</indexterm>
+				 <para>
+					بعد إصدار التوزيعة <emphasis role="distribution">المستقرة</emphasis>، لا يتم تحديثها إلا مرة واحدة كل شهرين تقريباً. المستودع <literal>proposed-updates</literal> هو المكان الذي يتم فيه تحضير التحديثات المنتظرة (تحت إشراف مديري الإصدارة المستقرة).
+				</para>
+				 <para>
+					التحديثات المستقرة والأمنية التي تحدثنا عنها في القسمين السابقين متوفرة دائماً في هذا المستودع، لكن هناك تحديثات إضافية أيضاً، لأنه يمكن لمشرفي الحزم أيضاً إصلاح العلل المهمة لكنها لا تستحق الإصدار فوراً.
+				</para>
+				 <para>
+					Anyone can use this repository to test those updates before their official publication. The extract below uses the <literal>stretch-proposed-updates</literal> alias which is both more explicit and more consistent since <literal>jessie-proposed-updates</literal> also exists (for the <emphasis role="distribution">Oldstable</emphasis> updates):
+				</para>
+				 
+<programlisting>deb http://ftp.debian.org/debian stretch-proposed-updates main contrib non-free
+</programlisting>
+
+			</section>
+			 <section id="sect.backports">
+				<title>المنقولات الخلفية للنسخة المستقرة</title>
+				 <indexterm>
+					<primary><literal>stable-backports</literal></primary>
+				</indexterm>
+				 <indexterm>
+					<primary>منقول خلفي</primary>
+				</indexterm>
+				 <indexterm>
+					<primary>تحديثات</primary>
+					<secondary>منقولات خلفية</secondary>
+				</indexterm>
+				 <para>
+					يستضيف المستودع <literal>stable-backports</literal> ”الحزم المنقولة خلفاً package backports“. يشير هذا المصطلح إلى حزم لبرمجيات حديثة أعيدت ترجمتها لتوزيعة قديمة (نقلت إلى الخلف)، وعادة ما يكون النقل إلى التوزيعة <emphasis role="distribution">المستقرة</emphasis>.
+				</para>
+				 <para>
+					عندما تتقادم التوزيعة قليلاً، تُطلِق العديد من مشروعات البرمجيات إصدارات جديدة غير متوفرة في التوزيعة <emphasis role="distribution">المستقرة</emphasis> الحالية (التي لا تُعدَّل إلا لتصحيح المشاكل الحيوية فقط، مثل المشاكل الأمنية). وبما أن استخدام التوزيعتين <emphasis role="distribution">الاختبارية</emphasis> و<emphasis role="distribution">غير المستقرة</emphasis> فيه مخاطرة أكبر، يُقدِّم المشرفون على الحزم أحياناً نسخاً من البرمجيات الحديثة بعد إعادة ترجمتها للتوزيعة <emphasis role="distribution">المستقرة</emphasis>، وباستخدام هذه الحزم ينحصر خطر عدم الاستقرار في عدد من الحزم المحددة. <ulink type="block" url="http://backports.debian.org" />
+				</para>
+				 <indexterm>
+					<primary><literal>backports.debian.org</literal></primary>
+				</indexterm>
+				 <para>
+					تُنشَأ المنقولات في المستودع <literal>stable-backports</literal> دائماً من الحزم المتوفرة في <emphasis role="distribution">الاختبارية</emphasis>. يضمن هذا الإجراء قابلية تحديث جميع المنقولات الخلفية المُثبَّتَة إلى النسخ المستقرة الموافقة لها فور إطلاق الإصدارة المستقرة التالية من دبيان.
+				</para>
+				 <para>
+					رغم أن هذا المستودع يقدم إصدارات أحدث من الحزم، إلا أن APT لن تثبتها ما لم تأمرها بذلك صراحة (أو إذا كانت هناك نسخة قديمة من المنقول الخلفي نفسه مثبتة مسبقاً):
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>sudo apt-get install <replaceable>package</replaceable>/stretch-backports
+</userinput><computeroutput>$ </computeroutput><userinput>sudo apt-get install -t stretch-backports <replaceable>package</replaceable>
+</userinput></screen>
+
+			</section>
+
+		</section>
+		 <section>
+			<title>مستودعات مستخدمي <emphasis role="distribution">الاختبارية</emphasis> أو <emphasis role="distribution">غير المستقرة</emphasis></title>
+			 <para>
+				فيما يلي ملف <filename>sources.list</filename> قياسي لنظام يعمل بالنسخة <emphasis role="distribution">الاختبارية</emphasis> أو <emphasis role="distribution">غير المستقرة</emphasis> من دبيان:
+			</para>
+			 <example id="example.testing-sources-list">
+				<title>ملف <filename dir="ltr">/etc/apt/sources.list</filename> لمستخدمي دبيان <emphasis role="distribution">الاختبارية</emphasis>/<emphasis role="distribution">غير المستقرة</emphasis></title>
+				 
+<programlisting>
+# Unstable
+deb http://deb.debian.org/debian unstable main contrib non-free
+deb-src http://deb.debian.org/debian unstable main contrib non-free
+
+# Testing
+deb http://deb.debian.org/debian testing main contrib non-free
+deb-src http://deb.debian.org/debian testing main contrib non-free
+
+# Stable
+deb http://deb.debian.org/debian stable main contrib non-free
+deb-src http://deb.debian.org/debian stable main contrib non-free
+
+# Security updates
+deb http://security.debian.org/ stable/updates main contrib non-free
+deb http://security.debian.org/ testing/updates main contrib non-free
+deb-src http://security.debian.org/ stable/updates main contrib non-free
+deb-src http://security.debian.org/ testing/updates main contrib non-free
+</programlisting>
+
+			</example>
+			 <para>
+				عند استخدام هذا الملف سوف تثبت APT الحزم من التوزيعة <emphasis role="distribution">غير المستقرة</emphasis>. إذا لم ترغب بذلك، استخدم الخيار <literal>APT::Default-Release</literal> (انظر <xref linkend="sect.apt-upgrade" />) لإرشاد APT إلى توزيعة أخرى لالتقاط الحزم منها (ستكون <emphasis role="distribution">الاختبارية</emphasis> على الأغلب في هذه الحالة).
+			</para>
+			 <para>
+				هناك أسباب وجيهة لإضافة كل هذه المستودعات، رغم أن مستودعاً واحداً منها يكفي. سيستفيد مستخدمو <emphasis role="distribution">الاختبارية</emphasis> من إمكانية التقاط حزمة من <emphasis role="distribution">غير المستقرة</emphasis> بعد إصلاح علة مزعجة كانت تعاني منها النسخة المتوفرة في <emphasis role="distribution">الاختبارية</emphasis>. من جهة أخرى، يستطيع مستخدمو التوزيعة <emphasis role="distribution">غير المستقرة</emphasis> إذا واجهتهم تدهورات غير متوقعة تخفيض إصدارات حزمهم (downgrade) إلى نسخ التوزيعة <emphasis role="distribution">الاختبارية</emphasis> (التي يفترض أنها تعمل).
+			</para>
+			 <para>
+				تضمين <emphasis role="distribution">المستقرة</emphasis> قابل للنقاش لكنه غالباً يسمح بالوصول إلى بعض الحزم التي تمت إزالتها من النسخ التطويرية. كما أنه يضمن لك الحصول على آخر التحديثات للحزم التي لم تُعدَّل منذ الإصدار المستقر الأخير.
+			</para>
+			 <section>
+				<title>المستودع <emphasis role="distribution">Experimental</emphasis></title>
+				 <indexterm>
+					<primary><emphasis role="distribution">التجريبية</emphasis></primary>
+				</indexterm>
+				 <para>
+					يتوفر أرشيف حزم التوزيعة <emphasis role="distribution">التجريبية Experimental</emphasis> على جميع مرايا دبيان، ويحوي حزماً غير موجودة في النسخة <emphasis role="distribution">غير المستقرة</emphasis> بعد بسبب نوعيتها دون المعيارية — فهي غالباً نسخ تطويرية من البرمجيات أو إصدارات أولية (ألفا، بيتا، مرشح للإصدار rc = release candidate…). يمكن إرسال الحزمة إلى هناك أيضاً بعد إجراء تغييرات عليها يمكن أن تؤدي إلى مشاكل. يحاول المشرف بعدها استرجاعها بمساعدة المستخدمين المتقدمين القادرين على معالجة المشاكل الخطيرة. بعد هذه المرحلة الأولى، تُنقَل الحزمة إلى النسخة <emphasis role="distribution">غير المستقرة</emphasis>، حيث تلقى جمهوراً أوسع بكثير ويتم فحصها بتدقيق أكبر بكثير.
+				</para>
+				 <para>
+					يستخدم النسخة <emphasis role="distribution">التجريبية</emphasis> عادة المستخدمون الذي لا يهتمون إذا تعطل نظامهم واضطروا لإصلاحه ثانية. تعطي هذه التوزيعة إمكانية استيراد حزمة يريد المستخدم تجربتها أو استخدامها عند الحاجة. تستخدم دبيان هذا المستودع بهذه الطريقة بالضبط، إذ أن إضافته إلى ملف <filename>sources.list</filename> لا تؤدي إلى استخدام حزمها آلياً. السطر الذي تجب إضافته هو:
+				</para>
+				 <informalexample> 
+<programlisting>deb http://deb.debian.org/debian experimental main contrib non-free
+</programlisting>
+				 </informalexample>
+			</section>
+
+		</section>
+		 <section>
+			<title>Using Alternate Mirrors</title>
+			 <indexterm>
+				<primary><literal>deb.debian.org</literal></primary>
+			</indexterm>
+			 <para>
+				The <filename>sources.list</filename> examples in this chapter refer to package repositories hosted on <literal>deb.debian.og</literal>. Those URLs will redirect you to servers which are close to you and which are managed by Content Delivery Networks (<acronym>CDN</acronym>) whose main role is to store multiple copies of the files across the world to deliver them as fast as possible to users. The CDN companies that Debian is working with are Debian partners who are offering their services freely to Debian. While none of those servers are under direct control of Debian, the fact that the whole archive is sealed by GPG signatures makes it a non-issue.
+			</para>
+			 <indexterm>
+				<primary>mirror list</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>list of mirrors</primary>
+			</indexterm>
+			 <para>
+				Picky users who are not satisfied with the performance of <literal>deb.debian.org</literal> can try to find a better mirror in the official mirror list: <ulink type="block" url="https://www.debian.org/mirror/list" />
+			</para>
+			 <para>
+				But when you don't know which mirror is best for you, this list is of not much use. Fortunately for you, Debian maintains DNS entries of the form <literal>ftp.<replaceable>country-code</replaceable>.debian.org</literal> (e.g. <literal>ftp.us.debian.org</literal> for the USA, <literal>ftp.fr.debian.org</literal> for France, etc.) which are covering many countries and which are pointing to one (or more) of the best mirrors available within that country.
+			</para>
+			 <indexterm>
+				<primary><literal>httpredir.debian.org</literal></primary>
+			</indexterm>
+			 <para>
+				As an alternative to <literal>deb.debian.org</literal>, there used to be <literal>httpredir.debian.org</literal>. This service would identify a mirror close to you (among the list of official mirrors, using GeoIP mainly) and would redirect APT's requests to that mirror. This service has been deprecated due to reliability concerns and now <literal>httpredir.debian.org</literal> provides the same CDN-based service as <literal>deb.debian.org</literal>.
+			</para>
+
+		</section>
+		 <section>
+			<title>مصادر غير رسمية: <literal>mentors.debian.net</literal></title>
+			 <indexterm>
+				<primary><literal>mentors.debian.net</literal></primary>
+			</indexterm>
+			 <para>
+				هناك مصادر غير رسمية عديدة لحزم دبيان يعدها مستخدمون محترفون يعيدون تجميع بعض البرمجيات (ساهمت أوبنتو في نشر هذا الأمر من خلال خدمة أرشيف الحزم الشخصي Personal Package Service أو PPA)، أو مبرمجون يوفرون برامجهم للعموم، أو ربما مطورو دبيان يقدمون نسخاً أولية من حزمهم.
+			</para>
+			 <para>
+				موقع <literal>mentors.debian.net</literal> مثير للاهتمام (ولو أنه لا يقدم إلا الحزم المصدرية)، حيث يجمع الحزم التي يصنعها المرشحون لمنصب مطور دبيان رسمي أو المتطوعون الراغبون بصناعة حزم دبيان دون الدخول في تفاصيل عملية دمجها في التوزيعة. هذه الحزم متوفرة دون أي ضمان لجودتها؛ فاحرص على التحقق من مصدرها وسلامتها ثم اختبرها قبل أن تقرر الاعتماد عليها في الإنتاج.
+			</para>
+			 <sidebar> <title><emphasis>مجتمع</emphasis> مواقع <literal>debian.net</literal></title>
+			 <indexterm>
+				<primary><emphasis>debian.net</emphasis></primary>
+			</indexterm>
+			 <para>
+				إن النطاق <emphasis>debian.net</emphasis> ليس مصدراً رسمياً لمشروع دبيان. يمكن لأي مطور دبيان استخدام اسم النطاق ذاك لأغراضه الخاصة. قد تحوي هذه المواقع خدمات غير رسمية (وأحياناً مواقع شخصية) يستضيفها جهاز أعده مطورو دبيان لكنه لا ينتمي للمشروع، أو ربما نماذج أولية على وشك نقلها إلى <emphasis>debian.org</emphasis>. يوجد سببين لتفسير بقاء بعض النماذج الأولية على <emphasis>debian.net</emphasis>: إما إنّ أحدهم لم يبذل الجهد اللازم لتحويلها إلى خدمة رسمية (مستضافة على <emphasis>debian.org</emphasis>، ولها ضمانات معينة من ناحية الدعم)، أو أن الخدمة محل خلاف يحول دون أن تصبح رسمية.
+			</para>
+			 </sidebar> <para>
+				إن تثبيت حزمة ما يعني منح صلاحيات الجذر لصانعها، لأنه من يقرر محتويات سكربتات التهيئة التي تعمل بتلك الصلاحيات. حزم دبيان الرسمية يصنعها متطوعون عملنا معهم واختبرناهم ولديهم إمكانية ختم حزمهم بحيث يمكن التحقق من مصدرها وسلامتها.
+			</para>
+			 <para>
+				عموماً، كن حذراً من الحزم التي لا تعرف مصدرها والتي لا يستضيفها أحد مخدّمات دبيان الرسمية: قيّم مدى ثقتك بصانعها، وتحقق من سلامة الحزمة. <ulink type="block" url="http://mentors.debian.net/" />
+			</para>
+			 <sidebar id="sidebar.snapshot.debian.org"> <title><emphasis>التعمق أكثر</emphasis> إصدارات الحزم القديمة: <literal>snapshot.debian.org</literal></title>
+			 <indexterm>
+				<primary><literal>snapshot.debian.org</literal></primary>
+			</indexterm>
+			 <para>
+				يمكن استخدام خدمة <literal>snapshot.debian.org</literal>، التي قُدِّمَت في أبريل 2010، ”للعودة عبر الزمن“ والعثور على نسخة قديمة من الحزمة. يمكن استخدامها مثلاً لمعرفة أي إصدار من الحزمة سبب انتكاساً، وبصورة أكثر دقة، للعودة إلى النسخة السابقة أثناء انتظار إصلاح الانتكاس.
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>بروكسيات التخبئة لحزم دبيان</title>
+			 <indexterm>
+				<primary>مخبأ وسيط</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>بروكسي تخبئة</primary>
+			</indexterm>
+			 <para>
+				عند إعداد شبكة كاملة من الأجهزة لاستخدام المخدم البعيد نفسه لتنزيل نفس الحزم المُحَدَّثة، يدرك أي مدير نظم أنه سيستفيد من استخدام بروكسي وسيط يعمل كمخبأ (كاش) للشبكة المحلية (انظر الملاحظة الجانبية <xref linkend="sidebar.cache" />).
+			</para>
+			 <para>
+				يمكنك إعداد APT لاستخدام بروكسي ”معياري“ (انظر <xref linkend="sect.apt-config" /> لإعداد APT، و<xref linkend="sect.http-ftp-proxy" /> لإعداد البروكسي)، لكن بيئة دبيان تقدم خيارات أفضل لمعالجة هذه المشكلة. البرمجيات المتخصصة المذكورة في هذا القسم أذكى من بروكسيات التخبئة (Cache Proxies) العادية لأنها تستطيع الاعتماد على البنية الخاصة لمستودعات APT (مثلاً تعرف هذه البرمجيات إذا انتهت صلاحية الملف أم لا، وبالتالي تستطيع ضبط فترة الاحتفاظ به).
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">apt-cacher</emphasis></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><emphasis role="pkg">apt-cacher-ng</emphasis></primary>
+			</indexterm>
+			 <para>
+				يعمل <emphasis role="pkg">apt-cacher</emphasis> و<emphasis role="pkg">apt-cacher-ng</emphasis> مثل مخدمات التخبئة الوسيطة العادية. حيث يبقى الملف <filename>sources.list</filename> دون تعديل، لكن تُضبَطُ APT حتى تَستَخدِم أحد البرنامجين كبروكسي للطلبات الخارجية.
+			</para>
+			 <indexterm>
+				<primary><emphasis role="pkg">approx</emphasis></primary>
+			</indexterm>
+			 <para>
+				من ناحية أخرى، يعمل <emphasis role="pkg">approx</emphasis> كمخدم HTTP ينسخ (أو يعكس ”mirror“) أي عدد من المستودعات البعيدة إلى عناوين URL من المستوى الأول خاصة به. تخزن العلاقات بين هذه المجلدات ذات المستوى الأول والعناوين البعيدة للمستودعات في <filename dir="ltr">/etc/approx/approx.conf</filename>:
+			</para>
+			 
+<programlisting>
+# &lt;name&gt; &lt;repository-base-url&gt;
+debian   http://deb.debian.org/debian
+security http://security.debian.org
+</programlisting>
+			 <para>
+				<emphasis role="pkg">approx</emphasis> runs by default on port 9999 via a systemd socket and requires the users to adjust their <filename>sources.list</filename> file to point to the approx server:
+			</para>
+			 
+<programlisting># Sample sources.list pointing to a local approx server
+deb http://apt.falcot.com:9999/security stretch/updates main contrib non-free
+deb http://apt.falcot.com:9999/debian stretch main contrib non-free
+</programlisting>
+
+		</section>
+
+	</section>
+	 <section id="sect.apt-get">
+		<title>‏<command>aptitude</command>، و<command>apt-get</command>، و<command>apt</command></title>
+		 <indexterm>
+			<primary><command>apt</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-get</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude</command></primary>
+		</indexterm>
+		 <para>
+			APT مشروع ضخم، تضمنت خططه الأصلية واجهة رسومية. يرتكز المشروع على مكتبة تحوي لب التطبيق، و كانت <command>apt-get</command> أول واجهة –نصية– طوِّرت ضمن المشروع. أما <command>apt</command> فهي واجهة نصية ثانية طورها مشروع APT للتغلب على بعض الأخطاء التصميمية في <command>apt-get</command>.
+		</para>
+		 <para>
+			Both tools are built on top of the same library and are thus very close but the default behaviour of <command>apt</command> has been improved for interactive use and to actually do what most users expect. APT's developers reserve the right to change the public interface of this tool to further improve it. On the opposite, the public interface of <command>apt-get</command> is well defined and will not change in any backwards incompatible way. It is thus the tool that you want to use when you need to script package installation requests.
+		</para>
+		 <para>
+			ظهرت بعدها العديد من الواجهات الرسومية كمشاريع خارجية: مثل <command>synaptic</command>، و <command>aptitude</command> (الذي يحتوي على واجهة نصيّة وأخرى رسومية — وإنْ لم تكتمل بعد)، و <command>wajig</command>، الخ. أكثر واجهة ننصح بها هي <command>apt</command>، وهي التي سنستخدمها في الأمثلة المعطاة في هذا القسم. لكن لاحظ على أي حال أن صيغة أوامر <command>apt-get</command> و<command>aptitude</command> متشابهة جداً. عند وجود اختلافات كبيرة بين <command>apt-get</command> و<command>aptitude</command> أو <command>apt-get</command>، سوف نفصّل هذه الاختلافات.
+		</para>
+		 <section>
+			<title>التهيئة</title>
+			 <para>
+				قبل إجراء أي عمل باستخدام APT يجب تحديث قائمة الحزم المتوفرة؛ يمكن تنفيذ ذلك بسهولة من خلال <command>apt update</command>. قد تستغرق العملية وقتاً حسب سرعة الاتصال، نظراً لأنها تحتاج لتنزيل عدد من ملفات <filename>Packages</filename>/<filename>Sources</filename>/<filename>Translation-<replaceable>language-code</replaceable></filename>، والتي كبرت أكثر وأكثر تدريجياً مع تطور دبيان (على الأقل 10 م.ب. من البيانات للقسم <literal>main</literal>). طبعاً، لا يحتاج التثبيت من القرص الليزري أي تنزيل — لذلك تكون العملية سريعة جداً في هذه الحالة.
+			</para>
+			 <indexterm>
+				<primary><command>apt update</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get update</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude update</command></primary>
+			</indexterm>
+
+		</section>
+		 <section>
+			<title>التثبيت والإزالة</title>
+			 <indexterm>
+				<primary>حزمة</primary>
+				<secondary>تثبيت</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>حزمة</primary>
+				<secondary>إزالة</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>تثبيت</primary>
+				<secondary>تثبيت حزمة</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>إزالة حزمة</primary>
+			</indexterm>
+			 <para>
+				يمكن إضافة الحزم إلى النظام أو إزالتها منه باستخدام APT، باستخدام الأمر <command>apt install <replaceable>package</replaceable></command> والأمر <command>apt remove <replaceable>package</replaceable></command>. في كلا الحالتين، ستثبت APT الاعتماديات الضرورية أو تحذف الحزم التي تعتمد على الحزمة التي تتم إزالتها. يزيل الأمر <command>apt purge <replaceable>package</replaceable></command> الحزمة بالكامل — حيث تحذف ملفات الضبط أيضاً.
+			</para>
+			 <indexterm>
+				<primary><command>apt install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt purge</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get purge</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude install</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude remove</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude purge</command></primary>
+			</indexterm>
+			 <sidebar> <title><emphasis>تلميح</emphasis> تثبيت المجموعة نفسها من الحزم عدة مرات</title>
+			 <para>
+				قد يفيدك تثبيت قائمة الحزم نفسها عدة مرات آلياً على عدة حواسيب. يمكن عمل ذلك بسهولة كبيرة.
+			</para>
+			 <para>
+				أولاً، احصل على قائمة الحزم المثبتة على الحاسوب الذي سيخدمنا ”كنموذج“ نريد نسخه.
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>dpkg --get-selections &gt;pkg-list</userinput></screen>
+			 <para>
+				سيحتوي الملف <filename>pkg-list</filename> بعدها على لائحة بالحزم المثبتة. ثم انقل الملف <filename>pkg-list</filename> إلى الحواسيب التي تريد تحديثها واستخدم الأوامر التالية:
+			</para>
+			 
+<screen>## Update dpkg's database of known packages
+# <userinput>avail=`mktemp`</userinput>
+# <userinput>apt-cache dumpavail &gt; "$avail"</userinput>
+# <userinput>dpkg --merge-avail "$avail"</userinput>
+# <userinput>rm -f "$avail"</userinput>
+## Update dpkg's selections
+# <userinput>dpkg --set-selections &lt; pkg-list</userinput>
+## Ask apt-get to install the selected packages
+# <userinput>apt-get dselect-upgrade</userinput></screen>
+			 <para>
+				يسجّل الأمر الأول قائمة الحزم المتوفرة في قاعدة بيانات dpkg، بعدها يستعيد الأمر <command>dpkg --set-selections</command> الحزم التي تريد تثبيتها، ثم نستدعي <command>apt-get</command> لتنفيذ العمليات المطلوبة! لا تملك <command>aptitude</command> هذا الأمر.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>تلميح</emphasis> الإزالة والتثبيت في الوقت نفسه</title>
+			 <para>
+				من الممكن الطلب من <command>apt</command> (أو <command>apt-get</command> (أو <command>aptitude</command>) تثبيت حزم معينة وإزالة أخرى بالأمر نفسه بإضافة لاحقة. أضف ”<literal>-</literal>“ إلى أسماء الحزم التي تريد إزالتها مع الأمر <command>apt install</command>. أما مع الأمر <command>apt remove</command>، فأضف ”<literal>+</literal>“ إلى أسماء الحزم التي تريد تثبيتها.
+			</para>
+			 <para>
+				يبين المثال التالي طريقتين مختلفتين لتثبيت <replaceable>package1</replaceable> وإزالة <replaceable>package2</replaceable>.
+			</para>
+			 
+<screen># <userinput>apt install <replaceable>package1</replaceable> <replaceable>package2-</replaceable></userinput>
+[...]
+# <userinput>apt remove <replaceable>package1+</replaceable> <replaceable>package2</replaceable></userinput>
+[...]</screen>
+			 <para>
+				يمكن استخدام هذا الإجراء أيضاً لاستبعاد بعض الحزم التي كانت ستثبت، نتيجة <literal>Recommends</literal> مثلاً. عموماً، تستخدم خوارزمية تلبية الاعتماديات (dependency solver) هذه المعلومات كتلميح للبحث عن حلول بديلة.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>تلميح</emphasis> <command>apt --reinstall</command> و<command>aptitude reinstall</command> </title>
+			 <indexterm>
+				<primary>إعادة التثبيت</primary>
+			</indexterm>
+			 <para>
+				أحياناً يتضرر النظام بعد إزالة أو تعديل الملفات في حزمة ما. أسهل طريقة لاستعادة هذه الملفات هي إعادة تثبيت الحزمة المتأثرة. لسوء الحظ، سيجد نظام التحزيم أن هذه الحزمة مثبتة فعلاً وسيرفض إعادة تثبيتها بأدب؛ ولتجاوز هذا الأمر، استخدم الخيار <literal dir="ltr">--reinstall</literal> مع الأمر <command>apt</command> أو الأمر <command>apt-get</command>. الأمر التالي يعيد تثبيت الحزمة <emphasis role="pkg">postfix</emphasis> حتى لو كانت مثبتة مسبقاً:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>apt --reinstall install postfix</userinput></screen>
+			 <para>
+				إن صيغة الأمر في <command>aptitude</command> مختلفة قليلاً، لكنها تؤدي الوظيفة ذاتها باستخدام <command>aptitude reinstall postfix</command>.
+			</para>
+			 <para>
+				لا تظهر هذه المشكلة مع <command>dpkg</command>، لكن مدير النظام نادراً ما يستعمله مباشرة.
+			</para>
+			 <para>
+				كن حذراً! إن استخدام <command>apt --reinstall</command> لاستعادة الحزم المُعدَّلة خلال هجوم أمني قطعاً لن يستعيد النظام كما كان. يفصّل <xref linkend="sect.dealing-with-compromised-machine" /> الخطوات الضرورية للتعامل مع نظام تم اختراقه.
+			</para>
+			 </sidebar> <para>
+				إذا كان الملف <filename>sources.list</filename> يشير إلى عدة توزيعات، فمن الممكن تحديد النسخة التي تريد تثبيتها من الحزمة. يمكن أن تطلب رقم إصدار محدد من خلال الأمر <command>apt install <replaceable>package</replaceable>=<replaceable>version</replaceable></command>، لكن الأفضل عادة تحديد التوزيعة التي تريد تثبيت الحزمة منها (<emphasis role="distribution">المستقرة</emphasis>، أو <emphasis role="distribution">الاختبارية</emphasis>، أو <emphasis role="distribution">Stable</emphasis>) — باستخدام الأمر <command>apt install <replaceable>package</replaceable>/<replaceable>distribution</replaceable></command>. بهذه الطريقة يمكنك العودة إلى نسخة أقدم من الحزمة (مثلاً إذا كنت تعلم أنها تعمل بشكل جيد)، شريطة أن تبقى متوفرة في أحد المصادر المذكورة في ملف <filename>sources.list</filename>. وإلا فإن أرشيف <literal>snapshot.debian.org</literal> قد يساعد في إنقاذ الموقف (انظر الملاحظة الجانبية <xref linkend="sidebar.snapshot.debian.org" />).
+			</para>
+			 <example>
+				<title>تثبيت النسخة <emphasis role="distribution">غير المستقرة</emphasis> من <emphasis role="pkg">spamassassin</emphasis></title>
+				 
+<screen><computeroutput># </computeroutput><userinput>apt install spamassassin/unstable</userinput></screen>
+
+			</example>
+			 <para>
+				If the package to install has been made available to you under the form of a simple <filename>.deb</filename> file without any associated package repository, it is still possible to use APT to install it together with its dependencies (provided that the dependencies are available in the configured repositories) with a simple command: <command>apt install ./<replaceable>path-to-the-package.deb</replaceable></command>. The leading <literal>./</literal> is important to make it clear that we are referring to a filename and not to the name of a package available in one of the repositories.
+			</para>
+			 <sidebar> <title><emphasis>التعمق أكثر</emphasis> مخبأ ملفات <filename dir="ltr">.deb</filename></title>
+			 <para>
+				APT keeps a copy of each downloaded <filename>.deb</filename> file in the directory <filename>/var/cache/apt/archives/</filename>. In case of frequent updates, this directory can quickly take a lot of disk space with several versions of each package; you should regularly sort through them. Two commands can be used: <command>apt-get clean</command> entirely empties the directory; <command>apt-get autoclean</command> only removes packages which can no longer be downloaded (because they have disappeared from the Debian mirror) and are therefore clearly useless (the configuration parameter <literal>APT::Clean-Installed</literal> can prevent the removal of <filename>.deb</filename> files that are currently installed).
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.apt-upgrade">
+			<title>تحديث النظام</title>
+			 <indexterm>
+				<primary>تحديث</primary>
+				<secondary>تحديث النظام</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude safe-upgrade</command></primary>
+			</indexterm>
+			 <para>
+				يُنصَح بتحديث النظام بشكل منتظم، وذلك للحصول على آخر التحديثات الأمنية. استخدم الأمر <command>apt upgrade</command> أو <command>apt-get upgrade</command> أو الأمر <command>aptitude safe-upgrade</command> لتحديث النظام (بعد تنفيذ <command>apt update</command> طبعاً). يبحث هذا الأمر عن الحزم المثبتة التي يمكن تحديثها دون إزالة أي حزم من النظام. أي أن الغرض هو تحديث النظام بأقل تأثير ممكن. إن <command>apt-get</command> متشددة أكثر من <command>aptitude</command> و<command>apt</command> لأنها ترفض تثبيت الحزم التي لم تكن مثبتة من قبل.
+			</para>
+			 <sidebar id="sidebar.apt-pdiff"> <title><emphasis>تلميح</emphasis> التحديث التصاعدي</title>
+			 <para>
+				As we explained earlier, the aim of the <command>apt update</command> command is to download for each package source the corresponding <filename>Packages</filename> (or <filename>Sources</filename>) file. However, even after a <command>xz</command> compression, these files can remain rather large (the <filename>Packages.xz</filename> for the <foreignphrase>main</foreignphrase> section of <emphasis role="distribution">Stretch</emphasis> takes more than 6 MB). If you wish to upgrade regularly, these downloads can take up a lot of time.
+			</para>
+			 <para>
+				لتسريع هذه العملية تستطيع APT تنزيل ملف ”diff“ يحوي الاختلافات عن التحديث السابق، بدلاً من تنزيل الملف كاملاً. لتحقيق ذلك، توزع مرايا دبيان الرسمية ملفات مختلفة تسرد الاختلافات بين كل نسخة من ملف <filename>Packages</filename> والنسخة التي تليها. تولّد هذه الملفات عند كل تحديث للأرشيفات ويتم إبقاء المحفوظات لأسبوع واحد. كل واحد من ملفات ”diff“ هذه يستهلك عدة عشرات من الكيلوبايتات فقط بالنسبة للتوزيعة <emphasis role="distribution">غير المستقرة</emphasis>، لذا فإن كمية البيانات المُنزَّلة عند استدعاء <command>apt update</command> أسبوعياً أصغر بعشر مرات غالباً. أما بالنسبة للتوزيعات الأخرى مثل <emphasis role="distribution">المستقرة</emphasis> و<emphasis role="distribution">الاختبارية</emphasis>، اللتان تتغيران بمعدل أقل، فإن التوفير ملحوظ أكثر.
+			</para>
+			 <para>
+				على أي حال، قد ترغب أحياناً بتنزيل ملف <filename>Packages</filename> بالكامل قسراً، خصوصاً عندما يكون آخر تحديث قديماً جداً وعندما لا تفيد آلية الاختلافات التصاعدية كثيراً. قد يعجبك هذا أيضاً عندما يكون اتصالك بالشبكة سريعاً جداً لكن معالج الجهاز الذي تريد تحديثه بطيء، نظراً لأن الوقت الذي ستوفره من تنزيل الملفات أقل من الوقت الذي يضيعه الحاسوب في حساب الإصدارات الجديدة لهذه الملفات (يحسبها من الإصدارات القديمة بتطبيق الاختلافات المنزّلة عليها). لعمل ذلك، يمكنك استخدام متغير الإعداد <literal>Acquire::Pdiffs</literal> وضبطه على <literal>false</literal>.
+			</para>
+			 </sidebar> <para>
+				ستختار <command>apt</command> الإصدار الأحدث عادة (فيما عدا حزم التوزيعة <emphasis role="distribution">التجريبية Experimental</emphasis> وحزم <emphasis role="distribution">stable-backports</emphasis>، التي يتم تجاهلها افتراضياً مهما كان رقم إصدارها). فإذا أضفتَ <emphasis role="distribution">Testing</emphasis> أو <emphasis role="distribution">Unstable</emphasis> إلى ملف <filename>sources.list</filename>، سوف يغير الأمر <command>apt upgrade</command> معظم توزيعتك <emphasis role="distribution">المستقرة</emphasis> إلى <emphasis role="distribution">اختبارية</emphasis> أو <emphasis role="distribution">غير مستقرة</emphasis>، وقد لا يكون هذا مقصدك.
+			</para>
+			 <para>
+				حتى تطلب من <command>apt</command> أن تستخدم توزيعة محددة عند البحث عن تحديثات الحزم، عليك استخدام الخيار <literal dir="ltr">-t</literal> أو <literal dir="ltr">--target-release</literal>، متبوعاً باسم التوزيعة التي تريد (مثلاً: <command>apt -t stable upgrade</command>). لتفادي تحديد هذا الخيار في كل مرة تستخدم فيها <command>apt</command>، يمكنك إضافة <literal>APT::Default-Release "stable";</literal>‎ إلى الملف <filename dir="ltr">/etc/apt/apt.conf.d/local</filename>.
+			</para>
+			 <indexterm>
+				<primary><command>apt full-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-get dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude dist-upgrade</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude full-upgrade</command></primary>
+			</indexterm>
+			 <para>
+				بالنسبة للتحديثات الأهم، مثل الانتقال من أحد إصدارات دبيان الرئيسية إلى التالي، عليك استخدام <command>apt full-upgrade</command>. عند تنفيذ هذه التعليمة، ستكمل <command>apt</command> التحديث حتى لو اضطرت لإزالة بعض الحزم الميتة أو تثبيت اعتماديات جديدة. هذا هو أيضاً الأمر الذي يستعمله مستخدمو إصدارة دبيان <emphasis role="distribution">غير المستقرة</emphasis>ويتابعون تطورها يوماً بيوم. هذه التعليمة أبسط من أن تحتاج لشرح: فهذه الوظيفة العظيمة هي أساس شهرة APT.
+			</para>
+			 <para>
+				بعكس <command>apt</command> و<command>aptitude</command>، لا تملك <command>apt-get</command> الأمر <command>full-upgrade</command>. بل عليك استخدام الأمر التاريخي والشهير <command>apt-get dist-upgrade</command> (من العبارة ‏”distribution upgrade“ أي تحديث التوزيعة)، الذي تقبله <command>apt</command> و<command>aptitude</command> أيضاً لراحة المستخدمين الذي اعتادوا على استخدامه.
+			</para>
+
+		</section>
+		 <section id="sect.apt-config">
+			<title>خيارات الإعداد</title>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>ضبط</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>apt.conf.d/</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/apt/apt.conf.d/</filename></primary>
+			</indexterm>
+			 <para>
+				بالإضافة إلى عناصر الضبط التي ذكرناها سابقاً، من الممكن ضبط بعض نواحي APT بإضافة تعليمات في ملف في مجلد <filename>/etc/apt/apt.conf.d/</filename>. تذكر مثلاً أن APT تستطيع الطلب من <command>dpkg</command> تجاهل أخطاء تعارض الملفات بتحديد <literal dir="ltr">DPkg::options { "--force-overwrite"; }</literal>.
+			</para>
+			 <para>
+				إذا لم يكن الوصول للوب ممكناً إلا من خلال بروكسي، أضف سطراً مثل <literal>Acquire::http::proxy "http://<replaceable>yourproxy</replaceable>:3128"</literal>‎. أما بالنسبة لبروكسيات FTP فاكتب <literal>Acquire::ftp::proxy "ftp://<replaceable>yourproxy</replaceable>"</literal>‎. لاكتشاف المزيد من خيارات الضبط، اقرأ صفحة الدليل <citerefentry><refentrytitle>apt.conf</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>‎ باستخدام الأمر <command>man apt.conf</command> (لمزيد من التفاصيل عن صفحات الدليل، انظر <xref linkend="sect.manual-pages" />).
+			</para>
+			 <sidebar id="sidebar.directory.d"> <title><emphasis>أساسيات</emphasis> المجلدات التي تنتهي باللاحقة <filename dir="ltr">.d</filename></title>
+			 <indexterm>
+				<primary><filename>.d</filename></primary>
+			</indexterm>
+			 <para>
+				أصبح استخدام المجلدات ذات اللاحقة <filename dir="ltr">.d</filename> ينتشر أكثر وأكثر. يعبّر كل مجلد عن ملف إعداد مقسّم إلى عدة ملفات. هذا يعني أن جميع الملفات في مجلد <filename dir="ltr">/etc/apt/apt.conf.d/</filename> هي تعليمات ضبط APT. تُضَمِّن APT هذه الملفات حسب الترتيب الأبجدي، بحيث أن الملفات الأخيرة تستطيع تعديل عناصر الضبط المعرّفة في الملفات الأولى.
+			</para>
+			 <para>
+				تمنح هذه البنية بعض المرونة لمدير النظام ولمشرفي الحزم. حقاً، يمكن أن يعدل مدير النظام إعدادات البرنامج بإضافة ملف جاهز في المجلد المطلوب دون الاضطرار لتعديل ملف موجود مسبقاً. يستخدم مشرفو الحزم نفس الأسلوب عندما يحتاجون لمواءمة إعدادات برنامج آخر للتأكد من أنه ينسجم تماماً مع برامجهم. تحظر سياسة دبيان بشكل صريح تعديل ملفات ضبط الحزم الأخرى — ولا يُسمَح إلا للمستخدمين فقط بذلك. تذكر أنه خلال تحديث الحزمة، يجب على المستخدم أن يختار نسخة ملف الإعداد التي يجب الاحتفاظ بها عند اكتشاف حدوث تغيرات. أي تغيير خارجي على الملف سوف ينشط ذلك الطلب، وهو ما يزعج مدير النظام، خصوصاً أنه متأكد من أنه لم يغير شيئاً.
+			</para>
+			 <para>
+				بدون مجلد <filename dir="ltr">.d</filename>، لا يمكن لحزمة خارجية تغيير إعدادات البرنامج إلا بتعديل ملف إعداداته. وبدلاً من تعديل الملف تلقائياً، عليها دعوة المستخدم لتعديله بنفسه وتسرد له العمليات التي يجب فعلها في الملف <filename dir="ltr">/usr/share/doc/<replaceable>package</replaceable>/README.Debian</filename>.
+			</para>
+			 <para>
+				اعتماداً على البرنامج، إما أن يُستَخدم مجلد <filename dir="ltr">.d</filename> مباشرة أو يُدار بوساطة سكربت خارجي يدمج جميع الملفات لإنشاء ملف الإعداد نفسه. من المهم تشغيل السكربت بعد أي تغيير في ذلك المجلد حتى تُأخَذ التعديلات الأحدث بعين الاعتبار. من المهم أيضاً ألا تُجرى تعديلات على ملف الإعدادات الذي ينشئه السكربت تلقائياً، لأن كل شيء سيضيع عند التنفيذ التالي للسكربت. عادة ما يُفرَض استخدام إحدى الطريقتين (استخدام المجلد <filename dir="ltr">.d</filename> مباشرة أو استخدام ملف مولد من ذلك المجلد) نتيجة قيود ناجمة عن طريقة التطبيق (implementation)، لكن في كلا الحالتين يعوّض الكسب في مرونة الإعداد عن التعقيدات الصغيرة الناتجة. مخدّم البريد Exim 4 هو مثال عن طريقة الملف المولَّد: حيث يمكن إعداده من خلال عدة ملفات (<filename dir="ltr">/etc/exim4/conf.d/*</filename>) يجمعها الأمر <command>update-exim4.conf</command> في الملف <filename dir="ltr">/var/lib/exim4/config.autogenerated</filename>.
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.apt.priorities">
+			<title>إدارة أولويات الحزم</title>
+			 <para>
+				إدارة الأولويات المرتبطة بكل مصدر للحزم هي إحدى أهم النواحي في إعدادات APT. مثلاً، قد ترغب بإضافة حزمة واحدة أو اثنتين من التوزيعة <emphasis role="distribution">الاختبارية</emphasis>، أو <emphasis role="distribution">غير المستقرة</emphasis> أو <emphasis role="distribution">التجريبية</emphasis> إلى إحدى التوزيعات الأخرى. من الممكن تعيين أولويات للحزم المتوفرة (يمكن أن تملك الحزمة الواحدة أكثر من أولوية واحدة اعتماداً على إصدارها أو التوزيعة التي توفرها). ستؤثر هذه الأولويات في سلوك APT: ستختار دائماً نسخة الحزمة ذات الأولوية الأعلى (إلا إذا كانت هذه النسخة أقدم من النسخة المثبتة وكانت أولويتها أقل من 1000).
+			</para>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary><foreignphrase>pinning</foreignphrase></secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>pinning, APT pinning</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>حزمة</primary>
+				<secondary>أولوية</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>حزمة</primary>
+				<secondary>أولويات الحزم</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary>APT</primary>
+				<secondary>إعدادات</secondary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>preferences</filename></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><filename>/etc/apt/preferences</filename></primary>
+			</indexterm>
+			 <para>
+				تُعرِّف APT عدة أولويات افتراضية. كل نسخة مثبتة من الحزمة لها أولوية تساوي 100. النسخة غير المثبتة لها أولوية تساوي 500 افتراضياً، لكن يمكنها أن تقفز إلى 990 إذا كانت تنتمي للتوزيعة المستهدفة (التي تُحدَّد بالخيار <literal dir="ltr">-t</literal> أو تعليمة الضبط <literal>APT::Default-Release</literal>).
+			</para>
+			 <para>
+				يمكنك تغيير الأولويات بإضافة مدخلات بأسماء الحزم المتأثرة، وإصداراتها، ومصدرها وأولوياتها الجديدة إلى الملف <filename dir="ltr">/etc/apt/preferences</filename>.
+			</para>
+			 <para>
+				لن تثبت APT أبداً نسخة أقدم من الحزمة (نسخة يكون رقم إصدارها أقل من الحزمة المثبتة حالياً) إلا إذا كانت أولويتها أعلى من 1000. ستُثَـبّت APT دائماً الحزمة ذات الأولوية العليا التي تحقق هذا الشرط. إذا كان لحزمتين الأولوية نفسها، تثبت APT النسخة الأحدث (ذات رقم الإصدار الأعلى). إذا كان لحزمتين الإصدار نفسه والأولوية نفسها لكنهما تختلفان في محتواهما، تثبّت APT النسخة غير المثبتة (تم وضع هذه القاعدة لتغطية الحالة التي تُحدَّث فيها الحزمة دون زيادة رقم مراجعتها، فالحاجة تدعو لهذا الأمر عادة).
+			</para>
+			 <para>
+				بكلمات مترابطة أكثر، الحزمة ذات الأولوية الأدنى من 0 لن تثبت أبداً. أما الحزمة ذات الأولوية بين 0 و 100 فسوف تُثبَّت فقط إذا لم تكن هناك نسخة أخرى من الحزمة مثبتة مسبقاً. وتُثبَّت الحزمة ذات الأولوية بين 100 و 500 فقط إذا لم تكن هناك نسخ أحدث منها مثبتة أو متوفرة في توزيعة أخرى. أما الحزمة ذات الأولوية بين 501 و 990 فتُثَـبَّت فقط إذا لم تكن هناك نسخة أحدث مثبتة أو متوفرة في التوزيعة المستهدفة. الحزمة ذات الأولوية ما بين 990 و 1000 تثبت دائماً إلا إذا كانت النسخة المثبتة أحدث منها. الأولوية الأكبر من 1000 ستؤدي دائماً إلى تثبيت الحزمة حتى لو أجبرت APT على تخفيض الحزمة إلى نسخة أقدم.
+			</para>
+			 <para>
+				When APT checks <filename>/etc/apt/preferences</filename>, it first takes into account the most specific entries (often those specifying the concerned package), then the more generic ones (including for example all the packages of a distribution). If several generic entries exist, the first match is used. The available selection criteria include the package's name and the source providing it. Every package source is identified by the information contained in a <filename>Release</filename> file that APT downloads together with the <filename>Packages</filename> files. It specifies the origin (usually “Debian” for the packages of official mirrors, but it can also be a person's or an organization's name for third-party repositories). It also gives the name of the distribution (usually <emphasis role="distribution">Stable</emphasis>, <emphasis role="distribution">Testing</emphasis>, <emphasis role="distribution">Unstable</emphasis> or <emphasis role="distribution">Experimental</emphasis> for the standard distributions provided by Debian) together with its version (for example 9 for Debian <emphasis role="distribution">Stretch</emphasis>). Let's have a look at its syntax through some realistic case studies of this mechanism.
+			</para>
+			 <sidebar> <title><emphasis>حالة خاصة</emphasis> أولوية الحزم <emphasis role="distribution">التجريبية</emphasis></title>
+			 <indexterm>
+				<primary><emphasis role="distribution">التجريبية</emphasis></primary>
+			</indexterm>
+			 <para>
+				إذا أضفت التوزيعة <emphasis role="distribution">التجريبية</emphasis> إلى ملف <filename>sources.list</filename>، فإن حزمها لن تثبت أبداً تقريباً لأن أولويتها الافتراضية هي 1. هذه حالة خاصة بالطبع، مصممة لحماية المستخدمين من تثبيت الحزم <emphasis role="distribution">التجريبية</emphasis> بالخطأ. يمكن تثبيت هذه الحزم فقط بكتابة <command>aptitude install <replaceable>package</replaceable>/experimental</command> — لأن المستخدمين الذين سيكتبون هذا الأمر هم وحدهم الذين يدركون المخاطر التي يعرضون أنفسهم لها. من الممكن مع ذلك (رغم أن هذا <emphasis>غير</emphasis> مستحسن) معاملة حزم التوزيعة <emphasis role="distribution">التجريبية</emphasis> مثل حزم التوزيعات الأخرى بإعطائها الأولوية 500. يتم هذا من خلال مدخلة خاصة في <filename dir="ltr">/etc/apt/preferences</filename>:
+			</para>
+			 <informalexample> 
+<programlisting>Package: *
+Pin: release a=experimental
+Pin-Priority: 500
+</programlisting>
+			 </informalexample> </sidebar> <para>
+				لنفترض أنك تريد استعمال الحزم من النسخة المستقرة من دبيان فقط. وأن تلك الحزم المتوفرة في الإصدارات الأخرى يجب ألا تثبت إلا إذا طلبت صراحة. يمكن كتابة المدخلات التالية في ملف <filename dir="ltr">/etc/apt/preferences</filename>:
+			</para>
+			 <informalexample> 
+<programlisting>Package: *
+Pin: release a=stable
+Pin-Priority: 900
+
+Package: *
+Pin: release o=Debian
+Pin-Priority: -10
+</programlisting>
+			 </informalexample> <para>
+				يُعرِّف <literal>a=stable</literal> اسم التوزيعة المختارة. ويَقْصُر <literal>o=Debian</literal> المجال على الحزم ذات المنشأ ”Debian“.
+			</para>
+			 <para>
+				Let's now assume that you have a server with several local programs depending on the version 5.24 of Perl and that you want to ensure that upgrades will not install another version of it. You could use this entry:
+			</para>
+			 <informalexample> 
+<programlisting>Package: perl
+Pin: version 5.24*
+Pin-Priority: 1001
+</programlisting>
+			 </informalexample> <para>
+				الوثائق المرجعية لملف الضبط هذا متوفرة في صفحة الدليل <citerefentry><refentrytitle>apt_preferences</refentrytitle>
+				<manvolnum>5</manvolnum></citerefentry>‎، التي يمكن عرضها بالأمر <command>man apt_preferences</command>.
+			</para>
+			 <sidebar> <title><emphasis>تلميح</emphasis> التعليقات في الملف <filename dir="ltr">/etc/apt/preferences</filename></title>
+			 <indexterm>
+				<primary><literal>Explanation</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Pin</literal></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><literal>Pin-Priority</literal></primary>
+			</indexterm>
+			 <para>
+				لا توجد صيغة رسمية للتعليقات في ملف <filename dir="ltr">/etc/apt/preferences</filename>، لكن يمكن تقديم بعض الأوصاف النصية بوضع حقل”<literal>Explanation</literal>“ أو أكثر في بداية كل مدخلة:
+			</para>
+			 <informalexample> 
+<programlisting>Explanation: The package xserver-xorg-video-intel provided
+Explanation: in experimental can be used safely
+Package: xserver-xorg-video-intel
+Pin: release a=experimental
+Pin-Priority: 500
+</programlisting>
+			 </informalexample> </sidebar>
+		</section>
+		 <section id="sect.apt-mix-distros">
+			<title>العمل مع عدة توزيعات</title>
+			 <para>
+				بما أن <command>apt</command> أداة رائعة فعلاً، فهي تغريك بالتقاط حزم من توزيعات أخرى. مثلاً، بعد تثبيت التوزيعة <emphasis role="distribution">المستقرة</emphasis>، قد ترغب بتجربة حزمة برمجية متوفرة في التوزيعة <emphasis role="distribution">الاختبارية</emphasis> أو <emphasis role="distribution">غير المستقرة</emphasis> دون الانحراف بعيداً عن حالة النظام الأولية.
+			</para>
+			 <para>
+				حتى لو كنت ستواجه أحياناً مشاكل نتيجة خلط الحزم من توزيعات مختلفة، يدير <command>apt</command> مثل هذه الحالات بشكل جيد جداً وتقلل المخاطر بصورة فعالة. أفضل طريقة للمتابعة تكون بإضافة جميع التوزيعات المستخدمة في <filename dir="ltr">/etc/apt/sources.list</filename> (بعض الناس يضعون التوزيعات الثلاثة دائماً، لكن تذكر أن التوزيعة <emphasis role="distribution">غير المستقرة</emphasis> محجوزة للمستخدمين المخضرمين) و تعريف توزيعتك المرجعية بالمتغير <literal>APT::Default-Release</literal> (انظر <xref linkend="sect.apt-upgrade" />).
+			</para>
+			 <para>
+				دعنا نفرض أن <emphasis role="distribution">المستقرة</emphasis> هي توزيعتك المرجعية لكن <emphasis role="distribution">الاختبارية</emphasis> و<emphasis role="distribution">غير المستقرة</emphasis> موجودتان في ملف <filename>sources.list</filename> الخاص بك أيضاً. في هذه الحالة، يمكنك استخدام <command>apt install <replaceable>package</replaceable>/testing</command> لتثبيت حزمة من <emphasis role="distribution">الاختبارية</emphasis>. إذا فشل التثبيت نتيجة اعتماديات لا يمكن تلبيتها، دع apt-get تحل هذه الاعتماديات ضمن التوزيعة <emphasis role="distribution">الاختبارية</emphasis> بإضافة المتغير <literal dir="ltr">-t testing</literal>. من الواضح أن الشيء نفسه ينطبق على <emphasis role="distribution">غير المستقرة</emphasis>.
+			</para>
+			 <para>
+				في هذه الحالة، التحديثات (<command>upgrade</command> و <command>full-upgrade</command>) تتم ضمن التوزيعة <emphasis role="distribution">المستقرة</emphasis> ما عدا الحزم التي حُدِّثت مسبقاً إلى توزيعة أخرى: هذه الحزم ستتبع التحديثات المتوفرة في التوزيعات الأخرى. سنشرح هذا السلوك بمساعدة الأولويات الافتراضية التي تضبطها APT أدناه. لا تتردد باستخدام <command>apt-cache policy</command> (انظر الملاحظة الجانبية <xref linkend="sidebar.apt-cache-policy" />) للتحقق من الأولويات المعطاة.
+			</para>
+			 <para>
+				يدور كل شيء حول حقيقة أن APT تنظر إلى الحزم ذات الأولويات الأعلى أو المساوية لأولويات الحزم المثبتة (بفرض أن <filename dir="ltr">/etc/apt/preferences</filename> لم يُستخدم لفرض أولويات أعلى من 1000 لبعض الحزم).
+			</para>
+			 <sidebar id="sidebar.apt-cache-policy"> <title><emphasis>تلميح</emphasis> <command>apt-cache policy</command></title>
+			 <para>
+				حتى تستوعب آلية الأولويات أكثر، لا تتردد بتنفيذ الأمر <command>apt-cache policy</command> لعرض الأولويات الافتراضية المعينة لكل مصدر للحزم. يمكنك أيضاً استخدام <command>apt-cache policy <replaceable>package</replaceable></command> لعرض الأولويات لجميع النسخ المتوفرة لحزمة معينة.
+			</para>
+			 </sidebar> <para>
+				دعنا نفترض أنك تملك الإصدارة 1 مثبتة من حزمة أولى من التوزيعة <emphasis role="distribution">المستقرة</emphasis> وأن الإصدارتين 2 و 3 متوفرتان على الترتيب في <emphasis role="distribution">الاختبارية</emphasis> و<emphasis role="distribution">غير المستقرة</emphasis>. للإصدارة المثبتة أولوية قدرها 100 لكن النسخة المتوفرة في <emphasis role="distribution">المستقرة</emphasis> (الإصدارة نفسها) لها أولوية تساوي 990 (لأنها تنتمي للتوزيعة الهدف). تملك الحزم في <emphasis role="distribution">الاختبارية</emphasis> و<emphasis role="distribution">غير المستقرة</emphasis> أولوية قدرها 500 (الأولوية الافتراضية للإصدارات غير المثبتة). الرابح إذا هو الإصدار 1 صاحب الأولوية 990. إذاً ”تبقى الحزمة في التوزيعة <emphasis role="distribution">المستقرة</emphasis>“.
+			</para>
+			 <para>
+				دعنا نأخذ مثالاً عن حزمة أخرى تم تثبيت الإصدار 2 منها من التوزيعة <emphasis role="distribution">الاختبارية</emphasis>. والإصدار 1 متاح ضمن <emphasis role="distribution">المستقرة</emphasis> والإصدار 3 ضمن <emphasis role="distribution">غير المستقرة</emphasis>. يُهمَل الإصدار 1 (أولويته 990 – أي أنها أقل من 1000) لأنه أقدم من النسخة المثبتة. هذا يدع النسختين 2 و 3، ولكل منهما الأولوية 500. تختار APT الإصدار الأحدث، الذي ينتمي للتوزيعة <emphasis role="distribution">غير المستقرة</emphasis>. إذا لم ترغب أن تهاجر الحزم المثبتة من <emphasis role="distribution">الاختبارية</emphasis> إلى التوزيعة <emphasis role="distribution">غير المستقرة</emphasis>، عليك تعيين أولوية أقل من 500 (490 مثلا) للحزم القادمة من <emphasis role="distribution">غير المستقرة</emphasis>. يمكنك تعديل الملف <filename dir="ltr">/etc/apt/preferences</filename> للوصول إلى هذه النتيجة:
+			</para>
+			 
+<programlisting>Package: *
+Pin: release a=unstable
+Pin-Priority: 490
+</programlisting>
+
+		</section>
+		 <section id="sect.automatic-tracking">
+			<title>متابعة الحزم المثبتة آلياً</title>
+			 <para>
+				إحدى وظائف <command>apt</command> الأساسية هي تتبع الحزم التي ثبتت على النظام فقط لأنها اعتماديات. هذه الحزم تدعى ”آلية automatic“، وغالباً ما تنتمي المكتبات مثلاً لهذه الفئة.
+			</para>
+			 <para>
+				With this information, when packages are removed, the package managers can compute a list of automatic packages that are no longer needed (because there is no “manually installed” packages depending on them). <command>apt-get autoremove</command> or <command>apt autoremove</command> will get rid of those packages. <command>aptitude</command> does not have this command because it removes them automatically as soon as they are identified. In all cases, the tools display a clear message listing the affected packages.
+			</para>
+			 <indexterm>
+				<primary><command>apt-mark auto</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>apt-mark manual</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude markauto</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>aptitude unmarkauto</command></primary>
+			</indexterm>
+			 <para>
+				من الجيد تعليم أي حزمة لا تحتاجها بشكل مباشر على أنها آلية حتى تزال آلياً عندما لا تبقى لها ضرورة. سوف يضع الأمر <command>apt-mark auto <replaceable>package</replaceable></command> علامة حزمة آلية على الحزمة المحددة، بينما الأمر <command>apt-mark manual <replaceable>package</replaceable></command> يفعل العكس. يعمل الأمران <command>aptitude markauto</command> و <command>aptitude unmarkauto</command> بنفس الأسلوب، إلا أن لهما ميزات إضافية لتعليم عدة حزم دفعة واحدة (انظر <xref linkend="sect.aptitude" />). كما أن الواجهة التفاعلية التي تقدمها <command>aptitude</command> في الطرفية تُسهِّل مراجعة ”الأعلام الآلية automatic flag“ على أعداد كبيرة من الحزم.
+			</para>
+			 <indexterm>
+				<primary><command>aptitude why</command></primary>
+			</indexterm>
+			 <para>
+				قد يرغب بعض الأشخاص بمعرفة سبب وجود حزمة آلية مثبتة على النظام. للحصول على هذه المعلومات من سطر الأوامر، يمكنك استخدام <command>aptitude why <replaceable>package</replaceable></command> (لا تملك <command>apt</command> ولا <command>apt-get</command> ميزة مشابهة):
+			</para>
+			 
+<screen><computeroutput>$ </computeroutput><userinput>aptitude why python-debian
+</userinput><computeroutput>i   aptitude         Recommends apt-xapian-index         
+i A apt-xapian-index Depends    python-debian (&gt;= 0.1.15)
+</computeroutput></screen>
+			 <sidebar> <title><emphasis>بدائل</emphasis> <command>deborphan</command> و<command>debfoster</command></title>
+			 <indexterm>
+				<primary><command>deborphan</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>debfoster</command></primary>
+			</indexterm>
+			 <para>
+				في الأيام الغابرة عندما لم تكن <command>apt</command> ولا <command>apt-get</command> ولا <command>aptitude</command> قادرة على تتبع الحزم الآلية، كان هناك أداتين تولدان قوائم الحزم غير الضرورية: <command>deborphan</command> و<command>debfoster</command>.
+			</para>
+			 <para>
+				<command>deborphan</command> هو الأكثر تخلفاً بينهما. تفحص هذه الأداة أقسام <literal>libs</literal> و<literal>oldlibs</literal> ببساطة (ما لم يعطى تعليمات إضافية) بحثاً عن الحزم المثبتة حالياً ولا تعتمد عليها أي حزمة أخرى. يمكن أن تخدم اللائحة الناتجة كأساس لإزالة الحزم غير المرغوبة.
+			</para>
+			 <para>
+				يتميز <command>debfoster</command> بطريقة أكثر تطوراً، وقريبة جداً من أسلوب APT: فهو يحتفظ بلائحة بالحزم التي تم تثبيتها بشكل مقصود، ويتذكر الحزم التي اللازمة فعلاً بين كل استدعائين. إذا ظهرت حزم جديدة على النظام ولم يعرف <command>debfoster</command> الأسباب التي تدعو لوجود تلك الحزم، سوف يظهرها على الشاشة مع اعتمادياتها. بعدها يقدم البرنامج لك عدة خيارات: إزالة الحزمة (مع الحزم التي تعتمد عليها أيضاً إذا أردت)، تعليم الحزمة على أنها حزمة مطلوبة صراحة، أو تجاهلها مؤقتاً.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.apt-cache">
+		<title>الأمر <command>apt-cache</command></title>
+		 <indexterm>
+			<primary><command>apt-cache</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>البحث عن حزم</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>عرض الترويسة</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>بحث عن الحزم</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>حزمة</primary>
+			<secondary>بحث</secondary>
+		</indexterm>
+		 <para>
+			يعرض الأمر <command>apt-cache</command> الكثير من المعلومات المخزنة في قاعدة بيانات APT الداخلية. هذه المعلومات هي نوع من الكاش أو الذاكرة المخبئية لأنها تُجمَع من مصادر مختلفة موجودة في الملف <filename>sources.list</filename>. يحدث هذا خلال عملية <command>apt update</command>.
+		</para>
+		 <sidebar id="sidebar.cache"> <title><emphasis>مصطلحات</emphasis> المخبأ (Cache)</title>
+		 <para>
+			الكاش أو المخبأ (أو الذاكرة المخبئية) هو نظام تخزين مؤقت يُستَخدم لتسريع الوصول المتكرر للبيانات عندما تكون عملية الوصول المباشرة مكلفة (من ناحية الأداء). يمكن تطبيق هذا المفهوم في حالات عديدة وعلى مستويات مختلفة، من نوى المعالجات المصغرة إلى نظم التخزين المتطورة.
+		</para>
+		 <para>
+			في حالة APT، ملفات <filename>Packages</filename> المرجعية هي ملفات <filename>Packages</filename> الموجودة على مرايا دبيان. ومع ذلك، سوف يكون الذهاب إلى الشبكة لكل عملية بحث قد نرغب بإجرائها في قاعدة بيانات الحزم المتوفرة غير فعال على الإطلاق. لهذا تخزّن APT نسخة من هذه الملفات (في <filename dir="ltr">/var/lib/apt/lists/</filename>) ويتم البحث ضمن هذه الملفات المحلية. أيضاً، يحتوي <filename dir="ltr">/var/cache/apt/archives/</filename> على نسخة كاش من الحزم التي تم تنزيلها لتفادي تنزيلها ثانية إذا احتجت لإعادة تثبيتها بعد إزالتها.
+		</para>
+		 </sidebar> <indexterm>
+			<primary><command>apt show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt search</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache search</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude show</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>aptitude search</command></primary>
+		</indexterm>
+		 <para>
+			يمكن أن يبحث الأمر <command>apt-cache</command> اعتماداً على كلمات مفتاحية وذلك باستخدام <command>apt-cache search <replaceable>keyword</replaceable></command>. يستطيع هذا الأمر أيضاً عرض ترويسات النسخ المتوفرة من الحزمة باستخدام <command>apt-cache show <replaceable>package</replaceable></command>. يقدّم هذا الأمر وصف الحزمة، اعتمادياتها، اسم المشرف، الخ. لاحظ أن <command>apt search</command> و<command>apt show</command> و<command>aptitude search</command> و<command>aptitude show</command> تعمل بالأسلوب نفسه.
+		</para>
+		 <sidebar> <title><emphasis>بدائل</emphasis> <command>axi-cache</command></title>
+		 <indexterm>
+			<primary><command>axi-cache</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">apt-xapian-index</emphasis></primary>
+		</indexterm>
+		 <para>
+			الأداة <command>apt-cache search</command> بدائية جداً، تعتمد أساساً على تطبيق <command>grep</command> على أوصاف الحزم. غالباً ما تعيد هذه الأداة عدداً كبيراً من النتائج أو لا تعيد أي نتيجة عندما تضع الكثير من الكلمات المفتاحية.
+		</para>
+		 <para>
+			لكن <command>axi-cache search <replaceable>term</replaceable></command> من ناحية أخرى، تقدم نتائج أفضل، مرتبة حسب مطابقتها لمعايير البحث. تعتمد هذه الأداة على محرك البحث <emphasis>Xapian</emphasis> وهي جزء من الحزمة <emphasis role="pkg">apt-xapian-index</emphasis> التي تفهرس معلومات الحزم كافة (وتفهرس أشياء أخرى، مثل ملفات <filename dir="ltr">.desktop</filename> من جميع حزم دبيان). تدرك هذه الأداة وجود الوسوم (انظر الملاحظة الجانبية<xref linkend="sidebar.debtags" />) وتعيد نتائج البحث في أجزاء من الثانية.
+		</para>
+		 
+<screen>$ <userinput>axi-cache search package use::searching</userinput>
+100 results found.
+Results 1-20:
+100% packagesearch - GUI for searching packages and viewing package information
+100% apt-utils - package management related utility programs
+99% dpkg-awk - Gawk script to parse /var/lib/dpkg/{status,available} and Packages
+98% migemo - Transitional package for migemo
+95% apt-file - search for files within Debian packages (command-line interface)
+[...]
+79% apt-xapian-index - maintenance and search tools for a Xapian index of Debian packages
+More terms: paquets debian pour debtags recherche gift gnuift
+More tags: suite::debian works-with::software:package role::program admin::package-management interface::commandline scope::utility field::biology:bioinformatics
+`axi-cache more' will give more results
+</screen>
+		 </sidebar> <indexterm>
+			<primary><command>apt-cache policy</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache dumpavail</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>apt-cache pkgnames</command></primary>
+		</indexterm>
+		 <para>
+			توجد مزايا نادراً ما تستخدم. مثلاً، يعرض <command>apt-cache policy</command> أولويات مصادر الحزم بالإضافة إلى أولويات الحزم المفردة. من الأمثلة الأخرى <command>apt-cache dumpavail</command> الذي يعرض ترويسات جميع النسخ المتوفرة لجميع الحزم. يعرض <command>apt-cache pkgnames</command> قائمة بجميع الحزم التي تظهر في الكاش مرة واحدة على الأقل.
+		</para>
+
+	</section>
+	 <section id="sect.apt-frontends">
+		<title>واجهات APT: ‏<command>aptitude</command>، ‏<command>synaptic</command></title>
+		 <indexterm>
+			<primary><command>aptitude</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><command>synaptic</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>APT</primary>
+			<secondary>واجهات</secondary>
+		</indexterm>
+		 <para>
+			الأداة APT هي برنامج مكتوب بلغة ++C تقبع شفرته في المكتبة المشتركة <command>libapt-pkg</command> بشكل أساسي. يسهّل استخدام المكتبة المشتركة إنشاء واجهات استخدام (front-ends)، نظراً لسهولة إعادة استخدام الكود الموجود في المكتبة. تاريخياً، صُمِّمَت <command>apt-get</command> كواجهة اختبارية فقط للمكتبة <command>libapt-pkg</command> لكن نجاحها طغى على هذه الحقيقة.
+		</para>
+		 <section id="sect.aptitude">
+			<title>‏<command>aptitude</command></title>
+			 <para>
+				<command>aptitude</command> هو برنامج تفاعلي يمكن استخدامه في وضع شبه رسومي في الطرفية. يمكنك استعراض قائمة بالحزم المثبتة والمتوفرة، والبحث في جميع المعلومات المتوفرة، واختيار الحزم التي تريد تثبيتها أو إزالتها. صمم البرنامج خصيصاً ليستخدمه مديرو النظم، لذلك فإن سلوكه الافتراضي أذكى بكثير من سلوك <command>apt-get</command>، كما أن واجهته أسهل بكثير للفهم.
+			</para>
+			 <figure>
+				<title>مدير الحزم <command>aptitude</command></title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/aptitude.png" format="PNG" scalefit="1" width="75%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				When it starts, <command>aptitude</command> shows a list of packages sorted by state (installed, non-installed, or installed but not available on the mirrors — other sections display tasks, virtual packages, and new packages that appeared recently on mirrors). To facilitate thematic browsing, other views are available. In all cases, <command>aptitude</command> displays a list combining categories and packages on the screen. Categories are organized through a tree structure, whose branches can respectively be unfolded or closed with the <keycombo><keycap>Enter</keycap></keycombo>, <keycombo><keycap>[</keycap></keycombo> and <keycombo><keycap>]</keycap></keycombo> keys. <keycombo><keycap>+</keycap></keycombo> should be used to mark a package for installation, <keycombo><keycap>-</keycap></keycombo> to mark it for removal and <keycombo><keycap>_</keycap></keycombo> to purge it (note that these keys can also be used for categories, in which case the corresponding actions will be applied to all the packages of the category). <keycombo><keycap>u</keycap></keycombo> updates the lists of available packages and <keycombo action="simul"><keycap>Shift</keycap><keycap>u</keycap></keycombo> prepares a global system upgrade. <keycombo><keycap>g</keycap></keycombo> switches to a summary view of the requested changes (and typing <keycombo><keycap>g</keycap></keycombo> again will apply the changes), and <keycombo><keycap>q</keycap></keycombo> quits the current view. If you are in the initial view, this will effectively close <command>aptitude</command>.
+			</para>
+			 <sidebar> <title><emphasis>توثيق</emphasis> <command>aptitude</command></title>
+			 <para>
+				لا يغطي هذا القسم التفاصيل الدقيقة لاستخدامات <command>aptitude</command>، بل يركز على إعطاءك علبة إسعافات أولية للتعامل معه. <command>aptitude</command> موثق جيداً ونحن ننصحك باستخدام دليله الكامل المتوفر في الحزمة <emphasis role="pkg">aptitude-doc-en</emphasis> (انظر <filename>/usr/share/doc/aptitude/html/en/index.html</filename>).
+			</para>
+			 </sidebar> <para>
+				للبحث عن حزمة، يمكنك كتابة <keycombo><keycap>/</keycap></keycombo> متبوعاً بنموذج بحث ما. يطابق هذا النموذج اسم الحزمة، لكن يمكن تطبيقه على وصفها أيضاً (إذا سُبِق بـ <literal dir="ltr">~d</literal>)، أو على قسمها (مع <literal dir="ltr">~s</literal>) أو على الخصائص الأخرى المذكورة في الوثائق. كما يمكن أن ترشح هذه النماذج نفسها قائمة الحزم المعروضة: اضغط المفتاح <keycombo><keycap>l</keycap></keycombo> (أول حرف من <foreignphrase>limit</foreignphrase>) وأدخل النموذج.
+			</para>
+			 <para>
+				تُسهِّل aptitude إدارة ”الأعلام الآلية automatic flags“ (انظر <xref linkend="sect.automatic-tracking" />) كثيراً. يمكن تصفح قائمة الحزم المثبتة وتعليم الحزم على أنها آلية باستخدام <keycombo action="simul"><keycap>Shift</keycap> <keycap>m</keycap></keycombo> أو إزالة العلامة بالمفتاح <keycombo><keycap>m</keycap></keycombo>. يعرض الحرف ”A“ في قائمة الحزم بجوار ”الحزم الآلية“. تقدم هذه الميزة أيضاً وسيلة لعرض الحزم المثبتة ”فعلياً“ على النظام، دون عرض المكتبات والاعتماديات التي لا تهمنا. نموذج البحث الذي يمكن استخدامه مع <keycombo><keycap>l</keycap></keycombo> (لتفعيل وضع الفلترة) هو <literal dir="ltr">~i!~M</literal>. يحدد هذا النموذج أنك تريد عرض الحزم المثبتة (<literal dir="ltr">~i</literal>) غير الآلية (<literal dir="ltr">!~M</literal>).
+			</para>
+			 <sidebar> <title><emphasis>أدوات</emphasis> استخدام <command>aptitude</command> من الواجهة النصية</title>
+			 <para>
+				يمكن الوصول لمعظم مزايا <command>aptitude</command> من الواجهة التفاعلية كما يمكن من خلال الأوامر النصية. ستبدو هذه الأوامر مألوفة لمستخدمي <command>apt-get</command> و<command>apt-cache</command>.
+			</para>
+			 <para>
+				تتوفر مزايا <command>aptitude</command> المتقدمة أيضاً من سطر الأوامر. يمكنك استخدام نفس نماذج البحث عن الحزم التي تستخدم في الواجهة التفاعلية. مثلاً، إذا أردت تنظيف مجموعة الحزم ”المثبتة يدوياً“، وكنت تعرف أن جميع البرامج المثبتة محلياً لا تتطلب أي مكتبة معينة أو وحدة بيرل، يمكنك تعليم الحزم المذكورة على أنها آلية بأمر واحد:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>aptitude markauto '~slibs|~sperl'</userinput></screen>
+			 <para>
+				يمكنك هنا رؤية قوة نظام نماذج البحث في <command>aptitude</command> بوضوح، الذي يسمح بالتحديد المباشر لجميع الحزم في القسمين <literal>libs</literal> و<literal>perl</literal>.
+			</para>
+			 <para>
+				كن حذراً، إذا حُدِّدت بعض الحزم على أنها آلية ولم تعتمد عليها أي حزم أخرى، فسوف تزال فوراً (بعد طلب التأكيد).
+			</para>
+			 </sidebar> <section>
+				<title>إدارة التوصيات، والاقتراحات والمهام</title>
+				 <para>
+					Another interesting feature of <command>aptitude</command> is the fact that it respects recommendations between packages while still giving users the choice not to install them on a case by case basis. For example, the <emphasis role="pkg">gnome</emphasis> package recommends <emphasis role="pkg">brasero</emphasis> (among others). When you select the former for installation, the latter will also be selected (and marked as automatic if not already installed on the system). Typing <keycombo><keycap>g</keycap></keycombo> will make it obvious: <emphasis role="pkg">brasero</emphasis> appears on the summary screen of pending actions in the list of packages installed automatically to satisfy dependencies. However, you can decide not to install it by deselecting it before confirming the operations.
+				</para>
+				 <para>
+					لاحظ أن ميزة تتبع التوصيات هذه لا تطبّق على التحديثات. مثلاً، إذا قَدَّمَتْ نسخةٌ جديدة من <emphasis role="pkg">gnome</emphasis> توصيةً بحزمة لم توصِ بها سابقاً، لن تُحدَّد الحزمة الجديدة للتثبيت. ومع ذلك، فسوف تُسرَد في شاشة التحديث بحيث يمكن لمدير النظام اختيارها للتثبيت.
+				</para>
+				 <para>
+					Suggestions between packages are also taken into account, but in a manner adapted to their specific status. For example, since <emphasis role="pkg">gnome</emphasis> suggests <emphasis role="pkg">empathy</emphasis>, the latter will be displayed on the summary screen of pending actions (in the section of packages suggested by other packages). This way, it is visible and the administrator can decide whether to take the suggestion into account or not. Since it is only a suggestion and not a dependency or a recommendation, the package will not be selected automatically — its selection requires a manual intervention from the user (thus, the package will not be marked as automatic).
+				</para>
+				 <para>
+					في السياق ذاته، تذكر أن <command>aptitude</command> تستخدم مفهوم المهام بذكاء. بما أن المهام تُعرَض بشكل تصنيفات في شاشات لوائح الحزم، فيمكنك أن تختار مهمة كاملة للتثبيت أو للإزالة، أو أن تتصفح مجموعة الحزم المضمنة في المهمة حتى تختار منها مجموعة جزئية أصغر.
+				</para>
+
+			</section>
+			 <section>
+				<title>خوارزميات حل أفضل</title>
+				 <para>
+					حتى نختتم هذا القسم، دعنا نذكر أن <command>aptitude</command> تستخدم خوارزميات أفضل مقارنة بخوارزميات <command>apt-get</command> عند مواجهة المواقف الصعبة. عند طلب مجموعة إجراءات تؤدي مجتمعة إلى نظام غير متماسك، تقيّم <command>aptitude</command> عدة سيناريوهات محتملة وتعرضها بترتيب تنازلي بدءاً من أنسبها. ومع ذلك، فإن هذه الخوارزميات ليست منيعة ضد الإخفاق. لحسن الحظ، هناك دائماً إمكانية لاختيار الإجراءات يدوياً لتنفيذها. إذا أدّت الإجراءات المختارة إلى تضارب، سوف يشير الجزء العلوي من الشاشة إلى عدد الحزم ”المعطوبة“ (ويمكنك الانتقال إلى هذه الحزم مباشرة بالضغط على <keycombo><keycap>b</keycap></keycombo>). من الممكن عندئذ بناء حل للمشكلة يدوياً. بالأخص، يمكنك الوصول إلى الإصدارات المختلفة المتوفرة ببساطة من خلال اختيار الحزمة بالمفتاح <keycombo><keycap>Enter</keycap></keycombo>. إذا كان اختيار أحد هذه الإصدارات يحل المشكلة، عليك ألا تتردد باختياره. عند وصول عدد الحزم المعطوبة إلى الصفر، يمكنك العودة بأمان إلى شاشة تلخيص الأعمال المعلقة للتحقق منها مرة أخيرة قبل تطبيقها.
+				</para>
+				 <sidebar> <title><emphasis>ملاحظة</emphasis> سجل <command>aptitude</command></title>
+				 <para>
+					مثل حال <command>dpkg</command>، تحتفظ <command>aptitude</command> بأثر الإجراءات المنفذة في سجلها (<filename dir="ltr">/var/log/aptitude</filename>). ومع ذلك، لا يمكنك العثور على المعلومات نفسها في سجلاتهما، لأن كلّاً منهما يعمل على مستوى مختلف. ففي حين أن <command>dpkg</command> يُسجِّل جميع العمليات المنفّذة على الحزم المفردة خطوة بخطوة، تعطي <command>aptitude</command> رؤية أوسع للعمليات عالية المستوى مثل تحديث النظام بالكامل.
+				</para>
+				 <para>
+					كن حذراً، يحتوي هذا السجل على ملخص العمليات التي أجرتها <command>aptitude</command> فقط. أما إذا استُخدِمَت واجهات أخرى (أو حتى <command>dpkg</command> نفسه) بين الحين والآخر، فإن سجل <command>aptitude</command> سيحتوي على صورة جزئية فقط للعمليات، لذلك لا يمكنك الاعتماد عليه لبناء تاريخ موثوق للنظام.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section>
+			<title>‏<command>synaptic</command></title>
+			 <para>
+				<command>synaptic</command> هو مدير حزم رسومي لدبيان، يقدّم واجهة رسومية نظيفة وفعالة مبنية على أساس GTK+/GNOME. تمنح فلاتره العديدة الجاهزة للاستخدام وصولاً سريعاً للحزم المتوفرة حديثاً، أو الحزم المثبتة، أو الحزم القابلة للتحديث، والحزم الميتة وغيرها. إذا تجولت بين هذه القوائم، يمكنك اختيار العمليات التي تريد تنفيذها على الحزم (تثبيت، تحديث، إزالة، تطهير)؛ لا تُنَفَّذ هذه العمليات مباشرة، بل توضع في لائحة مهام. وبعدها تؤكد هذه العمليات بنقرة واحدة على الزر، وتُنفَّذ دفعة واحدة.
+			</para>
+			 <figure>
+				<title>مدير الحزم <command>synaptic</command></title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/synaptic.png" format="PNG" scalefit="1" width="75%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+
+	</section>
+	 <section id="sect.package-authentication">
+		<title>التحقق من سلامة الحزم</title>
+		 <indexterm>
+			<primary>حزمة</primary>
+			<secondary>التحقق من السلامة</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>حزمة</primary>
+			<secondary>ختم</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>حزمة</primary>
+			<secondary>توقيع</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>توقيع</primary>
+			<secondary>توقيع حزمة</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>استيثاق</primary>
+			<secondary>الاستيثاق من الحزم</secondary>
+		</indexterm>
+		 <para>
+			الأمن هام جداً بالنسبة لمدراء النظم في شركة فلكوت. لذا، فهم يحتاجون للتأكد من تثبيت الحزم التي يوثق بأنها جاءت من دبيان وأنها لم تُعدّل على الطريق. يمكن أن يحاول المخرب إضافة شفرة خبيثة إلى حزمة شرعية. إذا تم تثبيت حزمة كهذه، فقد تنفذ أي شيء صممها المخرب لتنفيذه، بما في ذلك مثلا كشف كلمات السر أو معلومات سريّة. لتفادي هذا الخطر، تقدّم دبيان ختماً مقاوماً للعبث يضمن — ساعة تثبيت الحزمة — ورود الحزمة من مشرفها الرسمي وأن أية أطراف ثالثة لم تُعدِّلها.
+		</para>
+		 <para>
+			يعمل نظام الختم باستخدام سلسلة من شفرات التحقق وتوقيع. الملف الموقَّع هو الملف <filename>Release</filename>، المتوفر على مرايا دبيان. يحوي الملف قائمة بملفات <filename>Packages</filename> (متضمنة الصيغ المضغوطة لهذه الملفات، <filename>Packages.gz</filename> و<filename>Packages.xz</filename>، والنسخ التصاعدية منها)، بالإضافة إلى قيم MD5، و SHA1 و SHA256 لهذه الملفات، التي تضمن أن أحداً لم يعبث بها. تحوي ملفات <filename>Packages</filename> هذه قائمة بحزم دبيان المتوفرة على المرآة، بالإضافة إلى شِفرات التحقق الخاصة بها، التي تضمن بدورها أن أحداً لم يعبث بمحتوى الحزم نفسها.
+		</para>
+		 <indexterm>
+			<primary><command>apt-key</command></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis role="pkg">debian-archive-keyring</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>/etc/apt/trusted.gpg.d/</filename></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><filename>Release.gpg</filename></primary>
+		</indexterm>
+		 <para>
+			APT needs a set of trusted GnuPG public keys to verify signatures in the <filename>Release.gpg</filename> files available on the mirrors. It gets them from files in <filename>/etc/apt/trusted.gpg.d/</filename> and from the <filename>/etc/apt/trusted.gpg</filename> keyring (managed by the <command>apt-key</command> command). The official Debian keys are provided and kept up-to-date by the <emphasis role="pkg">debian-archive-keyring</emphasis> package which puts them in <filename>/etc/apt/trusted.gpg.d/</filename>. Note however that the first installation of this particular package requires caution: even if the package is signed like any other, the signature cannot be verified externally. Cautious administrators should therefore check the fingerprints of imported keys before trusting them to install new packages:
+		</para>
+		 
+<screen role="scale"># <userinput>apt-key fingerprint</userinput>
+/etc/apt/trusted.gpg.d/debian-archive-jessie-automatic.gpg
+----------------------------------------------------------
+pub   rsa4096 2014-11-21 [SC] [expires: 2022-11-19]
+      126C 0D24 BD8A 2942 CC7D  F8AC 7638 D044 2B90 D010
+uid           [ unknown] Debian Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-security-automatic.gpg
+-------------------------------------------------------------------
+pub   rsa4096 2014-11-21 [SC] [expires: 2022-11-19]
+      D211 6914 1CEC D440 F2EB  8DDA 9D6D 8F6B C857 C906
+uid           [ unknown] Debian Security Archive Automatic Signing Key (8/jessie) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-jessie-stable.gpg
+-------------------------------------------------------
+pub   rsa4096 2013-08-17 [SC] [expires: 2021-08-15]
+      75DD C3C4 A499 F1A1 8CB5  F3C8 CBF8 D6FD 518E 17E1
+uid           [ unknown] Jessie Stable Release Key &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-stretch-automatic.gpg
+-----------------------------------------------------------
+pub   rsa4096 2017-05-22 [SC] [expires: 2025-05-20]
+      E1CF 20DD FFE4 B89E 8026  58F1 E0B1 1894 F66A EC98
+uid           [ unknown] Debian Archive Automatic Signing Key (9/stretch) &lt;ftpmaster@debian.org&gt;
+sub   rsa4096 2017-05-22 [S] [expires: 2025-05-20]
+
+/etc/apt/trusted.gpg.d/debian-archive-stretch-security-automatic.gpg
+--------------------------------------------------------------------
+pub   rsa4096 2017-05-22 [SC] [expires: 2025-05-20]
+      6ED6 F5CB 5FA6 FB2F 460A  E88E EDA0 D238 8AE2 2BA9
+uid           [ unknown] Debian Security Archive Automatic Signing Key (9/stretch) &lt;ftpmaster@debian.org&gt;
+sub   rsa4096 2017-05-22 [S] [expires: 2025-05-20]
+
+/etc/apt/trusted.gpg.d/debian-archive-stretch-stable.gpg
+--------------------------------------------------------
+pub   rsa4096 2017-05-20 [SC] [expires: 2025-05-18]
+      067E 3C45 6BAE 240A CEE8  8F6F EF0F 382A 1A7B 6500
+uid           [ unknown] Debian Stable Release Key (9/stretch) &lt;debian-release@lists.debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-automatic.gpg
+----------------------------------------------------------
+pub   rsa4096 2012-04-27 [SC] [expires: 2020-04-25]
+      A1BD 8E9D 78F7 FE5C 3E65  D8AF 8B48 AD62 4692 5553
+uid           [ unknown] Debian Archive Automatic Signing Key (7.0/wheezy) &lt;ftpmaster@debian.org&gt;
+
+/etc/apt/trusted.gpg.d/debian-archive-wheezy-stable.gpg
+-------------------------------------------------------
+pub   rsa4096 2012-05-08 [SC] [expires: 2019-05-07]
+      ED6D 6527 1AAC F0FF 15D1  2303 6FB2 A1C2 65FF B764
+uid           [ unknown] Wheezy Stable Release Key &lt;debian-release@lists.debian.org&gt;
+</screen>
+		 <sidebar> <title><emphasis>ممارسة عملية</emphasis> إضافة مفاتيح موثوقة</title>
+		 <indexterm>
+			<primary>مفتاح موثوق</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>مفتاح</primary>
+			<secondary>مفاتيح المصادقة في APT</secondary>
+		</indexterm>
+		 <para>
+			عند إضافة مصدر حزم لأطراف ثالثة إلى الملف <filename>sources.list</filename>، يجب أن تطلب من APT أن تثق بمفتاح GPG الخاص بها (وإلا ستظل تتذمر من أنها لا تضمن لك سلامة الحزم القادمة من ذلك المستودع). الخطوة الأولى طبعاً هي الحصول على المفتاح العام. في معظم الأوقات، سيعطى المفتاح بشكل ملف نصي صغير، سندعوه <filename>key.asc</filename> في الأمثلة التالية.
+		</para>
+		 <para>
+			To add the key to the trusted keyring, the administrator can just put it in a <filename>*.asc</filename> file in <filename>/etc/apt/trusted.gpg.d/</filename>. This is supported since Debian <emphasis role="distribution">Stretch</emphasis>. With older releases, you had to run <command>apt-key add &lt; key.asc</command>.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gui-apt-key</emphasis></primary>
+		</indexterm>
+		 <para>
+			بالنسبة للأشخاص الذين يريدون برنامجاً مخصصاً وتفاصيل أكثر عن المفاتيح الموثوقة، يمكن استخدام <command>gui-apt-key</command> (في الحزمة ذات الاسم نفسه)، وهو برنامج صغير ذو واجهة رسومية يدير الحلقة الموثوقة.
+		</para>
+		 </sidebar> <para>
+			بمجرد وضع المفاتيح المناسبة في الحلقة، ستتحقق APT من التواقيع قبل أي عملية فيها مخاطرة، بحيث تعرض الواجهات النهائية تحذيراً إذا طُلِبَ منها تثبيت حزمة لا يمكن تأكيد سلامتها.
+		</para>
+
+	</section>
+	 <section id="sect.dist-upgrade">
+		<title>الانتقال من توزيعة مستقرة إلى التالية</title>
+		 <para>
+			إحدى أكثر مزايا دبيان شهرة هي قدرتها على تحديث النظام المُنَصَّب من إصدارة مستقرة إلى تاليتها: أضافت <foreignphrase>dist-upgrade</foreignphrase> –عبارة شهيرة جداً– إلى سمعة المشروع كثيراً. مع الإجراءات الوقائية، يمكن لتحديث الحاسوب أن يستغرق عدة دقائق، أو عدة عشرات من الدقائق، حسب سرعة التنزيل من مستودعات الحزم.
+		</para>
+		 <section>
+			<title>إجراءات مستحسنة</title>
+			 <para>
+				بما أن دبيان تستغرق زمناً طويلاً في مرحلة التطور بين الإصدارات المستقرة، عليك قراءة ملاحظات الإصدار قبل التحديث.
+			</para>
+			 <sidebar> <title><emphasis>أساسيات</emphasis> ملاحظات الإصدار</title>
+			 <para>
+				ملاحظات إصدار نظام التشغيل (وبشكل أعم، ملاحظات إصدار أي برنامج) هي وثائق تعطي لمحة عامة عن البرمجية، مع بعض التفاصيل المتعلقة بخصوصيات ذلك الإصدار. هذه الوثائق قصيرة عموماً مقارنة بالتوثيق الكامل، وهي تحوي المزايا التي قُدِّمت منذ الإصدار السابق عادة. كما تحوي تفاصيل عن إجراءات التحديث، وتحذيرات لمستخدمي الإصدار السابق، وأحياناً العلل المعروفة في الإصدار الجديد.
+			</para>
+			 <para>
+				Release notes are available online: the release notes for the current stable release have a dedicated URL, while older release notes can be found with their codenames: <ulink type="block" url="http://www.debian.org/releases/stable/releasenotes" /> <ulink type="block" url="http://www.debian.org/releases/jessie/releasenotes" />
+			</para>
+			 </sidebar> <para>
+				In this section, we will focus on upgrading a <emphasis role="distribution">Jessie</emphasis> system to <emphasis role="distribution">Stretch</emphasis>. This is a major operation on a system; as such, it is never 100% risk-free, and should not be attempted before all important data has been backed up.
+			</para>
+			 <para>
+				من العادات الحسنة الأخرى التي تسهّل عملية التحديث (وتقصّرها أيضاً) هي ترتيب الحزم المُثبَّتَة وإبقاء الحزم التي تحتاجها فعلاً فقط. من الأدوات المفيدة التي تنفذ ذلك هي <command>aptitude</command>، و <command>deborphan</command> و<command>debfoster</command> (انظر <xref linkend="sect.automatic-tracking" />). مثلا، يمكنك استخدام الأمر التالي، ثم استخدم الوضع التفاعلي في <command>aptitude</command> للتأكد ثانية وضبط عمليات الإزالة الآلية:
+			</para>
+			 
+<screen># <userinput>deborphan | xargs aptitude --schedule-only remove</userinput></screen>
+			 <para>
+				Now for the upgrading itself. First, you need to change the <filename>/etc/apt/sources.list</filename> file to tell APT to get its packages from <emphasis role="distribution">Stretch</emphasis> instead of <emphasis role="distribution">Jessie</emphasis>. If the file only contains references to <emphasis role="distribution">Stable</emphasis> rather than explicit codenames, the change isn't even required, since <emphasis role="distribution">Stable</emphasis> always refers to the latest released version of Debian. In both cases, the database of available packages must be refreshed (with the <command>apt update</command> command or the refresh button in <command>synaptic</command>).
+			</para>
+			 <para>
+				بمجرد تسجيل مصادر الحزم الجديدة هذه، عليك أولاً تنفيذ تحديث أصغري باستخدام <command>apt upgrade</command>. عند تنفيذ التحديث على دفعتين، نُسهِّل عمل أدوات إدارة الحزم ونضمن غالباً أننا نستخدم أحدث الإصدارات من هذه الأدوات، التي قد تقدم إصلاحات للعلل وتحسينات ضرورية لإتمام التحديث الكامل للتوزيعة.
+			</para>
+			 <para>
+				Once this first upgrade is done, it is time to handle the upgrade itself, either with <command>apt full-upgrade</command>, <command>aptitude</command>, or <command>synaptic</command>. You should carefully check the suggested actions before applying them: you might want to add suggested packages or deselect packages which are only recommended and known not to be useful. In any case, the front-end should come up with a scenario ending in a coherent and up-to-date <emphasis role="distribution">Stretch</emphasis> system. Then, all you need is to do is wait while the required packages are downloaded, answer the Debconf questions and possibly those about locally modified configuration files, and sit back while APT does its magic.
+			</para>
+
+		</section>
+		 <section>
+			<title>حل المشاكل بعد التحديث</title>
+			 <para>
+				بالرغم من أن مشرفي حزم دبيان يبذلون أفضل ما لديهم، إلا أن تحديث النظام بالكامل لا يجري بالسلاسة التي تتمناها دائماً. قد لا تتوافق إصدارات البرمجيات الجديدة مع القديمة (مثلا، قد يتغير سلوكها الافتراضي أو الصيغة التي تحفظ فيها البيانات). أيضاً، قد تتسلل بعض العلل من هنا وهناك بالرغم من طور الاختبار الذي يسبق إطلاق دبيان دائماً.
+			</para>
+			 <para>
+				لاستباق بعض هذه المشاكل، يمكنك تثبيت الحزمة <emphasis role="pkg">apt-listchanges</emphasis>، التي تعرض معلومات عن المشاكل المحتملة في بداية تحديث كل حزمة. يجمع مشرفو الحزم هذه المعلومات ويقدمونها للمستخدمين في ملفات <filename dir="ltr">/usr/share/doc/<replaceable>package</replaceable>/NEWS.Debian</filename>. يجب أن تساعدك قراءة هذه الملفات (ربما من خلال <emphasis role="pkg">apt-listchanges</emphasis>) على تفادي المفاجآت السيئة.
+			</para>
+			 <para>
+				قد تجد أحياناً أن النسخة الجديدة من البرنامج لا تعمل على الإطلاق. هذا يحدث عادة إذا لم يكن التطبيق شهيراً بما يكفي ولم يُختَبَر كما يجب؛ وقد يسبب تحديث البرنامج في اللحظات الأخيرة انتكاسات لا يُعثَر عليها إلا بعد إطلاق الإصدار المستقر. في كلا الحالتين، أول شيء يجب عمله هو إلقاء نظرة على نظام تتبع العلل على <literal>https://bugs.debian.org/<replaceable>package</replaceable></literal>، والتحقق فيما لو تم التبليغ عن العلة مسبقاً. إذا لم يبلغ عنها أحد، عليك التبليغ عنها بنفسك باستخدام <command>reportbug</command>. أما إذا كانت معروفة مسبقاً، فإن تقرير العلة والرسائل المرتبطة به مصدر ممتاز للمعلومات المتعلقة بالعلة عادة:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						أحياناً تكون الرقعة موجودة، ومتوفرة في تقرير العلة؛ يمكنك عندها إعادة ترجمة نسخة مصححة من الحزمة المعطوبة محلياً (انظر <xref linkend="sect.rebuilding-package" />)؛
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						في الحالات الأخرى، قد يعثر المستخدمون على طريقة للالتفاف حول المشكلة ويشاركون خبرتهم بها في ردودهم على التقرير؛
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						بل ثمة حالات يُحضِّر فيها المشرف حزمة مصححة وينشرها للعموم.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				تبعاً لخطورة العلة، قد يُحضَّر إصدار جديد من الحزمة خصيصاً لإحدى النسخ المنقحة من الإصدارة المستقرة. عند حدوث ذلك، تتوفر الحزمة المصححة في القسم <literal>proposed-updates</literal> في مرايا دبيان (انظر <xref linkend="sect.proposed-updates" />). يمكن إضافة المدخلة المطلوبة مؤقتاً إلى الملف <filename>sources.list</filename>، ويمكن تثبيت الحزم المحدّثة باستخدام <command>apt</command> أو <command>aptitude</command>.
+			</para>
+			 <para>
+				أحياناً لا تتوفر الحزمة المصححة في هذا القسم لأنها تنتظر مصادقة مديري الإصدارة المستقرة عليها. يمكنك التأكد من ذلك من صفحتهم على الوب. الحزم المذكورة هناك غير متوفرة بعد، لكنك ستعرف على الأقل أن عملية نشرها في تَقدُّم. <ulink type="block" url="https://release.debian.org/proposed-updates/stable.html" />
+			</para>
+
+		</section>
+
+	</section>
+	 <section id="sect.regular-upgrades">
+		<title>إبقاء النظام محدّثاً</title>
+		 <para>
+			توزيعة دبيان ديناميكية وتتغير باستمرار. معظم التغيرات تجري في الإصدارة <emphasis role="distribution">الاختبارية</emphasis> و <emphasis role="distribution">غير المستقرة</emphasis>، لكن حتى <emphasis role="distribution">المستقرة</emphasis> تُحدَّث من وقت إلى آخر، غالباً بسبب الإصلاحات الأمنية. مهما كانت نسخة دبيان التي يعمل بها النظام، من الجيد عموماً تحديثها بانتظام، حتى تستفيد من أحدث التطورات وإصلاحات العلل.
+		</para>
+		 <para>
+			في حين أنه يمكن تشغيل أداة للتحقق من التحديثات المتوفرة وتثبيتها دورياً، إلا أن هذه المهمة المتكررة مملة، خصوصاً عندما تحتاج لتنفيذها على عدة أجهزة. لحسن الحظ، يمكن أتمتة هذه العملية جزئياً، مثل العديد من المهام المتكررة الأخرى، وقد طُوِّرَتْ مجموعة من الأدوات مسبقاً لهذا الغرض.
+		</para>
+		 <para>
+			أولى هذه الأدوات هي <command>apticron</command>، في الحزمة ذات الاسم نفسه. مهمتها الأساسية تشغيل سكربت يومياً (من خلال <command>cron</command>). يحدّث السكربت قائمة الحزم المتوفرة، وفي حال وجود إصدارات أحدث لبعض الحزم المثبتة، سيرسل قائمة بهذه الحزم في بريد إلكتروني مرفقة بالتغيُّرات التي طرأت على الإصدارات الحديثة. من الوضح أن هذه الحزمة تستهدف مستخدمي دبيان <emphasis role="distribution">المستقرة</emphasis>، لأن الرسائل اليومية ستكون طويلة جداً بالنسبة لنسخ دبيان الأخرى الأكثر تقلباً. عند وجود تحديثات، تنزلها <command>apticron</command> آلياً. لكن لا تثبتها (يبقى مدير النظام مسؤولاً عن تثبيتها) لكن بما أن الحزم قد نزلت مسبقاً و أصبحت متوفرة محلياً (في مخبأ APT) فستكون العملية أسرع.
+		</para>
+		 <para>
+			Administrators in charge of several computers will no doubt appreciate being informed of pending upgrades, but the upgrades themselves are still as tedious as they used to be. Periodic upgrades can be enabled: it uses a <command>systemd</command> timer unit or <command>cron</command>. If <emphasis role="pkg">systemd</emphasis> is not installed the <filename>/etc/cron.daily/apt-compat</filename> script (in the <emphasis role="pkg">apt</emphasis> package) comes in handy. This script is run daily (and non-interactively) by <command>cron</command>. To control the behavior, use APT configuration variables (which are therefore stored in a file <filename>/etc/apt/apt.conf.d/10periodic</filename>). The main variables are:
+		</para>
+		 <variablelist>
+			<varlistentry>
+				<term><literal>APT::Periodic::Update-Package-Lists</literal></term>
+				 <listitem>
+					<para>
+						يسمح لك هذا الخيار بتحديد تواتر تحديث لوائح الحزم (بالأيام). يستطيع مستخدمو <command>apticron</command> تحديد هذا دون استخدام هذا المتغير، لأن <command>apticron</command> يقوم بهذه المهمة أصلاً.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::Download-Upgradeable-Packages</literal></term>
+				 <listitem>
+					<para>
+						هذا الخيار يحدد عدد مرات التكرار أيضًا (بالأيام)، لكنه يتحكم بتنزيل الحزم الفعلية. لا يحتاج مستخدمو <command>apticron</command> لهذا الخيار أيضًا.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::AutocleanInterval</literal></term>
+				 <listitem>
+					<para>
+						يغطي هذا الخيار ميزة لا تملكها <command>apticron</command>. فهو يتحكم بمدى تكرار إزالة الحزم المَيْتَة (التي لم تعد أي توزيعة تشير إليها) من مخبأ APT. تبقي هذه العملية حجم مخبأ APT معقولاً وهذا يعني أن لا داع للقلق بخصوص هذه المهمة بعد الآن.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+			 <varlistentry>
+				<term><literal>APT::Periodic::Unattended-Upgrade</literal></term>
+				 <listitem>
+					<indexterm><primary><emphasis role="pkg">unattended-upgrades</emphasis></primary></indexterm> <para>
+						عند تفعيل هذا الخيار، سوف يُنفِّذ السكربت اليومي الأمر <command>unattended-upgrade</command> (من الحزمة <emphasis role="pkg">unattended-upgrades</emphasis>) الذي يعمل (كما يدل اسمه) على تحديث بعض الحزم آلياً (يهتم هذا الأمر افتراضياً بالتحديثات الأمنية فقط، لكن يمكن تخصيصه عبر الملف <filename dir="ltr">/etc/apt/apt.conf.d/50unattended-upgrades</filename>). لاحظ أنه يمكن تفعيل هذا الخيار بمساعدة debconf عبر استدعاء الأمر <command>dpkg-reconfigure -plow unattended-upgrades</command>.
+					</para>
+
+				</listitem>
+
+			</varlistentry>
+
+		</variablelist>
+		 <para>
+			Other options can allow you to control the cache cleaning behavior with more precision. They are not listed here, but they are described in the <filename>/usr/lib/apt/apt.systemd.daily</filename> script.
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">gnome-packagekit</emphasis></primary>
+		</indexterm>
+		 <para>
+			These tools work very well for servers, but desktop users generally prefer a more interactive system. The package <emphasis role="pkg">gnome-packagekit</emphasis> provides an icon in the notification area of desktop environments when updates are available; clicking on this icon then runs <command>gpk-update-viewer</command>, a simplified interface to perform updates. You can browse through available updates, read the short description of the relevant packages and the corresponding <filename>changelog</filename> entries, and select whether to apply the update or not on a case-by-case basis.
+		</para>
+		 <figure>
+			<title>التحديث باستخدام <command>gpk-update-viewer</command></title>
+			 <mediaobject>
+				<imageobject>
+					<imagedata fileref="images/gnome-packagekit.png" format="PNG" scalefit="1" width="70%" />
+				</imageobject>
+
+			</mediaobject>
+
+		</figure>
+		 <para>
+			This tool is no longer installed in the default GNOME desktop. The new philosophy is that security updates should be automatically installed, either in the background or, preferably, when you shutdown your computer so as to not confuse any running application.
+		</para>
+
+	</section>
+	 <section id="sect.automatic-upgrades">
+		<title>التحديثات الآلية</title>
+		 <indexterm>
+			<primary>تحديث</primary>
+			<secondary>تحديث آلي للنظام</secondary>
+		</indexterm>
+		 <indexterm>
+			<primary>آلي، تحديث</primary>
+		</indexterm>
+		 <para>
+			بما أن شركة فلكوت تملك الكثير من الحواسيب لكن مواردها البشرية محدودة، فإن مدراء النظم فيها يحاولون أتمتة التحديثات قدر الإمكان. بالتالي، يجب أن تعمل البرامج المسؤولة عن هذه العمليات دون تدخل البشر.
+		</para>
+		 <section>
+			<title>إعداد <command>dpkg</command></title>
+			 <para>
+				كما ذكرنا سابقاً (انظر الملاحظة الجانبية <xref linkend="sidebar.questions-conffiles" />)، يمكن توجيه <command>dpkg</command> حتى لا يسأل عن تأكيد استبدال ملف الإعداد (باستخدام الخيارين <literal dir="ltr">--force-confdef --force-confold</literal>). لكن توجد ثلاثة مصادر أخرى لطلبات التفاعل على أي حال: بعضها يصدر عن APT نفسها، وبعضها يعالجها <command>debconf</command>، وبعضها يحدث على سطر الأوامر نتيجة سكربتات ضبط خاصة بالحزمة.
+			</para>
+
+		</section>
+		 <section>
+			<title>إعداد APT</title>
+			 <para>
+				حالة APT بسيطة: يطلب الخيار <literal dir="ltr">-y</literal> (أو <literal dir="ltr">--assume-yes</literal>) من APT أن تعتبر الإجابة عن جميع أسئلتها هي ”نعم“.
+			</para>
+
+		</section>
+		 <section>
+			<title>إعداد <command>debconf</command></title>
+			 <para>
+				تستحق حالة <command>debconf</command> تفصيلاً أكثر. لقد صُمِّم هذا البرنامج، منذ البداية، للتحكم بكمية ومستوى الأسئلة الموجهة للمستخدم، بالإضافة إلى طريقة عرضها. لهذا فإن إعداده يتطلب تحديد أولوية دنيا للأسئلة؛ وتعرض الأسئلة التي تتجاوز هذه الأولوية الدنيا فقط. يستخدم <command>debconf</command> الإجابة الافتراضية (التي حددها مشرف الحزمة) للأسئلة التي يراد تخطيها.
+			</para>
+			 <para>
+				إن عنصر الضبط الآخر المرتبط بهذا الموضوع هو النمط الذي تستخدمه الواجهة. إذا اخترت <literal>noninteractive</literal> من بين الخيارات، سيُعطِّل التفاعل مع المستخدم بالكامل. إذا حاولت الحزمة عرض ملاحظة إعلامية، فسوف تُرسِل إلى مدير النظام بالبريد الإلكتروني.
+			</para>
+			 <para>
+				لإعادة ضبط <command>debconf</command>، استخدم أداة <command>dpkg-reconfigure</command> من الحزمة <emphasis role="pkg">debconf</emphasis>؛ الأمر المطلوب هو <command>dpkg-reconfigure debconf</command>. لاحظ أن القيم المضبوطة يمكن تجاوزها مؤقتاً باستخدام متغيرات البيئة عند الحاجة (مثلاً، يتحكم <varname>DEBIAN_FRONTEND</varname> بالواجهة، كما هو موثق في صفحة الدليل <citerefentry><refentrytitle>debconf</refentrytitle>
+				<manvolnum>7</manvolnum></citerefentry>‎).
+			</para>
+
+		</section>
+		 <section>
+			<title>معالجة تفاعلات سطر الأوامر</title>
+			 <para>
+				آخر مصدر لطلب التفاعل، وأصعب مصدر للتخلص منه، هو سكربتات الإعداد التي يُشغّلها <command>dpkg</command>. لا يوجد أي حل قياسي للأسف، ولا توجد إجابة أفضل من غيرها.
+			</para>
+			 <para>
+				الطريقة الشائعة هي إغلاق مجرى الدخل القياسي بإعادة توجيهه إلى المحتوى الفارغ للملف <filename>/dev/null</filename> باستخدام <command><replaceable>command</replaceable> &lt;/dev/null</command>، أو تغذيته بعدد لانهائي من محارف newline. كلا الطريقتين غير مضمونة 100%، لكنها تؤدي عموماً إلى استخدام الإجابات الافتراضية، نظراً لأن معظم السكربتات تعتبر الصمت قبولاً بالقيمة الافتراضية.
+			</para>
+
+		</section>
+		 <section>
+			<title>الخلطة المعجزة</title>
+			 <para>
+				إذا جمعنا العناصر السابقة، يمكننا تصميم سكربت صغير لكنه موثوق يتولى التحديثات آلياً.
+			</para>
+			 <example id="example.non-interactive-upgrade">
+				<title>سكربت التحديث اللاتفاعلي</title>
+				 
+<programlisting>export DEBIAN_FRONTEND=noninteractive
+yes '' | apt-get -y -o DPkg::options::="--force-confdef" -o DPkg::options::="--force-confold" dist-upgrade</programlisting>
+
+			</example>
+			 <sidebar> <title><emphasis>ممارسة عملية</emphasis> حالة شركة فلكوت</title>
+			 <para>
+				الحواسيب في شركة فلكوت متباينة، ولها وظائف متنوعة. لذلك سيختار مديرو النظم الحل الأنسب لكل جهاز.
+			</para>
+			 <para>
+				In practice, the servers running <emphasis role="distribution">Stretch</emphasis> are configured with the “miracle combination” above, and are kept up to date automatically. Only the most critical servers (the firewalls, for instances) are set up with <command>apticron</command>, so that upgrades always happen under the supervision of an administrator.
+			</para>
+			 <para>
+				The office workstations in the administrative services also run <emphasis role="distribution">Stretch</emphasis>, but they are equipped with <emphasis role="pkg">gnome-packagekit</emphasis>, so that users trigger the upgrades themselves. The rationale for this decision is that if upgrades happen without an explicit action, the behavior of the computer might change unexpectedly, which could cause confusion for the main users.
+			</para>
+			 <para>
+				في المختبر، توجد عدة حواسيب تستخدم <emphasis role="distribution">الاختبارية</emphasis> –للاستفادة من آخر إصدارات البرمجيات– ولا تُحدّث هذه الأجهزة تلقائياً هي الأخرى. ضبط مديرو النظم APT بحيث تجهز التحديثات لكن دون أن تجريها؛ وعندما يقررون تحديث النظام (يدوياً)، سيتجاوزون مرحلتي تحديث قوائم الحزم المتوفرة وتنزيل الحزم، وسيتمكنون من التركيز على الجزء المفيد فعلياً.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.searching-packages">
+		<title>البحث عن الحزم</title>
+		 <para>
+			مع كمية البرمجيات الكبيرة في دبيان والتي تنمو باستمرار، تظهر مفارقة: لدى دبيان عادة أدوات لمعظم المهام، لكن العثور على تلك الأدوات من بين آلاف الحزم الأخرى قد يكون صعباً جداً. كان الافتقار للأساليب الملائمة للبحث عن الأداة الصحيحة (والعثور عليها) مشكلة منذ فترة طويلة. لقد حُلّت هذه المشكلة بالكامل تقريباً لحسن الحظ.
+		</para>
+		 <para>
+			أبسط عملية بحث ممكنة هي البحث عن اسم حزمة كما هو. إذا أعاد الأمر <command>apt show <replaceable>package</replaceable></command> نتيجة ما، فالحزمة موجودة. للأسف، هذا يتطلب معرفة اسم الحزمة أو ربما تخمينه، وهذا غير ممكن دائماً.
+		</para>
+		 <sidebar> <title><emphasis>تلميح</emphasis> عادات تسمية الحزم</title>
+		 <para>
+			تسمى بعض أنواع الحزم وفقاً لأسلوب تسمية تقليدي؛ قد تسمح لك معرفة الأسلوب بتخمين اسم الحزمة الدقيق أحياناً. مثلاً، بالنسبة لوحدات بيرل، تنص التقاليد على أن الوحدة المسماة <literal>XML::Handler::Composer</literal> في منبعها يجب تحزيمها في <emphasis role="pkg">libxml-handler-composer-perl</emphasis>. مكتبة بايثون التي تسمح باستخدام نظام <command>gconf</command> تحزم باسم <emphasis role="pkg">python-gconf</emphasis>. لا يمكن للأسف تعريف أساليب تسمية عامة لكل الحزم، ولو أن مشرفي الحزم يحاولون عادة اتباع خيارات المطورين المنبعيين.
+		</para>
+		 </sidebar> <para>
+			البحث عن نص بسيط في أسماء الحزم هي طريقة بحث أخرى أنجع قليلاً من سابقتها، لكنها تظل محدودة جداً. يمكن عموماً العثور على نتائج بالبحث في أوصاف الحزم: البحث عن الكلمات المفتاحية في أوصاف الحزم سيثمر غالباً، إذ تملك كل حزمة وصفاً مفصلاً كثيراً أو قليلاً بالإضافة إلى اسمها. <command>apt-cache</command> و<command>axi-cache</command> هما الأداتان اللازمتان لهذا النوع من البحث؛ مثلاً، <command>apt-cache search video</command> ستعيد لائحة بجميع الحزم التي يحتوي اسمها أو وصفها على الكلمة المفتاحية ”video“.
+		</para>
+		 <para>
+			بالنسبة لعمليات البحث الأكثر تعقيداً، ستحتاج لأداة أقوى مثل <command>aptitude</command>. تسمح لك <command>aptitude</command> بالبحث وفقاً لتعبير منطقي مبني على أساس حقول البيانات الفوقية للحزمة. مثلاً، يبحث الأمر التالي عن الحزم التي يحتوي اسمها على <literal>kino</literal>، ووصفها يحوي كلمة <literal>video</literal>، واسم المشرف عليها <literal>paul</literal>:
+		</para>
+		 
+<screen>$ <userinput>aptitude search kino~dvideo~mpaul</userinput>
+p   kino  - Non-linear editor for Digital Video data
+$ <userinput>aptitude show kino</userinput>
+Package: kino
+Version: 1.3.4-2.2+b2
+State: not installed
+Priority: extra
+Section: video
+Maintainer: Paul Brossier &lt;piem@debian.org&gt;
+Architecture: amd64
+Uncompressed Size: 8300 k
+Depends: libasound2 (&gt;= 1.0.16), libatk1.0-0 (&gt;= 1.12.4), libavc1394-0
+         (&gt;= 0.5.3), libavcodec57 (&gt;= 7:3.2.4) | libavcodec-extra57 (&gt;=
+         7:3.2.4), libavformat57 (&gt;= 7:3.2.4), libavutil55 (&gt;= 7:3.2.4), libc6
+         (&gt;= 2.14), libcairo2 (&gt;= 1.2.4), libdv4 (&gt;= 1.0.0), libfontconfig1
+         (&gt;= 2.11), libfreetype6 (&gt;= 2.2.1), libgcc1 (&gt;= 1:3.0),
+         libgdk-pixbuf2.0-0 (&gt;= 2.22.0), libglade2-0 (&gt;= 1:2.6.4-2~), libglib2.0-0
+         (&gt;= 2.16.0), libgtk2.0-0 (&gt;= 2.24.0), libice6 (&gt;= 1:1.0.0),
+         libiec61883-0 (&gt;= 1.2.0), libpango-1.0-0 (&gt;= 1.14.0), libpangocairo-1.0-0
+         (&gt;= 1.14.0), libpangoft2-1.0-0 (&gt;= 1.14.0), libquicktime2 (&gt;=
+         2:1.2.2), libraw1394-11, libsamplerate0 (&gt;= 0.1.7), libsm6, libstdc++6
+         (&gt;= 5.2), libswscale4 (&gt;= 7:3.2.4), libx11-6, libxext6, libxml2 (&gt;=
+         2.7.4), libxv1, zlib1g (&gt;= 1:1.1.4)
+Recommends: ffmpeg, curl
+Suggests: udev | hotplug, vorbis-tools, sox, mjpegtools, lame, ffmpeg2theora
+Conflicts: kino-dvtitler, kino-timfx, kinoplus, kino-dvtitler:i386, kino-timfx:i386,
+           kinoplus:i386, kino:i386
+Replaces: kino-dvtitler, kino-timfx, kinoplus, kino-dvtitler:i386, kino-timfx:i386,
+          kinoplus:i386
+Provides: kino-dvtitler, kino-timfx, kinoplus
+Description: Non-linear editor for Digital Video data
+ Kino allows you to record, create, edit, and play movies recorded with DV camcorders.
+ This program uses many keyboard commands for fast navigating and editing inside the
+ movie.
+ 
+ The kino-timfx, kino-dvtitler and kinoplus sets of plugins, formerly distributed as
+ separate packages, are now provided with Kino.
+Homepage: http://www.kinodv.org/
+Tags: field::arts, hardware::camera, implemented-in::c, implemented-in::c++,
+      interface::graphical, interface::x11, role::program, scope::application,
+      suite::gnome, uitoolkit::gtk, use::editing, use::learning,
+      works-with::video, x11::application
+</screen>
+		 <para>
+			يعيد البحث حزمة واحدة فقط، وهي <emphasis role="pkg">kino</emphasis>، التي تفي بجميع معايير البحث.
+		</para>
+		 <para>
+			حتى عمليات البحث متعددة المعايير هذه غير عمليّة، ما يفسر عدم استخدام الناس لها كما ينبغي. بالتالي تم تطوير نظام وسم جديد، وهو يقدم أسلوباً جديداً للبحث. تعطى الحزم وسوماً تقدّم تصنيفاً بحسب الموضوع من عدة نواحي، يعرف باسم ”التصنيف الموشوري“ (facet-based classification). في حالة <emphasis role="pkg">kino</emphasis> المبينة أعلاه، تشير وسوم الحزمة إلى أن Kino هو برنامج مبني على Gnome وهو يعالج الفيديو وغرضه الأساسي هو التحرير.
+		</para>
+		 <para>
+			Browsing this classification can help you to search for a package which corresponds to known needs; even if it returns a (moderate) number of hits, the rest of the search can be done manually. To do that, you can use the <literal>~G</literal> search pattern in <command>aptitude</command>, but it is probably easier to simply navigate the site where tags are managed: <ulink type="block" url="https://debtags.debian.org/" />
+		</para>
+		 <indexterm>
+			<primary><emphasis role="pkg">debtags</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary>وسم</primary>
+		</indexterm>
+		 <para>
+			إن اختيار الوسمين <literal>works-with::video</literal> و<literal>use::editing</literal> يعطي حفنة حزم، منها محرري الفيديو <emphasis role="pkg">kino</emphasis> و<emphasis role="pkg">pitivi</emphasis>. إن نظام التصنيف هذا في طريقه نحو الانتشار أكثر وأكثر مع مرور الوقت، وستقدم برامج إدارة الحزم واجهات بحث فعالة مبنية على أساسه.
+		</para>
+		 <para>
+			لتلخيص الموضوع، يعتمد اختيار أفضل أداة على مدى تعقيد البحث الذي ترغب بتنفيذه:
+		</para>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					تسمح لك <command>apt-cache</command> بالبحث في أسماء الحزم وأوصافها فقط، وهي مناسبة جداً عند البحث عن حزمة معينة توافق بضعة كلمات مفتاحية مستهدفة؛
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					عندما تحتوي معايير البحث أيضاً على علاقات بين الحزم أو بيانات فوقية أخرى مثل اسم المشرف عليها، سيكون <command>synaptic</command> أكثر فائدة؛
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					عند الحاجة إلى بحث مبني على أساس الوسوم، فإن <command>packagesearch</command> أداة جيدة لهذا الغرض، وهي واجهة رسومية مخصصة للبحث ضمن الحزم المتوفرة اعتماداً على عدة معايير (بما فيها أسماء الملفات التي تحويها). أما إذا أردت البحث من سطر الأوامر، فعليك باستخدام <command>axi-cache</command>.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">packagesearch</emphasis></primary>
+				</indexterm>
+				 <indexterm>
+					<primary><command>axi-cache</command></primary>
+				</indexterm>
+
+			</listitem>
+			 <listitem>
+				<para>
+					أخيراً، عندما يحوي البحث تعابير معقدة وعمليات منطقية، سيكون نظام <command>aptitude</command> للبحث عن النماذج الأداة المثلى لذلك، فهو قوي فعلاً بغض النظر عن غموضه نوعاً ما؛ وهو يعمل في النمطين النصي والتفاعلي.
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+
+	</section>
+</chapter>
+

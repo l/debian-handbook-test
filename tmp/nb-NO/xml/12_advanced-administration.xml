@@ -1,0 +1,2448 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="advanced-administration" lang="nb-NO">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>RAID</keyword>
+			 <keyword>LVM</keyword>
+			 <keyword>FAI</keyword>
+			 <keyword>Forhåndsutfylling</keyword>
+			 <keyword>Overvåking</keyword>
+			 <keyword>Virtualisering</keyword>
+			 <keyword>Xen</keyword>
+			 <keyword>LXC</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Avansert administrasjon</title>
+	 <highlights> <para>
+		Dette kapittelet tar opp igjen noen aspekter vi allerede har beskrevet, med et annet perspektiv: I stedet for å installere en enkelt datamaskin, vil vi studere masseutrullingssystemer; i stedet for å sette opp RAID eller LVM under installasjonen, vil vi lære å gjøre det for hånd, slik at vi senere kan endre våre første valg. Til slutt vil vi diskutere monitoreringsverktøy og virtualiseringsteknikker. Som en konsekvens, er dette kapitlet mest rettet mot profesjonelle administratorer, og fokuserer litt mindre på personer med ansvar for sine hjemmenettverk.
+	</para>
+	 </highlights> <section id="sect.raid-and-lvm">
+		<title>RAID og LVM</title>
+		 <para>
+			Disse teknologiene ble i <xref linkend="installation" /> presentert slik de ser ut fra installasjonsprogrammet, og hvordan de kan integreres til å gjøre utrullingen lett å komme igang med. Etter den første installasjonen, må en administrator kunne håndtere endring av lagringsplassbehov uten å måtte ty til en kostbar reinstallasjon. En må derfor forstå verktøyene som trengs for å håndtere RAID- og LVM-volumer.
+		</para>
+		 <para>
+			RAID og LVM er begge teknikker til å trekke ut de monterte volumene fra sine fysiske motstykker (faktiske harddisker eller partisjoner); den første sikrer data mot maskinvarefeil ved å innføre redundans, sistnevnte gjør volumadministrasjon mer fleksibel og uavhengig av den faktiske størrelsen på de underliggende disker. I begge tilfeller ender systemet opp med nye blokk-enheter, som kan brukes til å lage filsystemer eller vekselminnefiler, uten nødvendigvis å ha dem direktekoblet til en fysisk disk. RAID og LVM har vidt forskjellig bakgrunn, men funksjonaliteten kan overlappe noe, de er derfor ofte omtalt sammen.
+		</para>
+		 <sidebar> <title><emphasis>PERSPEKTIV</emphasis> Btrfs kombinerer LVM og RAID</title>
+		 <para>
+			Mens LVM og RAID er to forskjellige kjerne-delsystemer som ligger mellom disk blokk-enheter og filsystemene deres, er <emphasis>btrfs</emphasis> et nytt filsystem, opprinnelig utviklet i Oracle, som skal kombinere egenskapene til LVM og RAID, og mye mer. Det er for det meste funksjonelt, og selv om det fremdeles er merket «eksperimentell» fordi det ennå ikke er ferdig utviklet (noen funksjoner er ikke implementert ennå), er det allerede observert brukt i produksjonsmiljøer. <ulink type="block" url="http://btrfs.wiki.kernel.org/" />
+		</para>
+		 <para>
+			Blant funksjonene verdt å legge merke til, er muligheten til på ethvert tidspunkt å ta et øyeblikksbilde av et filsystemtre. Denne øyeblikksbilde-kopien vil i utgangspunktet ikke bruke diskplass, data blir bare duplisert når en av kopiene blir endret. Filsystemet håndterer også gjennomsiktig komprimering av filer, og sjekksummer sikrer integriteten til alle lagrede data.
+		</para>
+		 </sidebar> <para>
+			Både for RAID og LVM gir kjernen en blokk-enhetsfil, lik dem som refererer til en harddisk eller en partisjon. Når et program, eller en annen del av kjernen, krever tilgang til en blokk på en slik enhet, dirigerer det aktuelle delsystem blokken til det aktuelle fysiske laget. Avhengig av oppsettet, kan denne blokken lagres på en eller flere fysiske disker, og det trenger ikke være sammenheng mellom den fysiske plasseringen og plassering av blokken i den logiske enheten.
+		</para>
+		 <section id="sect.raid-soft">
+			<title>Programvare RAID</title>
+			 <indexterm>
+				<primary>RAID</primary>
+			</indexterm>
+			 <para>
+				RAID betyr <emphasis>Redundant Array of Independent Disks</emphasis>, dvs. redundant rekke av uavhengige disker. Målet med dette systemet er å hindre datatap hvis det blir feil på harddisken. Det generelle prinsippet er ganske enkelt: Data er lagret på flere fysiske disker i stedet for bare på én, med oppsatt grad av redundans. Avhengig av denne redundansmengden, og selv om det skjer en uventet diskfeil, kan data rekonstrueres uten tap fra de gjenværende disker.
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> <foreignphrase>Uavhengig</foreignphrase> eller <foreignphrase>billig</foreignphrase>?</title>
+			 <para>
+				I-en i RAID sto opprinnelig for <emphasis>inexpensive</emphasis> (billig), fordi RAID tillot en drastisk økning i datasikkerhet uten å kreve investering i dyre høykvalitetsdisker. Sannsynligvis på grunn av hvordan det oppfattes, er det imidlertid nå en mer vanlig å si at det står for <emphasis>independent</emphasis> (uavhengig), som ikke gir det uønskede inntrykket av å være billig.
+			</para>
+			 </sidebar> <para>
+				RAID kan implementeres enten ved øremerket maskinvare (RAID-moduler integrert i SCSI eller SATA-kontrollerkort), eller ved bruk av programvare-abstraksjoner (kjernen). Uansett om det er gjort i maskinvare eller programvare, kan et RAID-system, med nok redundans, fortsette å fungere når en disk feiler uten at brukeren oppdager problemer; de øvre lag av stabelen (applikasjoner) kan til og med fortsette å bruke dataene tross feilen. En slik «degradert modus» kan selvfølgelig ha en innvirkning på ytelsen, og redundansen er redusert, slik at en ytterligere diskfeil kan føre til tap av data. I praksis vil en derfor bestrebe seg på å bli værende med denne reduserte driften bare så lenge som det tar å erstatte den ødelagte disken. Så snart den nye disken er på plass, kan RAID-systemet rekonstruere de nødvendige data, og gå tilbake til en sikker modus. Programmene vil ikke merke noe, bortsett fra en potensielt redusert tilgangshastighet, mens området er i redusert drift, eller under rekonstruksjonsfasen.
+			</para>
+			 <para>
+				Når RAID implementeres i maskinvare, skjer oppsettet vanligvis i oppsettsverktøy i BIOS, og kjernen vil se på et RAID-sett som en enkelt disk, som vil virke som en standard fysisk disk, selv om navnet på enheten kan være forskjellig (avhengig av driveren).
+			</para>
+			 <para>
+				Vi fokuserer bare på programvare-RAID i denne boken.
+			</para>
+			 <section id="sect.raid-levels">
+				<title>Ulike RAID-nivåer</title>
+				 <para>
+					RAID er faktisk ikke et enkelt system, men et spekter av systemer som identifiseres av sine nivåer. Nivåene skiller seg ved sin utforming og mengden av redundans de gir. Jo mer redundans, jo mer feilsikkert, siden systemet vil være i stand til å fortsette arbeidet med flere disker som feiler. Ulempen er at plassen som kan brukes, krymper for et gitt sett med disker, eller med andre ord; flere disker vil være nødvendig for å lagre en gitt mengde data.
+				</para>
+				 <variablelist>
+					<varlistentry>
+						<term>Lineært RAID</term>
+						 <listitem>
+							<para>
+								Selv om kjernens RAID-delsystem kan lage «lineært RAID», er dette egentlig ikke en ekte RAID, siden dette oppsettet ikke gir redundans. Kjernen samler bare flere disker etter hverandre, og resulterer i et samlet volum som en virtuell disk (en blokkenhet). Det er omtrent dens eneste funksjon. Dette oppsettet brukes sjelden i seg selv (se senere for unntak), spesielt siden mangelen på redundans betyr at om en disk svikter, så feiler det samlede volumet, og gjør alle data utilgjengelige.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-0</term>
+						 <listitem>
+							<para>
+								Dette nivået gir heller ikke redundans, men diskene blir ikke lagt sammen ende mot ende: De blir delt i <emphasis>striper</emphasis>, og blokkene på den virtuelle enheten er lagret på striper på alternerende fysiske disker. I et to-disk RAID-0 oppsett, for eksempel, vil partallsblokker på den virtuelle enheten bli lagret på den første fysiske disken, mens oddetallsblokker vil komme på den andre fysiske disken.
+							</para>
+							 <para>
+								Dette systemet har ikke som mål å øke pålitelighet, siden (som i det lineære tilfellet) tilgjengeligheten til alle data er i fare så snart en disk svikter, men å øke ytelsen: Under sekvensiell tilgang til store mengder sammenhengende data, vil kjernen være i stand til å lese fra begge disker (eller skrive til dem) i parallell, noe som øker hastigheten på dataoverføringen. Imidlertid krymper bruken av RAID-0, da nisjen dens fylles av LVM (se senere).
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-1</term>
+						 <listitem>
+							<para>
+								Dette nivået, også kjent som "RAID-speiling", er både det enkleste og det mest brukte oppsettet. I standardformen bruker den to fysiske disker av samme størrelse, og gir et tilsvarende logisk volum av samme størrelse. Data er lagret identisk på begge disker, derav kallenavnet «speiling». Når en disk svikter, er dataene fremdeles tilgjengelig på den andre. For virkelig kritiske data, kan RAID-1 selvsagt settes opp på mer enn to disker, med direkte konsekvenser for forholdet mellom maskinvarekostnader opp mot tilgjengelig plass for nyttelast.
+							</para>
+							 <sidebar> <title><emphasis>MERK</emphasis> Disk- og klyngestørrelser</title>
+							 <para>
+								Hvis to disker av forskjellige størrelse er satt opp i et speil, vil ikke den største bli brukt fullt ut, siden den vil inneholde de samme dataene som den minste og ingenting mer. Den brukbare tilgjengelige plassen levert av et RAID-1-volum er dermed størrelsen på den minste disken i rekken. Dette gjelder også for RAID-volumer med høyere RAID-nivå, selv om redundansen er fordelt på en annen måte.
+							</para>
+							 <para>
+								Det er derfor viktig når du setter opp RAID-sett (unntatt for RAID-0 og «lineær RAID»), å bare sette sammen disker av identiske eller svært like størrelser, for å unngå å sløse med ressurser.
+							</para>
+							 </sidebar> <sidebar> <title><emphasis>MERK</emphasis> Reservedisker</title>
+							 <para>
+								RAID-nivåer som inkluderer redundans tillater tilordning av flere disker enn det som kreves til et sett. De ekstra diskene blir brukt som reservedisker når en av hoveddiskene svikter. For eksempel, i et speil som består av to disker pluss en i reserve; dersom en av de to første diskene svikter, vil kjernen automatisk (og umiddelbart) rekonstruere speilet ved hjelp av reservedisken, slik at redundansen forblir sikret etter gjenoppbyggingstidspunktet. Dette kan brukes som en annen form for ekstra sikkerhet for kritiske data.
+							</para>
+							 <para>
+								Det er forståelig hvis du undrer deg på hvordan dette er bedre enn å ganske enkelt bare speile på tre disker. Fordelen med «reservedisk»-oppsettet er at en ekstra disk kan deles på tvers av flere RAID-volumer. For eksempel kan man ha tre speilende volumer, med redundans sikret også når en disk svikter med bare syv disker (tre par, pluss en felles i reserve), i stedet for de ni diskene som ville være nødvendig med tre sett med tre disker.
+							</para>
+							 </sidebar> <para>
+								Dette RAID-nivået, selv om det er dyrere (da bare halvparten av den fysiske lagringsplassen, i beste fall, er i bruk), er mye brukt i praksis. Det er enkelt å forstå, og det gjør det svært enkle å ta sikkerhetskopi: Siden begge diskene har identisk innhold, kan en av dem bli midlertidig tatt ut uten noen innvirkning på systemet ellers. Leseytelsen er ofte økt siden kjernen kan lese halvparten av dataene på hver disk parallelt, mens skriveytelsen ikke er altfor alvorlig svekket. I tilfelle med et RAID-sett med N-disker, forblir data tilgjengelig selv med N-1 diskfeil.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-4</term>
+						 <listitem>
+							<para>
+								Dette RAID-nivået, ikke mye brukt, bruker N plater til å lagre nyttige data, og en ekstra disk til å lagre redundanssinformasjon. Hvis den disken svikter, kan systemet rekonstruere innholdet fra de andre N. Hvis en av de N datadiskene svikter, inneholder den gjenværende N-1 kombinert med «paritets»-disken nok informasjon til å rekonstruere de nødvendige dataene.
+							</para>
+							 <para>
+								RAID-4 er ikke for dyrt siden det bare omfatter en en-av-N økning i kostnader, og har ingen merkbar innvirkning på leseytelsen, men skriving går langsommere. Videre, siden skriving til hvilket som helst av N platene også omfatter skriving til paritetsdisken, ser sistnevnte mange flere skriveoperasjoner enn førstnevnte, og paritetsdiskens levetid kan som konsekvens forkortes dramatisk. Data på et RAID-4-sett er bare trygg med en feilet disk (av de N + 1).
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-5</term>
+						 <listitem>
+							<para>
+								RAID-5 løser asymmetriutfordringen til RAID-4: Paritetsblokker er spredt over alle N + 1 disker, uten at en enkeltdisk har en bestemt rolle.
+							</para>
+							 <para>
+								Lese- og skrivehastighet er den samme som for RAID-4. Her igjen forblir systemet funksjonelt med opp til en disk som feiler (av de N+1), men ikke flere.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-6</term>
+						 <listitem>
+							<para>
+								RAID-6 kan betraktes som en forlengelse av RAID-5, der hver serie med N blokker involverer to reserveblokker, og hver slik serie med N+2 blokker er spredt over N+2 disker.
+							</para>
+							 <para>
+								Dette RAID-nivået er litt dyrere enn de to foregående, men det bringer litt ekstra sikkerhet siden opptil to disker (av N+2) kan svikte uten at det går ut over datatilgjengeligheten. Ulempen er at skriveoperasjoner nå innebærer å skrive ut på en datablokk og to reserveblokker, noe som gjør dem enda tregere.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-1+0</term>
+						 <listitem>
+							<para>
+								Dette er strengt tatt ikke et RAID-nivå, men en samling av to RAID-grupperinger. En starter med 2×N disker og setter dem først opp som par i N RAID-1-volumer; Disse N volumene blir så samlet til ett, enten ved «lineært RAID», eller (i økende grad) med LVM. Dette siste tilfellet gjør mer enn rent RAID, men det er ikke problematisk.
+							</para>
+							 <para>
+								RAID-1+0 kan overleve flere diskfeil: opp til N i 2xN-settet som er beskrevet ovenfor, forutsatt at minst en disk fortsetter å virke i hver av RAID-1-parene.
+							</para>
+							 <sidebar id="sidebar.raid-10"> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> RAID-10</title>
+							 <para>
+								RAID-10 er generelt ansett som synonym for RAID-1+0, men en Linux-spesialitet gjør det faktisk til en generalisering. Dette oppsettet gjør det mulig med et system der hver blokk er lagret på to ulike disker, selv med et oddetall disker, der kopiene blir spredt ut i en modell som kan settes opp.
+							</para>
+							 <para>
+								Ytelsen vil variere avhengig av valgt repartisjonsmodell og redundansnivå, og av arbeidsmengden til det det logiske volumet.
+							</para>
+							 </sidebar>
+						</listitem>
+
+					</varlistentry>
+
+				</variablelist>
+				 <para>
+					Selvfølgelig må RAID-nivået velges ut fra begrensningene og kravene til hvert program. Merk at en enkelt datamaskin kan ha flere ulike RAID-sett med forskjellige oppsett.
+				</para>
+
+			</section>
+			 <section id="sect.raid-setup">
+				<title>Oppsett av RAID</title>
+				 <indexterm>
+					<primary><emphasis role="pkg">mdadm</emphasis></primary>
+				</indexterm>
+				 <para>
+					Oppsett av RAID-volumer krever <emphasis role="pkg">mdadm</emphasis>-pakken; den leverer <command>mdadm</command>-kommandoen, som gjør det mulig å lage og håndtere RAID-tabeller, samt prosedyrer og verktøy som integrerer den i resten av systemet, inkludert monitoreringssystemet.
+				</para>
+				 <para>
+					Vårt eksempel vil være en tjener med en rekke disker, der noen er allerede brukt, og resten er tilgjengelig til å sette opp RAID. Vi har i utgangspunktet følgende disker og partisjoner:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<filename>sdb</filename>-disken, 4 GB, er tilgjengelig i sin helhet;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<filename>sdc</filename>-disken, 4 GB, er også helt tilgjengelig;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							På <filename>sdd</filename>-disken, er bare partisjonen <filename>sdd2</filename> (rundt 4 GB) tilgjengelig;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							til slutt er en <filename>sde</filename>-disk, også på 4 GB, fullt ut tilgjengelig.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <sidebar> <title><emphasis>MERK</emphasis> Identifisere eksisterende RAID-volumer</title>
+				 <para>
+					Filen <filename>/proc/mdstat</filename> lister eksisterende volumer og tilstanden deres. Når du oppretter et nytt RAID-volum, bør man være forsiktig for å ikke gi det samme navnet som på et eksisterende volum.
+				</para>
+				 </sidebar> <para>
+					Vi kommer til å bruke disse fysiske elementene for å bygge to volumer, et RAID-0 og et speil (RAID-1). La oss starte med RAID-0-volumet:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc</userinput>
+<computeroutput>mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+# </computeroutput><userinput>mdadm --query /dev/md0</userinput>
+<computeroutput>/dev/md0: 8.00GiB raid0 2 devices, 0 spares. Use mdadm --detail for more detail.
+# </computeroutput><userinput>mdadm --detail /dev/md0</userinput>
+<computeroutput>/dev/md0:
+        Version : 1.2
+  Creation Time : Wed May  6 09:24:34 2015
+     Raid Level : raid0
+     Array Size : 8387584 (8.00 GiB 8.59 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:24:34 2015
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+     Chunk Size : 512K
+
+           Name : mirwiz:0  (local to host mirwiz)
+           UUID : bb085b35:28e821bd:20d697c9:650152bb
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0       8       16        0      active sync   /dev/sdb
+       1       8       32        1      active sync   /dev/sdc
+# </computeroutput><userinput>mkfs.ext4 /dev/md0</userinput>
+<computeroutput>mke2fs 1.42.12 (29-Aug-2014)
+Creating filesystem with 2095104 4k blocks and 524288 inodes
+Filesystem UUID: fff08295-bede-41a9-9c6a-8c7580e520a6
+Superblock backups stored on blocks: 
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
+
+Allocating group tables: done                            
+Writing inode tables: done                            
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done 
+# </computeroutput><userinput>mkdir /srv/raid-0</userinput>
+<computeroutput># </computeroutput><userinput>mount /dev/md0 /srv/raid-0</userinput>
+<computeroutput># </computeroutput><userinput>df -h /srv/raid-0</userinput>
+<computeroutput>Filesystem      Size  Used Avail Use% Mounted on
+/dev/md0        7.9G   18M  7.4G   1% /srv/raid-0
+</computeroutput></screen>
+				 <para>
+					Kommandoen <command>mdadm --create</command> krever flere parametre: Navnet på volumet som skal lages (<filename>/dev/md*</filename>, der MD står for <foreignphrase>Multiple Device</foreignphrase>), RAID-nivået, antall disker (som er obligatorisk til tross for at det er mest meningsfylt bare med RAID-1 og over), og de fysiske enhetene som skal brukes. Når enheten er opprettet, kan vi bruke den som vi ville bruke en vanlig partisjon, opprette et filsystem på den, montere dette filsystemet, og så videre. Vær oppmerksom på at vår oppretting av et RAID-0-volum på <filename>md0</filename> kun er et sammentreff, og nummereringen av tabellen ikke trenger å være korrelert til det valgte redundansnivå. Det er også mulig å lage navngitte RAID-arrays, ved å gi <command>mdadm</command> et parametre ala <filename>/dev/md/linear</filename> i stedet for <filename>/dev/md0</filename>.
+				</para>
+				 <para>
+					Opprettelse av et RAID-1 gjøres på lignende måte, forskjellene blir bare merkbare etter opprettelsen:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md1 --level=1 --raid-devices=2 /dev/sdd2 /dev/sde</userinput>
+<computeroutput>mdadm: Note: this array has metadata at the start and
+    may not be suitable as a boot device.  If you plan to
+    store '/boot' on this device please ensure that
+    your boot-loader understands md/v1.x metadata, or use
+    --metadata=0.90
+mdadm: largest drive (/dev/sdd2) exceeds size (4192192K) by more than 1%
+Continue creating array? </computeroutput><userinput>y</userinput>
+<computeroutput>mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md1 started.
+# </computeroutput><userinput>mdadm --query /dev/md1</userinput>
+<computeroutput>/dev/md1: 4.00GiB raid1 2 devices, 0 spares. Use mdadm --detail for more detail.
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+        Version : 1.2
+  Creation Time : Wed May  6 09:30:19 2015
+     Raid Level : raid1
+     Array Size : 4192192 (4.00 GiB 4.29 GB)
+  Used Dev Size : 4192192 (4.00 GiB 4.29 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:30:40 2015
+          State : clean, resyncing (PENDING) 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       1       8       64        1      active sync   /dev/sde
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+          State : clean
+[...]
+</computeroutput></screen>
+				 <sidebar> <title><emphasis>TIPS</emphasis> RAID, disker og partisjoner</title>
+				 <para>
+					Som illustrert i eksempelet vårt, kan RAID-enheter lages fra diskpartisjoner, og krever ikke hele disker.
+				</para>
+				 </sidebar> <para>
+					Noen få merknader er på sin plass. Først, <command>mdadm</command> merker at de fysiske elementene har forskjellige størrelser; siden dette innebærer at noe plass går tapt på de større elementene, kreves en bekreftelse.
+				</para>
+				 <para>
+					Enda viktigere er det å merke tilstanden til speilet. Normal tilstand for et RAID-speil er at begge diskene har nøyaktig samme innhold. Men ingenting garanterer at dette er tilfelle når volumet blir opprettet. RAID-delsystem vil derfor sikre denne garantien selv, og det vil være en synkroniseringsfase i det RAID-enheten er opprettet. Etter en tid (den nøyaktige tiden vil avhenge av den faktiske størrelsen på diskene ...), skifter RAID-tabellen til «aktiv» eller «ren» tilstand. Legg merke til at i løpet av denne gjenoppbyggingsfasen, er speilet i en degradert modus, og reservekapasitet er ikke sikret. En disk som svikter på dette trinnet kan føre til at alle data mistes. Store mengder av viktige data er imidlertid sjelden lagret på en nyopprettet RAID før den første synkroniseringen. Legg merke til at selv i degradert modus, vil <filename>/dev/md1</filename> kunne brukes, og et filsystem kan opprettes på den, og data kan kopieres inn.
+				</para>
+				 <sidebar> <title><emphasis>TIPS</emphasis> Oppstart av speil i degradert modus</title>
+				 <para>
+					Noen ganger er to disker ikke umiddelbart tilgjengelig når man ønsker å starte et RAID-1-speil, for eksempel fordi en av diskene som planlegges inkludert, allerede er brukt til å lagre dataene man ønsker å flytte til settet. I slike tilfeller er det mulig å med vilje opprette et degradert RAID-1-sett ved å sende <filename>missing</filename> i stedet for en enhetsfil som ett av argumentene til <command>mdadm</command>. Når dataene er kopiert til «speilet», kan den gamle disken legges til settet. Deretter vil det finne sted en synkronisering, noe som gir oss den reservekapasitet som var ønsket i første omgang.
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>TIPS</emphasis> Oppsett av et speil uten synkronisering</title>
+				 <para>
+					RAID-1-volumer opprettes oftest for å brukes som en ny disk, som antas å være blank. Det faktiske og opprinnelige innholdet på disken er dermed ikke så relevant, siden man bare trenger å vite at dataene som er skrevet etter at volumet og spesielt filsystemet er opprettet, kan nås senere.
+				</para>
+				 <para>
+					Man kan derfor lure på om poenget med å synkronisere begge diskene ved tidpunktet for opprettelsen er god. Hvorfor bry seg om innholdet er identisk på soner i volumet som vi vet kun vil leses etter at vi har skrevet til dem?
+				</para>
+				 <para>
+					Heldigvis kan denne synkroniseringsfasen unngås ved å sende inn <literal>--assume-clean</literal>-valget til <command>mdadm</command>. Imidlertid kan dette alternativet gi overraskelser i tilfeller hvor de opprinnelige dataene leses (for eksempel hvis et filsystem allerede er til stede på de fysiske diskene). Dette er grunnen til at valget ikke er aktivert som standard.
+				</para>
+				 </sidebar> <para>
+					La oss nå se hva som skjer når et av elementene i RAID-1-settet svikter. <command>mdadm</command>, spesielt <literal>--fail</literal>-valget tillater å simulere en slik diskfeiling:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --fail /dev/sde</userinput>
+<computeroutput>mdadm: set /dev/sde faulty in /dev/md1
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Update Time : Wed May  6 09:39:39 2015
+          State : clean, degraded 
+ Active Devices : 1
+Working Devices : 1
+ Failed Devices : 1
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 19
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       0        0        2      removed
+
+       1       8       64        -      faulty   /dev/sde</computeroutput></screen>
+				 <para>
+					Innholdet i volumet er fortsatt tilgjengelig (og, hvis det er montert, legger ikke programmene merke til noen ting), men datasikkerheten er ikke trygg lenger: Skulle <filename>sdd</filename>-disken i sin tur svikte, vil data gå tapt. Vi ønsker å unngå denne risikoen, så vi erstatter den ødelagte disken med en ny, <filename>sdf</filename>:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --add /dev/sdf</userinput>
+<computeroutput>mdadm: added /dev/sdf
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+   Raid Devices : 2
+  Total Devices : 3
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:48:49 2015
+          State : clean, degraded, recovering 
+ Active Devices : 1
+Working Devices : 2
+ Failed Devices : 1
+  Spare Devices : 1
+
+ Rebuild Status : 28% complete
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 26
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      spare rebuilding   /dev/sdf
+
+       1       8       64        -      faulty   /dev/sde
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Update Time : Wed May  6 09:49:08 2015
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 1
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 41
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      active sync   /dev/sdf
+
+       1       8       64        -      faulty   /dev/sde</computeroutput></screen>
+				 <para>
+					Her utløser kjernen som vanlig automatisk en rekonstruksjonsfase der volumet fortsatt er tilgjengelig, men i en degradert modus. Når gjenoppbyggingen er over, er RAID-settet tilbake i normal tilstand. Man kan da si til systemet at <filename>sde</filename>-disken er i ferd med å bli fjernet fra settet, for å ende opp med et klassisk RAID-speil med to disker:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --remove /dev/sde</userinput>
+<computeroutput>mdadm: hot removed /dev/sde from /dev/md1
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      active sync   /dev/sdf</computeroutput></screen>
+				 <para>
+					Etter dette kan disken fysisk fjernes når tjenermaskinen er slått av neste gang, eller til og med fjernes under kjøring hvis maskinvareoppsettet tillater det. Slike oppsett inkluderer noen SCSI-kontrollere, de fleste SATA-disker, og eksterne harddisker tilkoblet via USB eller Firewire.
+				</para>
+
+			</section>
+			 <section id="sect.backup-raid-config">
+				<title>Sikkerhetskopi av oppsettet</title>
+				 <para>
+					Det meste av meta-dataene som gjelder gjelder RAID-volumer lagres direkte på diskene til disse settene, slik at kjernen kan oppdage settene og tilhørende komponenter, og montere dem automatisk når systemet starter opp. Men det oppmuntres til sikkerhetskopiering av dette oppsettet, fordi denne deteksjonen ikke er feilfri, og det er bare å forvente at den vil svikte akkurat under følsomme omstendigheter. I vårt eksempel, hvis en svikt i <filename>sde</filename>-disken hadde vært virkelig (i stedet for simulert), og systemet har blitt startet på nytt uten å fjerne denne <filename>sde</filename>-disken, kunne denne disken bli tatt i bruk igjen etter å ha blitt oppdaget under omstarten. Kjernen vil da ha tre fysiske elementer, som hver utgir seg for å inneholde halvparten av det samme RAID-volumet. En annen kilde til forvirring kan komme når RAID-volumer fra to tjenermaskiner blir samlet inn i bare en tjenermaskin. Hvis disse settene kjørte normalt før diskene ble flyttet, ville kjernen være i stand til å oppdage og montere parene riktig; men hvis de flyttede diskene var samlet i en <filename>md1</filename> på den gamle tjeneren, og den nye tjeneren allerede har en <filename>md1</filename>, ville et av speilene få nytt navn.
+				</para>
+				 <para>
+					Å sikkerhetskopiere oppsettet er derfor viktig, om enn bare som referanse. Den vanlige måten å gjøre det på er å endre på <filename>/etc/mdadm/mdadm.conf</filename>-filen, et eksempel på det er listet her:
+				</para>
+				 <example id="example.mdadm-conf">
+					<title><command>mdadm</command>-oppsettsfil</title>
+					 
+<programlisting># mdadm.conf
+#
+# Please refer to mdadm.conf(5) for information about this file.
+#
+
+# by default (built-in), scan all partitions (/proc/partitions) and all
+# containers for MD superblocks. alternatively, specify devices to scan, using
+# wildcards if desired.
+DEVICE /dev/sd*
+
+# auto-create devices with Debian standard permissions
+CREATE owner=root group=disk mode=0660 auto=yes
+
+# automatically tag new arrays as belonging to the local system
+HOMEHOST &lt;system&gt;
+
+# instruct the monitoring daemon where to send mail alerts
+MAILADDR root
+
+# definitions of existing MD arrays
+ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
+ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f67464
+
+# This configuration was auto-generated on Thu, 17 Jan 2013 16:21:01 +0100
+# by mkconf 3.2.5-3</programlisting>
+
+				</example>
+				 <para>
+					En av de mest nyttige detaljer er <literal>DEVICE</literal>-valget, som viser enhetene som systemet automatisk vil undersøke for å se etter deler av RAID-volumer ved oppstarts. I vårt eksempel erstattet vi standardverdien, <literal>partitions containers</literal>, med en eksplisitt liste over enhetsfiler, siden vi valgte å bruke hele disker, og ikke bare partisjoner for noen volumer.
+				</para>
+				 <para>
+					De to siste linjene i vårt eksempel er de som tillater kjernen trygt å velge hvilke volumnummer som skal tilordnes hvilket sett. Metadataene som er lagret på selve diskene er nok til å sette volumene sammen igjen, men ikke for å bestemme volumnummeret (og det matchende <filename>/dev/md*</filename>-enhetsnavn).
+				</para>
+				 <para>
+					Heldigvis kan disse linjene generes automatisk:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm --misc --detail --brief /dev/md?</userinput>
+<computeroutput>ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
+ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f67464</computeroutput></screen>
+				 <para>
+					Innholdet i disse to siste linjene avhenger ikke av listen over disker som inngår i volumet. Det er derfor ikke nødvendig å lage disse linjene på nytt når du bytter ut en feilet disk med en ny. På den annen side må man sørge for å oppdatere filen når en oppretter eller sletter et RAID-sett.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.lvm">
+			<title>LVM</title>
+			 <indexterm>
+				<primary>LVM</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Logical Volume Manager ( logisk volumhåndtering)</primary>
+			</indexterm>
+			 <para>
+				LVM, <emphasis>Logical Volume Manager</emphasis> ( logisk volumhåndtering), er en annen tilnærming for å abstrahere logiske volumer fra sin fysiske forankring, som fokuserer på økt fleksibilitet i stedet for økt pålitelighet. LVM lar deg endre et logisk volum transparent så langt programmene angår; for eksempel er det mulig å legge til nye disker, overføre dataene til dem, og fjerne gamle disker, uten at volumet avmonteres.
+			</para>
+			 <section id="sect.lvm-concepts">
+				<title>LVM-konsepter</title>
+				 <para>
+					Denne fleksibilitet oppnås med et abstraksjonsnivå som involverer tre konsepter.
+				</para>
+				 <para>
+					Først, PV (<emphasis>Physical Volume</emphasis>, fysisk volum) er enheten nærmest maskinvaren: Det kan være partisjoner på en disk, en hel disk, eller til og med en annen blokkenhet (inkludert, for eksempel, et RAID-sett). Merk at når et fysisk element er satt opp til å bli en PV for LVM, skal den kun være tilgjengelige via LVM, ellers vil systemet bli forvirret.
+				</para>
+				 <para>
+					Et antall PV-er kan samles i en VG (<emphasis>Volume Group</emphasis>, volumgruppe), som kan sammenlignes med både virtuelle og utvidbare disker. VG-er er abstrakte, og dukker ikke opp som en enhetsfil i <filename>/dev</filename>-hierarkiet, så det er ingen risiko for å bruke dem direkte.
+				</para>
+				 <para>
+					Den tredje typen objekt er LV (<emphasis>Logical Volume</emphasis>, logisk volum), som er en del av en VG; hvis vi holder på analogien VG-som-disk, kan LV sammenlignes med en partisjon. LV-en fremstår som en blokkenhet med en oppføring i <filename>/dev</filename>, og den kan brukes som en hvilken som helst annen fysisk partisjon (som oftest, som en vert for et filsystem eller et vekselminne).
+				</para>
+				 <para>
+					Det viktige er at splittingen av en VG til LV-er er helt uavhengig av dens fysiske komponenter (PV-ene). En VG med bare en enkelt fysisk komponent (en disk for eksempel) kan deles opp i et dusin logiske volumer; på samme måte kan en VG bruke flere fysiske disker, og fremstå som et eneste stort logisk volum. Den eneste begrensningen, selvsagt, er at den totale størrelsen tildelt LV-er kan ikke være større enn den totale kapasiteten til PV-ene i volumgruppen.
+				</para>
+				 <para>
+					Det er imidlertid ofte fornuftig å ha en viss form for homogenitet blant de fysiske komponentene i en VG, og dele VG-en i logiske volumer som vil ha lignende brukermønstre. For eksempel, hvis tilgjengelig maskinvare inkluderer raske og tregere disker, kan de raske bli gruppert i en VG, og de tregere i en annen; deler av den første kan deretter bli tildelt til applikasjoner som krever rask tilgang til data, mens den andre kan beholdes til mindre krevende oppgaver.
+				</para>
+				 <para>
+					I alle fall, husk at en LV ikke er spesielt knyttet til en bestemt PV. Det er mulig å påvirke hvor data fra en LV fysisk er lagret, men å bruk denne muligheten er ikke nødvendig til daglig. Tvert imot: Ettersom settet med fysiske komponenter i en VG utvikler seg, kan de fysiske lagringsstedene som tilsvarer en bestemt LV, spres over disker (mens den selvfølgelig blir værende innenfor PV-er tildelt VG-en).
+				</para>
+
+			</section>
+			 <section id="sect.lvm-setup">
+				<title>Oppsett av LVM</title>
+				 <para>
+					La oss nå følge prosessen, steg for steg, med å sette opp LVM i et typisk brukstilfelle: Vi ønsker å forenkle en kompleks lagringssituasjon. En slik situasjon oppstår vanligvis etter en lang og innfløkt historie med akkumulerte midlertidige tiltak. For illustrasjonsformål vil vi vurdere en tjenermaskin der lagringsbehovene har endret seg over tid, og endte opp i en labyrint av tilgjengelige partisjoner fordelt over flere delvis brukte disker. Mer konkret er følgende partisjoner tilgjengelige:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							på <filename>sdb</filename>-disken, en <filename>sdb2</filename>-partisjon, 4 GB;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							på <filename>sdc</filename>-disken, en <filename>sdc3</filename>-partisjon, 3 GB;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<filename>sdd</filename>-disken, 4 GB, hele er tilgjengelig;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							på <filename>sdf</filename>-disken, en <filename>sdf1</filename>-partisjon, 4 GB; og en <filename>sdf2</filename>-partisjon, 5 GB.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					I tillegg, la oss anta at diskene <filename>sdb</filename> og <filename>sdf</filename> er raskere enn de to andre.
+				</para>
+				 <para>
+					Målet vårt er å sette opp tre logiske volumer for tre ulike programmer: En filtjener som krever 5 GB lagringsplass, en database (1 GB), og noe plass for sikkerhetskopiering (12 GB). De to første trenger god ytelse, men sikkerhetskopiering er mindre kritisk med tanke på tilgangshastighet. Alle disse begrensninger forhindrer bruk av partisjoner på egen hånd; å bruke LVM kan samle den fysiske størrelsen på enhetene, slik at den totale tilgjengelige plassen er den eneste begrensningen.
+				</para>
+				 <para>
+					Verktøyene som kreves er i <emphasis role="pkg">lvm2</emphasis>-pakken og dens avhengigheter. Når de er installert, skal det tre trinn til for å sette opp LVM som svarer til de tre konseptnivåene.
+				</para>
+				 <para>
+					Først gjør vi klare de fysiske volumene ved å bruke <command>pvcreate</command>:
+				</para>
+				 
+<screen id="screen.pvcreate"><computeroutput># </computeroutput><userinput>pvdisplay</userinput>
+<computeroutput># </computeroutput><userinput>pvcreate /dev/sdb2</userinput>
+<computeroutput>  Physical volume "/dev/sdb2" successfully created
+# </computeroutput><userinput>pvdisplay</userinput>
+<computeroutput>  "/dev/sdb2" is a new physical volume of "4.00 GiB"
+  --- NEW Physical volume ---
+  PV Name               /dev/sdb2
+  VG Name               
+  PV Size               4.00 GiB
+  Allocatable           NO
+  PE Size               0   
+  Total PE              0
+  Free PE               0
+  Allocated PE          0
+  PV UUID               0zuiQQ-j1Oe-P593-4tsN-9FGy-TY0d-Quz31I
+
+# </computeroutput><userinput>for i in sdc3 sdd sdf1 sdf2 ; do pvcreate /dev/$i ; done</userinput>
+<computeroutput>  Physical volume "/dev/sdc3" successfully created
+  Physical volume "/dev/sdd" successfully created
+  Physical volume "/dev/sdf1" successfully created
+  Physical volume "/dev/sdf2" successfully created
+# </computeroutput><userinput>pvdisplay -C</userinput>
+<computeroutput>  PV         VG   Fmt  Attr PSize PFree
+  /dev/sdb2       lvm2 ---  4.00g 4.00g
+  /dev/sdc3       lvm2 ---  3.09g 3.09g
+  /dev/sdd        lvm2 ---  4.00g 4.00g
+  /dev/sdf1       lvm2 ---  4.10g 4.10g
+  /dev/sdf2       lvm2 ---  5.22g 5.22g
+</computeroutput></screen>
+				 <para>
+					Alt bra så langt. Vær oppmerksom på at en PV kan settes opp på en hel disk, samt på individuelle partisjoner på disken. Kommandoen <command>pvdisplay</command>, som vist ovenfor, lister eksisterende PV-er, med to mulige utdataformater.
+				</para>
+				 <para>
+					Deretter setter vi sammen disse fysiske elementer til VG-er ved å bruke <command>vgcreate</command>. Vi samler kun raske PV-er i VG-en <filename>vg_critical</filename>. Den andre VG-en, <filename>vg_normal</filename>, vil inneholde også langsommere enheter.
+				</para>
+				 
+<screen id="screen.vgcreate"><computeroutput># </computeroutput><userinput>vgdisplay</userinput>
+<computeroutput>  No volume groups found
+# </computeroutput><userinput>vgcreate vg_critical /dev/sdb2 /dev/sdf1</userinput>
+<computeroutput>  Volume group "vg_critical" successfully created
+# </computeroutput><userinput>vgdisplay</userinput>
+<computeroutput>  --- Volume group ---
+  VG Name               vg_critical
+  System ID             
+  Format                lvm2
+  Metadata Areas        2
+  Metadata Sequence No  1
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                0
+  Open LV               0
+  Max PV                0
+  Cur PV                2
+  Act PV                2
+  VG Size               8.09 GiB
+  PE Size               4.00 MiB
+  Total PE              2071
+  Alloc PE / Size       0 / 0   
+  Free  PE / Size       2071 / 8.09 GiB
+  VG UUID               bpq7zO-PzPD-R7HW-V8eN-c10c-S32h-f6rKqp
+
+# </computeroutput><userinput>vgcreate vg_normal /dev/sdc3 /dev/sdd /dev/sdf2</userinput>
+<computeroutput>  Volume group "vg_normal" successfully created
+# </computeroutput><userinput>vgdisplay -C</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize  VFree 
+  vg_critical   2   0   0 wz--n-  8.09g  8.09g
+  vg_normal     3   0   0 wz--n- 12.30g 12.30g
+</computeroutput></screen>
+				 <para>
+					Her ser vi igjen at kommandoene er ganske greie (og <command>vgdisplay</command> foreslår to utdataformater). Merk at det er fullt mulig å bruke to partisjoner på samme fysiske disk i to forskjellige VG-er. Merk også at vi navnga våre VG-er med <filename>vg_</filename>-forstavelse. Dette er ikke noe mer enn en konvensjon.
+				</para>
+				 <para>
+					Vi har nå to «virtuelle disker», med størrelse henholdsvis ca. 8 GB og 12 GB. La oss nå dele dem opp i «virtuelle partisjoner» (LV-er). Dette innebærer bruk av kommandoen <command>lvcreate</command>, og en litt mer komplisert syntaks:
+				</para>
+				 
+<screen id="screen.lvcreate"><computeroutput># </computeroutput><userinput>lvdisplay</userinput>
+<computeroutput># </computeroutput><userinput>lvcreate -n lv_files -L 5G vg_critical</userinput>
+<computeroutput>  Logical volume "lv_files" created
+# </computeroutput><userinput>lvdisplay</userinput>
+<computeroutput>  --- Logical volume ---
+  LV Path                /dev/vg_critical/lv_files
+  LV Name                lv_files
+  VG Name                vg_critical
+  LV UUID                J3V0oE-cBYO-KyDe-5e0m-3f70-nv0S-kCWbpT
+  LV Write Access        read/write
+  LV Creation host, time mirwiz, 2015-06-10 06:10:50 -0400
+  LV Status              available
+  # open                 0
+  LV Size                5.00 GiB
+  Current LE             1280
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+
+# </computeroutput><userinput>lvcreate -n lv_base -L 1G vg_critical</userinput>
+<computeroutput>  Logical volume "lv_base" created
+# </computeroutput><userinput>lvcreate -n lv_backups -L 12G vg_normal</userinput>
+<computeroutput>  Logical volume "lv_backups" created
+# </computeroutput><userinput>lvdisplay -C</userinput>
+<computeroutput>  LV         VG          Attr     LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_base    vg_critical -wi-a---  1.00g                                           
+  lv_files   vg_critical -wi-a---  5.00g                                           
+  lv_backups vg_normal   -wi-a--- 12.00g</computeroutput></screen>
+				 <para>
+					To parameter er nødvendig når du oppretter logiske volumer; de må sendes til <command>lvcreate</command> som tilvalg. Navnet på LV som skal opprettes er angitt med alternativet <literal>-n</literal>, og dens størrelse er generelt gitt ved å bruke <literal>-L</literal>-alternativet. Vi trenger også, selvfølgelig, å fortelle kommandoen hvilken VG som skal brukes, derav det siste parameteret på kommandolinjen.
+				</para>
+				 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> <command>lvcreate</command>-valgene</title>
+				 <para>
+					Kommandoen <command>lvcreate</command> har flere alternativer for å tilpasse hvordan LV-en opprettes.
+				</para>
+				 <para>
+					La oss først beskrive <literal>-l</literal>-valget, der LVs størrelse kan gis som et antall blokker (i motsetning til de «menneskelige» enheter vi brukte ovenfor). Disse blokkene (kalt PES, <emphasis>physical extents</emphasis> (fysiske omfang), i LVM-termer) er sammenhengende enheter med lagringsplass i PV-er, og de kan ikke deles på tvers av LV-er. Når man ønsker å definere lagringsplass for en LV med noe presisjon, for eksempel å bruke hele den tilgjengelige plassen, vil <literal>-l</literal>-valget trolig foretrekkes fremfor <literal>-L</literal>.
+				</para>
+				 <para>
+					Det er også mulig å hinte om fysisk plassering for en LV, slik at dens omfang lagres på en bestemt PV (mens du selvfølgelig er innenfor den som er tildelt VG-en). Siden vi vet at <filename>sdb</filename> er raskere enn <filename>sdf</filename>, kan det hende vi ønsker å lagre <filename>lv_base</filename> der hvis vi ønsker å gi en fordel til databasetjeneren i forhold til filtjeneren. Da blir kommandolinjen: <command>lvcreate -n lv_base -L 1G vg_critical /dev/sdb2</command>. Merk at denne kommandoen kan feile hvis PV-en ikke har nok ledig plass. I vårt eksempel ville vi trolig måtte lage <filename>lv_base</filename> før <filename>lv_files</filename> for å unngå denne situasjonen - eller frigjøre litt plass på <filename>sdb2</filename> med kommandoen <command>pvmove</command>.
+				</para>
+				 </sidebar> <para>
+					Logiske volumer, når de er opprettet, ender opp som blokkenhetsfiler i <filename>/dev/mapper/</filename>:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>ls -l /dev/mapper</userinput>
+<computeroutput>total 0
+crw------- 1 root root 10, 236 Jun 10 16:52 control
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_critical-lv_base -&gt; ../dm-1
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_critical-lv_files -&gt; ../dm-0
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_normal-lv_backups -&gt; ../dm-2
+# </computeroutput><userinput>ls -l /dev/dm-*</userinput>
+<computeroutput>brw-rw---T 1 root disk 253, 0 Jun 10 17:05 /dev/dm-0
+brw-rw---- 1 root disk 253, 1 Jun 10 17:05 /dev/dm-1
+brw-rw---- 1 root disk 253, 2 Jun 10 17:05 /dev/dm-2
+</computeroutput></screen>
+				 <sidebar> <title><emphasis>MERK</emphasis> Oppdag LVM-volumer automatisk</title>
+				 <para>
+					Når datamaskinen starter, vil systemd-tjenesteenheten <filename>lvm2-activation</filename> kjøre <command>vgchange -aay</command> for å «aktivisere» volumgrupper. Denne søker igjennom de tilgjengelige enhetene; de som har blitt initialisert som fysiske volumer for LVM, blir registrert i LVM-delsystemet, de som tilhører volumgrupper monteres, og de aktuelle logiske volumer startes og gjøres tilgjengelige. Det er derfor ikke nødvendig å endre på oppsettsfiler når du oppretter eller endrer LVM-volumer.
+				</para>
+				 <para>
+					Merk imidlertid at utformingen av LVM-elementer (fysiske og logiske volumer, og volumgrupper) sikkerhetskopieres i <filename>/etc/lvm/backup</filename>, som er nyttig hvis det oppstår et problem (eller bare for å titte under panseret).
+				</para>
+				 </sidebar> <para>
+					For å gjøre ting enklere er praktiske og egnede symbolske lenker også opprettet i kataloger som samsvarer med VG-er:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>ls -l /dev/vg_critical</userinput>
+<computeroutput>total 0
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_base -&gt; ../dm-1
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_files -&gt; ../dm-0
+# </computeroutput><userinput>ls -l /dev/vg_normal</userinput>
+<computeroutput>total 0
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_backups -&gt; ../dm-2</computeroutput></screen>
+				 <para>
+					LV-ene kan deretter brukes akkurat som vanlige partisjoner:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mkfs.ext4 /dev/vg_normal/lv_backups</userinput>
+<computeroutput>mke2fs 1.42.12 (29-Aug-2014)
+Creating filesystem with 3145728 4k blocks and 786432 inodes
+Filesystem UUID: b5236976-e0e2-462e-81f5-0ae835ddab1d
+[...]
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done 
+# </computeroutput><userinput>mkdir /srv/backups</userinput>
+<computeroutput># </computeroutput><userinput>mount /dev/vg_normal/lv_backups /srv/backups</userinput>
+<computeroutput># </computeroutput><userinput>df -h /srv/backups</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_normal-lv_backups   12G   30M   12G   1% /srv/backups
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>cat /etc/fstab</userinput>
+<computeroutput>[...]
+/dev/vg_critical/lv_base    /srv/base       ext4 defaults 0 2
+/dev/vg_critical/lv_files   /srv/files      ext4 defaults 0 2
+/dev/vg_normal/lv_backups   /srv/backups    ext4 defaults 0 2</computeroutput></screen>
+				 <para>
+					Fra programmenes synspunkt har de utallige små partisjonene nå blitt abstrahert til ett stort 12 GB volum, med et hyggeligere navn.
+				</para>
+
+			</section>
+			 <section id="sect.lvm-over-time">
+				<title>LVM over tid</title>
+				 <para>
+					Selv om muligheten til å samle sammen partisjoner eller fysiske disker er praktisk, er dette ikke den viktigste fordelen LVM gir oss. Fleksibiliteten den gir, merkes spesielt over tid, etter som behovene utvikler seg. I vårt eksempel, la oss anta at nye store filer må lagres, og at LV øremerket til filtjeneren er for liten til å romme dem. Siden vi ikke har brukt hele plassen i <filename>vg_critical</filename>, kan vi gjøre <filename>lv_files</filename> større. Til det formålet bruker vi kommandoen <command>lvresize</command>, deretter <command>resize2fs</command> for å tilpasse filsystemet tilsvarende:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>df -h /srv/files/</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_files  5.0G  4.6G  146M  97% /srv/files
+# </computeroutput><userinput>lvdisplay -C vg_critical/lv_files</userinput>
+<computeroutput>  LV       VG          Attr     LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_files vg_critical -wi-ao-- 5.00g
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree
+  vg_critical   2   2   0 wz--n- 8.09g 2.09g
+# </computeroutput><userinput>lvresize -L 7G vg_critical/lv_files</userinput>
+<computeroutput>  Size of logical volume vg_critical/lv_files changed from 5.00 GiB (1280 extents) to 7.00 GiB (1792 extents).
+  Logical volume lv_files successfully resized
+# </computeroutput><userinput>lvdisplay -C vg_critical/lv_files</userinput>
+<computeroutput>  LV       VG          Attr     LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_files vg_critical -wi-ao-- 7.00g
+# </computeroutput><userinput>resize2fs /dev/vg_critical/lv_files</userinput>
+<computeroutput>resize2fs 1.42.12 (29-Aug-2014)
+Filesystem at /dev/vg_critical/lv_files is mounted on /srv/files; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 1
+The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
+
+# </computeroutput><userinput>df -h /srv/files/</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_files  6.9G  4.6G  2.1G  70% /srv/files</computeroutput></screen>
+				 <sidebar> <title><emphasis>VÆR VARSOM</emphasis> Endre størrelse på filsystemer</title>
+				 <para>
+					Ikke alle filsystemer kan endre størrelse mens de er i bruk; Å endre størrelse på et volum kan derfor kreve at filsystemet avmonteres først og monteres på nytt i etterkant. Naturligvis, hvis en ønsker å krympe plassen avsatt til en LV, må filsystemet krympes først;. Rekkefølgen reverseres når endring av størrelse går i motsatt retning: det logiske volumet må utvides før filsystemet det inneholder. Det er ganske enkelt, siden ikke på noe tidspunkt må filsystemets størrelse være større enn blokkenheten der den ligger (enten den enheten er en fysisk partisjon eller et logisk volum).
+				</para>
+				 <para>
+					Filsystemene ext3, ext4 og xfs kan vokse mens de er i bruk, uten avmontering. Krymping krever avmontering. Reiserfs filsystem tillater endring av størrelse i begge retninger mens det er i bruk. Det ærverdige ext2 håndterer ingen av delene, og krever alltid avmontering.
+				</para>
+				 </sidebar> <para>
+					Vi kunne fortsette med på tilsvarende måte å utvide volumet som er vertskap for databasen, men vi har nådd VG-ens grense for tilgjengelig plass:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>df -h /srv/base/</userinput>
+<computeroutput>Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_base 1008M  854M  104M  90% /srv/base
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree 
+  vg_critical   2   2   0 wz--n- 8.09g 92.00m</computeroutput></screen>
+				 <para>
+					Det gjør ikke noe, ettersom LVM lar en legge fysiske volumer til eksisterende volumgrupper. For eksempel, kanskje har vi lagt merke til at <filename>sdb1</filename>-partisjonen, som så langt ble brukt utenfor LVM, bare inneholdt arkiver som kan flyttes til <filename>lv_backups</filename>. Vi kan nå resirkulere den, og ta den inn i volumgruppen , og dermed gjenvinne noe ledig plass. Dette er hensikten med kommandoen <command>vgextend</command>. Først må selvfølgelig partisjonen forberedes som et fysisk volum. Når VG er utvidet, kan vi bruke lignende kommandoer som tidligere for å utvide det logiske volumet, deretter filsystemets:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>pvcreate /dev/sdb1</userinput>
+<computeroutput>  Physical volume "/dev/sdb1" successfully created
+# </computeroutput><userinput>vgextend vg_critical /dev/sdb1</userinput>
+<computeroutput>  Volume group "vg_critical" successfully extended
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree
+  vg_critical   3   2   0 wz--n- 9.09g 1.09g
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>df -h /srv/base/</userinput>
+<computeroutput>Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_base  2.0G  854M  1.1G  45% /srv/base</computeroutput></screen>
+				 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Avansert LVM</title>
+				 <para>
+					LVM åpner også for mer avansert bruk, der mange detaljer kan spesifiseres for hånd. For eksempel kan en administrator justere størrelsen på blokkene som utgjør fysiske og logiske volumer, samt deres fysiske utforminger. Det er også mulig å flytte blokker mellom PV-er, for eksempel for å finjustere ytelsen, eller mer hverdagslig, å frigjøre en PV når man trenger å trekke ut den tilsvarende fysiske disken fra VG-en (om den skal kobles til en annen VG eller å fjernes helt fra LVM). Manualsidene som beskriver kommandoene er generelt klare og detaljerte. Et god inngangspunkt er manualsiden<citerefentry><refentrytitle>lvm</refentrytitle>
+					 <manvolnum>8</manvolnum></citerefentry>.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.raid-or-lvm">
+			<title>RAID eller LVM?</title>
+			 <para>
+				Både RAID og LVM bringer udiskutable fordeler så snart man forlater det enkle tilfellet med en stasjonær datamaskin med en enkelt harddisk, der bruksmønster ikke endres over tid. Men RAID og LVM går i to forskjellige retninger, med divergerende mål, og det er legitimt å lure på hvilken som bør velges. Det mest hensiktsmessige svaret vil selvfølgelig avhenge av nåværende og forventede krav.
+			</para>
+			 <para>
+				Det finnes noen enkle tilfeller hvor spørsmålet egentlig ikke oppstår. Hvis kravet er å sikre data mot maskinvarefeil, så vil åpenbart RAID bli satt opp med en romslig sett med disker, ettersom LVM ikke løser dette problemet. På den andre side, dersom det er behov for et fleksibelt lagringsopplegg der volumene lages uavhengig av den fysiske utformingen av diskene, bidrar ikke RAID med mye, og LVM vil være det naturlige valget.
+			</para>
+			 <sidebar> <title><emphasis>MERK</emphasis> Når ytelse teller…</title>
+			 <para>
+				Hvis input/output-hastighet er viktig, spesielt i form av aksesstid, kan det å bruke LVM og/eller RAID i en av de mange kombinasjonene ha en viss innvirkning på ytelser, og dette kan påvirke beslutninger om hvilken som skal velges. Men disse forskjellene i ytelse er veldig små, og vil bare være målbare i noen brukstilfeller. Hvis ytelsen betyr noe, er det størst gevinst ved å bruke ikke-roterende lagringsmedier (<indexterm><primary>SSD</primary></indexterm><emphasis>solid-state drives</emphasis>, eller SSDs). Kostnaden deres pr. megabyte er høyere enn for standard harddisker, kapasiteten deres er vanligvis mindre, men de gir utmerkede resultater for tilfeldig aksess. Hvis bruksmønster inneholder mange input/output-operasjoner spredt rundt i filsystemet, for eksempel for databaser der komplekse spørringer blir kjørt rutinemessig, så oppveier fordelen av å kjøre dem på en SSD langt hva som kan oppnås ved å velge LVM over RAID eller omvendt. I slike situasjoner bør valget bestemmes av andre hensyn enn ren fart, siden ytelsesaspektet lettest håndteres ved å bruke SSD.
+			</para>
+			 </sidebar> <para>
+				Det tredje bemerkelsesverdige brukstilfellet er når man bare ønsker å samle to disker i ett volum, enten av ytelseshensyn, eller for å ha et enkelt filsystem som er større enn noen av de tilgjengelige diskene. Dette tilfellet kan adresseres både med en RAID-0 (eller til og med en lineær-RAID), og med et LVM-volum. Når du er i denne situasjonen, og ikke har øvrige begrensninger (for eksempel å måtte fungere likt med de andre datamaskinene hvis de bare bruker RAID), vil oppsettsvalget ofte være LVM. Første gangs oppsett er ikke spesielt mer komplekst, og den svake økning i kompleksitet mer enn gjør opp for LVMs ekstra fleksibilitet dersom kravene må endres, eller dersom nye disker må legges til.
+			</para>
+			 <para>
+				Så er det selvfølgelig det virkelig interessante brukseksempel, der lagringssystemet må gjøres både motstandsdyktig mot maskinvarefeil, og gi en fleksibel volumtildeling. Verken RAID eller LVM kan imøtekomme begge kravene på egen hånd. Uansett, det er her vi bruker begge samtidig - eller rettere sagt, den ene oppå den andre. Ordningen som har alt, men er blitt en standard siden RAID og LVM har nådd modenheten til å sikre datatallighet (dataredundans), først ved å gruppere disker i et lite antall store RAID-sett, og å bruke disse RAID-settene som LVM fysiske volumer. Logiske partisjoner vil da bli meislet ut fra disse LV-ene for filsystemer. Salgsargumentet med dette oppsettet er at når en disk svikter, vil bare et lite antall RAID-sett trenge rekonstruksjon, og dermed begrense tiden administrator bruker for gjenoppretting.
+			</para>
+			 <para>
+				La oss ta et konkret eksempel: PR-avdelingen på Falcot Corp trenger en arbeidsstasjon for videoredigering, men avdelingens budsjett tillater ikke investere i dyr maskinvare fra bunnen av. Det er bestemt at maskinvaren som er spesifikk for det grafiske arbeidets art (skjerm og skjermkort) skal prioriteres, og at en skal fortsette med felles maskinvare for lagring. Men som kjent har digital video noen særegne krav til lagringen sin, datamengden er stor og gjennomstrømmingshastigheten for lesing og skriving er viktig for systemets generelle ytelse (for eksempel mer enn typisk aksesstid). Disse begrensningene må imøtekommes med vanlig maskinvare, i dette tilfellet to 300 GB SATA-harddisker. Systemdata må også gjøres motstandsdyktig mot maskinvarefeil, det samme gjelder noe brukerdata. Ferdigredigerte videoklipp må være trygge, men for videoer som venter på redigering er det mindre kritisk, siden de fortsatt er på videobånd.
+			</para>
+			 <para>
+				RAID-1 og LVM kombineres for å tilfredsstille disse begrensningene. Diskene er knyttet til to forskjellige SATA-kontrollere for å optimalisere parallell tilgang, og redusere risikoen for samtidig svikt, og de vises derfor som <filename>sda</filename> og <filename>sdc</filename>. De er partisjonert likt slik det vises under:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>fdisk -l /dev/sda</userinput>
+<computeroutput>
+Disk /dev/sda: 300 GB, 300090728448 bytes, 586114704 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x00039a9f
+
+Device    Boot     Start       End   Sectors Size Id Type
+/dev/sda1 *         2048   1992060   1990012 1.0G fd Linux raid autodetect
+/dev/sda2        1992061   3984120   1992059 1.0G 82 Linux swap / Solaris
+/dev/sda3        4000185 586099395 582099210 298G 5  Extended
+/dev/sda5        4000185 203977305 199977120 102G fd Linux raid autodetect
+/dev/sda6      203977306 403970490 199993184 102G fd Linux raid autodetect
+/dev/sda7      403970491 586099395 182128904  93G 8e Linux LVM</computeroutput></screen>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						De første partisjonene på begge diskene (ca 1 GB) er satt sammen til ett RAID-1-volum <filename>md0</filename>. Dette speilet er brukt direkte til å lagre rotfilsystemet.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Partisjonene <filename>sda2</filename> og <filename>sdc2</filename> brukes som vekselminnepartisjoner, noe som gir totalt 2 GB vekselminne. Med 1 GB RAM, har arbeidsstasjonen tilgjengelig en komfortabel mengde minne.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Partisjonene <filename>sda5</filename> og <filename>sdc5</filename>, så vel som <filename>sda6</filename> og <filename>sdc6</filename>, er samlet til to nye RAID-1-volumer på rundt 100 GB hver, <filename>md1</filename> og <filename>md2</filename>. Begge disse speilene er satt opp som fysiske volumer for LVM, og knyttet til volumgruppen <filename>vg_raid</filename>. Denne VG-en inneholder dermed 200 GB sikker lagring.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						De gjenværende partisjonene, <filename>sda7</filename> og <filename>sdc7</filename>, brukes direkte som fysiske volumer, og knyttet til en annen VG kalt <filename>vg_bulk</filename>, som da ender opp med omtrent 200 GB lagringsplass.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Når VG-ene er opprettet, kan de svært fleksibelt deles opp. Man må huske på at LV-er opprettet i <filename>vg_raid</filename>, blir bevart selv om en av diskene svikter, noe som ikke vil være tilfelle for LV-er opprettet i <filename>vg_bulk</filename>. På den annen side vil de sistnevnte fordeles i parallell på begge disker, som tillater høyere lese- eller skrivehastigheter for store filer.
+			</para>
+			 <para>
+				Vi lager derfor LV-ene <filename>lv_usr</filename>, <filename>lv_var</filename> og <filename>lv_home</filename> på <filename>vg_raid</filename> til å være vertskap for de tilsvarende filsystemene. En annen stor LV, <filename>lv_movies</filename>, skal brukes som vert for endelige versjoner av filmer etter redigering. Den andre VG-en vil bli delt inn i et stort <filename>lv_rushes</filename>, for data rett fra det digitale videokameraet, og et <filename>lv_tmp</filename> for midlertidige filer. Plasseringen av arbeidsområdet er et mindre enkelt valg å ta. Mens god ytelse er nødvendig for det volumet, er det verdt å risikere å miste arbeid hvis en disk svikter under redigeringsøkten? Avhengig av svaret på det spørsmålet, vil den aktuelle LV-en bli lagt til den ene VG-en, eller på den andre.
+			</para>
+			 <para>
+				Vi har nå både endel redundans for viktige data, og mye fleksibilitet i hvordan den tilgjengelige plassen er delt mellom programmene. Skal ny programvare installeres senere (for å redigere lydklipp, for eksempel), kan LV-en som inneholder <filename>/usr/</filename> utvides uten problemer.
+			</para>
+			 <sidebar> <title><emphasis>MERK</emphasis> Hvorfor tre RAID-1-volumer?</title>
+			 <para>
+				Vi kunne ha satt opp ett RAID-1-volum bare for å tjene som et fysisk volum for <filename>vg_raid</filename>. Hva er poenget med å lage tre av dem?
+			</para>
+			 <para>
+				Forklaringen på den første delingen (<filename>md0</filename> versus de andre) dreier seg om datasikkerhet. Data skrevet til begge elementer i et RAID-1-speil er nøyaktig de samme, og det er derfor mulig å gå rundt RAID-laget, og montere en av diskene direkte. I tilfelle av, for eksempel en kjernefeil, eller hvis LVM-metadata blir ødelagt, er det fortsatt mulig å starte opp et minimalt system for å få tilgang til viktige data som for eksempel utformingen av diskene i RAID-et og LVM-en. Metadataene kan så rekonstrueres, og filene kan igjen nås, slik at systemet kan bringes tilbake til sin nominelle tilstand.
+			</para>
+			 <para>
+				Begrunnelsen for den andre delingen (<filename>md1</filename> mot <filename>md2</filename>) er mindre entydig, og mer knyttet til erkjennelsen av at fremtiden er usikker. Når arbeidsstasjonen først er montert, er de eksakte kravene til oppbevaring ikke nødvendigvis kjent med perfekt presisjon. De kan også utvikle seg over tid. I vårt tilfelle kan vi ikke på forhånd vite det faktiske lagringsbehovet for video-opptak og komplette videoklipp. Hvis et bestemt klipp har en meget stor mengde uredigerte opptak, og VG-en øremerket til ledige data er mindre enn halvveis full, kan vi gjenbruke noe av den plassen som ikke trengs. Vi kan fjerne et av de fysiske volumene, la oss si <filename>md2</filename>, fra <filename>vg_raid</filename>, og enten knytte det til <filename>vg_bulk</filename> direkte (hvis den forventede varigheten av operasjonen er kort nok til at vi kan leve med midlertidig fall i ytelsen), eller sette tilbake RAID-oppsettet på <filename>md2</filename>, og integrere komponentene dens, <filename>sda6</filename>, og <filename>sdc6</filename>, i den store VG-en (som ekspanderer til 200 GB i stedet for 100 GB). Det logiske volumet <filename>lv_rushes</filename> kan så ekspandere i tråd med det som kreves.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.virtualization">
+		<title>Virtualisering</title>
+		 <indexterm>
+			<primary>Virtualisering</primary>
+		</indexterm>
+		 <para>
+			Virtualisering er et av de viktigste fremskritt i de seneste årenes datautvikling. Begrepet omfatter ulike abstraksjoner og teknikker som simulerer virtuelle datamaskiner med varierende grad av uavhengighet på selve maskinvaren. En fysisk tjenermaskin kan så være vert for flere systemer som arbeider samtidig, og i isolasjon. Bruksområdene er mange, og utledes ofte fra denne isolasjonen: for eksempel testmiljøer med varierende oppsett, eller separasjon av vertsbaserte tjenester mellom ulike virtuelle maskiner for sikkerheten.
+		</para>
+		 <para>
+			Det er flere virtualiseringsløsninger, hver med sine egne fordeler og ulemper. Denne boken vil fokusere på Xen, LXC, og KVM, mens andre implementasjoner verdt å nevne er de følgende:
+		</para>
+		 <indexterm>
+			<primary><emphasis>VMWare</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>Bochs</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>QEMU</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>VirtualBox</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>KVM</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>LXC</emphasis></primary>
+		</indexterm>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					QEMU er en programvare-emulator for en komplett datamaskin. Ytelsen er langt fra den hastigheten man kunne oppnå ved å kjøre direkte på maskinvaren, men den tillater å kjøre uendrede eller eksperimentelle operativsystemer på den emulerte maskinvaren. Den tillater også å emulere en annen maskinvarearkitektur: For eksempel, kan et <emphasis>amd64</emphasis>-system emulere en <emphasis>arm</emphasis>-datamaskin. QEMU er fri programvare. <ulink type="block" url="http://www.qemu.org/" />
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					Bochs er en annen fritt tilgjengelig virtuell maskin, men den emulerer bare x86-arkitekturene (i386 og amd64).
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					VMWare er en proprietær virtuell maskin; og som en av de eldste der ute, er den også en av de mest kjente. Den fungerer på prinsipper som ligner på QEMU. VMWare tilbyr avanserte funksjoner som å ta øyeblikksbilder av en kjørende virtuell maskin. <ulink type="block" url="http://www.vmware.com/" />
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					VirtualBox is a virtual machine that is mostly free software (some extra components are available under a proprietary license). Unfortunately it is in Debian's “contrib” section because it includes some precompiled files that cannot be rebuilt without a proprietary compiler and it currently only resides in Debian Unstable as Oracle's policies make it impossible to keep it secure in a Debian stable release (see <ulink url="https://bugs.debian.org/794466">#794466</ulink>). While younger than VMWare and restricted to the i386 and amd64 architectures, it still includes some snapshotting and other interesting features. <ulink type="block" url="http://www.virtualbox.org/" />
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+		 <section id="sect.xen">
+			<title>Xen</title>
+			 <para>
+				Xen <indexterm><primary>Xen</primary></indexterm> er en «paravirtualiserings»-løsning. Den introduserer et tynt abstraksjonslag, kalt en «hypervisor», mellom maskinvaren og de øvre systemer; dette fungerer som en dommer som kontrollerer tilgangen til maskinvaren for de virtuelle maskinene, men den håndterer bare noen av instruksjonene, resten kjøres direkte av maskinvaren på vegne av systemene. Den største fordelen er at ytelsen ikke blir dårligere, og systemer kjører med nær sin normale hastighet; ulempen er at operativsystemkjernene man ønsker å bruke på en Xen-hypervisor, trenger tilpasning for å kjøre på Xen.
+			</para>
+			 <para>
+				La oss bruke litt tid på terminologi. Hypervisoren er det nederste laget, som kjører direkte på maskinvaren, under kjernen. Denne hypervisoren kan dele resten av programvaren over flere <emphasis>domener</emphasis>, som kan sees på som like mange virtuelle maskiner. Et av disse domenene (den første som blir startet) er kjent som <emphasis>dom0</emphasis>, og har en spesiell rolle, siden bare dette domenet kan kontrollere hypervisor, og kjøring av andre domener. Disse andre domener kalles <emphasis>domU</emphasis>. Med andre ord, og fra et brukersynspunkt, tilsvarer <emphasis>dom0</emphasis> «verten» i andre visualiseringssystemer, mens en <emphasis>domU</emphasis> kan bli sett på som en «gjest».
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> Xen og de ulike versjonene av Linux</title>
+			 <para>
+				Xen ble opprinnelig utviklet som et sett endringer som eksisterte på utsiden av det offisielle treet, og som ikke ble integrert i Linux-kjernen. Samtidig krevde flere fremvoksende virtualiseringssystemer (inkludert KVM) noen generiske virtualiseringsrelaterte funksjoner for å lette integreringen sin, og Linux-kjernen fikk dette settet av funksjoner (kjent som <emphasis>paravirt_ops</emphasis>, eller <emphasis>pv_ops</emphasis>-grensesnittet). Ettersom Xen dupliserte noen av funksjonalitetene til dette grensesnittet, kunne de ikke bli offisielt akseptert.
+			</para>
+			 <para>
+				XenSource, selskapet bak Xen, måtte derfor legge til Xen i dette nye rammeverket, slik at Xens rettelser kunne flettes inn i den offisielle Linux-kjernen. Det betydde mye omskriving av kode, og selv om XenSource snart hadde en fungerende versjon basert på paravirt_ops-grensesnittet, ble rettelsene bare gradvis fusjonert inn den offisielle kjernen. Flettingen ble ferdigstilt i Linux 3.0. <ulink type="block" url="http://wiki.xenproject.org/wiki/XenParavirtOps" />
+			</para>
+			 <para>
+				Ettersom <emphasis role="distribution">Jessie</emphasis> er basert på Linux-kjernens versjon 3.16, inkluderer standardpakkene <emphasis role="pkg">linux-image-686-pae</emphasis>, og <emphasis role="pkg">linux-image-amd64</emphasis> den nødvendige koden, og distribusjonsspesifikke endringer som trengs til <emphasis role="distribution">Squeeze</emphasis>, og tidligere versjoner av Debian trengs ikke lenger. <ulink type="block" url="http://wiki.xenproject.org/wiki/Xen_Kernel_Feature_Matrix" />
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>MERK</emphasis> Xen-kompatible arkitekturer</title>
+			 <para>
+				Xen er foreløpig kun tilgjengelig for arkitekturene i386, amd64, arm64 og armhf.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>KULTUR</emphasis> Xen og ikke-Linux kjerner</title>
+			 <para>
+				Xen krever endringer i alle operativsystemer man ønsker å kjøre på den. Alle kjerner har ikke samme modenhetsnivå når det gjelder dette. Mange er fullt funksjonelle, både som Dom0 og DomU: Linux 3.0 og senere, NetBSD 4.0 og senere, og OpenSolaris. Andre funger bare som en DomU. Du kan sjekke status for hvert operativsystem i Xen-Wikien: <ulink type="block" url="http://wiki.xenproject.org/wiki/Dom0_Kernels_for_Xen" /> <ulink type="block" url="http://wiki.xenproject.org/wiki/DomU_Support_for_Xen" />
+			</para>
+			 <para>
+				Men hvis Xen kan stole på maskinvarefunksjonene øremerket til virtualisering (som bare er til stede i nyere prosessorer), kan til og med ikke-modifiserte operativsystemer kjøres som DomU (inkludert Windows).
+			</para>
+			 </sidebar> <para>
+				Å bruke Xen under Debian krever tre komponenter:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						Selve hypervisoren. Alt etter tilgjengelig maskinvare, vil den aktuelle pakken være enten <emphasis role="pkg">xen-hypervisor-4.4-amd64</emphasis>, <emphasis role="pkg">xen-hypervisor-4.4-armhf</emphasis>, eller <emphasis role="pkg">xen-hypervisor-4.4-arm64</emphasis>.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						En kjerne som kjører på den aktuelle hypervisoren. Enhver kjerne nyere enn 3.0 vil gjøre det, inkludert 3.16 versjon i <emphasis role="distribution">Jessie</emphasis>.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						i386-arkitekturen krever også et standard bibliotek med de riktige oppdateringer som drar nytte av Xen; dette er i <emphasis role="pkg">libc6-xen</emphasis>-pakken.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				For å unngå å måtte velge disse komponentene for hånd, er noen hjelpepakker tilgjengelige (for eksempel <emphasis role="pkg">xen-linux-system-amd64</emphasis>). De trekker alle inn en kjent, god kombinasjon med de aktuelle hypervisor- og kjernepakkene. Hypervisoren har også med <emphasis role="pkg">xen-utils-4.4</emphasis>, som inneholder verktøy for å kontrollere hypervisoren fra Dom0. Dette bringer i sin tur det aktuelle standard biblioteket. Under installasjonen av alt dette, lager også oppsettskriptene en ny oppføring i Grub oppstartsmenyen, slik som å starte den valgte kjernen i en Xen Dom0. Merk imidlertid at denne inngangen vanligvis er satt som den første på listen, og vil derfor bli valgt som standard. Hvis det ikke er ønsket, vil følgende kommandoer endre det:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>mv /etc/grub.d/20_linux_xen /etc/grub.d/09_linux_xen
+</userinput><computeroutput># </computeroutput><userinput>update-grub
+</userinput></screen>
+			 <para>
+				Når disse nødvendighetene er installert, er neste skritt å teste hvordan Dom0 virker alene. Dette innebærer omstart for hypervisoren og Xen-kjernen. Systemet skal starte på vanlig måte, med noen ekstra meldinger på konsollen under de tidlige initialiseringstrinnene.
+			</para>
+			 <para>
+				Så er det på tide å installere nyttige systemer på DomU-systemene med verktøy fra <emphasis role="pkg">xen-tools</emphasis>. Denne pakken leverer <command>xen-create-image</command>-kommandoen, som i stor grad automatiserer oppgaven. Den eneste nødvendige parameteren er <literal>--hostname</literal>, som gir navn til DomU-en. Andre valg er viktige, men de kan lagres i oppsettsfilen <filename>/etc/xen-tools/xen-tools.conf</filename>, og fraværet deres fra kommandolinjen utløser ikke en feil. Det er derfor viktig å enten sjekke innholdet i denne filen før du oppretter bilder, eller å bruke ekstra parametre i bruken av <command>xen-create-image</command>. Viktige parametre omfatter de følgende:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<literal>--memory</literal>, for å spesifisere hvor mye RAM som er øremerket til det systemet som nettopp er laget;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>--size</literal> og <literal>--swap</literal>, for å definere størrelsen på de «virtuelle diskene» som er tilgjengelig for DomU-en;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>--debootstrap</literal>, for å få det nye systemet til å bli installert med <command>debootstrap</command>; i det tilfellet vil også <literal>--dist</literal>-valget oftest bli brukt (med et distribusjonsnavn som <emphasis role="distribution">jessie</emphasis>).
+					</para>
+					 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Installasjon av ikke-Debian-system i DomU</title>
+					 <para>
+						Med et ikke-Linux-system må en, ved hjelp av <literal>--kernel</literal>-valget, passe på å definere kjernen DomU må bruke.
+					</para>
+					 </sidebar>
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>--dhcp</literal> sier at DomUs nettverksoppsett skal hentes med DHCP, mens <literal>--ip</literal> lar en definere en statisk IP-adresse.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Til slutt må lagringsmetode velges for bildet som skal opprettes (de som vil bli sett på som harddisker fra DomU). Den enkleste metoden, tilsvarende <literal>--dir</literal>-valget, er å opprette en fil på Dom0 for hver enhet der DomU skal være. For systemer som bruker LVM, er alternativet å bruke <literal>--lvm</literal>-valget, fulgt av navnet på en volumgruppe; <command>xen-create-image</command> vil deretter opprette et nytt logisk volum inne i den gruppen, og dette logiske volumet vil bli tilgjengelig for DomU-et som en harddisk.
+					</para>
+					 <sidebar> <title><emphasis>MERK</emphasis> Lagring i domU</title>
+					 <para>
+						Hele harddisker kan også bli eksportert til DomU, samt partisjoner, RAID-sett, eller eksisterende logiske data fra tidligere. Disse operasjonene blir imidlertid ikke automatisert av <command>xen-create-image</command>, så å redigere Xen-bildets oppsettsfil er greit etter det første oppsettet med <command>xen-create-image</command>.
+					</para>
+					 </sidebar>
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Så snart disse valgene er gjort, kan vi lage bildet til vår fremtidige Xen-DomU:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>xen-create-image --hostname testxen --dhcp --dir /srv/testxen --size=2G --dist=jessie --role=udev</userinput>
+<computeroutput>
+[...]
+General Information
+--------------------
+Hostname       :  testxen
+Distribution   :  jessie
+Mirror         :  http://ftp.debian.org/debian/
+Partitions     :  swap            128Mb (swap)
+                  /               2G    (ext3)
+Image type     :  sparse
+Memory size    :  128Mb
+Kernel path    :  /boot/vmlinuz-3.16.0-4-amd64
+Initrd path    :  /boot/initrd.img-3.16.0-4-amd64
+[...]
+Logfile produced at:
+         /var/log/xen-tools/testxen.log
+
+Installation Summary
+---------------------
+Hostname        :  testxen
+Distribution    :  jessie
+MAC Address     :  00:16:3E:8E:67:5C
+IP-Address(es)  :  dynamic
+RSA Fingerprint :  0a:6e:71:98:95:46:64:ec:80:37:63:18:73:04:dd:2b
+Root Password   :  adaX2jyRHNuWm8BDJS7PcEJ
+</computeroutput></screen>
+			 <para>
+				Nå har vi en virtuell maskin, men den kjører ikke for øyeblikket (og bruker derfor bare plass på harddisken til dom0). Selvfølgelig kan vi skape flere bilder, kanskje med ulike parametere.
+			</para>
+			 <para>
+				Før du slår på disse virtuelle maskinene, må vi definere en skal få tilgang til dem. De kan selvfølgelig sees som isolerte maskiner, som bare nås gjennom sine systemkonsoller. Men dette stemmer sjelden med bruksmønsteret. Mesteparten av tiden blir en DomU betraktet som en ekstern tjener, og kun tilgjengelig gjennom et nettverk. Det vil være ganske upraktisk å legge til et nettverkskort for hver DomU; som er grunnen til at Xen tillater å lage virtuelle grensesnitt, som hvert domene kan se og bruke som standard. Merk at disse kortene, selv om de er virtuelle, bare vil være nyttige så snart de er koblet til et nettverk, selv et virtuelt et. Xen har flere nettverksmodeller for det:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						Den enkleste er <emphasis>bridge</emphasis>-modellen. Alle eth0-nettverkskort (både i Dom0- og DomU-systemer) oppfører seg som om de var direkte koblet til en Ethernet-svitsj.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Så følger <emphasis>routing</emphasis>-modellen, hvor Dom0 oppfører seg som en ruter som står mellom DomU-systemer og det (fysiske) eksterne nettverket.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Til slutt, i <emphasis>NAT</emphasis>-modellen, der Dom0 igjen er mellom DomU-systemene og resten av nettverket, men DomU-systemene er ikke direkte tilgjengelig utenfra, og trafikken går gjennom noen nettverksadresseoversettelser på Dom0-et.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Disse tre nettverksnodene innbefatter en rekke grensesnitt med uvanlige navn, for eksempel <filename>vif*</filename>, <filename>veth*</filename>, <filename>peth*</filename> og <filename>xenbr0</filename>. Xen-hypervisoren setter dem opp med det utlegget som har blitt definert og kontrollert av verktøy i brukerland. Siden NAT- og rutingmodellene bare er tilpasset det enkelte tilfelle, vil vi bare omtale bridge-modellen.
+			</para>
+			 <para>
+				Standardoppsettet for Xen-pakkene endrer ikke hele systemets nettverksoppsett. Men bakgrunnsprosessen <command>xend</command> er satt opp for å integrere inn virtuelle nettverksgrensesnitt i alle nettverksbroer som eksisterer fra før (der <filename>xenbr0</filename> tar forrang dersom flere slike broer finnes). Vi må derfor sette opp en bro i <filename>/etc/network/interfaces</filename> (som krever installasjon av pakken <emphasis role="pkg">bridge-utils</emphasis>, som er grunnen til at <emphasis role="pkg">xen-utils-4.4</emphasis>-pakken anbefaler den) for å erstatte den eksisterende eth0-inngangen:
+			</para>
+			 
+<programlisting>auto xenbr0
+iface xenbr0 inet dhcp
+    bridge_ports eth0
+    bridge_maxwait 0
+</programlisting>
+			 <para>
+				Etter å ha startet maskinen på nytt for å sørge for at brua blir opprettet automatisk, kan vi nå starte DomU med Xen-kontrollverktøyet, spesielt <command>xl</command>-kommandoen. Denne kommandoen tillater ulike håndteringer av domenene, inkludert å føre dem opp, og starte/stoppe dem.
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>xl list</userinput>
+<computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
+Domain-0                                     0   463     1     r-----      9.8
+# </computeroutput><userinput>xl create /etc/xen/testxen.cfg</userinput>
+<computeroutput>Parsing config from /etc/xen/testxen.cfg
+# </computeroutput><userinput>xl list</userinput>
+<computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
+Domain-0                                     0   366     1     r-----     11.4
+testxen                                      1   128     1     -b----      1.1</computeroutput></screen>
+			 <sidebar> <title><emphasis>VERKTØY</emphasis> Valg av verktøysamling for å håndtere Xen VM</title>
+			 <indexterm>
+				<primary><command>xm</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>xe</command></primary>
+			</indexterm>
+			 <para>
+				I Debian 7 og eldre versjoner, var kommandolinjeverktøyet <command>xm</command> referansen når en skulle administrere virtuelle Xen-maskiner. Nå er det erstattet av <command>xl</command>, som er stort sett bakoverkompatibel. Men disse er ikke de eneste tilgjengelige verktøyene: <command>virsh</command> i libvirt og <command>xe</command> til XenServers XAPI (kommersielt tilbud for Xen), er alternative verktøy.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>VÆR VARSOM</emphasis> Bare ett DomU per bilde!</title>
+			 <para>
+				Mens det selvfølgelig er mulig å ha flere DomU-systemer som kjører parallelt, har alle behov for å bruke sitt eget bilde, siden hvert DomU er laget for å tro det kjører på sin egen maskinvare (bortsett fra den lille biten av kjernen som snakker til hypervisor). Spesielt er det ikke mulig for to DomU-systemer, som kjører samtidig, å dele lagringsplass. Hvis DomU-systemene ikke kjører samtidig, er det imidlertid fullt mulig å gjenbruke en enkel vekselminnepartisjon, eller partisjonen som er vert for filsystemet <filename>/home</filename>.
+			</para>
+			 </sidebar> <para>
+				Merk at <filename>testxen</filename>-DomU bruker virkelig minne tatt fra RAM som ellers ville være tilgjengelig for Dom0, og ikke simulert minne. Når du bygger en tjener som skal være vert for Xen-bruk, pass på å sette av tilstrekkelig fysisk RAM.
+			</para>
+			 <para>
+				Se der! Vår virtuelle maskin starter opp. Vi får tilgang til den i en av to modi. Den vanlige måten er å koble seg til «eksternt» gjennom nettverket, slik som vi ville koble til en ekte maskin; Det vil som regel enten kreve oppsett av en DHCP-tjener, eller et DNS-oppsett. Den andre måten, som kan være den eneste måten hvis nettverksoppsettet var feil, er å bruke <filename>hvc0</filename>-konsollet, med <command>xl console</command>-kommandoen:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>xl console testxen</userinput>
+<computeroutput>[...]
+
+Debian GNU/Linux 8 testxen hvc0
+
+testxen login: </computeroutput></screen>
+			 <para>
+				Man kan så åpne en økt, akkurat som man ville gjøre hvis du sitter med den virtuelle maskinens tastatur. Frakobling fra dette konsollet oppnås med <keycombo action="simul"><keycap>Control</keycap> <keycap>]</keycap></keycombo>-tastekombinasjon.
+			</para>
+			 <sidebar> <title><emphasis>TIPS</emphasis> Umiddelbar tilgang til konsollet</title>
+			 <para>
+				Noen ganger ønsker man å starte et DomU-system, og med en gang få adgang til konsollet dens; dette er grunnen til at <command>xl create</command>-kommandoen aksepterer en <literal>-c</literal>-bryter. Å starte en DomU med denne bryteren vil vise alle meldingene når systemet starter.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>VERKTØY</emphasis> OpenXenManager</title>
+			 <para>
+				OpenXenManager (i <emphasis role="pkg">openxenmanager</emphasis>-pakken) er et grafisk grensesnitt som tillater fjernadministrasjon av Xen-domener via Xen API. Den kan dermed eksternt styre Xen-domener, og har med de fleste av funksjonene i <command>xl</command>-kommandoen.
+			</para>
+			 </sidebar> <para>
+				Når DomU kjører, kan den brukes akkurat som en hvilken som helst annen tjenermaskin (siden den tross alt er et GNU/Linux-system). Imidlertid tillater den virtuelle maskinstatusen noen ekstra funksjoner. For eksempel kan en DomU midlertidig stoppes, og så begynne igjen, med kommandoene <command>xl pause</command>, og <command>xl unpause</command>. Merk at selv om DomU i pause ikke bruker noen prosessorkraft, er det tildelte minnet fortsatt i bruk. Det kan være interessant å vurdere kommandoene <command>xl save</command> og <command>xl restore</command>: Å lagre en DomU frigjør ressursene som tidligere ble brukte, inkludert RAM. Når den hentes inn igjen (eller pausen avsluttes, for den saks skyld), legger ikke DomU en gang merke til noe utover tiden som går. Hvis en DomU var i gang når Dom0 er stengt, lagrer skriptpakken automatisk DomU-et, og gjenoppretter den ved neste oppstart. Dette vil selvfølgelig medføre at de vanlige ubekvemmelighetene som oppstår når en bærbar datamaskin settes i dvalemodus. For eksempel, spesielt hvis DomU er suspendert for lenge, kan nettverkstilkoblinger gå ut på tid. Merk også at Xen så langt er uforenlig med en stor del av ACPI-strømstyringen, noe som utelukker suspensjon av Dom0-vertsystemet.
+			</para>
+			 <sidebar> <title><emphasis>DOKUMENTASJON</emphasis> <command>xl</command>-valg</title>
+			 <para>
+				De fleste av <command>xl</command>-underkommandoer forventer ett eller flere argumenter, ofte et DomU-navn. Disse argumentene er godt beskrevet på manualsiden <citerefentry><refentrytitle>xl</refentrytitle>
+				 <manvolnum>1</manvolnum></citerefentry>.
+			</para>
+			 </sidebar> <para>
+				Stopping og omstart av en DomU kan gjøres enten fra DomU-et (med <command>shutdown</command> command) eller fra Dom0, med <command>xl shutdown</command>, eller <command>xl reboot</command>.
+			</para>
+			 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Avansert Xen</title>
+			 <para>
+				Xen har mange flere funksjoner enn vi kan beskrive i et par avsnitt. Spesielt er systemet meget dynamisk, og mange parametere for et domene (for eksempel mengden tildelt minne, synlige harddisker, oppførselen til oppgaveplanleggeren, og så videre) kan justeres selv når domenet er i gang. Et DomU kan også overføres på tvers av tjenermaskiner uten å bli slått av, og uten å miste sine nettverkstilkoblinger! For alle disse avanserte mulighetene er primærkilden til informasjon den offisielle Xen-dokumentasjonen. <ulink type="block" url="http://www.xen.org/support/documentation.html" />
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.lxc">
+			<title>LXC</title>
+			 <indexterm>
+				<primary>LXC</primary>
+			</indexterm>
+			 <para>
+				Selv om LXC brukes til å bygge «virtuelle maskiner», er det strengt tatt ikke et virtualiseringssystem, men et system for å isolere grupper av prosesser fra hverandre, selv om de alle kjører på den samme vertsmaskin. Det trekker veksler på et sett av nyutviklinger i Linux-kjernen, kjent som <emphasis>kontrollgrupper</emphasis>, der forskjellige sett med prosesser som kalles «grupper» har ulikt utsyn til forskjellige aspekter ved det totale systemet. Mest kjent blant disse aspektene er prosessidentifikatorene, nettverksoppsettene og monteringspunktene. En slik gruppe av isolerte prosesser vil ikke ha noen adgang til de andre prosesser i systemet, og gruppens adgang til filsystemet kan være begrenset til en spesifikk undergruppe. Den kan også ha sitt eget nettverksgrensesnitt og rutingstabell, og den kan være satt opp til å bare se et delsett av de tilgjengelige verktøy som finnes i systemet.
+			</para>
+			 <para>
+				Disse egenskapene kan kombineres for å isolere en hel prosessfamilie som starter fra <command>init</command>-prossessen, og det resulterende settet ser mye ut som en virtuell maskin. Det offisielle navnet på et slikt oppsett er en «beholder» (derav LXC-forkortelsen: <emphasis>LinuX Containers</emphasis>), men en ganske viktig forskjell til «ekte» virtuelle maskiner, som leveres av Xen eller KVM, er at det ikke er noen ekstra kjerne; beholderen bruker den samme kjernen som vertssystemet. Dette har både fordeler og ulemper: Fordelene inkluderer utmerket ytelse grunnet total mangel på ekstrabelastning, og det faktum at kjernen har full oversikt over alle prosesser som kjører på systemet, slik at planleggingen kan være mer effektiv enn hvis to uavhengige kjerner skulle planlegge ulike oppgavesett. Den største blant ulempene er at det er umulig å kjøre en annen kjerne i en beholder (enten en annen Linux-versjon, eller et annet operativsystem i det hele tatt).
+			</para>
+			 <sidebar> <title><emphasis>MERK</emphasis> LXC isolasjonsgrenser</title>
+			 <para>
+				LXC beholdere gir ikke det isolasjonsnivået som oppnås med tyngre emulatorer eller virutaliseringer. Spesielt:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						ettersom kjernen er delt mellom vertssystemet og beholderne, kan prosesser avgrenset til beholdere fortsatt få tilgang til kjernemeldinger, noe som kan føre til informasjonslekkasje hvis meldingene er sendt ut fra en beholder;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						av lignende grunner, hvis en beholder er kompromittert og et sikkerhetsproblem i kjernen utnyttes, kan de øvrige beholdere også bli påvirket;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						på filsystemet sjekker kjernen rettigheter ved hjelp av de numeriske identifikatorer for brukere og grupper. Disse identifikatorene kan henvise til forskjellige brukere og grupper avhengig av beholderen, noe en bør huske på om skrivbare deler av filsystemet er delt mellom beholdere.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 </sidebar> <para>
+				Siden vi har å gjøre med isolasjon, og ikke vanlig virtualisering, er å sette opp LXC-beholdere mer komplisert enn bare å kjøre debian-installer på en virtuell maskin. Vi vil beskrive noen forutsetninger, og går deretter videre til nettverksoppsettet. Da vil vi faktisk være i stand til å lage systemet som skal kjøres i beholderen.
+			</para>
+			 <section>
+				<title>Innledende steg</title>
+				 <para>
+					Pakken <emphasis role="pkg">lxc</emphasis> inneholder de verktøyene som kreves for å kjøre LXC, og må derfor være installert.
+				</para>
+				 <para>
+					LXC krever også oppsettssystemet <emphasis>kontrollgrupper</emphasis>, som er et virtuelt filsystem til å monteres på <filename>/sys/fs/cgroup</filename>. Ettersom Debian 8 byttet til systemd, som også er avhengig av kontrollgrupper, gjøres dette nå automatisk ved oppstart uten ytterligere oppsett.
+				</para>
+
+			</section>
+			 <section id="sect.lxc.network">
+				<title>Nettverksoppsett</title>
+				 <para>
+					Målet med å installere LXC er å sette opp virtuelle maskiner; mens vi selvfølgelig kan holde dem isolert fra nettverket, og bare kommunisere med dem via filsystemet, innebærer de fleste brukstilfeller i det minste å gi minimal nettverkstilgang til beholderne. I det typiske tilfellet vil hver beholder få et virtuelt nettverksgrensesnitt koblet til det virkelige nettverket via en bro. Dette virtuelle grensesnittet kan kobles enten direkte på vertens fysiske nettverksgrensesnitt (der beholderen er direkte på nettverket), eller på et annet virtuelt grensesnitt som er definert hos verten (og verten kan da filtrere eller rute trafikk). I begge tilfeller kreves pakken <emphasis role="pkg">bridge-utils</emphasis>.
+				</para>
+				 <para>
+					Det enkle tilfellet trenger kun endring i <filename>/etc/network/interfaces</filename>, for å flytte oppsettet for det fysiske grensesnittet (for eksempel <literal>eth0</literal>) til et brogrensesnitt (vanligvis <literal>br0</literal>), og sette opp koblingen mellom dem. For eksempel, hvis nettverksoppsettsfilen i utgangspunktet inneholder oppføringer som de følgende:
+				</para>
+				 
+<programlisting>auto eth0
+iface eth0 inet dhcp</programlisting>
+				 <para>
+					De bør deaktiveres og erstattes med følgende:
+				</para>
+				 
+<programlisting>#auto eth0
+#iface eth0 inet dhcp
+
+auto br0
+iface br0 inet dhcp
+  bridge-ports eth0</programlisting>
+				 <para>
+					Effekten av dette oppsettet vil ligne på hva som ville blitt oppnådd dersom beholderne var maskiner koblet til det samme fysiske nettverket som vert. Bro-oppsettet (“bridge”-oppsettet) håndterer transitt av Ethernet-rammer mellom alle bro-grensesnitt som inkluderer fysisk <literal>eth0</literal>, samt grensesnittet definert for beholderne.
+				</para>
+				 <para>
+					I tilfeller der dette oppsettet ikke kan brukes (for eksempel hvis ingen offentlige IP-adresser kan tildeles beholderne), blir et virtuelt <emphasis>tap</emphasis>-grensesnitt opprettet og koblet til broen. Den tilsvarende nettverkssammenhengen blir da som en vert med et andre nettverkskort koblet til en egen bryter, med også beholderne koblet til denne bryteren. Verten fungerer da som en inngangsport for beholdere hvis de er ment å kommunisere med omverdenen.
+				</para>
+				 <para>
+					I tillegg til <emphasis role="pkg">bridge-utils</emphasis>, krever dette «rike» oppsettet <emphasis role="pkg">vde2</emphasis>-pakken; <filename>/etc/network/interfaces</filename>-filen blir da:
+				</para>
+				 
+<programlisting># Grensesnitt eth0 er uendret
+auto eth0
+iface eth0 inet dhcp
+
+# Virtuelt grensesnitt
+auto tap0
+iface tap0 inet manual
+  vde2-switch -t tap0
+
+# Bru for kontainere
+auto br0
+iface br0 inet static
+  bridge-ports tap0
+  address 10.0.0.1
+  netmask 255.255.255.0</programlisting>
+				 <para>
+					Nettverket kan så bli satt opp enten statisk i beholderne, eller dynamisk med en DHCP-tjener som kjører hos verten. En slik DHCP-tjener må settes opp til å svare på spørsmål om <literal>br0</literal>-grensesnittet.
+				</para>
+
+			</section>
+			 <section>
+				<title>Oppsett av systemet</title>
+				 <para>
+					La oss nå sette opp filsystemet som skal brukes av beholderen. Siden denne «virtuelle maskinen» ikke vil kjøres direkte på maskinvare, er noen finjusteringer nødvendige sammenlignet med et standard filsystem, spesielt så langt som kjernen, enheter og konsollene angår. Heldigvis inkluderer <emphasis role="pkg">lxc</emphasis> skript som stort sett automatiserer dette oppsettet. For eksempel vil følgende kommandoer (som krever <emphasis role="pkg">debootstrap</emphasis> og <emphasis role="pkg">rsync</emphasis>-packages) installere en Debian beholder:
+				</para>
+				 
+<screen><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-create -n testlxc -t debian
+</userinput><computeroutput>debootstrap is /usr/sbin/debootstrap
+Checking cache download in /var/cache/lxc/debian/rootfs-jessie-amd64 ... 
+Downloading debian minimal ...
+I: Retrieving Release 
+I: Retrieving Release.gpg 
+[...]
+Download complete.
+Copying rootfs to /var/lib/lxc/testlxc/rootfs...
+[...]
+Root password is 'sSiKhMzI', please change !
+root@mirwiz:~# </computeroutput>
+</screen>
+				 <para>
+					Merk at filsystemet opprinnelig er opprettet i <filename>/var/cache/lxc</filename>, og deretter flyttet til den katalogen filsystemet skal til. Dette gjør det mulig å lage identiske beholdere mye raskere, ettersom det da bare kreves kopiering.
+				</para>
+				 <para>
+					Merk at Debian-skriptet, for å opprette maler, godtar et <option>--arch</option>-valg for å spesifisere arkitekturen til systemet som skal installeres, og et <option>--release</option>-valg hvis du ønsker å installere noe annet enn den nåværende stabile utgaven av Debian. Du kan også sette omgivelsesvariabelen <literal>MIRROR</literal> til å peke på et lokalt Debian speil.
+				</para>
+				 <para>
+					Nå inneholder det nyopprettede filsystemet et minimalt Debian-system, og som standard har ikke beholderen nettverksgrensesnitt (utover filmonteringen). Siden dette ikke er virkelig ønsket, vil vi endre beholderens oppsettsfil (<filename>/var/lib/lxc/testlxc/config</filename>), og legge til noen få <literal>lxc.network.*</literal>-innganger:
+				</para>
+				 
+<programlisting>lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = br0
+lxc.network.hwaddr = 4a:49:43:49:79:20</programlisting>
+				 <para>
+					Disse oppføringene betyr, henholdsvis, at et virtuelt grensesnitt vil bli opprettet i beholderen; at det automatisk vil bli vist når det blir meldt at beholderen er startet; at det automatisk vil bli koblet til <literal>br0</literal>-broen hos verten; og at MAC-adressen vil være som spesifisert. Skulle denne siste posten mangle eller være deaktivert, vil det genereres en tilfeldig MAC-adresse.
+				</para>
+				 <para>
+					En annen nyttig inngang i den filen er innstillingen for vertsnavnet:
+				</para>
+				 
+<programlisting>lxc.utsname = testlxc</programlisting>
+
+			</section>
+			 <section>
+				<title>Å starte beholderen</title>
+				 <para>
+					Nå som vårt virtuelle maskinbilde er klart, la oss starte beholderen:
+				</para>
+				 
+<screen role="scale" width="94"><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-start --daemon --name=testlxc
+</userinput><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-console -n testlxc
+</userinput><computeroutput>Debian GNU/Linux 8 testlxc tty1
+
+testlxc login: </computeroutput><userinput>root</userinput><computeroutput>
+Password: 
+Linux testlxc 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1 (2015-05-24) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+root@testlxc:~# </computeroutput><userinput>ps auxwf</userinput>
+<computeroutput>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.2  28164  4432 ?        Ss   17:33   0:00 /sbin/init
+root        20  0.0  0.1  32960  3160 ?        Ss   17:33   0:00 /lib/systemd/systemd-journald
+root        82  0.0  0.3  55164  5456 ?        Ss   17:34   0:00 /usr/sbin/sshd -D
+root        87  0.0  0.1  12656  1924 tty2     Ss+  17:34   0:00 /sbin/agetty --noclear tty2 linux
+root        88  0.0  0.1  12656  1764 tty3     Ss+  17:34   0:00 /sbin/agetty --noclear tty3 linux
+root        89  0.0  0.1  12656  1908 tty4     Ss+  17:34   0:00 /sbin/agetty --noclear tty4 linux
+root        90  0.0  0.1  63300  2944 tty1     Ss   17:34   0:00 /bin/login --     
+root       117  0.0  0.2  21828  3668 tty1     S    17:35   0:00  \_ -bash
+root       268  0.0  0.1  19088  2572 tty1     R+   17:39   0:00      \_ ps auxfw
+root        91  0.0  0.1  14228  2356 console  Ss+  17:34   0:00 /sbin/agetty --noclear --keep-baud console 115200 38400 9600 vt102
+root       197  0.0  0.4  25384  7640 ?        Ss   17:38   0:00 dhclient -v -pf /run/dhclient.eth0.pid -lf /var/lib/dhcp/dhclient.e
+root       266  0.0  0.1  12656  1840 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty5 linux
+root       267  0.0  0.1  12656  1928 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty6 linux
+root@testlxc:~# </computeroutput></screen>
+				 <para>
+					Nå er vi i beholderen; vår tilgang til prosessene er begrenset til bare dem som er startet fra beholderen selv, og vår tilgang til filsystemet er tilsvarende begrenset til den øremerkede undergruppen i hele filsystemet (<filename>/var/lib/lxc/testlxc/rootfs</filename>). Vi kan gå ut av konsollen med <keycombo action="simul"><keycap>Control</keycap> <keycap>a</keycap></keycombo> <keycombo><keycap>q</keycap></keycombo>.
+				</para>
+				 <para>
+					Legg merke til at vi kjørte beholderen som en bakgrunnsprosess, takket være <option>--daemon</option>-valget til <command>lxc-start</command>. Vi kan avbryte beholderen med en kommando slik som <command>lxc-stop --name=testlxc</command>.
+				</para>
+				 <para>
+					Pakken <emphasis role="pkg">lxc</emphasis> inneholder et initialiseringsskript som automatisk kan starte en eller flere beholdere når verten starter opp (det er avhengig av <command>lxc-autostart</command> som starter beholdere der <literal>lxc.start.auto</literal>-valget er satt til 1). Mer finkornet kontroll over oppstartsrekkefølgen er mulig med <literal>lxc.start.order</literal> og <literal>lxc.group</literal>. Som standard starter klargjøringsskriptet først beholdere som er en del av <literal>onboot</literal>-gruppen, og deretter beholdere som ikke er en del av en gruppe. I begge tilfeller er rekkefølgen innenfor en gruppe definert av <literal>lxc.start.order</literal>-valget.
+				</para>
+				 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Massevirtualisering</title>
+				 <para>
+					Siden LXC er et meget lett isolasjonssystem, kan det spesielt tilpasses til å være et massivt vertskap for virtuelle tjenere. Nettverksoppsettet vil trolig være litt mer avansert enn hva vi beskrev ovenfor, men det «rike» oppsettet som bruker <literal>tap</literal> og <literal>veth</literal>-grensesnitt skulle i mange tilfelle være nok.
+				</para>
+				 <para>
+					Det kan også være fornuftig å ha en del av filsystemet felles, slik som <filename>/usr</filename> og <filename>/lib</filename>-undertrærne, slik at man unngår å duplisere programvaren som kanskje må være felles for flere containere. Dette vil vanligvis oppnås med <literal>lxc.mount.entry</literal>-innganger i beholdernes oppsettfil. En interessant bieffekt er at prosessene da vil bruke mindre fysisk minne, siden kjernen er i stand til å oppdage felles programmer. Den marginale belastningen for en ekstra beholder kan da reduseres til diskplassen øremerket til dens spesifikke data, og noen ekstra prosesser som kjernen må planlegge, og administrere.
+				</para>
+				 <para>
+					Vi har selvfølgelig ikke beskrevet alle de tilgjengelige alternativene. Mer omfattende informasjon kan fås fra <citerefentry> <refentrytitle>lxc</refentrytitle>
+					 <manvolnum>7</manvolnum> </citerefentry> og <citerefentry> <refentrytitle>lxc.container.conf</refentrytitle>
+					 <manvolnum>5</manvolnum></citerefentry>-manualsider og sidene de refererer til.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section>
+			<title>Virtualisering med KVM</title>
+			 <indexterm>
+				<primary>KVM</primary>
+			</indexterm>
+			 <para>
+				KVM, som står for <emphasis>Kernel-based Virtual Machine</emphasis>, er først og fremst en kjernemodul som gir det meste av infrastrukturen som kan brukes av en visualiserer, men er ikke selv en visualiserer. Faktisk kontroll av visualiseringen håndteres av en QEMU-basert applikasjon. Ikke være bekymret om denne seksjonen nevner <command>qemu-*</command>-kommandoer, den handler fremdeles om KVM.
+			</para>
+			 <para>
+				I motsetning til andre visualiseringssystemer, ble KVM fusjonert inn i Linux-kjernen helt fra starten. Utviklerne valgte å dra nytte av prosessorens instruksjonssett øremerket til visualisering (Intel-VT og AMD-V), som holder KVM lett, elegant og ikke ressurskrevende. Motstykket, selvfølgelig, er at KVM ikke fungerer på alle datamaskiner, men bare på dem med riktige prosessorer. For x86-datamaskiner kan du bekrefte at du har en slik prosessor ved å se etter «vmx» eller «svm» i CPU-flagg oppført i <filename>/proc/cpuinfo</filename>.
+			</para>
+			 <para>
+				Med Red Hats aktive støtte til utviklingen, har KVM mer eller mindre blitt referansen for Linux-virtualisering.
+			</para>
+			 <section>
+				<title>Innledende steg</title>
+				 <indexterm>
+					<primary><command>virt-install</command></primary>
+				</indexterm>
+				 <para>
+					I motsetning til verktøy som VirtualBox, har KVM selv ikke noe brukergrensesnitt for å opprette og administrere virtuelle maskiner. Pakken <emphasis role="pkg">qemu-kvm</emphasis> gir bare en kjørbar som kan starte en virtuell maskin, samt et initialiseringsskript som laster de aktuelle kjernemodulene.
+				</para>
+				 <indexterm>
+					<primary>libvirt</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><emphasis role="pkg">virt-manager</emphasis></primary>
+				</indexterm>
+				 <para>
+					Heldigvis gir Red Hat også et annet sett med verktøy for å løse dette problemet ved utvikling av <emphasis>libvirt</emphasis>-bibliotektet og de tilhørende <emphasis>virtual machine manager</emphasis>-verktøyene. libvirt kan administrere virtuelle maskiner på en enhetlig måte, uavhengig av virtualiseringen bak i kulissene (det støtter for tiden QEMU, KVM, Xen, LXC, OpenVZ, VirtualBox, VMWare og UML). <command>virtual-manager</command> er et grafisk grensesnitt som bruker libvirt til å opprette og administrere virtuelle maskiner.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">virtinst</emphasis></primary>
+				</indexterm>
+				 <para>
+					Vi installerer først de nødvendige pakker med <command>apt-get install qemu-kvm libvirt-bin virtinst virt-manager virt-viewer</command>. <emphasis role="pkg">libvirt-bin</emphasis> gir <command>libvirtd</command>-bakgrunnsprosessen, som tillater (potensielt ekstern) håndtering av virtuelle maskiner som kjører på verten, og starter de nødvendige VM-er når verten starter opp. I tillegg gir denne pakken <command>virsh</command>-kommandolinjeverktøy som gjør det mulig å styre <command>libvirtd</command>-håndterte maskiner.
+				</para>
+				 <para>
+					Pakken <emphasis role="pkg">virtinst</emphasis> leverer <command>virt-install</command>, som tillater å lage virtuelle maskiner fra kommandolinjen. Avslutningsvis gir <emphasis role="pkg">virt-viewer</emphasis> tilgang til en VM-grafiske konsoll.
+				</para>
+
+			</section>
+			 <section>
+				<title>Nettverksoppsett</title>
+				 <para>
+					Akkurat som i Xen og LXC, innebærer det hyppigste nettverksoppsettet en bro som grupperer nettverksgrensesnittene og de virtuelle maskinene (se <xref linkend="sect.lxc.network" />).
+				</para>
+				 <para>
+					Alternativt, og i standardoppsettet, levert av KVM, er den virtuelle maskinen tildelt en privat adresse (i 192.168.122.0/24-området), og NAT er satt opp slik at VM kan få tilgang til nettverket utenfor.
+				</para>
+				 <para>
+					Resten av denne seksjonen forutsetter at verten har et <literal>eth0</literal> fysisk grensesnitt, og en <literal>br0</literal>-bro, og den første er knyttet til den siste.
+				</para>
+
+			</section>
+			 <section>
+				<title>Installasjon med <command>virt-install</command></title>
+				 <indexterm>
+					<primary><command>virt-install</command></primary>
+				</indexterm>
+				 <para>
+					Å lage en virtuell maskin er svært lik å installere et normalt system, bortsett fra at den virtuelle maskinens egenskaper er beskrevet i en tilsynelatende uendelig kommandolinje.
+				</para>
+				 <para>
+					I praksis betyr dette at vi vil bruke Debians installasjonsprogram ved å starte den virtuelle maskinen på en virtuell DVD-ROM-stasjon som er tilordnet til et Debian DVD-bilde som ligger hos vertssystemet. VM vil eksportere sin grafiske konsoll over VNC-protokollen (se <xref linkend="sect.remote-desktops" /> for detaljer), som tillater oss å kontrollere installasjonsprosessen.
+				</para>
+				 <para>
+					Vi må først fortelle libvirtd hvor diskbildene skal lagres, med mindre standardplasseringen (<filename>/var/lib/libvirt/images/</filename>) er grei.
+				</para>
+				 
+<screen><computeroutput>root@mirwiz:~# </computeroutput><userinput>mkdir /srv/kvm</userinput>
+<computeroutput>root@mirwiz:~# </computeroutput><userinput>virsh pool-create-as srv-kvm dir --target /srv/kvm</userinput>
+<computeroutput>Pool srv-kvm created
+
+root@mirwiz:~# </computeroutput></screen>
+				 <sidebar> <title><emphasis>TIPS</emphasis> Å legge til din bruker til libvirt-gruppen</title>
+				 <para>
+					Alle eksempler i denne seksjonen forutsetter at du kjører kommandoene som rot. Effektivt, hvis du ønsker å styre en lokal libvirt-bakgrunnsprosess, må du enten være rot, eller være medlem av <literal>libvirt</literal>-gruppen (som ikke er tilfelle som standard). Så hvis du ønsker å unngå å bruke rotrettigheter for ofte, kan du legge deg selv til <literal>libvirt</literal>-gruppen, og kjøre de forskjellige kommandoene under din brukeridentitet.
+				</para>
+				 </sidebar> <para>
+					La oss nå starte installasjonsprosessen for den virtuelle maskinen, og ta en nærmere titt på de viktigste valgene til <command>virt-install</command>. Denne kommandoen registrerer den virtuelle maskinen med parametre i libvirtd, og starter den deretter slik at installasjonen kan fortsette.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virt-install --connect qemu:///system  <co id="virtinst.connect"></co>
+               --virt-type kvm           <co id="virtinst.type"></co>
+               --name testkvm            <co id="virtinst.name"></co>
+               --ram 1024                <co id="virtinst.ram"></co>
+               --disk /srv/kvm/testkvm.qcow,format=qcow2,size=10 <co id="virtinst.disk"></co>
+               --cdrom /srv/isos/debian-8.1.0-amd64-netinst.iso  <co id="virtinst.cdrom"></co>
+               --network bridge=br0      <co id="virtinst.network"></co>
+               --vnc                     <co id="virtinst.vnc"></co>
+               --os-type linux           <co id="virtinst.os"></co>
+               --os-variant debianwheezy
+</userinput><computeroutput>
+Starting install...
+Allocating 'testkvm.qcow'             |  10 GB     00:00
+Creating domain...                    |    0 B     00:00
+Guest installation complete... restarting guest.
+</computeroutput></screen>
+				 <calloutlist>
+					<callout arearefs="virtinst.connect">
+						<para>
+							Valget <literal>--connect</literal> spesifiserer «hypervisoren» som skal brukes. Den har samme format som en URL som inneholder et virtualiseringssystem (<literal>xen://</literal>, <literal>qemu://</literal>, <literal>lxc://</literal>, <literal>openvz://</literal>, <literal>vbox://</literal>, og så videre), og den maskinen som skal være vert for VM (dette kan være tomt når det gjelder den lokale verten). I tillegg til det, og i QEMU/KVM tilfellet, kan hver bruker administrere virtuelle maskiner som arbeider med begrensede tillatelser, og URL-banen tillater å skille «system»-maskiner (<literal>/system</literal>) fra andre (<literal>/session</literal>).
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.type">
+						<para>
+							Siden KVM forvaltes på samme måte som QEMU, tillater <literal>--virt-type kvm</literal> å spesifisere bruken av KVM selv om nettadressen ser ut som QEMU.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.name">
+						<para>
+							Valget V<literal>--name</literal> definerer et (unikt) navn for den virtuelle maskinen.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.ram">
+						<para>
+							Valget <literal>--ram</literal> kan spesifisere hvor mye RAM (i MB) som skal avsettes til den virtuelle maskinen.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.disk">
+						<para>
+							<literal>--disk</literal> angir plasseringen av bildefilen som skal representere harddisken til vår virtuelle maskin; denne filen er laget, hvis den ikke allerede er til stede, med størrelsen (i GB) spesifisert av <literal>size</literal>-parameteret. <literal>format</literal>-parameteret gjør det mulig å velge mellom flere måter for lagring av bildefilen. Standardformatet (<literal>raw</literal>) er en enkelt fil som samsvarer nøyaktig med diskens størrelse og innhold. Vi plukket ut et avansert format her, spesifikk for QEMU, og tillater starting med en liten fil som bare vokser når den virtuelle maskinen faktisk begynner å bruke plass.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.cdrom">
+						<para>
+							<literal>--cdrom</literal>-valget brukes til å indikere hvor en finner den optiske disken til bruk ved installasjon. Banen kan enten være en lokal bane for en ISO-fil, en URL der man kan få tak i filen, eller fra disk-filen i en fysisk CD-ROM-stasjon (dvs. <literal>/dev/cdrom</literal>).
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.network">
+						<para>
+							<literal>--network</literal> angir hvordan det virtuelle nettverkskortet integreres i vertens nettverksoppsett. Standard oppførsel (som vi eksplisitt håndhevet/tvang i vårt eksempel) er å integrere det inn i hvilken som helst foreliggende nettverksbro. Hvis en slik bro ikke finnes, vil den virtuelle maskinen kun nå det fysiske nettverket gjennom NAT, så det får en adresse i et privat delnettsområde (192.168.122.0/24).
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.vnc">
+						<para>
+							<literal>--vnc</literal> sier at den grafiske konsollen skal gjøres tilgjengelig ved hjelp av VNC. Standard virkemåte for den tilknyttede VNC-tjeneren er å bare lytte til det lokale grensesnitt; hvis VNC-klienten skal kjøres på en annen vert, krever opprettelse av forbindelsen at det settes opp en SSH-tunnel (se <xref linkend="sect.ssh-port-forwarding" />). Alternativt kan <literal>--vnclisten=0.0.0.0</literal> anvendes slik at VNC-tjeneren er tilgjengelig fra alle grensesnitt. Vær oppmerksom på at hvis du gjør det, må du virkelig sette opp din brannmur tilsvarende .
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.os">
+						<para>
+							<literal>--os-type</literal> og <literal>--os-variant</literal>-valgene kan optimalisere noen parametere for den virtuelle maskinen, basert på noen av de kjente funksjonene i operativsystemet nevnt der.
+						</para>
+
+					</callout>
+
+				</calloutlist>
+				 <para>
+					Nå kjører den virtuelle maskinen, og vi må koble til den grafiske konsollen for å fortsette med installasjonen. Hvis den forrige operasjonen ble kjørt fra et grafisk skrivebordsmiljø, bør denne forbindelsen startes automatisk. Hvis ikke, eller hvis vi operere eksternt, kan <command>virt-viewer</command> kjøres fra et hvilket som helst grafisk miljø for å åpne den grafiske konsollen (merk at det spørres om rot-passordet til den eksterne verten to ganger, fordi operasjonen krever 2 SSH-forbindelser):
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>virt-viewer --connect qemu+ssh://root@<replaceable>server</replaceable>/system testkvm
+</userinput><computeroutput>root@server's password: 
+root@server's password: </computeroutput></screen>
+				 <para>
+					Når installasjonsprosessen er ferdig, blir den virtuelle maskinen startet på nytt, nå klar til bruk.
+				</para>
+
+			</section>
+			 <section>
+				<title>Å håndtere maskiner med <command>virsh</command></title>
+				 <indexterm>
+					<primary><command>virsh</command></primary>
+				</indexterm>
+				 <para>
+					Nå som installasjonen er ferdig, la oss se hvordan man skal håndtere de tilgjengelige virtuelle maskinene. Det første du må prøve, er å spørre <command>libvirtd</command> om listen over de virtuelle maskinene den forvalter:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system list --all
+ Id Name                 State
+----------------------------------
+  - testkvm              shut off
+</userinput></screen>
+				 <para>
+					La oss starte vår test av den virtuelle maskinen:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system start testkvm
+</userinput><computeroutput>Domain testkvm started</computeroutput></screen>
+				 <para>
+					Vi kan nå få tilkoblingsinstruksjonene til den grafiske konsollen (den returnerte VNC-skjermen kan gis som parameter til <command>vncviewer</command>):
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system vncdisplay testkvm
+</userinput><computeroutput>:0</computeroutput></screen>
+				 <para>
+					Andre tilgjengelige underkommandoer inkluderer <command>virsh</command>:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<literal>reboot</literal> for å restarte en virtuell maskin;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>shutdown</literal> for å utløse en ren avslutning;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>destroy</literal>, for å stoppe den brutalt;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>suspend</literal> for å pause den;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>resume</literal> for å avslutte pause;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>autostart</literal> for å aktivere (eller deaktivere, med <literal>--disable</literal>-valget) automatisk start av den virtuelle maskinen når verten starter;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>undefine</literal> for å fjerne alle spor etter den virtuelle maskinen fra <command>libvirtd</command>.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Alle disse underkommandoene tar en virtuell maskins identifikator som et parameter.
+				</para>
+
+			</section>
+			 <section>
+				<title>Å installere et RPM-basert system i Debian med yum</title>
+				 <para>
+					Hvis den virtuelle maskinen er ment til å kjøre en Debian (eller en av dens derivater), kan systemet bli initialisert med <command>debootstrap</command>, som beskrevet ovenfor. Men hvis den virtuelle maskinen skal monteres med et RPM-basert system (som Fedora, CentOS eller Scientific Linux), vil oppsettet måtte gjøres med <command>yum</command>-verktøyet (tilgjengelig i pakken med samme navn).
+				</para>
+				 <para>
+					Prosedyren krever bruk av <command>rpm</command> for å pakke ut et innledende sett med filer, medregnet spesielt <command>yum</command>-oppsettsfiler, og så påkalle <command>yum</command> for å pakke opp de gjenværende pakkesettene. Men siden vi kaller <command>yum</command> fra utsiden av chrooten, trenger vi å gjøre noen midlertidige endringer. I eksemplet nedenfor, er mål-chrooten <filename>/srv/centos</filename>.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>rootdir="/srv/centos"
+</userinput><computeroutput># </computeroutput><userinput>mkdir -p "$rootdir" /etc/rpm
+</userinput><computeroutput># </computeroutput><userinput>echo "%_dbpath /var/lib/rpm" &gt; /etc/rpm/macros.dbpath
+</userinput><computeroutput># </computeroutput><userinput>wget http://mirror.centos.org/centos/7/os/x86_64/Packages/centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm
+</userinput><computeroutput># </computeroutput><userinput>rpm --nodeps --root "$rootdir" -i centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm
+</userinput><computeroutput>rpm: RPM should not be used directly install RPM packages, use Alien instead!
+rpm: However assuming you know what you are doing...
+warning: centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm: Header V3 RSA/SHA256 Signature, key ID f4a80eb5: NOKEY
+# </computeroutput><userinput>sed -i -e "s,gpgkey=file:///etc/,gpgkey=file://${rootdir}/etc/,g" $rootdir/etc/yum.repos.d/*.repo
+</userinput><computeroutput># </computeroutput><userinput>yum --assumeyes --installroot $rootdir groupinstall core
+</userinput><computeroutput>[...]
+# </computeroutput><userinput>sed -i -e "s,gpgkey=file://${rootdir}/etc/,gpgkey=file:///etc/,g" $rootdir/etc/yum.repos.d/*.repo
+</userinput></screen>
+
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.automated-installation">
+		<title>Automatisert installasjon</title>
+		 <indexterm>
+			<primary>distribusjon</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>installasjon</primary>
+			<secondary>automatisk installasjon</secondary>
+		</indexterm>
+		 <para>
+			Falcot Corp-administratorene trenger, som mange administratorer av store IT-tjenester, verktøy for å installere sine nye maskiner (eller installere på nytt) raskt, og automatisk hvis mulig.
+		</para>
+		 <para>
+			Disse kravene kan bli møtt av et bredt spekter av løsninger. På den ene siden, generiske verktøy som SystemImager, håndterer dette ved å skape et bilde med en maskin som mal, deretter distribuere bildet dit det skal hos systemene. I den andre enden av spekteret, kan standard Debian-installeren bli forhåndsutfylt med en oppsettsfil som gir svarene på spørsmålene under installasjonsprosessen. Som en slags middelvei, installerer et hybridverktøy som FAI (<emphasis>Fully Automatic Installer</emphasis>) maskiner ved hjelp av pakkesystemet, men det bruker også sin egen infrastruktur for oppgaver som er mer spesifikke for massive distribusjoner (som å starte, partisjonering, oppsett og så videre).
+		</para>
+		 <para>
+			Hver av disse løsningene har sine fordeler og ulemper: SystemImager fungerer uavhengig av et bestemt pakkesystem, som gjør det mulig å håndtere store sett med maskiner ved hjelp av flere forskjellige Linux-distribusjoner. Det inkluderer også et oppdateringssystem som ikke krever en reinstallasjon, men dette oppdateringssystemet kan bare være pålitelig hvis maskinene ikke endres hver for seg; med andre ord, brukeren må ikke oppdatere programvare på egen hånd, eller installere noen annen programvare. Tilsvarende sikkerhetsoppdateringer må ikke være automatisert, fordi de må gå gjennom det sentraliserte referansebildet som vedlikeholdes av SystemImager. Denne løsningen krever også at maskinene det gjelder er homogene, ellers må mange forskjellige bilder tas vare på og håndteres (et i386-bilde vil ikke passe på en PowerPC-maskin, og så videre).
+		</para>
+		 <para>
+			På den annen side kan en automatisert installasjon som bruker Debian-installereren tilpasse seg de nærmere spesifikasjoner for hver maskin: Installereren vil hente den riktige kjernen og programvarepakker fra de aktuelle pakkebrønnene, oppdage tilgjengelig maskinvare, partisjonere hele harddisken for å dra nytte av all tilgjengelig plass, installere det tilsvarende Debian-systemet, og sette opp en passende oppstartslaster. Imidlertid vil standard-installereren bare installere standard Debian-versjoner, med basesystem og et sett forhåndsvalgte «oppgaver»; dette utelukker å installere et bestemt system med ikke-pakkede applikasjoner. Å oppfylle dette behovet krever tilpassing av installereren ... Heldigvis er installatøren veldig modulær, og det er verktøy for å automatisere det meste av arbeidet som kreves for denne tilpasningen, viktigst er enkle-CDD (simple-CDD) (CDD er en forkortelse av <emphasis>Custom Debian Derivative</emphasis>). Selv den enkle-CDD-løsningen håndterer imidlertid bare innledende installasjoner; dette er vanligvis ikke et problem siden APT-verktøyene gir effektiv utrulling av oppdateringer senere.
+		</para>
+		 <para>
+			Vi vil bare gi en grov oversikt over FAI, og helt hoppe over SystemImager (som ikke lenger er i Debian), for å fokusere sterkere på Debian-installereren og simple-CDD (enkel-CDD), som er mer interessant bare i en Debian sammenheng.
+		</para>
+		 <section id="sect.fai">
+			<title>Fully Automatic Installer (FAI)</title>
+			 <indexterm>
+				<primary>Fully Automatic Installer (FAI)</primary>
+			</indexterm>
+			 <para>
+				<foreignphrase>Fully Automatic Installer</foreignphrase> er trolig det eldste automatiserte utrullingssystemet for Debian, noe som forklarer dets status som en referanse, men den svært fleksible naturen kompenserer bare akkurat for den kompleksiteten det innebærer.
+			</para>
+			 <para>
+				FAI krever et tjenersystem for å lagre utrullingsinformasjon, og tillate maskinene det gjelder å starte opp fra nettverket. Denne tjeneren krever <emphasis role="pkg">fai-server</emphasis>-pakken (eller <emphasis role="pkg">fai-quickstart</emphasis>, som også bringer med seg de nødvendige elementer for et standard oppsett).
+			</para>
+			 <para>
+				FAI bruker en bestemt metode for å definere de ulike installerbare profilene. I stedet for ganske enkelt å bare kopiere en referanseinstallasjon, er FAI en fullverdig installerer, fullt oppsettbar via et sett med filer og skript som er lagret på tjeneren; standardplasseringen <filename>/srv/fai/config/</filename> er ikke opprettet automatisk, slik at administrator må lage den sammen med de aktuelle filene. Mesteparten av tiden vil disse filene bli tilpasset fra eksempelfiler som er tilgjengelig i dokumentasjonen til <emphasis role="pkg">fai-doc</emphasis>-pakken, mer spesielt i <filename>/usr/share/doc/fai-doc/examples/simple/</filename>-mappen.
+			</para>
+			 <para>
+				Så snart profilene er definert, genererer <command>fai-setup</command>-kommandoen de elementene som kreves for å starte en FAI-installasjon; Dette betyr stort sett å forberede eller å oppdatere et minimalt system (NFS-root) som brukes under installasjonen. Et alternativ er å generere en dedikert oppstarts-CD med <command>fai-cd</command>.
+			</para>
+			 <para>
+				Å opprette alle disse oppsettsfilene krever en viss forståelse for hvordan FAI fungerer. En typisk installasjonen gjøres i følgende trinn:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						å hente en kjerne fra nettverket, og starte den;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å montere rotfilssystemet fra NFS;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å kjøre <command>/usr/sbin/fai</command>, som kontrollerer resten av prosessen (de neste trinnene er derfor initiert av dette skriptet);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å kopiere oppsettsplassen fra tjeneren til <filename>/fai/</filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å kjøre <command>fai-class</command>. Skriptene <filename>/fai/class/[0-9][0-9]*</filename> blir så utført, og returnerer navnene på «klasser» som gjelder for maskinen som blir installert. Denne informasjonen vil tjene som et utgangspunkt for de neste trinnene. Dette åpner for en viss fleksibilitet i å definere hvilke tjenester som skal installeres og settes opp.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å hente et antall oppsettsvariabler, avhengig av de aktuelle klasser;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å partisjonere diskene, og formatere partisjonene, ut fra informasjon i <filename>/fai/disk_config/<replaceable>klasse</replaceable></filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						montere disse partisjonene;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å installere basesystemet;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å forhåndsutfylle Debconf-databasen med <command>fai-debconf</command>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å hente listen over tilgjengelige pakker for APT;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å installere pakkene listet i <filename>/fai/package_config/<replaceable>klasse</replaceable></filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å kjøre etteroppsettskriptene, <filename>/fai/scripts/<replaceable>klasse</replaceable>/[0-9][0-9]*</filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						å registrere installasjonsloggene, avmontere partisjonene, og omstart.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+
+		</section>
+		 <section id="sect.d-i-preseeding">
+			<title>Forhåndsutfylt Debian-installer</title>
+			 <indexterm>
+				<primary>forhåndsutfylling</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>forhåndoppsett</primary>
+			</indexterm>
+			 <para>
+				Alt i alt skulle det beste verktøyet til å installere Debian-systemer logisk være den offisielle Debian-installereren. Dette er grunnen, helt fra begynnelsen, til at Debian-installereren er konstruert for automatisert bruk, og drar nytte av infrastrukturen levert av <emphasis role="pkg">debconf</emphasis>. Sistnevnte gjør det mulig, på den ene siden - å redusere antall spørsmål (skjulte spørsmål vil bruke de medfølgende standardsvar), og - på den anden siden - å gi standard svar separat, slik at installasjonen kan være ikke-interaktiv. Dette siste trekk er kjent som <emphasis>forhåndsutfylling</emphasis> (preseed).
+			</para>
+			 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Debconf med en sentralisert database</title>
+			 <indexterm>
+				<primary><command>debconf</command></primary>
+			</indexterm>
+			 <para>
+				Forhåndsutfylling, preseed.cfg, gjør det mulig å gi et sett av svar på Debconf-spørsmål på installasjonstidspunktet, men disse svarene er statiske, og utvikles ikke som tiden går. Siden allerede installerte maskiner kan trenge oppgradering, og nye svar kan bli nødvendige, kan <filename>/etc/debconf.conf</filename>-oppsettsfilen settes opp slik at Debconf bruker eksterne datakilder (som en LDAP-katalogtjener, eller en ekstern fil som nås via NFS eller Samba). Flere eksterne datakilder kan defineres på samme tid, og de utfyller hverandre. Den lokale databasen brukes fortsatt (for lese- og skrivetilgang), men de eksterne databasene vanligvis er begrenset til lesing. Manualsiden <citerefentry><refentrytitle>debconf.conf</refentrytitle>
+				 <manvolnum>5</manvolnum></citerefentry> beskriver i detalj alle mulighetene (du trenger <emphasis role="pkg">debconf-doc</emphasis>-pakken).
+			</para>
+			 </sidebar> <section>
+				<title>Å bruke en forhåndsutfyllingsfil</title>
+				 <para>
+					Det er flere steder hvor installasjonsprogrammet kan få en forhåndsutfyllingsfil:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							I initrd som brukes til å starte maskinen; i dette tilfellet skjer forhåndsutfyllingen helt i begynnelsen av installeringen, og alle spørsmålene kan unngås. Filen trenger bare å bli kalt <filename>preseed.cfg</filename>, og bli lagret i initrd-roten.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							På oppstartmedia (CD eller USB-nøkkel); forhåndutfylling skjer så snart media er montert, noe som betyr rett etter spørsmålene om språk og tastaturoppsett. Oppstartsparameteren <literal>preseed/file</literal> kan brukes til å indikere plasseringen av filen for forhåndsutfylling (f.eks <filename>/cdrom/preseed.cfg</filename> når installasjonen er gjort fra en CD-ROM, eller <filename>/hd-media/preseed.cfg</filename> hvis fra en USB-minnepinne.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							Fra nettverket; forhåndsutfylling skjer da bare etter at nettverket er (automatisk) satt opp; det relevante oppstartsparameteret er <literal>preseed/url=http://<replaceable>server</replaceable>/preseed.cfg</literal>.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Med et raskt øyekast, inkludert filen for forhåndsutfylling i initrd, ser den ut som den mest interessante løsningen; men den er imidlertid sjelden brukt i praksis, fordi å generere et installasjons-initrd er ganske komplisert. De to andre løsninger er mye mer vanlige, spesielt siden oppstartsparametere gir en annen måte til å forhåndsutfylle de første spørsmålene på i installasjonsprosessen. Den vanlige måten å spare bryet med å skrive disse oppstartsparametere for hånd på hver installasjon, er å lagre dem inn i oppsettet for <command>isolinux</command> (i CD-ROM tilfellet eller <command>syslinux</command> (ved USB-pinne).
+				</para>
+
+			</section>
+			 <section>
+				<title>Å lage en forhåndsutfyllingsfil</title>
+				 <para>
+					En forhåndsutfyllingsfil, preseed.cfg, er en ren tekstfil, der hver linje inneholder svaret på et Debconf-spørsmål. En linje er delt i fire felt, atskilt med mellomrom (mellomrom eller tabulatorer), som i, for eksempel,<literal>d-i mirror/suite string stable</literal>:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							det første feltet er «eieren» av spørsmålet; «d-i» brukes for spørsmål som er relevante for installasjonsprogrammet, men det kan også være et pakkenavn for spørsmål som kommer fra Debian-pakker;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							det andre feltet er en identifikasjon for spørsmålet;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							tredje type spørsmål;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							det fjerde og siste feltet inneholder verdien for svaret. Legg merke til at det må være atskilt fra det tredje felt med et mellomrom; hvis det er mer enn ett, regnes følgende mellomrom som en del av verdien.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Den enkleste måten å skrive en forhåndsutfyllingsfil på, er å installere et system for hånd. Deretter vil <command>debconf-get-selections --installer</command> gi svar om installasjonsprogrammet. Svar om andre pakker kan oppnås med <command>debconf-get-selections</command>. Men det er en renere løsning å skrive forhåndsutfyllingsfilen for hånd, med start fra et eksempel og referansedokumentasjonen. Med en slik tilnærming trenger bare spørsmål der standardsvaret trenger å bli overstyrt, å bli forhåndsutfylt; å bruke <literal>priority=critical</literal>-oppstartsparameter vil instruere Debconf om å bare stille kritiske spørsmål, og bruke standardsvarene for andre.
+				</para>
+				 <sidebar> <title><emphasis>DOKUMENTASJON</emphasis> Tillegg til installasjonsveiledningen</title>
+				 <para>
+					Installasjonsveiledningen, som er tilgjengelig på nettet, inneholder i et appendiks en detaljert dokumentasjon om bruken av en forhåndsutfylt fil. Det har også med en detaljert og kommentert eksempelfil som kan tjene som basis for lokale tilpasninger. <ulink type="block" url="https://www.debian.org/releases/jessie/amd64/apb.html" /><ulink type="block" url="https://www.debian.org/releases/jessie/example-preseed.txt" />
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Å lage et skreddersydd oppstartsmedium</title>
+				 <para>
+					Å vite hvor den forhåndsutfylte filen skal lagres er vel og bra, men plasseringen er ikke alt. På en eller annen måte må man få installasjonens oppstartsmedia til å endre oppstartsparametere, og legge til den forhåndsutfylte filen.
+				</para>
+				 <section>
+					<title>Å starte opp fra nettverket</title>
+					 <para>
+						Når en datamaskin startes fra nettverket, vil tjeneren som sender oppstartselementene også definere oppstartsparametere. Dermed må endringene som skal lages, utføres i oppstartstjenerens PXE-oppsett; mer spesifikt, i dens <filename>/tftpboot/pxelinux.cfg/default</filename>-oppsettsfil. Å sette opp nettverksoppstart er en forutsetning, se installasjonsveiledningen for mer informasjon. <ulink type="block" url="https://www.debian.org/releases/jessie/amd64/ch04s05.html" />
+					</para>
+
+				</section>
+				 <section>
+					<title>Å forberede en oppstartbar USB-pinne (Bootable USB Key)</title>
+					 <para>
+						Så snart en oppstartbar minnepenn er forberedt (se <xref linkend="sect.install-usb" />), er noen ekstra operasjoner nødvendige. Anta at inneholdet er tilgjengelig under <filename>/media/usbdisk/</filename>:
+					</para>
+					 <itemizedlist>
+						<listitem>
+							<para>
+								kopier den forhåndsutfylte filen til <filename>/media/usbdisk/preseed.cfg</filename>
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								rediger <filename>/media/usbdisk/syslinux.cfg</filename>, og legg til de nødvendige oppstartsparametere (se eksempel nedenfor).
+							</para>
+
+						</listitem>
+
+					</itemizedlist>
+					 <example>
+						<title>syslinux.cfg-file og forhåndsutfyllingsparametere</title>
+						 
+<programlisting>default vmlinuz
+append preseed/file=/hd-media/preseed.cfg locale=nb_NO.UTF-8 keymap=no language=nb country=NO vga=788 initrd=initrd.gz  --</programlisting>
+
+					</example>
+
+				</section>
+				 <section>
+					<title>Å lage et CD-ROM-bilde</title>
+					 <indexterm>
+						<primary>Debian-CD</primary>
+					</indexterm>
+					 <para>
+						En USB-minnepenn er et lese-skrive-medium, så det var lett for oss å legge til en fil der, og endre noen parametere. I CD-ROM-tilfellet er operasjonen mer komplisert, siden vi trenger å fornye et fullt ISO-bilde. Denne oppgaven er håndtert av <emphasis role="pkg">debian-cd</emphasis>, men dette verktøyet er ganske vanskelig å bruke. Det er behov for et lokalt speil, og det krever en forståelse av alle valgene som tilbys av <filename>/usr/share/debian-cd/CONF.sh</filename>; selv da må <command>make</command> tas i bruk i flere omganger. <filename>/usr/share/debian-cd/README</filename> er derfor svært anbefalt å lese.
+					</para>
+					 <para>
+						Når det er sagt, fungerer Debian-CD alltid på en lignende måte: en «bilde»-katalog med det eksakte innholdet på CD-ROM blir generert, og deretter konvertert til en ISO-fil med et verktøy som <command>genisoimage</command>, <command>mkisofs</command> eller <command>xorriso</command>. Bildekatalogen er ferdig etter Debian-CD-ens <command>make image-trees</command> skritt. På dette tidspunktet setter vi inn den forhåndsutfylte filen i den aktuelle mappen (vanligvis <filename>$TDIR/$CODENAME/CD1/</filename>, $TDIR og $CODENAME er parametere definert av oppsettsfilen <filename>CONF.sh</filename>). CD-ROM-en bruker <command>isolinux</command> som sin oppstartslaster, og oppsett dens må tilpasses fra hva Debian-CD-en genererte, for å sette inn de nødvendige oppstartsparametere (den spesifikke filen er <filename>$TDIR/$CODENAME/boot1/isolinux/isolinux.cfg</filename>). Så kan «normal»-prosessen fortsette, og vi kan gå videre med å generere ISO-bildet med <command>make image CD=1</command> (eller <command>make images</command> hvis flere CD-ROM-er blitt generert)..
+					</para>
+
+				</section>
+
+			</section>
+
+		</section>
+		 <section id="sect.simple-cdd">
+			<title>Simple-CDD: Alt i ett løsningen</title>
+			 <indexterm>
+				<primary>simple-cdd</primary>
+			</indexterm>
+			 <para>
+				Å bare bruke en forhåndsklargjort fil er ikke nok til å oppfylle alle krav som kan komme i store distribusjoner. Selv om det er mulig å utføre noen få skript ved slutten av den normale installasjonsprosessen, er valget av settet av pakkene til installasjon likevel ikke helt fleksibelt (i utgangspunktet kan bare «tasks» (oppgaver) velges); og viktigere, det er bare dette som tillater å installere offisielle Debian-pakker, og utelukker de lokalt genererte.
+			</para>
+			 <para>
+				På den annen side er Debian-CD i stand til å integrere eksterne pakker, og Debian-installereren kan utvides ved å sette inn nye trinn i installasjonsprosessen. Ved å kombinere disse egenskapene bør det være mulig å lage et tilpasset installasjonsprogram som oppfyller våre behov; det bør også kunne sette opp enkelte tjenester etter utpakking av de nødvendige pakkene. Heldigvis er dette ikke bare en hypotese, siden dette er nøyaktig det Simple-CDD (i <emphasis role="pkg">simple-cdd</emphasis>-pakken) gjør.
+			</para>
+			 <para>
+				Hensikten med Simple-CDD er å gjøre det mulig for alle, på en enkel måte, å lage en distribusjon som stammer fra Debian, ved å velge et delsett av tilgjengelige pakker, forhåndsoppsette dem med Debconf, og legge til spesiell programvare, og kjøre tilpassede skript på slutten av installasjonen. Dette samsvarer med filosofien om «universelt operativsystem», siden alle kan tilpasse den til sine egne behov.
+			</para>
+			 <section>
+				<title>Å lage profiler</title>
+				 <para>
+					Simple-CDD definerer «profiler» som tilsvarer begrepet «klasser» i FAI, og en maskin kan ha flere profiler (bestemt ved installasjonstidpunktet). En profil er definert ved et sett av <filename>profiles/<replaceable>profil</replaceable>.*</filename> filer:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<filename>.description</filename>filen inneholder en énlinjes beskrivelse av profilen;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<filename>.packages</filename>-filen lister pakker som automatisk vil bli installert hvis profilen er valgt;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<filename>.downloads</filename>-filen lister pakker som skal lagres på installasjonsmediet, men ikke nødvendigvis installeres;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<filename>.preseed</filename>-filen inneholder forhåndsutfylt informasjon til Debconf-spørsmål (for installereren og/eller for pakker);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<filename>.postinst</filename>-filen inneholder et skript som blir kjørt ved slutten av installasjonen;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							til slutt lar <filename>.conf</filename>-filen deg endre noen Simple-CDD-parametere basert på profilene som skal inngå i et avtrykk.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Profilen <literal>default</literal> har en spesiell rolle, da den alltid er valgt; den inneholder det rene minimum som kreves for at Simple-CDD skal fungere. Det eneste som vanligvis blir tilpasset i denne profilen, er det forhåndsutfylte <literal>simple-cdd/profiles</literal>-parameteret: Dette gjør at du unngår spørsmålet, introdusert av Simple-CDD, om hvilke profiler som skal installeres.
+				</para>
+				 <para>
+					Merk også at kommandoene må startes fra den overordnede katalogen til <filename>profiles</filename>-mappen.
+				</para>
+
+			</section>
+			 <section>
+				<title>Oppsett og bruk av <command>build-simple-cdd</command></title>
+				 <indexterm>
+					<primary><command>build-simple-cdd</command></primary>
+				</indexterm>
+				 <sidebar> <title><emphasis>RASK TITT</emphasis> Detaljert oppsettsfil</title>
+				 <para>
+					Et eksempel på en Simple-CDD oppsettsfil, med alle mulige parametere, er inkludert i pakken (<filename>/usr/share/doc/simple-cdd/examples/simple-cdd.conf.detailed.gz</filename>). Denne kan brukes som et utgangspunkt når du oppretter en egendefinert oppsettsfil.
+				</para>
+				 </sidebar> <para>
+					Simple-CDD krever mange parametere for å operere fullt ut. De vil som oftest bli samlet i en oppsettsfil, som <command>build-simple-cdd</command> kan få oppgitt med <literal>--conf</literal>-valget. Men de kan også spesifiseres via øremerkede parametere gitt til <command>build-simple-cdd</command>. Her er en oversikt over hvordan denne kommandoen oppfører seg, og hvordan dens parametere brukes:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<literal>profiles</literal>-parameteret lister profiler som vil bli inkludert i det genererte CD-ROM-bildet;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							basert på listen over nødvendige pakker, laster Simple-CDD ned de nødvendige filene fra tjeneren nevnt i <literal>server</literal>, og samler dem i et del-speil (som senere blir gitt til Debian-CD);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							de tilpassede pakkene som er nevnt i <literal>local_packages</literal> er også integrert i dette lokale speilet;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							så kjøres Debian-CD (innenfor standardplasseringen som kan settes opp med <literal>debian_cd_dir</literal>-variabelen), med listen med pakker til integrering;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							med en gang Debian-CD-en har forberedt sin katalog, bruker Simple-CDD noen endringer i denne katalogen:
+						</para>
+						 <itemizedlist>
+							<listitem>
+								<para>
+									filer som inneholder profilene er lagt til i en <filename>simple-cdd</filename>-undermappe (som vil ende opp på CD-ROM-en);
+								</para>
+
+							</listitem>
+							 <listitem>
+								<para>
+									andre filer som er listet i <literal>all_extras</literal>-parameteret blir også lagt til;
+								</para>
+
+							</listitem>
+							 <listitem>
+								<para>
+									oppstartsparameterne er justert slik at det er mulig å aktivere forhåndsutfyllingen. Spørsmål om språk og land kan unngås hvis den aktuelle informasjonen er lagret i <literal>language</literal> og <literal>country</literal>-variablene.
+								</para>
+
+							</listitem>
+
+						</itemizedlist>
+
+					</listitem>
+					 <listitem>
+						<para>
+							deretter genererer debian-cd det endelige ISO-bildet.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+
+			</section>
+			 <section>
+				<title>Å generere et ISO-bilde</title>
+				 <para>
+					Når vi har skrevet en oppsettsfil og definert våre profiler, er det resterende skritt å påkalle <command>build-simple-cdd --conf simple-cdd.conf</command>. Etter et par minutter, får vi det ønskede bildet i <filename>images/debian-8.0-amd64-CD-1.iso</filename>.
+				</para>
+
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.monitoring">
+		<title>Overvåking</title>
+		 <para>
+			Overvåking er en fellesbetegnelse, og de ulike involverte aktiviteter har flere mål: På den ene siden, som følge av ressursene maskinen gir, kan metning forutsees, med de påfølgende oppgraderinger som kreves. På den annen side varsles administrator så snart en tjeneste ikke er tilgjengelig, eller ikke fungerer, som betyr at oppståtte problemer kan fikses tidligere.
+		</para>
+		 <para>
+			<emphasis>Munin</emphasis> dekker det første området, ved å vise grafiske diagrammer for historiske verdier for en rekke parametere (benyttet RAM, anvendt diskplass, prosessorbelastning, nettverkstrafikk, Apache/MySQL-last (bruk), og så videre). <emphasis>Nagios</emphasis> dekker det andre området, ved å regelmessig kontrollere at tjenestene fungerer og er tilgjengelig, og sende varsler gjennom de riktige kanaler (e-post, tekstmeldinger, og så videre). Begge har et modulært design, som gjør det enkelt å lage nye programtillegg for å overvåke bestemte parametere eller tjenester.
+		</para>
+		 <sidebar> <title><emphasis>ALTERNATIV</emphasis> Zabbix, et integrert overvåkningsverktøy</title>
+		 <indexterm>
+			<primary>Zabbix</primary>
+		</indexterm>
+		 <para>
+			Selv om Munin og Nagios er svært mye brukt, er de ikke de eneste på overvåkingsområdet, og hver av dem behandler kun halvparten av oppgaven (grafer på den ene side, varsling på den andre). Zabbix, derimot, integrerer begge sider ved overvåkingen; den har også et nettgrensesnitt for å sette opp de vanligste aspektene. Den har vokst med stormskritt i løpet av de siste årene, og kan nå betraktes som en levedyktig konkurrent. På overvåkingstjeneren vil du installere <emphasis role="pkg">zabbix-server-pgsql</emphasis> (eller <emphasis role="pkg">zabbix-server-mysql</emphasis>), muligens sammen med <emphasis role="pkg">zabbix-frontend-php</emphasis> for å få et nettgrensesnitt. Hos verten, for å overvåke, vil du installere <emphasis role="pkg">zabbix-agent</emphasis> for å sende data tilbake til tjeneren. <ulink type="block" url="http://www.zabbix.com/" />
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>ALTERNATIV</emphasis> Icinga, en forgrening fra Nagios</title>
+		 <indexterm>
+			<primary>Icinga</primary>
+		</indexterm>
+		 <para>
+			Ansporet av meningsforskjeller om utviklingsmodellen for Nagios (som er kontrollert av et selskap), laget et antall utviklere av Nagios en forgrening, og brukte Icinga som det nye navnet. Icinga er fortsatt kompatibel - så langt - med Nagios oppsett og plugins, men den legger også til ekstra funksjoner. <ulink type="block" url="http://www.icinga.org/" />
+		</para>
+		 </sidebar> <section id="sect.munin">
+			<title>Oppsett av Munin</title>
+			 <indexterm>
+				<primary>Munin</primary>
+			</indexterm>
+			 <para>
+				Hensikten med Munin er å overvåke mange maskiner. Derfor bruker den ganske naturlig en klient/tjener-arkitektur. Den sentrale verten - graftegneren - samler data fra alle de overvåkede vertene, og genererer historiske grafer.
+			</para>
+			 <section>
+				<title>Sette opp verter til monitor</title>
+				 <para>
+					Det første trinnet er å installere <emphasis role="pkg">munin-node</emphasis>-pakken. Nissen som denne pakken har installert, lytter på port 4949, og sender tilbake data samlet inn av alle de aktive programtilleggene. Hvert programtillegg er et enkelt program som returnerer en beskrivelse av de innsamlede data, samt den siste målte verdi. Programtilleggene er lagret i <filename>/usr/share/munin/plugins/</filename>, men bare de med en symbolsk lenke i <filename>/etc/munin/plugins/</filename> er virkelig i bruk.
+				</para>
+				 <para>
+					Når pakken er installert, er et sett med aktive programtillegg, basert på tilgjengelig programvare og gjeldende oppsett av verten, fastsatt. Imidlertid avhenger dette auto-oppsettet av en funksjon som hvert programtillegg må levere, og det er vanligvis en god idé å gå gjennom og justere resultatene for hånd. Å surfe på <ulink url="http://gallery.munin-monitoring.org">Plugin Gallery</ulink> kan være interessant, selv om ikke alle programtillegg har omfattende dokumentasjon. Men alle programtillegg er skript, og de fleste er ganske enkle og godt kommentert. Å surfe <filename>/etc/munin/plugins/</filename> er derfor en god måte å få en idé om hva hvert programtillegg handler om, og å avgjøre hvilke som bør fjernes. Tilsvarende, å aktivere et interessant programtillegg som finnes i <filename>/usr/share/munin/plugins/</filename> er så enkelt som å sette opp en symbolsk lenke med <command>ln -sf /usr/share/munin/plugins/<replaceable>plugin</replaceable> /etc/munin/plugins/</command>. Merk at når navnet på et programtillegg ender med en understrekning "_", krever programtillegg en parameter. Denne parameteren må lagres i navnet på den symbolske lenken; for eksempel må "if_" programtillegg bli aktivert med en symbolsk <filename>if_eth0</filename>-lenke, og den vil overvåke nettverkstrafikk på eth0 grensesnittet.
+				</para>
+				 <para>
+					Når alle programtilleggene er satt opp riktig, må bakgrunnsprosessoppsettet oppdateres til å beskrive adgangskontrollen for de innsamlede dataene. Dette inkluderer<literal>allow</literal>-direktiver i <filename>/etc/munin/munin-node.conf</filename>-filen. Standardoppsettet er <literal>allow ^127\.0\.0\.1$</literal>, og gir bare gir tilgang til den lokale verten. En administrator vil vanligvis legge til en lignende linje med IP-adressen til graftegner-verten, og deretter starte bakgrunnsprosessen på nytt med <command>service munin-node restart</command>.
+				</para>
+				 <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Å lage lokale programtillegg</title>
+				 <para>
+					Munin inkluderer detaljert dokumentasjon om hvordan programtilleggene skal fungere, og hvordan man kan utvikle nye programtillegg. <ulink type="block" url="http://munin-monitoring.org/wiki/plugins" />
+				</para>
+				 <para>
+					Et programtillegg kan best testes når det kjøres under samme forhold som det ville blitt når det utløses av munin-node. Dette kan simuleres ved å kjøre <command>munin-run <replaceable>plugin</replaceable></command> som rot. Et potensielt andre parameter som gis til denne kommandoen (slik som <literal>config</literal>) formidles til programtillegget som et parameter.
+				</para>
+				 <para>
+					Når et programtillegg brukes med med <literal>config</literal>-parameteret, må det beskrive seg selv ved å returnere et sett med felt:
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>sudo munin-run load config
+</userinput><computeroutput>graph_title Load average
+graph_args --base 1000 -l 0
+graph_vlabel load
+graph_scale no
+graph_category system
+load.label load
+graph_info The load average of the machine describes how many processes are in the run-queue (scheduled to run "immediately").
+load.info 5 minute load average
+</computeroutput></screen>
+				 <para>
+					De forskjellige tilgjengelige feltene er beskrevet av «Plugin reference» (Plugin-referansen) som er tilgjengelig som en del av «Munin guide»-en. <ulink type="block" url="http://munin.readthedocs.org/en/latest/reference/plugin.html" />
+				</para>
+				 <para>
+					Når startet uten en parameter, vil programtillegget bare returnere de siste måleverdiene: For eksempel, å kjøre <command>sudo munin-run load</command> kunne returnere <literal>load.value 0.12</literal>.
+				</para>
+				 <para>
+					Til slutt, når et programtillegg startes med parameteret <literal>autoconf</literal>, skal det returnere «yes» (og exit-status 0) eller «no» (med exit-status 1) avhengig av om programtillegget bør være aktivert på denne verten.
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Oppsett av graftegneren</title>
+				 <para>
+					«Graftegneren» aggregerer rett og slett dataene, og genererer de tilhørende grafer. Den nødvendige programvaren er i <emphasis role="pkg">munin</emphasis>-pakken. Standardoppsettet kjører <command>munin-cron</command> (en gang hvert 5. minutt). Den samler data fra alle verter som er oppført i <filename>/etc/munin/munin.conf</filename> (kun den lokale verten er oppført som standard), lagrer historiske data i RRD-filer (<emphasis>Round Robin Database</emphasis>, et filformat utviklet for å lagre data som varierer i tid) lagret under <filename>/var/lib/munin/</filename>, og genererer en HTML-side med grafene i <filename>/var/cache/munin/www/</filename>.
+				</para>
+				 <para>
+					Alle overvåkede maskiner må derfor være oppført i oppsettsfilen <filename>/etc/munin/munin.conf</filename>. Hver maskin er oppført som en full seksjon med et navn som passer til maskinen, og minst en <literal>address</literal>-inngang som gir den tilsvarende IP-adressen.
+				</para>
+				 
+<programlisting>[ftp.falcot.com]
+    address 192.168.0.12
+    use_node_name yes</programlisting>
+				 <para>
+					Seksjoner kan være mer komplekse, og beskrive ekstra grafer laget ved å kombinere data fra flere maskiner. Prøvene som er gitt i oppsettsfilen er gode utgangspunkter for tilpasninger.
+				</para>
+				 <para>
+					Det siste trinnet er å publisere de genererte sidene. Dette innebærer å sette opp en nett-tjener, slik at innholdet i <filename>/var/cache/munin/www/</filename> blir tilgjengelig på et nettsted. Tilgang til denne nettsiden vil ofte være begrenset, enten ved hjelp av en autentiseringsmekanisme eller IP-basert adgangskontroll. Se <xref linkend="sect.http-web-server" /> for de relevante detaljene.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.nagios">
+			<title>Oppsett av Nagios</title>
+			 <indexterm>
+				<primary>Nagios</primary>
+			</indexterm>
+			 <para>
+				I motsetning til Munin, installerer ikke Nagios nødvendigvis noe på de overvåkede vertene. Mesteparten av tiden brukes Nagios til å kontrollere tilgjengeligheten for nettverkstjenester. For eksempel kan Nagios koble til en nett-tjener, og sjekke at en gitt nettside kan nås innen en gitt tid.
+			</para>
+			 <section>
+				<title>Å installere</title>
+				 <para>
+					Det første skrittet for å sette opp Nagios er å installere <emphasis role="pkg">nagios3</emphasis>, <emphasis role="pkg">nagios-plugins</emphasis> og <emphasis role="pkg">nagios3-doc</emphasis>-pakkene. Pakkeinstallasjonen setter opp nettgrensesnittet, og lager en første <literal>nagiosadmin</literal>-bruker (som den ber om et passord for). Å legge til andre brukere er så enkelt som å sette dem inn i <filename>/etc/nagios3/htpasswd.users</filename>-filen med Apaches <command>htpasswd</command>-kommando. Hvis ikke noe Debconf-spørsmål vises under installasjonen, kan <command>dpkg-reconfigure nagios3-cgi</command> bli brukt til å definere <literal>nagiosadmin</literal>-passordet.
+				</para>
+				 <para>
+					Grensesnittet vises ved å la nettleseren gå til <literal>http://<replaceable>server</replaceable>/nagios3/</literal>. Vær spesielt oppmerksom på at Nagios allerede overvåker noen parametere på maskinen der den kjører. Men noen interaktive funksjoner, som å legge til kommentarer til en vert, virker ikke. Disse funksjonene er deaktivert under Nagios standardoppsett, som av sikkerhetsgrunner er svært restriktiv.
+				</para>
+				 <para>
+					Som dokumenter i <filename>/usr/share/doc/nagios3/README.Debian</filename>, innebærer aktivering av noen egenskaper å redigere <filename>/etc/nagios3/nagios.cfg</filename>, og at parameteret <literal>check_external_commands</literal> settes til «1». Vi må også sette opp skrivetilgang til katalogen som Nagios bruker, med kommandoer som de følgende:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>service nagios3 stop</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>dpkg-statoverride --update --add nagios www-data 2710 /var/lib/nagios3/rw
+</userinput><computeroutput># </computeroutput><userinput>dpkg-statoverride --update --add nagios nagios 751 /var/lib/nagios3
+</userinput><computeroutput># </computeroutput><userinput>service nagios3 start</userinput>
+<computeroutput>[...]</computeroutput></screen>
+
+			</section>
+			 <section>
+				<title>Oppsett</title>
+				 <para>
+					Nagios nettgrensesnitt er ganske fint, men det tillater ikke oppsettet, heller ikke kan det brukes til å legge til overvåkede verter og tjenester. Hele oppsettet styres via filer som det er referert til i den sentrale oppsettsfilen,<filename>/etc/nagios3/nagios.cfg</filename>.
+				</para>
+				 <para>
+					Disse filene bør en ikke dykke ned i uten en viss forståelse av Nagios-konsepter. Oppsettet lister objekter av følgende typer:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							en <emphasis>vert (host)</emphasis> er en maskin som skal overvåkes;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>vertsgruppe (hostgroup)</emphasis> er et sett av verter som bør grupperes sammen for visning, eller å utnytte vanlige oppsettselementer;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>service</emphasis> er et testbart element knyttet til en vert eller en gruppe verter. Det vil som oftest være en sjekk for en nettverkstjeneste, men det kan også innebære å sjekke om noen parametere er innenfor et akseptabelt spenn (for eksempel ledig diskplass eller prosessorbelastning);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>servicegruppe (servicegroup)</emphasis> er et sett av tjenester som skal grupperes sammen for visning;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>kontakt (contact)</emphasis> er en person som kan motta varsler;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>kontaktgruppe (contactgroup)</emphasis> er et sett med slike kontakter;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>tidsperiode (timeperiod)</emphasis> er et tidsspenn innenfor hvilket enkelte tjenester må kontrolleres;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							en <emphasis>kommando (command)</emphasis> er kommandolinjen som brukes for å sjekke en gitt tjeneste.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Alt etter typen, har hvert objekt en rekke egenskaper som kan tilpasses. En fullstendig liste ville bli for lang til å ta med her, men de viktigste egenskapene er forholdet mellom objektene.
+				</para>
+				 <para>
+					En <emphasis>service</emphasis> bruker en <emphasis>kommando (command)</emphasis> til å sjekke statusen til en egenskap på en <emphasis>vert (host)</emphasis> (eller en <emphasis>vertsgruppe (hostgroup)</emphasis>) innenfor en <emphasis>tidsperiode (timeperiod)</emphasis>. Om det oppstår et problem, sender Nagios et varsel til alle medlemmer av <emphasis>kontaktgruppe (contactgroup)</emphasis> knyttet til tjenesten. Hvert medlem får sendt varselet ifølge den kanalen som er beskrevet i det samsvarende <emphasis>kontakt (contact)</emphasis>-objektet.
+				</para>
+				 <para>
+					Et arvesystem tillater enkel deling av et sett med egenskaper på tvers av mange objekter uten å duplisere informasjon. Videre har det opprinnelige oppsettet en rekke standardobjekter; i mange tilfeller er det å definere nye verter, tjenester og kontakter en enkel sak å utlede fra de angitte generiske objektene. Filene i <filename>/etc/nagios3/conf.d/</filename> er en god kilde til informasjon om hvordan de fungerer.
+				</para>
+				 <para>
+					Falcot Corp-administratorene bruker følgende oppsett:
+				</para>
+				 <example>
+					<title><filename>/etc/nagios3/conf.d/falcot.cfg</filename>-fil</title>
+					 
+<programlisting>define contact{
+    name                            generic-contact
+    service_notification_period     24x7
+    host_notification_period        24x7
+    service_notification_options    w,u,c,r
+    host_notification_options       d,u,r
+    service_notification_commands   notify-service-by-email
+    host_notification_commands      notify-host-by-email
+    register                        0 ; Template only
+}
+define contact{
+    use             generic-contact
+    contact_name    rhertzog
+    alias           Raphael Hertzog
+    email           hertzog@debian.org
+}
+define contact{
+    use             generic-contact
+    contact_name    rmas
+    alias           Roland Mas
+    email           lolando@debian.org
+}
+
+define contactgroup{
+    contactgroup_name     falcot-admins
+    alias                 Falcot Administrators
+    members               rhertzog,rmas
+}
+
+define host{
+    use                   generic-host ; Name of host template to use
+    host_name             www-host
+    alias                 www.falcot.com
+    address               192.168.0.5
+    contact_groups        falcot-admins
+    hostgroups            debian-servers,ssh-servers
+}
+define host{
+    use                   generic-host ; Name of host template to use
+    host_name             ftp-host
+    alias                 ftp.falcot.com
+    address               192.168.0.6
+    contact_groups        falcot-admins
+    hostgroups            debian-servers,ssh-servers
+}
+
+# 'check_ftp' command with custom parameters
+define command{
+    command_name          check_ftp2
+    command_line          /usr/lib/nagios/plugins/check_ftp -H $HOSTADDRESS$ -w 20 -c 30 -t 35
+}
+
+# Generic Falcot service
+define service{
+    name                  falcot-service
+    use                   generic-service
+    contact_groups        falcot-admins
+    register              0
+}
+
+# Services to check on www-host
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   HTTP
+    check_command         check_http
+}
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   HTTPS
+    check_command         check_https
+}
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   SMTP
+    check_command         check_smtp
+}
+
+# Services to check on ftp-host
+define service{
+    use                   falcot-service
+    host_name             ftp-host
+    service_description   FTP
+    check_command         check_ftp2
+}</programlisting>
+
+				</example>
+				 <para>
+					Denne oppsettsfilen beskriver to overvåkede verter. Den første er nett-tjeneren, og kontrollene er gjort på HTTP (80) og sikre-HTTP (443) porter. Nagios sjekker også at en SMTP-tjener kjører på port 25. Den andre verten er FTP-tjeneren, og sjekken inkluderer å sørge for at svar kommer innen 20 sekunder. Utover denne forsinkelsen, blir en <emphasis>advarsel</emphasis> sendt ut; med mer enn 30 sekunder ansees varslingen som kritisk. Nagios nettgrensesnitt viser også at SSH-tjenesten er overvåket; dette kommer fra vertene som tilhører vertsgruppen <literal>ssh-servers</literal>. Den samsvarende standardtjenesten er definert i <filename>/etc/nagios3/conf.d/services_nagios2.cfg</filename>.
+				</para>
+				 <para>
+					Legg merke til bruken av arv: Et objekt er satt til å arve fra et annet objekt med «bruk <replaceable>foreldre-navn</replaceable>». Foreldre-objektet må kunne identifiseres, noe som krever å gi det et «navn <replaceable>identifikator</replaceable>»-egenskap. Hvis det overordnede objektet ikke er ment å være et reelt objekt, men bare skal tjene som en forelder, og gir det en «register 0»-egenskap som sier til Nagios om å ikke vurdere det, og derfor om å ignorere mangelen på noen parametere som ellers ville vært nødvendig.
+				</para>
+				 <sidebar> <title><emphasis>DOKUMENTASJON</emphasis> Liste med objektegenskaper</title>
+				 <para>
+					En mer inngående forståelse av de ulike måtene som Nagios kan settes opp på, kan fås fra dokumentasjonen fra <emphasis role="pkg">nagios3-doc</emphasis>-pakken. Denne dokumentasjonen er direkte tilgjengelig fra nettgrensesnittet, med «Dokumentasjon»-linken øverst i venstre hjørne. Den inkluderer en liste over alle objekttyper, med alle de egenskapene de kan ha. Den forklarer også hvordan du oppretter nye programtillegg.
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>FOR VIDEREKOMMENDE</emphasis> Eksterne tester med NRPE</title>
+				 <para>
+					Mange av Nagios programtillegg tillater å sjekke noen parametere lokalt hos en vert; hvis mange maskiner trenger disse kontrollene, mens en sentral installasjon samler dem, trenges NRPE (<emphasis>Nagios Remote Plugin Executor</emphasis>)-programtillegg å bli lagt inn. <emphasis role="pkg">nagios-nrpe-plugin</emphasis>-pakken må bli installert på Nagios tjeneren, og <emphasis role="pkg">nagios-nrpe-server</emphasis> på vertene der lokale tester trenger bli kjørt. Sistnevnte får sitt oppsett fra <filename>/etc/nagios/nrpe.cfg</filename>. Denne filen skal inneholde de testene som kan startes eksternt, og maskinenes IP-adresser må tillates å utløse dem. På Nagios side, å aktivere disse eksterne testene er så enkelt som å legge til samsvarende tjenester ved hjelp av den nye <emphasis>check_nrpe</emphasis>-kommandoen.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+
+	</section>
+</chapter>
+

@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">12.3. Pemasangan Otomatis</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-id-ID-1.0-1" /><meta
+        name="keywords"
+        content="RAID, LVM, FAI, Preseeding, Pemantauan, Virtualisasi, Xen, LXC" /><link
+        rel="home"
+        href="index.html"
+        title="Buku Panduan Administrator Debian" /><link
+        rel="up"
+        href="advanced-administration.html"
+        title="Bab 12. Administrasi Tingkat Lanjut" /><link
+        rel="prev"
+        href="sect.virtualization.html"
+        title="12.2. Virtualisasi" /><link
+        rel="next"
+        href="sect.monitoring.html"
+        title="12.4. Pemantauan" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/id-ID/stable/sect.automated-installation.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.virtualization.html"><strong>Sebelumnya</strong></a></li><li
+          class="home">Buku Panduan Administrator Debian</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.monitoring.html"><strong>Lanjut</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.automated-installation"></a>12.3. Pemasangan Otomatis</h2></div></div></div><a
+          id="id-1.15.6.2"
+          class="indexterm"></a><a
+          id="id-1.15.6.3"
+          class="indexterm"></a><div
+          class="para">
+			Administrator Falcot Corp, seperti banyak administrator dari layanan TI yang besar, membutuhkan alat untuk menginstal (atau menginstal ulang) dengan cepat, dan secara otomatis jika mungkin, mesin-mesin baru mereka.
+		</div><div
+          class="para">
+			Persyaratan ini dapat dipenuhi oleh berbagai macam solusi. Di satu sisi, alat-alat generik seperti SystemImager menangani hal ini dengan menciptakan sebuah image yang didasarkan pada mesin templat, kemudian menyebarkan image ke sistem target; di ujung lain spektrum, penginstal Debian standar dapat diprabibit dengan berkas konfigurasi yang memberikan jawaban-jawaban untuk pertanyaan-pertanyaan yang ditanyakan selama proses instalasi. Sebagai semacam jalan tengah, alat hibrida seperti FAI (<span
+            class="emphasis"><em>Fully Automatic Installer</em></span>) menginstal mesin menggunakan sistem pemaketan, tetapi juga menggunakan infrastrukturnya sendiri untuk tugas-tugas yang lebih spesifik bagi penyebaran masif (seperti memulai, mempartisi, mengkonfigurasi, dan seterusnya).
+		</div><div
+          class="para">
+			Masing-masing solusi ini memiliki pro dan kontra: SystemImager bekerja secara independen dari sebarang sistem pemaketan tertentu, yang memungkinkan untuk mengatur set besar mesin menggunakan beberapa distro Linux yang berbeda. Ini juga mencakup sebuah sistem pemutakhiran yang tidak memerlukan instalasi ulang, tapi sistem pemutakhiran ini hanya dapat diandalkan jika mesin tidak diubah secara independen; dengan kata lain, pengguna harus tidak memperbarui perangkat lunak mereka sendiri, atau menginstal perangkat lunak lainnya. Demikian pula, pembaruan keamanan harus tidak otomatis, karena mereka harus pergi melalui image referensi terpusat yang dikelola oleh SystemImager. Solusi ini juga memerlukan mesin target yang homogen, bila tidak banyak image yang berbeda mesti disimpan dan dikelola (image i386 tidak akan cocok pada mesin powerpc, dan sebagainya).
+		</div><div
+          class="para">
+			Di sisi lain, instalasi otomatis menggunakan debian-installer dapat beradaptasi dengan spesifik dari setiap mesin: installer akan mengambil paket kernel dan perangkat lunak yang sesuai dari repositori yang relevan, mendeteksi perangkat keras yang tersedia, mempartisi seluruh hard disk untuk mengambil keuntungan dari semua ruang yang tersedia, menginstal sistem Debian yang sesuai, dan mengatur sebuah bootloader yang sesuai. Namun, pemasang standar hanya akan menginstal versi Debian standar, dengan sistem dasar dan satu set "tugas" yang terprapilih; ini menghalang menginstal sistem tertentu dengan aplikasi yang tidak dipaketkan. Memenuhi kebutuhan khusus ini memerlukan penyesuaian installer... Untungnya, installer sangat modular, dan ada alat untuk mengotomasi kebanyakan pekerjaan yang diperlukan untuk kustomisasi ini, yang paling penting simple-CDD (CDD adalah singkatan <span
+            class="emphasis"><em>Custom Debian Derivative</em></span>). Bahkan solusi simple-CDD, bagaimanapun, hanya menangani instalasi awal; hal ini biasanya tidak masalah karena perangkat APT memungkinkan penggelaran pemutakhiran yang efisien nanti.
+		</div><div
+          class="para">
+			Kita hanya akan memberikan gambaran kasar FAI, dan melewati SystemImager sama sekali (yang tidak ada lagi di Debian), agar fokus lebih bersungguh-sungguh pada debian-installer dan simple-CDD, yang lebih menarik dalam konteks hanya Debian.
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.fai"></a>12.3.1. Fully Automatic Installer (FAI, Pemasang Otomatis Sepenuhnya)</h3></div></div></div><a
+            id="id-1.15.6.9.2"
+            class="indexterm"></a><div
+            class="para">
+				<span
+              class="foreignphrase"><em
+                class="foreignphrase">Fully Automatic Installer</em></span> mungkin adalah sistem penggelaran otomatis tertua untuk Debian, yang menjelaskan statusnya sebagai referensi; tetapi sifatnya yang sangat fleksibel hanya mengkompensasi kompleksitas yang melibatkannya.
+			</div><div
+            class="para">
+				FAI memerlukan sebuah sistem server untuk menyimpan informasi penggelaran dan memungkinkan mesin target untuk boot dari jaringan. Server ini memerlukan paket <span
+              class="pkg pkg">fai-server</span> (atau <span
+              class="pkg pkg">fai-quickstart</span>, yang juga membawa elemen-elemen yang diperlukan untuk sebuah konfigurasi standar).
+			</div><div
+            class="para">
+				FAI menggunakan pendekatan khusus untuk menentukan berbagai profil yang dapat diinstal. Bukan hanya menduplikasi sebuah referensi instalasi, FAI adalah sebuah installer penuh, sepenuhnya dikonfigurasi melalui serangkaian berkas dan skrip yang disimpan di server; lokasi default <code
+              class="filename">/srv/fai/config/</code> tidak secara otomatis diciptakan, sehingga administrator perlu menciptakannya beserta berkas-berkas yang relevan. Hampir setiap kali, berkas-berkas ini akan disesuaikan dari berkas contoh yang tersedia dalam dokumentasi untuk paket <span
+              class="pkg pkg">fai-doc</span>, khususnya direktori <code
+              class="filename">/usr/share/doc/fai-doc/examples/simple/</code>.
+			</div><div
+            class="para">
+				Sekali profil didefinisikan, perintah <code
+              class="command">fai-setup</code> menghasilkan unsur-unsur yang diperlukan untuk memulai instalasi FAI; ini sebagian besar berarti mempersiapkan atau memperbarui sistem minimal (NFS-root) yang digunakan selama instalasi. Satu alternatif adalah untuk menghasilkan CD boot tededikasi dengan <code
+              class="command">fai-cd</code>.
+			</div><div
+            class="para">
+				Menciptakan semua berkas konfigurasi ini memerlukan pemahaman tentang cara FAI bekerja. Suatu proses instalasi biasanya tersusun dari langkah-langkah berikut:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						mengambil sebuah kernel dari jaringan, dan mem-boot itu;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						mengait sistem berkas root dari NFS;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						mengeksekusi <code
+                    class="command">/usr/sbin/fai</code>, yang mengontrol seluruh proses (langkah berikutnya karena itu diprakarsai oleh skrip ini);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						menyalin ruang konfigurasi dari server ke <code
+                    class="filename">/fai/</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						menjalankan <code
+                    class="command">fai-class</code>. Skrip <code
+                    class="filename">/fai/class/[0-9][0-9]*</code> dijalankan sesuai gilirannya, dan mengembalikan nama "kelas" yang berlaku untuk mesin yang diinstal; informasi ini akan berfungsi sebagai dasar untuk langkah-langkah berikut. Hal ini memungkinkan untuk beberapa fleksibilitas dalam mendefinisikan layanan yang akan diinstal dan dikonfigurasi.
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						mengambil sejumlah variabel konfigurasi, tergantung pada kelas yang relevan;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						mempartisi disk dan memformat partisi, berdasarkan informasi yang diberikan dalam <code
+                    class="filename">/fai/disk_config/<em
+                      class="replaceable">kelas</em></code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						mengaitkan partisi yang disebut;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						memasang sistem dasar;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						memprabibit basis data Debconf dengan <code
+                    class="command">fai-debconf</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						mengambil daftar paket yang tersedia untuk APT;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						menginstal paket-paket yang tercantum dalam <code
+                    class="filename">/fai/package_config/<em
+                      class="replaceable">kelas</em></code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						menjalankan skrip pasca konfigurasi, <code
+                    class="filename">/fai/scripts/<em
+                      class="replaceable">kelas</em>/[0-9][0-9]*</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						merekam log instalasi, melepas kait partisi, dan reboot.
+					</div></li></ul></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.d-i-preseeding"></a>12.3.2. Memprabibit Debian-Installer</h3></div></div></div><a
+            id="id-1.15.6.10.2"
+            class="indexterm"></a><a
+            id="id-1.15.6.10.3"
+            class="indexterm"></a><div
+            class="para">
+				Pada akhir hari, alat yang terbaik untuk menginstal sistem Debian secara logis mestinya adalah Debian installer yang resmi. Inilah mengapa, sejak dari awal, debian-installer telah dirancang untuk penggunaan otomatis, mengambil keuntungan dari infrastruktur yang disediakan oleh <span
+              class="pkg pkg">debconf</span>. Yang kedua memungkinkan, di satu sisi, untuk mengurangi jumlah pertanyaan yang diajukan (pertanyaan-pertanyaan tersembunyi akan menggunakan jawaban default yang disediakan), dan di sisi lain, untuk menyediakan jawaban default secara terpisah, sehingga instalasi bisa non-interaktif. Fitur terakhir ini dikenal sebagai <span
+              class="emphasis"><em>preseeding</em></span>.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>LEBIH JAUH</em></span> Debconf dengan suatu basis data terpusat</strong></p></div></div></div><a
+              id="id-1.15.6.10.5.2"
+              class="indexterm"></a><div
+              class="para">
+				Preseeding allows to provide a set of answers to Debconf questions at installation time, but these answers are static and do not evolve as time passes. Since already-installed machines may need upgrading, and new answers may become required, the <code
+                class="filename">/etc/debconf.conf</code> configuration file can be set up so that Debconf uses external data sources (such as an LDAP directory server, or a remote file accessed via NFS or Samba). Several external data sources can be defined at the same time, and they complement one another. The local database is still used (for read-write access), but the remote databases are usually restricted to reading. The <span
+                class="citerefentry"><span
+                  class="refentrytitle">debconf.conf</span>(5)</span> manual page describes all the possibilities in detail (you need the <span
+                class="pkg pkg">debconf-doc</span> package).
+			</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.10.6"></a>12.3.2.1. Menggunakan Berkas Preseed</h4></div></div></div><div
+              class="para">
+					Ada beberapa tempat dimana installer bisa memperoleh berkas preseed:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							in the initrd used to start the machine; in this case, preseeding happens at the very beginning of the installation, and all questions can be avoided. The file just needs to be called <code
+                      class="filename">preseed.cfg</code> and stored in the initrd root.
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							on the boot media (CD or USB key); preseeding then happens as soon as the media is mounted, which means right after the questions about language and keyboard layout. The <code
+                      class="literal">preseed/file</code> boot parameter can be used to indicate the location of the preseeding file (for instance, <code
+                      class="filename">/cdrom/preseed.cfg</code> when the installation is done off a CD-ROM, or <code
+                      class="filename">/hd-media/preseed.cfg</code> in the USB-key case).
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							from the network; preseeding then only happens after the network is (automatically) configured; the relevant boot parameter is then <code
+                      class="literal">preseed/url=http://<em
+                        class="replaceable">server</em>/preseed.cfg</code>.
+						</div></li></ul></div><div
+              class="para">
+					At a glance, including the preseeding file in the initrd looks like the most interesting solution; however, it is rarely used in practice, because generating an installer initrd is rather complex. The other two solutions are much more common, especially since boot parameters provide another way to preseed the answers to the first questions of the installation process. The usual way to save the bother of typing these boot parameters by hand at each installation is to save them into the configuration for <code
+                class="command">isolinux</code> (in the CD-ROM case) or <code
+                class="command">syslinux</code> (USB key).
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.10.7"></a>12.3.2.2. Membuat Berkas Preseed</h4></div></div></div><div
+              class="para">
+					A preseed file is a plain text file, where each line contains the answer to one Debconf question. A line is split across four fields separated by whitespace (spaces or tabs), as in, for instance, <code
+                class="literal">d-i mirror/suite string stable</code>:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							the first field is the “owner” of the question; “d-i” is used for questions relevant to the installer, but it can also be a package name for questions coming from Debian packages;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							ruas kedua adalah pengidentifikasi untuk pertanyaan;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							ketiga, jenis pertanyaan;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							ke empat dan ruas terakhir memuat nilai untuk jawaban. Perhatikan bahwa ini harus dipisahkan dari ruas ke tiga dengan satu spasi; jika ada lebih dari satu, karakter spasi yang mengikuti dianggap bagian dari nilai.
+						</div></li></ul></div><div
+              class="para">
+					The simplest way to write a preseed file is to install a system by hand. Then <code
+                class="command">debconf-get-selections --installer</code> will provide the answers concerning the installer. Answers about other packages can be obtained with <code
+                class="command">debconf-get-selections</code>. However, a cleaner solution is to write the preseed file by hand, starting from an example and the reference documentation: with such an approach, only questions where the default answer needs to be overridden can be preseeded; using the <code
+                class="literal">priority=critical</code> boot parameter will instruct Debconf to only ask critical questions, and use the default answer for others.
+				</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>DOKUMENTASI</em></span> Lampiran panduan instalasi</strong></p></div></div></div><div
+                class="para">
+					The installation guide, available online, includes detailed documentation on the use of a preseed file in an appendix. It also includes a detailed and commented sample file, which can serve as a base for local customizations. <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://www.debian.org/releases/jessie/amd64/apb.html">https://www.debian.org/releases/jessie/amd64/apb.html</a></div> <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://www.debian.org/releases/jessie/example-preseed.txt">https://www.debian.org/releases/jessie/example-preseed.txt</a></div>
+				</div></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.10.8"></a>12.3.2.3. Membuat sebuah Media Boot Ubahan</h4></div></div></div><div
+              class="para">
+					Knowing where to store the preseed file is all very well, but the location isn't everything: one must, one way or another, alter the installation boot media to change the boot parameters and add the preseed file.
+				</div><div
+              class="section"><div
+                class="titlepage"><div><div><h5
+                      class="title"><a
+                        xmlns=""
+                        id="id-1.15.6.10.8.3"></a>12.3.2.3.1. Boot dari Jaringan</h5></div></div></div><div
+                class="para">
+						When a computer is booted from the network, the server sending the initialization elements also defines the boot parameters. Thus, the change needs to be made in the PXE configuration for the boot server; more specifically, in its <code
+                  class="filename">/tftpboot/pxelinux.cfg/default</code> configuration file. Setting up network boot is a prerequisite; see the Installation Guide for details. <div
+                  xmlns=""
+                  class="url">→ <a
+                    xmlns="http://www.w3.org/1999/xhtml"
+                    href="https://www.debian.org/releases/jessie/amd64/ch04s05.html">https://www.debian.org/releases/jessie/amd64/ch04s05.html</a></div>
+					</div></div><div
+              class="section"><div
+                class="titlepage"><div><div><h5
+                      class="title"><a
+                        xmlns=""
+                        id="id-1.15.6.10.8.4"></a>12.3.2.3.2. Mempersiapkan sebuah Flash Disk USB yang Dapat Di-boot</h5></div></div></div><div
+                class="para">
+						Once a bootable key has been prepared (see <a
+                  class="xref"
+                  href="installation.html#sect.install-usb">Bagian 4.1.2, “Booting dari USB Key”</a>), a few extra operations are needed. Assuming the key contents are available under <code
+                  class="filename">/media/usbdisk/</code>:
+					</div><div
+                xmlns:d="http://docbook.org/ns/docbook"
+                class="itemizedlist"><ul><li
+                    class="listitem"><div
+                      class="para">
+								salin berkas preseed ke <code
+                        class="filename">/media/usbdisk/preseed.cfg</code>
+							</div></li><li
+                    class="listitem"><div
+                      class="para">
+								edit <code
+                        class="filename">/media/usbdisk/syslinux.cfg</code> dan tambahkan parameter boot yang diperlukan (lihat contoh di bawah).
+							</div></li></ul></div><div
+                class="example"><a
+                  xmlns=""
+                  id="id-1.15.6.10.8.4.4"></a><p
+                  class="title"><strong>Contoh 12.2. berkas syslinux.cfg dan parameter preseed</strong></p><div
+                  class="example-contents"><pre
+                    class="programlisting">default vmlinuz
+append preseed/file=/hd-media/preseed.cfg locale=en_US.UTF-8 keymap=us language=us country=US vga=788 initrd=initrd.gz  --</pre></div></div></div><div
+              class="section"><div
+                class="titlepage"><div><div><h5
+                      class="title"><a
+                        xmlns=""
+                        id="id-1.15.6.10.8.5"></a>12.3.2.3.3. Membuat suatu Image CD-ROM</h5></div></div></div><a
+                id="id-1.15.6.10.8.5.2"
+                class="indexterm"></a><div
+                class="para">
+						A USB key is a read-write media, so it was easy for us to add a file there and change a few parameters. In the CD-ROM case, the operation is more complex, since we need to regenerate a full ISO image. This task is handled by <span
+                  class="pkg pkg">debian-cd</span>, but this tool is rather awkward to use: it needs a local mirror, and it requires an understanding of all the options provided by <code
+                  class="filename">/usr/share/debian-cd/CONF.sh</code>; even then, <code
+                  class="command">make</code> must be invoked several times. <code
+                  class="filename">/usr/share/debian-cd/README</code> is therefore a very recommended read.
+					</div><div
+                class="para">
+						Having said that, debian-cd always operates in a similar way: an “image” directory with the exact contents of the CD-ROM is generated, then converted to an ISO file with a tool such as <code
+                  class="command">genisoimage</code>, <code
+                  class="command">mkisofs</code> or <code
+                  class="command">xorriso</code>. The image directory is finalized after debian-cd's <code
+                  class="command">make image-trees</code> step. At that point, we insert the preseed file into the appropriate directory (usually <code
+                  class="filename">$TDIR/$CODENAME/CD1/</code>, $TDIR and $CODENAME being parameters defined by the <code
+                  class="filename">CONF.sh</code> configuration file). The CD-ROM uses <code
+                  class="command">isolinux</code> as its bootloader, and its configuration file must be adapted from what debian-cd generated, in order to insert the required boot parameters (the specific file is <code
+                  class="filename">$TDIR/$CODENAME/boot1/isolinux/isolinux.cfg</code>). Then the “normal” process can be resumed, and we can go on to generating the ISO image with <code
+                  class="command">make image CD=1</code> (or <code
+                  class="command">make images</code> if several CD-ROMs are generated).
+					</div></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.simple-cdd"></a>12.3.3. Simple-CDD: Solusi Semua-Jadi-Satu</h3></div></div></div><a
+            id="id-1.15.6.11.2"
+            class="indexterm"></a><div
+            class="para">
+				Simply using a preseed file is not enough to fulfill all the requirements that may appear for large deployments. Even though it is possible to execute a few scripts at the end of the normal installation process, the selection of the set of packages to install is still not quite flexible (basically, only “tasks” can be selected); more important, this only allows installing official Debian packages, and precludes locally-generated ones.
+			</div><div
+            class="para">
+				On the other hand, debian-cd is able to integrate external packages, and debian-installer can be extended by inserting new steps in the installation process. By combining these capabilities, it should be possible to create a customized installer that fulfills our needs; it should even be able to configure some services after unpacking the required packages. Fortunately, this is not a mere hypothesis, since this is exactly what Simple-CDD (in the <span
+              class="pkg pkg">simple-cdd</span> package) does.
+			</div><div
+            class="para">
+				The purpose of Simple-CDD is to allow anyone to easily create a distribution derived from Debian, by selecting a subset of the available packages, preconfiguring them with Debconf, adding specific software, and executing custom scripts at the end of the installation process. This matches the “universal operating system” philosophy, since anyone can adapt it to their own needs.
+			</div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.11.6"></a>12.3.3.1. Menciptakan Profil</h4></div></div></div><div
+              class="para">
+					Simple-CDD defines “profiles” that match the FAI “classes” concept, and a machine can have several profiles (determined at installation time). A profile is defined by a set of <code
+                class="filename">profiles/<em
+                  class="replaceable">profile</em>.*</code> files:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							berkas <code
+                      class="filename">.description</code> berisi satu baris deskripsi untuk profil;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							berkas <code
+                      class="filename">.packages</code> berisi daftar paket yang akan secara otomatis diinstal jika profil dipilih;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							berkas <code
+                      class="filename">.downloads</code> berisi daftar paket yang akan disimpan ke media instalasi, tetapi tidak harus diinstal;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							berkas <code
+                      class="filename">.preseed</code> berisi informasi preseed untuk pertanyaan Debconf (untuk installer dan atau paket);
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							berkas <code
+                      class="filename">.postinst</code> berisi skrip yang akan dijalankan pada akhir proses instalasi;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							terakhir, berkas <code
+                      class="filename">.conf</code> memungkinkan mengubah beberapa parameter Simple-CDD berdasarkan profil yang akan dimasukkan ke dalam image.
+						</div></li></ul></div><div
+              class="para">
+					The <code
+                class="literal">default</code> profile has a particular role, since it is always selected; it contains the bare minimum required for Simple-CDD to work. The only thing that is usually customized in this profile is the <code
+                class="literal">simple-cdd/profiles</code> preseed parameter: this allows avoiding the question, introduced by Simple-CDD, about what profiles to install.
+				</div><div
+              class="para">
+					Perhatikan juga bahwa perintah akan perlu dijalankan dari direktori induk direktori <code
+                class="filename">profil</code>.
+				</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.11.7"></a>12.3.3.2. Mengkonfigurasi dan Menggunakan <code
+                      class="command">build-simple-cdd</code></h4></div></div></div><a
+              id="id-1.15.6.11.7.2"
+              class="indexterm"></a><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>LIHAT SEKILAS</em></span> Berkas konfigurasi rinci</strong></p></div></div></div><div
+                class="para">
+					Contoh berkas konfigurasi Simple-CDD, dengan semua parameter yang mungkin, disertakan dalam paket (<code
+                  class="filename">/usr/share/doc/simple-cdd/examples/simple-cdd.conf.detailed.gz</code>). Ini dapat digunakan sebagai titik awal ketika membuat berkas konfigurasi ubahan.
+				</div></div><div
+              class="para">
+					Simple-CDD requires many parameters to operate fully. They will most often be gathered in a configuration file, which <code
+                class="command">build-simple-cdd</code> can be pointed at with the <code
+                class="literal">--conf</code> option, but they can also be specified via dedicated parameters given to <code
+                class="command">build-simple-cdd</code>. Here is an overview of how this command behaves, and how its parameters are used:
+				</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+							parameter <code
+                      class="literal">profil</code> memuat daftar profil yang akan disertakan pada CD-ROM image yang dihasilkan;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							berdasarkan daftar paket yang diperlukan, Simple-CDD mengunduh berkas-berkas yang sesuai dari server yang disebutkan di <code
+                      class="literal">server</code>, dan mengumpulkan mereka menjadi cermin parsial (yang akan kemudian diberikan kepada debian-cd);
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							paket ubahan yang dicantumkan dalam <code
+                      class="literal">local_packages</code> juga diintegrasikan ke dalam cermin lokal ini;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							debian-cd kemudian dijalankan (dalam lokasi baku yang dapat dikonfigurasi dengan variabel <code
+                      class="literal">debian_cd_dir</code>), dengan daftar paket untuk diintegrasikan;
+						</div></li><li
+                  class="listitem"><div
+                    class="para">
+							setelah debian-cd menyiapkan direktorinya, Simple-CDD menerapkan beberapa perubahan ke direktori ini:
+						</div><div
+                    class="itemizedlist"><ul><li
+                        class="listitem"><div
+                          class="para">
+									files containing the profiles are added in a <code
+                            class="filename">simple-cdd</code> subdirectory (that will end up on the CD-ROM);
+								</div></li><li
+                        class="listitem"><div
+                          class="para">
+									other files listed in the <code
+                            class="literal">all_extras</code> parameter are also added;
+								</div></li><li
+                        class="listitem"><div
+                          class="para">
+									the boot parameters are adjusted so as to enable the preseeding. Questions concerning language and country can be avoided if the required information is stored in the <code
+                            class="literal">language</code> and <code
+                            class="literal">country</code> variables.
+								</div></li></ul></div></li><li
+                  class="listitem"><div
+                    class="para">
+							debian-cd then generates the final ISO image.
+						</div></li></ul></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h4
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.15.6.11.8"></a>12.3.3.3. Generating an ISO Image</h4></div></div></div><div
+              class="para">
+					Once we have written a configuration file and defined our profiles, the remaining step is to invoke <code
+                class="command">build-simple-cdd --conf simple-cdd.conf</code>. After a few minutes, we get the required image in <code
+                class="filename">images/debian-8.0-amd64-CD-1.iso</code>.
+				</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.virtualization.html"><strong>Sebelumnya</strong>12.2. Virtualisasi</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Induk</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Depan</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.monitoring.html"><strong>Lanjut</strong>12.4. Pemantauan</a></li></ul></body></html>

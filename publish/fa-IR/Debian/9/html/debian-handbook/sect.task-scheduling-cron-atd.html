@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.7. زمان‌بندی وظیفه‌ها با cron و atd</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-fa-IR-1.0-1" /><meta
+        name="keywords"
+        content="راه‌اندازی سیستم, اسکریپت‌های init, SSH, Telnet, حقوق, مجوزها, نظارت, Inetd, Cron, پشتیبان‌گیری, Hotplug, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="راهنمای دبیان برای مدیر سیستم‌ها" /><link
+        rel="up"
+        href="unix-services.html"
+        title="فصل 9. سرویس‌های یونیکس" /><link
+        rel="prev"
+        href="sect.inetd.html"
+        title="9.6. ابر-سرور inetd" /><link
+        rel="next"
+        href="sect.asynchronous-task-scheduling-anacron.html"
+        title="9.8. زمان‌بندی وظیفه‌های غیرهمزمان: anacron" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/fa-IR/stable/sect.task-scheduling-cron-atd.html" /></head><body
+      dir="rtl"><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.inetd.html"><strong>قبلی</strong></a></li><li
+          class="home">راهنمای دبیان برای مدیر سیستم‌ها</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.asynchronous-task-scheduling-anacron.html"><strong>بعدی</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.task-scheduling-cron-atd"></a>9.7. زمان‌بندی وظیفه‌ها با <code
+                  class="command">cron</code> و <code
+                  class="command">atd</code></h2></div></div></div><a
+          id="id-1.12.10.2"
+          class="indexterm"></a><a
+          id="id-1.12.10.3"
+          class="indexterm"></a><a
+          id="id-1.12.10.4"
+          class="indexterm"></a><a
+          id="id-1.12.10.5"
+          class="indexterm"></a><div
+          class="para">
+			<code
+            class="command">cron</code> یک فرآیند پس‌زمینه برای اجرای دستورات تکراری و زمان‌بندی شده است (هر روز، هر هفته و از این قبیل)؛ <code
+            class="command">atd</code> اما تنها یک بار برنامه را در زمان مشخص اجرا می‌کند.
+		</div><div
+          class="para">
+			در یک سیستم یونیکس، بسیاری از وظیفه‌ها برای اجرای مداوم زمان‌بندی می‌شوند:
+		</div><div
+          xmlns:d="http://docbook.org/ns/docbook"
+          class="itemizedlist"><ul><li
+              class="listitem"><div
+                class="para">
+					چرخش گزارش‌ها؛
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					بروزرسانی پایگاه‌داده برای برنامه <code
+                  class="command">locate</code>؛
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					پشتیبان‌گیری؛
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					اسکریپت‌های نگهداری (مانند پاکسازی فایل‌های موقت).
+				</div></li></ul></div><div
+          class="para">
+			به صورت پیش‌فرض، تمام کاربران می‌توانند برنامه‌های خود را زمان‌بندی کنند. هر کاربر فایل <span
+            class="emphasis"><em>crontab</em></span> مخصوص به خود را دارد که در آن می‌توانند برنامه‌ها را زمان‌بندی کنند. با استفاده از دستور <code
+            class="command">crontab -e</code> می‌توان آن را ویرایش کرد (محتویات آن در فایل <code
+            class="filename">/var/spool/cron/crontabs/<em
+              class="replaceable">user</em></code> نگهداری می‌شود).
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>امنیت</em></span> محدودسازی <code
+                      class="command">cron</code> یا <code
+                      class="command">atd</code></strong></p></div></div></div><div
+            class="para">
+			برای محدودسازی <code
+              class="command">cron</code> می‌توانید با ایجاد یک فایل دسترسی مجاز در <code
+              class="filename">/etc/cron.allow</code> به فهرست‌سازی کاربرانی بپردازید که می‌توانند عملیات زمان‌بندی را انجام دهند. سایر کاربران به صورت خودکار از این قابلیت محروم خواهند شد. بر عکس این موضوع نیز صادق است، زمانی که می‌خواهید چند کاربر مشکل‌آفرین را از این ویژگی محروم کنید که می‌توانید فهرست آنان را در فایل <code
+              class="filename">/etc/cron.deny</code> قرار دهید. همین قابلیت برای <code
+              class="command">atd</code> نیز موجود است توسط فایل‌های <code
+              class="filename">/etc/at.allow</code> و <code
+              class="filename">/etc/at.deny</code>.
+		</div></div><div
+          class="para">
+			کاربر root <span
+            class="emphasis"><em>crontab</em></span> مخصوص به خود را دارد، اما می‌تواند از فایل <code
+            class="filename">/etc/crontab</code> نیز استفاده کند یا فایل‌های اضافی در دایرکتوری <code
+            class="filename">/etc/cron.d</code> قرار دهد. این دو گزینه آخر امکان مشخص کردن کاربر هنگام اجرای یک دستور به خصوص را بوجود می‌آورند.
+		</div><div
+          class="para">
+			بسته <span
+            class="emphasis"><em>cron</em></span> شامل چند دستور زمان‌بندی است که عبارتند از:
+		</div><div
+          xmlns:d="http://docbook.org/ns/docbook"
+          class="itemizedlist"><ul><li
+              class="listitem"><div
+                class="para">
+					برنامه‌های موجود در <code
+                  class="filename">/etc/cron.hourly/</code> به صورت ساعتی اجرا می‌شوند؛
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					برنامه‌های موجود در <code
+                  class="filename">/etc/cron.daily/</code> به صورت روزانه اجرا می‌شوند؛
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					برنامه‌های موجود در <code
+                  class="filename">/etc/cron.weekly/</code> به صورت هفتگی اجرا می‌شوند؛
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					برنامه‌های موجود در <code
+                  class="filename">/etc/cron.monthly/</code> به صورت ماهانه اجرا می‌شوند.
+				</div></li></ul></div><div
+          class="para">
+			بسیاری بسته‌های دبیان به این سرویس وابسته هستند: با قرار دادن اسکریپت‌های نگهداری در این دایرکتوری‌ها، آن‌ها عملکرد بهینه سرویس‌ها را رقم می‌زنند.
+		</div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.format-crontab"></a>9.7.1. قالب یک فایل <code
+                    class="filename">crontab</code></h3></div></div></div><a
+            id="id-1.12.10.15.2"
+            class="indexterm"></a><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>نکته</em></span> میانبرهای متنی برای <code
+                        class="command">cron</code></strong></p></div></div></div><div
+              class="para">
+				... برخی از مخفف‌ها را می‌شناسد که جایگزین پنج فیلد موجود در <code
+                class="filename">crontab</code> می‌شود. آن‌ها منطبق با قدیمی‌ترین گزینه‌های زمان‌بندی هستند:
+			</div><div
+              xmlns:d="http://docbook.org/ns/docbook"
+              class="itemizedlist"><ul><li
+                  class="listitem"><div
+                    class="para">
+						<code
+                      class="literal">@yearly</code>: سالی یک بار (اول ژانویه در ساعت ۰۰:۰۰)؛
+					</div></li><li
+                  class="listitem"><div
+                    class="para">
+						<code
+                      class="literal">@monthly</code>: ماهی یک بار (اول هر ماه، در ساعت ۰۰:۰۰)؛
+					</div></li><li
+                  class="listitem"><div
+                    class="para">
+						<code
+                      class="literal">@weekly</code>: هر هفته (یکشنبه در ساعت ۰۰:۰۰)؛
+					</div></li><li
+                  class="listitem"><div
+                    class="para">
+						<code
+                      class="literal">@daily</code>: به صورت روزانه (در ساعت ۰۰:۰۰)؛
+					</div></li><li
+                  class="listitem"><div
+                    class="para">
+						<code
+                      class="literal">@hourly</code>: به صورت ساعتی (در ابتدای هر ساعت)؛
+					</div></li></ul></div></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>مورد خاص</em></span> <code
+                        class="command">cron</code> و ساعت تابستانی</strong></p></div></div></div><div
+              class="para">
+				در دبیان، <code
+                class="command">cron</code> تغییرات زمانی را (برای ساعت تابستانی، یا در حقیقت برای کوچکترین تغییر در زمان) در بهترین حالت به حساب می‌آورد. پس، دستوراتی که باید طی یک ساعت مشخص اجرا شوند ولی آن ساعت وجود ندارد (برای نمونه، وظایفی که زمان‌بندی شده‌اند تا در ۰۲:۳۰ صبخ طی تغییر زمانی بهاره در فرانسه اجرا شوند، چرا که در این بازه ساعت به ۰۳:۰۰ صبح تغییر می‌یابد) بلافاصله پس از تغییر در زمان اجرا می‌شوند (یعنی حدود ساعت ۰۳:۰۰ صبح). از طرف دیگر، در پاییز زمانی که دستورات باید چندین مرتبه اجرا شوند (۰۲:۳۰ صبح در ساعت تابستانی، آنگاه یک ساعت بعد در ساعت ۰۲:۳۰ استاندارد چرا که در ساعت ۰۳:۰۰ صبح زمان به ۰۲:۰۰ صبح باز می‌گردد) تنها یکبار به اجرا در می‌آیند.
+			</div><div
+              class="para">
+				در هر صورت باید مراقب باشید که اگر ترتیب اجرای دستورات زمان‌بندی شده اهمیت داشته باشد باید سازگاری این محدودیت‌ها را با عملکرد <code
+                class="command">cron</code> بررسی کنید؛ در صورت نیاز، می‌توانید یک برنامه خاص را برای این دو شب دردسرساز در سال در نظر بگیرید.
+			</div></div><div
+            class="para">
+				هر خط جداگانه در <span
+              class="emphasis"><em>crontab</em></span> یک برنامه زمان‌بندی شده با شش (یا هفت) فیلد را مشخص می‌کند:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						دقیقه (از ۰ تا ۵۹)؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						ساعت (از ۰ تا ۲۳)؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						روز در ماه (از ۱ تا ۳۱)؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						ماه (از ۱ تا ۱۲)؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						روز در هفته (از ۰ تا ۷، ۱ متناظر با دوشنبه، یکشنه نیز با ۰ یا ۷ نمایش داده می‌شود؛ همچنین امکان استفاده از سه حرف ابتدای هر روز به زبان انگلیسی وجود دارد، مانند <code
+                    class="literal">Sun</code> و <code
+                    class="literal">Mon</code>)؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						کاربری که طبق مجوز او دستور باید اجرا گردد (در فایل <code
+                    class="filename">/etc/crontab</code> و در قسمت‌های مشخص شده در <code
+                    class="filename">/etc/cron.d</code> اما نه در فایل crontab خود کاربر)؛
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						دستوری که باید اجرا شود (زمانی که شرایط تعریف شده توسط پنج ستون اول رعایت شده باشد).
+					</div></li></ul></div><div
+            class="para">
+				تمام این جزئیات در صفحه راهنمای <span
+              class="citerefentry"><span
+                class="refentrytitle">crontab</span>(5)</span> مستندسازی شده‌اند.
+			</div><div
+            class="para">
+				هر مقدار می‌تواند به صورت فرمی از مقادیر جدا شده با کاما بیان شود. عبارت <code
+              class="literal">a-b</code> بازه تمام مقادیر بین <code
+              class="literal">a</code> و <code
+              class="literal">b</code> را شامل می‌شود. عبارت <code
+              class="literal">a-b/c</code> بازه افزایشی به همراه <code
+              class="literal">c</code> را شامل می‌شود (نمونه: <code
+              class="literal">0-10/2</code> یعنی <code
+              class="literal">0,2,4,6,8,10</code>). یک <code
+              class="literal">*</code> به عنوان تمام مقادیر مجاز بکار می‌رود.
+			</div><div
+            class="example"><a
+              xmlns=""
+              id="example.crontab"></a><p
+              class="title"><strong>
+      مثال 9.2. فایل نمونه <code
+                  class="filename">crontab</code></strong></p><div
+              class="example-contents"><pre
+                class="programlisting">#Format
+#min hour day mon dow  command
+
+# Download data every night at 7:25 pm
+ 25  19   *   *   *    $HOME/bin/get.pl
+
+# 8:00 am, on weekdays (Monday through Friday)
+ 00  08   *   *   1-5  $HOME/bin/dosomething
+
+# Restart the IRC proxy after each reboot
+@reboot /usr/bin/dircproxy</pre></div></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>نکته</em></span> اجرای یک دستور هنگام راه‌اندازی اولیه</strong></p></div></div></div><div
+              class="para">
+				برای اجرای یک دستور، یک مرتبه پس از راه‌اندازی رایانه، می‌توانید از ماکرو <code
+                class="literal">@reboot</code> استفاده کنید (راه‌اندازی مجدد <code
+                class="command">cron</code> منجر به اجرای دستور همراه با <code
+                class="literal">@reboot</code> نمی‌شود). این ماکرو جایگزین پنج فیلد اول هر خط از <span
+                class="emphasis"><em>crontab</em></span> می‌شود.
+			</div></div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>جایگزین</em></span> شبیه‌سازی <code
+                        class="command">cron</code> با <code
+                        class="command">systemd</code></strong></p></div></div></div><div
+              class="para">
+				امکان شبیه‌سازی بخشی از عملکرد <code
+                class="command">cron</code> با استفاده از مکانیزم زمان‌بندی <code
+                class="command">systemd</code> وجود دارد (<a
+                class="xref"
+                href="unix-services.html#sect.systemd">
+      قسمت 9.1.1, “سیستم راه‌انداز systemd”
+    </a> را مشاهده کنید).
+			</div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="sect.at-command"></a>9.7.2. استفاده از دستور <code
+                    class="command">at</code></h3></div></div></div><a
+            id="id-1.12.10.16.2"
+            class="indexterm"></a><div
+            class="para">
+				<code
+              class="command">at</code> یک دستور را در زمان مشخصی از آینده اجرا می‌کند. زمان و تاریخ مناسب را از طریق پارامترهای خط-فرمان دریافت کرده و دستور مورد نظر جهت اجرا را از ورودی استاندارد می‌گیرد. دستور شروع به اجرا می‌کند به طوری که انگار در پوسته کنونی وارد شده باشد. <code
+              class="command">at</code> حتی به حفظ محیط فعلی رسیدگی می‌کند تا در زمان اجرای دستور همین شرایط برقرار باشد. زمان با استفاده از قوانین زیر تعیین می‌شود: <code
+              class="literal">16:12</code> یا <code
+              class="literal">4:12pm</code> نشان‌دهنده ۰۴:۱۲ بعد از ظهر هستند. تاریخ می‌تواند با چندین قالب مختلف اروپایی و غربی بیان شود، از جمله <code
+              class="literal">DD.MM.YY</code> (عبارت <code
+              class="literal">27.07.15</code> که بیانگر ۲۷ جولای ۲۰۱۵ است)، <code
+              class="literal">YYYY-MM-DD</code> (همان تاریخ که به صورت <code
+              class="literal">2015-07-27</code> بیان می‌شود)، <code
+              class="literal">MM/DD/[CC]YY</code> (برای نمونه، <code
+              class="literal">12/25/15</code> یا <code
+              class="literal">12/25/2015</code> برابر با ۲۵ دسامبر ۲۰۱۵ خواهد بود) یا <code
+              class="literal">MMDD[CC]YY</code> (که در آن <code
+              class="literal">122515</code> یا <code
+              class="literal">12252015</code> بیانگر همان تاریخ قبلی هستند). بدون أن، دستور در اولین بازه زمانی تعیین شده اجرا می‌شود (همان روز، یا فردا اگر زمان روز فعلی گذشته باشد). همچنین می‌توانید از عبارت‌های “today” یا “tomorrow” نیز استفاده کنید.
+			</div><pre
+            class="screen">
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>at 09:00 27.07.15 &lt;&lt;END</code></strong>
+<code
+              class="computeroutput">&gt; </code><strong
+              class="userinput"><code>echo "Don't forget to wish a Happy Birthday to Raphaël!" \</code></strong>
+<code
+              class="computeroutput">&gt; </code><strong
+              class="userinput"><code>  | mail lolando@debian.org</code></strong>
+<code
+              class="computeroutput">&gt; </code><strong
+              class="userinput"><code>END</code></strong>
+<code
+              class="computeroutput">warning: commands will be executed using /bin/sh
+job 31 at Mon Jul 27 09:00:00 2015</code></pre><div
+            class="para">
+				یک شیوه نگارش جایگزین اجرای دستور را برای مدت مشخصی به عقب می‌اندازد: <code
+              class="command">at now + <em
+                class="replaceable">number</em> <em
+                class="replaceable">period</em></code> که <em
+              class="replaceable">period</em> می‌تواند <code
+              class="literal">minutes</code>، <code
+              class="literal">hours</code>، <code
+              class="literal">days</code> یا <code
+              class="literal">weeks</code> باشد. <em
+              class="replaceable">number</em> نیز بیانگر تعداد دفعات واحد مشخص شده برای گذشتن جهت اجرای دستور است.
+			</div><div
+            class="para">
+				برای لغو برنامه زمان‌بندی <code
+              class="command">cron</code> تنها کافی است دستور <code
+              class="command">crontab -e</code> را اجرا کرده و خط مربوط به آن دستور را از فایل <span
+              class="emphasis"><em>crontab</em></span> حذف کنید. برای وظایف <code
+              class="command">at</code> نیز به همین سادگی است: دستور <code
+              class="command">atrm <em
+                class="replaceable">task-number</em></code> را اجرا کنید. شناسه وظیفه توسط <code
+              class="command">at</code> هنگام تعریف آن مشخص می‌شود و می‌توانید آن را با دستور <code
+              class="command">atq</code> پیدا کنید که فهرستی از وظایف زمان‌بندی شده را باز می‌گرداند.
+			</div><a
+            id="id-1.12.10.16.7"
+            class="indexterm"></a><a
+            id="id-1.12.10.16.8"
+            class="indexterm"></a></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.inetd.html"><strong>قبلی</strong>9.6. ابر-سرور inetd</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>بالا</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>خانه</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.asynchronous-task-scheduling-anacron.html"><strong>بعدی</strong>9.8. زمان‌بندی وظیفه‌های غیرهمزمان: anacron</a></li></ul></body></html>
