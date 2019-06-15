@@ -1,0 +1,275 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="existing-setup">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-existing-setup.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>Bestehendes Setup</keyword>
+      <keyword>Wiederverwendung</keyword>
+      <keyword>Migration</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>Untersuchung des bestehenden Setups und Migration</title>
+  <highlights>
+    <para>Jedes Computerupdate sollte das bestehende System mit einschließen. Dies erlaubt eine möglichst weitgehende Wiederverwendung von Ressourcen und garantiert das nahtlose Zusammenarbeiten der verschiedenen Elemente, aus denen das System besteht. Diese Studie will ein allgemeingültiges Rahmenkonzept aufzeigen, dem man bei der Migration einer Rechner-infrastruktur hin zu Linux folgen kann.</para>
+  </highlights>
+  <section id="sect.heterogeneous-environments">
+    <title>Koexistenz in gemischten Umgebungen</title>
+    <indexterm><primary>Umgebung</primary><secondary>gemischte Umgebung</secondary></indexterm>
+
+    <para>Debian lässt sich sehr gut in alle Arten von bestehenden Umgebungen einbinden und arbeitet gut mit allen anderen Betriebssystemen zusammen. Diese fast perfekte Harmonie rührt vom Wettbewerbsdruck her, der dafür sorgt, dass Softwarehersteller ihre Programme den Standards folgend erstellen. Die Beachtung von Standards erlaubt es den Administratoren, Programme auszutauschen: Clients oder Server, egal ob frei oder nicht.</para>
+    <section>
+      <title>Integration mit Windows-Rechnern</title>
+
+      <para>Samba's SMB-/CIFS-Support bietet eine exzellente Kommunikation innerhalb von Windows-Umgebungen. Es verteilt Dateien und Druckerwarteschlangen an Windows-Clients und enthält Software, die es Linux-Rechnern erlaubt, Ressourcen von Windows-Servern zu nutzen.</para>
+
+      <sidebar>
+        <title><emphasis>WERKZEUG</emphasis> Samba</title>
+        <indexterm><primary>Samba</primary></indexterm>
+
+        <para>Die letzte Samba-Version kann die Mehrzahl der Windows-Features ersetzen: Von einem simplen Windows-NT-Server (mit Authentifizierung, Dateien, Druckerwarteschlangen, Herunterladen von Druckertreibern, DFS usw.) ist vieles möglich bis hin zum fortgeschrittenen Setup: Ein mit MS-Active-Directory kompatibler Domain-Controller.</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Vernetzung mit OS X-Rechnern</title>
+
+      <indexterm><primary>Zeroconf</primary></indexterm>
+      <indexterm><primary>Bonjour</primary></indexterm>
+      <indexterm><primary>Avahi</primary></indexterm>
+      <para>OS X-Rechner stellen via Bonjour, einer Implementierung des Zeroconf Protokolls, Netzwerkdienste wie Datei- und Druckdienste zur Verfügung und können diese im Gegenzug selbst nutzen. Diese Dienste werden auf dem lokalen Netzwerk angeboten, was den anderen Rechnern ermöglicht, diese zu erkennen und zu nutzen, und zwar ohne manuelle Konfiguration.</para>
+
+      <indexterm><primary>AFP</primary></indexterm>
+      <indexterm><primary>AppleShare</primary></indexterm>
+      <para>Aus der anderen Richtung kann der Netatalk Hintergrundprozess genutzt werden, um einer OS X-Maschine im Netz Datei-Services anzubieten. Er implementiert das AFP (AppleShare) Protokoll sowie die notendigen Meldungen zur Bekanntgabe, damit die Dienste automatisch von den OS X-Clients gefunden werden können.</para>
+
+      <indexterm><primary>AppleTalk</primary></indexterm>
+      <para>Ältere Mac OS Netzwerk (vor OS X) benutzten ein anderes Protokoll, genannt AppleTalk. Für Umgebungen, in die Maschinen eingebunden sind, die noch dieses AppleTalk sprechen, bietet Netatalk dieses Protokoll ebenfalls an (tatsächlich war Netatalk zu Beginn eine Reimplementierung dieses Protokolls). Es erlaubt die Arbeit mit Dateiservern und Druckerwarteschlangen sowie die Nutzung als Zeitserver (Uhrensynchronisierung). Seine Routerfunktionalität erlaubt die Verbindung zu Appletalk-Netzwerken.</para>
+    </section>
+    <section>
+      <title>Vernetzung mit anderen Linux/Unix-Rechnern</title>
+
+      <para>Schließlich sorgt die integrierte Unterstützung von NFS und NIS für eine reibungslose Zusammenarbeit mit Unix-Systemen. NFS stellt die Fileserverfunktionalität zur Verfügung, während NIS Benutzerverzeichnisse anlegt. Das von den meisten Unix-Systemen genutzte BSD-Printing-Layer erlaubt auch die Verteilung von Druckerwarteschlangen.</para>
+
+      <figure>
+        <title>Koexistenz von Debian mit OS X-, Windows- und Unix-Systemen</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/existing-setup-1.png" width="25%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+    </section>
+  </section>
+  <section id="sect.how-to-migrate">
+    <title>Migrationsvorgang</title>
+    <indexterm><primary>Die Migration</primary></indexterm>
+
+    <para>Um die Aufrechterhaltung des Betriebs zu gewährleisten, muss jede Migration geplant und anhand dieses Plans durchgeführt werden. Dieses Prinzip gilt unabhängig vom eingesetzten Betriebssystem.</para>
+    <section>
+      <title>Überprüfen und Identifizieren der Dienste</title>
+
+      <para>So einfach es auch scheint, dieser Schritt ist entscheidend. Ein professioneller Administrator kennt die primären Aufgaben jedes Servers genau. Solche Aufgaben können sich jedoch ändern, und manchmal haben erfahrene Nutzer vielleicht auch "wilde" Dienste installiert. Wenn man über sie Bescheid weiß, kann man zumindest entscheiden, was man mit ihnen machen will, anstatt sie nur einfach zu löschen.</para>
+
+      <para>Zu diesem Zweck ist es sinnvoll, Ihre Benutzer vor der Servermigration über das Projekt zu informieren. Um sie an dem Projekt zu beteiligen, könnte es nützlich sein, vor der Migration die am häufigsten verwendete freie Software auf denjenigen Desktops zu installieren, mit denen die Benutzer nach der Migration zu Debian später wieder arbeiten; LibreOffice und die Mozilla-Suite sind dafür die besten Beispiele.</para>
+      <section>
+        <title>Netzwerk und Prozesse</title>
+        <indexterm><primary><command>nmap</command></primary></indexterm>
+       
+	<para>Das <command>nmap</command> Werkzeug (im gleichnamigen Paket) identifiziert schnell Internetdienste, die auf einer Maschine laufen und die über das Netzwerk verbunden sind, ohne dass ein Login benötigt wird. Man braucht nur das folgende Kommando auf einem anderen Rechner aufzurufen, der mit demselben Netzwerk verbunden ist:</para>
+
+        <screen>
+<computeroutput>$ </computeroutput><userinput>nmap mirwiz</userinput>
+<computeroutput>Starting Nmap 7.40 ( https://nmap.org ) at 2017-06-06 14:41 CEST
+Nmap scan report for mirwiz (192.168.1.104)
+Host is up (0.00062s latency).
+Not shown: 992 closed ports
+PORT     STATE SERVICE
+22/tcp   open  ssh
+25/tcp   open  smtp
+80/tcp   open  http
+111/tcp  open  rpcbind
+139/tcp  open  netbios-ssn
+445/tcp  open  microsoft-ds
+5666/tcp open  nrpe
+9999/tcp open  abyss
+
+Nmap done: 1 IP address (1 host up) scanned in 0.06 seconds</computeroutput>
+</screen>
+
+        <sidebar>
+          <title><emphasis>ALTERNATIVE</emphasis> Benutze <command>netstat</command>, um die verfügbaren Dienste anzuzeigen</title>
+
+	  <para>Auf einem Linux-Rechner kann mit dem Befehl <command>netstat -tupan</command> eine Liste von aktiven und anstehenden TCP-Sitzungen sowie von UDP-Ports, an denen laufende Programme horchen, angezeigt werden. Dies erleichtert das Aufspüren von Diensten, die im Netzwerk angeboten werden.</para>
+        </sidebar>
+
+        <sidebar>
+          <title><emphasis>Vertiefung / Weiterführende Informationen</emphasis> IPv6</title>
+
+	  <para>Einige Netzwerkbefehle arbeiten entweder mit IPv4 (was normalerweise der Standard ist) oder mit IPv6. Dazu gehören <command>nmap</command> und <command>netstat</command>, aber auch andere wie etwa <command>route</command> oder <command>ip</command>. Konvention ist, dass dieses Verhalten mit der Kommandozeilenoption <parameter>-6</parameter> eingeschaltet wird.</para>
+        </sidebar>
+
+	<para>Wenn auf einem Server Unix läuft und Anwendern eine Shell angeboten wird, ist es oftmals interessant, zu wissen, ob ein Prozess auch in Abwesenheit des Users im Hintergrund läuft. Das Dienstprogramm <command>ps auxw</command> zeigt alle laufenden Prozesse mit der zugehörigen ID. Ein Gegenprüfen dieser Informationen mit der Ausgabe des <command>who</command>-Befehls, das eine Liste der angemeldeten User zeigt, kann helfen, verdächtige oder versteckte Prozesse aufzuzeigen.
+Ein Blick auf <filename>crontab</filename> zeigt oftmals interessante Information über Funktionen und Prozesse, die der Server regelmäßig ausführt. Eine vollständige Erläuterung des <command>cron</command>-Befehls findet sich hier <xref linkend="sect.task-scheduling-cron-atd" />.</para>
+
+	<para>In jedem Fall ist es absolut unerlässlich, Sicherheitskopien des eigenen Servers anzulegen. Dadurch ist es möglich, Informationen wiederherzustellen, falls Benutzer Probleme aufgrund der Migration melden.</para>
+      </section>
+    </section>
+    <section>
+      <title>Konfiguration sichern</title>
+
+      <para>Es wird empfohlen, die Konfiguration jedes verwendeten Dienstes zu sichern, um ihn identisch auf dem aktualisierten Server einrichten zu können. Zumindest sollte eine Datensicherung der Konfigurationsdateien vorliegen.</para>
+
+      <para>Für Unix-Maschinen befinden sich die Konfigurationsdateien gewöhnlich in <filename>/etc/</filename>. Sie können sich aber auch in einem Unterverzeichnis von <filename>/usr/local/</filename> befinden. Dies ist der Fall, wenn ein Programm durch Kompilieren des Quellcodes installiert wird. In einigen Fällen sind die Dateien auch unter <filename>/opt/</filename> zu finden.</para>
+
+      <para>Bei Diensten, die Daten verwalten (wie zum Beispiel Datenbanken), wird dringend empfohlen, die Daten in ein standardisiertes Format zu exportieren, das durch die neue Software problemlos wieder importiert werden kann. Ein solches Format ist üblicherweise dokumentiert und liegt als Textdatei vor. So kann es beispielsweise als SQL Dump bei einer Datenbank oder als LDIF-Datei für einen LDAP-Server vorliegen.</para>
+
+      <figure>
+        <title>Datenbanksicherungen</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/existing-setup-2.png" width="50%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>Jede Serversoftware ist unterschiedlich, und es ist unmöglich, alle denbaren Fälle im Detail zu beschreiben. Lesen Sie die Dokumentation der vorhandenen und von der neuen Software, um herauszufinden, welche Teile exportiert (und damit wieder reimportiert) werden können und welche manuelle Eingriffe erfordern. Das Ziel dieses Buches ist es, die Konfiguration der wichtigsten Serverprogramme unter Linux zu veranschaulichen.</para>
+    </section>
+    <section>
+      <title>Übernahme eines vorhandenen Debianservers</title>
+      <indexterm><primary>Wiederherstellung eines Debian-Rechners</primary></indexterm>
+      <indexterm><primary>Untersuchen eines Debian-Rechners</primary></indexterm>
+      <indexterm><primary>Übernahme eines Debian-Servers</primary></indexterm>
+
+      <para>Um die Wartung erfolgreich zu übernehmen, kann man einen bereits mit Debian laufenden Server analysieren.</para>
+
+      <para>Die erste Datei, die man kontrollieren sollte, ist <filename>/etc/debian_version</filename>, welche üblicherweise die Versionsnummer des installierten Debian-Systems enthält (sie ist Teil des <emphasis>base-files</emphasis>-Pakets). Falls sie <literal>testing/unstable</literal> beinhaltet, bedeutet dies, dass das System mit Paketen aktualisiert wurde, welche aus einem der beiden Entwicklungszweige stammen.</para>
+
+      <para>Mit dem Kommando <command>apt-show-versions</command> (aus dem gleichnamigen Debian-Paket) überprüfen Sie die Liste der installierten Pakete und identifizieren die verfügbaren Versionen. Für diesen Zweck kann auch <command>aptitude</command> benutzt werden, wenn auch in einer weniger systematischen Art und Weise.</para>
+
+      <para>Ein kurzer Blick auf die Datei <filename>/etc/apt/sources.list</filename> (und das Verzeichnis <filename>/etc/apt/sources.list.d/</filename> ) zeigt, woher die installierten Debian-Pakete kamen. Falls viele unbekannte Quellen erscheinen, könnte es der Administrator vorziehen, das Betriebssystem komplett neu zu installieren, um die optimale Kompatibilität zu gewährleisten, welche durch die Software von Debian sichergestellt wird.</para>
+
+      <para>Die Datei <filename>sources.list</filename> ist oft ein guter Indikator: Die Mehrheit der Administratoren lassen Einträge zu früher genutzten APT-Quellen bestehen, zumindest als Kommentar. Dabei ist zu beachten, dass ehemalige Quellen inzwischen gelöscht und auch manuell zufällig aus dem Internet heruntergeladene Pakete installiert worden sein können (mithilfe des Kommandos <command>dpkg</command>). In diesem Fall trügt das Erscheinungsbild eines "Standard"-Debian. Darum sollte man auf jeden noch so kleinen Hinweis achten, der auf die Existenz externer Pakete hindeutet. (Vorhandensein von <filename>deb</filename>-Dateien in unüblichen Verzeichnissen, Paketversionsnummern mit spezieller Endung, welche auf eine Herkunft außerhalb des Debian-Projekts hindeuten, so zum Beispiel <literal>ubuntu</literal>, <literal>ximian</literal> etc.)</para>
+
+      <para>Genauso interessant ist es, den Inhalt des Verzeichnisses <filename>/usr/local/</filename> zu analysieren. Dieses Verzeichnis ist gedacht für Programme, die manuell kompiliert und installiert wurden. Eine Auflistung von Software, die auf diese Weise installiert wurde, ist lehrreich, denn es stellt sich die Frage nach den Gründen, warum nicht das entsprechende Debian-Paket benutzt wurde (falls ein solches existiert).</para>
+
+      <sidebar>
+        <title><emphasis>Schnellansicht</emphasis> <emphasis role="pkg">cruft</emphasis></title>
+
+	<para>Das <emphasis role="pkg">cruft</emphasis>-Paket schlägt vor, die verfügbaren Dateien aufzulisten, die nicht zu einem Paket gehören. Es besitzt einige Filter (mehr oder weniger effektiv und mehr oder weniger aktuell), um zu vermeiden, dass legitime Dateien (solche, die von Debian-Paketen generiert werden, oder generierte Konfigurationsdateien, die nicht von <command>dpkg</command> usw. gemanagt werden) aufgeführt werden.</para>
+
+	<para>Seien Sie vorsichtig und löschen Sie nicht blind alles, was <command>cruft</command> aufführen könnte!</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Installation von Debian</title>
+
+      <para>Da nun alle Informationen über den bestehenden Server bekannt sind, können wir ihn herunterfahren und dann Debian darauf installieren.</para>
+      <indexterm><primary>Architektur</primary></indexterm>
+
+      <para>Um die passende Version auszuwählen, müssen wir die Systemarchitektur kennen. Wenn es ein einigermaßen aktueller PC ist, dann wird es sehr wahrscheinlich ein amd64 (bei älteren PCs eher ein i386)-Prozessor sein. In anderen Fällen können wir die Möglichkeiten entsprechend dem zuvor genutzten System eingrenzen.</para>
+
+      <para>Es ist nicht vorgesehen, dass <xref linkend="tab-corresp" xrefstyle="select: label nopage" /> vollständig ist, aber es kann hilfreich sein. In jedem Fall ist die Originaldokumentation die verlässlichste Quelle, um diese Informationen zu finden.</para>
+
+      <table colsep="1" id="tab-corresp">
+        <title>Passende Betriebssysteme und Architektur</title>
+        <tgroup cols="2">
+          <thead>
+            <row>
+              <entry>Betriebssystem</entry>
+              <entry>Architektur(en)</entry>
+            </row>
+          </thead>
+          <tbody>
+            <row>
+              <entry>DEC Unix (OSF/1)</entry>
+              <entry>alpha, mipsel</entry>
+            </row>
+            <row>
+              <entry>HP Unix</entry>
+              <entry>ia64, Hppa</entry>
+            </row>
+            <row>
+              <entry>IBM AIX</entry>
+              <entry>powerpc</entry>
+            </row>
+            <row>
+              <entry>Irix</entry>
+              <entry>mips</entry>
+            </row>
+            <row>
+              <entry>OS X</entry>
+              <entry>amd64, powerpc, i386</entry>
+            </row>
+            <row>
+              <entry>z/OS, MVS</entry>
+              <entry>s390x, s390</entry>
+            </row>
+            <row>
+              <entry>Solaris, SunOS</entry>
+              <entry>sparc, i386, m68k</entry>
+            </row>
+            <row>
+              <entry>Ultrix</entry>
+              <entry>mips</entry>
+            </row>
+            <row>
+              <entry>VMS</entry>
+              <entry>alpha</entry>
+            </row>
+            <row>
+              <entry>Windows 95/98/ME</entry>
+              <entry>i386</entry>
+            </row>
+            <row>
+              <entry>Windows NT/2000</entry>
+              <entry>i386, alpha, ia64, mipsel</entry>
+            </row>
+            <row>
+              <entry>Windows XP / Windows Server 2008</entry>
+              <entry>i386, amd64, ia64</entry>
+            </row>
+            <row>
+              <entry>Windows RT</entry>
+              <entry>armel, armhf, arm64</entry>
+            </row>
+            <row>
+              <entry>Windows Vista / Windows 7-8-10</entry>
+              <entry>i386, amd64</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table>
+
+      <sidebar>
+        <title><emphasis>HARDWARE</emphasis> 64 bit PC gegen 32 bit PC</title>
+        <indexterm><primary>amd64</primary></indexterm>
+        <indexterm><primary>i386</primary></indexterm>
+
+	<para>Die meisten aktuellen Computer besitzen 64-bit-Intel- oder -AMD-Prozessoren, die kompatibel zu älteren 32-bit-Prozessoren sind; daher läuft auf ihnen Software, die für die i386-Architektur übersetzt wurde. Andererseits werden durch diesen Kompatibilitätsmodus die Möglichkeiten dieser neuen Prozessoren nicht vollständig genutzt. Deshalb liefert Debian die amd64-Architektur, die für jüngere AMD-Chips ganauso funktioniert, wie für Intel-em64t-Prozessoren (einschließlich der meisten der Core-Serien), die dem AMD64 Prozessor sehr ähnlich sind.</para>
+      </sidebar>
+    </section>
+    <section>
+      <title>Installation und Einrichtung der ausgewählten Dienste</title>
+
+      <para>Nach der Installation von Debian müssen wir Stück für Stück die Dienste installieren und einrichten, die auf diesem Computer laufen müssen. Die neue Konfiguration muss sich an der vorherigen orientieren, um einen reibungslosen Übergang zu gewährleisten. Alle in den beiden ersten Schritten gesammelten Informationen werden nützlich sein, um diesen Teil erfolgreich abzuschließen.</para>
+
+      <figure>
+        <title>Installation der ausgewählten Dienste</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/existing-setup-4.png" width="66%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>Bevor man sich Hals über Kopf auf diese Aufgabe stürzt, sollte man unbedingt den Rest dieses Buches lesen. Danach wird man ein genaueres Verständnis davon haben, wie die erwarteten Dienste einzurichten sind.</para>
+
+      <para></para>
+    </section>
+  </section>
+</chapter>
