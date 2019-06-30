@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.6. Суперсервер inetd</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-ru-RU-1.0-1" /><meta
+        name="keywords"
+        content="Загрузка системы, Сценарии инициализации, SSH, Telnet, Права, Привилегии, Инспектирование, Inetd, Cron, Резервное копирование, Горячее подключение, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Настольная книга администратора Debian" /><link
+        rel="up"
+        href="unix-services.html"
+        title="Глава 9. Сервисы Unix" /><link
+        rel="prev"
+        href="sect.syslog.html"
+        title="9.5. Системные события syslog" /><link
+        rel="next"
+        href="sect.task-scheduling-cron-atd.html"
+        title="9.7. Планирование задач с помощью cron и atd" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/ru-RU/stable/sect.inetd.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.syslog.html"><strong>Пред.</strong></a></li><li
+          class="home">Настольная книга администратора Debian</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.task-scheduling-cron-atd.html"><strong>След.</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.inetd"></a>9.6. Суперсервер <code
+                  class="command">inetd</code></h2></div></div></div><div
+          class="para">
+			Inetd (часто называемый «Интернет-суперсервером») — это сервер серверов. Он запускает редко используемые серверы по требованию, так что им не приходится работать постоянно.
+		</div><a
+          id="id-1.12.9.3"
+          class="indexterm"></a><a
+          id="id-1.12.9.4"
+          class="indexterm"></a><div
+          class="para">
+			В файле <code
+            class="filename">/etc/inetd.conf</code> перечисляются эти серверы и обычно используемые ими порты. Команда <code
+            class="command">inetd</code> слушает их все; когда она обнаруживает соединение с любым таким портом, она запускает соответствующую серверную программу.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>ПОЛИТИКА DEBIAN</em></span> Регистрация сервера в <code
+                      class="filename">inetd.conf</code></strong></p></div></div></div><div
+            class="para">
+			Пакеты часто хотят выполнить регистрацию своих новых сервисов в файле <code
+              class="filename">/etc/inetd.conf</code>, но Политикой Debian запрещено изменять чужие конфигурационные файлы любому пакету. Изменять файлы конфигурации имеет право только тот пакет, кто является их владельцем. Это объясняет, почему был создан сценарий <code
+              class="command">update-inetd</code> (в пакете с похожим именем): он управляет файлом настройки, и другие пакеты могут таким образом использовать этот сценарий для регистрации нового сервиса в файле настройки «Интернет-суперсервера».
+		</div></div><div
+          class="para">
+			Каждая значащая строка файла <code
+            class="filename">/etc/inetd.conf</code> описывает сервер в сми полях (разделённых пробелами):
+		</div><div
+          xmlns:d="http://docbook.org/ns/docbook"
+          class="itemizedlist"><ul><li
+              class="listitem"><div
+                class="para">
+					Номер порта TCP или UDP или имя сервиса (которое преобразуется в стандартный номер порта с помощью информации, содержащейся в файле <code
+                  class="filename">/etc/services</code>).
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Тип сокета: <code
+                  class="literal">stream</code> для TCP-соединения, <code
+                  class="literal">dgram</code> для UDP-датаграмм.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Протокол: <code
+                  class="literal">tcp</code> или <code
+                  class="literal">udp</code>.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Опции: два возможных значения — <code
+                  class="literal">wait</code> или <code
+                  class="literal">nowait</code>, сообщающих <code
+                  class="command">inetd</code>, следует ли ждать завершения запущенного процесса прежде чем принимать новое соединение. Для TCP-соединений, которые легко мультиплексируются, обычно можно использовать <code
+                  class="literal">nowait</code>. Для программ, отвечающих через UDP, следует использовать <code
+                  class="literal">nowait</code> только если сервер способен управляться с несколькими соединениями параллельно. В конце этой опции можно добавить точку, и после неё указать максимально разрешённое число сединений в минуту (по умолчанию используется ограничение в 256 соединений).
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Имя пользователя, от имени которого будет запускаться сервер.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Полный путь к серверной программе, которую нужно запустить.
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					Аргументы: полный список аргументов программы, включая её собственное имя ((<code
+                  class="literal">argv[0]</code> в Си).
+				</div></li></ul></div><div
+          class="para">
+			Следующий пример иллюстрирует наиболее распространённые случаи:
+		</div><div
+          class="example"><a
+            xmlns=""
+            id="example.inetd-conf"></a><p
+            class="title"><strong>Пример 9.1. Выдержка из <code
+                class="filename">/etc/inetd.conf</code></strong></p><div
+            class="example-contents"><pre
+              class="programlisting">talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
+finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</pre></div></div><a
+          id="id-1.12.9.11"
+          class="indexterm"></a><div
+          class="para">
+			Программа <code
+            class="command">tcpd</code> часто используется в файле <code
+            class="filename">/etc/inetd.conf</code>. Она позволяет ограничить входящие сообщения, применяя правила контроля доступа, описанные на странице руководства <span
+            class="citerefentry"><span
+              class="refentrytitle">hosts_access</span>(5)</span> и настраиваемые в файлах <code
+            class="filename">/etc/hosts.allow</code> и <code
+            class="filename">/etc/hosts.deny</code>. Когда подтверждается, что соединение разрешено, <code
+            class="command">tcpd</code> запускает настоящий сервер (<code
+            class="command">in.fingerd</code> в нашем примере). Для <code
+            class="command">tcpd</code> ничего не стоит определить, какой сервис следует запустить, по имени, под которым он был вызван (которое является первым аргументом, <code
+            class="literal">argv[0]</code>). Поэтому список аргументов должен начинаться не с <code
+            class="literal">tcpd</code>, а с программы, для которой он служит обёрткой.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>СООБЩЕСТВО</em></span> Виетс Венема</strong></p></div></div></div><a
+            id="id-1.12.9.13.2"
+            class="indexterm"></a><a
+            id="id-1.12.9.13.3"
+            class="indexterm"></a><div
+            class="para">
+			Виетс Венема, чья компетенция в области безопасности сделала его известным программистом, является автором программы <code
+              class="command">tcpd</code>. Он также и главный разработчик Postfix, модульного сервера электронной почты (SMTP, Simple Mail Transfer Protocol), спроектированного так, чтобы быть более безопасным и надёжным, чем <code
+              class="command">sendmail</code>, имевший долгую историю уязвимостей.
+		</div></div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>АЛЬТЕРНАТИВА</em></span> Другие команды <code
+                      class="command">inetd</code></strong></p></div></div></div><div
+            class="para">
+			Хотя по умолчанию в Debian устанавливается <span
+              class="pkg pkg">openbsd-inetd</span>, есть и немало альтернативных решений: упомянем <span
+              class="pkg pkg">inetutils-inetd</span>, <span
+              class="pkg pkg">micro-inetd</span>, <span
+              class="pkg pkg">rlinetd</span> и <span
+              class="pkg pkg">xinetd</span>.
+		</div><div
+            class="para">
+			Эта последняя инкарнация суперсервера предоставляет очень интересные возможности. Самой примечательной из них является возможность разбивки конфигурации на несколько файлов (хранящихся, разумеется, в каталоге <code
+              class="filename">/etc/xinetd.d/</code>), что может облегчить жизнь администратора.
+		</div><div
+            class="para">
+			Последнее, что стоит упомянуть, но не менее важное, это имеющаяся в наличии возможность эмулировать поведение <code
+              class="command">inetd</code> с сокет-активирующим механизмом <code
+              class="command">systemd</code> (смотри <a
+              class="xref"
+              href="unix-services.html#sect.systemd">Раздел 9.1.1, «Система инициализации systemd»</a>).
+		</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.syslog.html"><strong>Пред.</strong>9.5. Системные события syslog</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Наверх</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Начало</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.task-scheduling-cron-atd.html"><strong>След.</strong>9.7. Планирование задач с помощью cron и atd</a></li></ul></body></html>
