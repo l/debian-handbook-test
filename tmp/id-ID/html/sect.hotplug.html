@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.11. Hot Plugging: hotplug</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-id-ID-1.0-1" /><meta
+        name="keywords"
+        content="Boot sistem, Initscript, SSH, Telnet, Hak, Izin, Pengawasan, Inetd, Cron, Cadangan, Hotplug, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Buku Panduan Administrator Debian" /><link
+        rel="up"
+        href="unix-services.html"
+        title="Bab 9. Layanan Unix" /><link
+        rel="prev"
+        href="sect.backup.html"
+        title="9.10. Cadangan" /><link
+        rel="next"
+        href="sect.power-management.html"
+        title="9.12. Manajemen Daya: Advanced Configuration and Power Interface (ACPI)" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/id-ID/stable/sect.hotplug.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>Sebelumnya</strong></a></li><li
+          class="home">Buku Panduan Administrator Debian</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>Lanjut</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.hotplug"></a>9.11. Hot Plugging: <span
+                  class="emphasis"><em>hotplug</em></span></h2></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.2"></a>9.11.1. Pengenalan</h3></div></div></div><div
+            class="para">
+				Subsistem kernel <span
+              class="emphasis"><em>hotplug</em></span> secara dinamis menangani penambahan dan penghapusan perangkat, dengan memuat driver yang sesuai dan membuat berkas-berkas divais yang sesuai (dengan bantuan <code
+              class="command">udevd</code>). Dengan perangkat keras modern dan virtualisasi, hampir semuanya dapat di-hotplug: dari peripheral PCMCIA/USB/IEEE 1394 yang biasa sampai hard drive SATA, tetapi juga CPU dan memori.
+			</div><div
+            class="para">
+				Kernel memiliki basis data yang mengaitkan setiap ID perangkat dengan driver yang diperlukan. Basis data ini digunakan selama boot untuk memuat semua driver untuk perangkat periferal yang terdeteksi pada bus berbeda, tetapi juga ketika perangkat tambahan hotplug terhubung. Setelah perangkat siap untuk digunakan, pesan dikirim ke <code
+              class="command">udevd</code> sehingga akan dapat membuat entri yang sesuai di <code
+              class="filename">/dev/</code>.
+			</div><a
+            id="id-1.12.14.2.4"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.5"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.6"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.7"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.8"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.9"
+            class="indexterm"></a></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.3"></a>9.11.2. Masalah Penamaan</h3></div></div></div><div
+            class="para">
+				Sebelum munculnya koneksi hotplug, mudah untuk memberikan sebuah nama tetap ke suatu perangkat. Hal ini didasarkan hanya pada posisi perangkat di bus mereka masing-masing. Tetapi hal ini tidak mungkin ketika perangkat tersebut dapat datang dan pergi pada bus. Kasus khas adalah menggunakan kamera digital dan USB flash drive, keduanya muncul ke komputer sebagai disk drive. Yang pertama yang terhubung mungkin <code
+              class="filename">akan/dev/sdb</code> dan yang kedua <code
+              class="filename">/dev/sdc</code> (dengan <code
+              class="filename">/dev/sda</code> mewakili hard drive komputer sendiri). Nama perangkat tidak tetap; itu tergantung pada urutan terhubungnya perangkat.
+			</div><div
+            class="para">
+				Selain itu, driver lebih dan lebih banyak menggunakan nilai-nilai yang dinamis untuk nomor mayor/minor perangkat, yang membuat tidak mungkin untuk memiliki entri statis untuk perangkat tertentu, karena karakteristik penting ini dapat bervariasi setelah reboot.
+			</div><div
+            class="para">
+				<span
+              class="emphasis"><em>udev</em></span> diciptakan justru untuk memecahkan masalah ini.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.4"></a>9.11.3. Bagaimana <span
+                    class="emphasis"><em>udev</em></span> Bekerja</h3></div></div></div><div
+            class="para">
+				Ketika <span
+              class="emphasis"><em>udev</em></span> diberitahu oleh kernel atas kemunculan perangkat baru, itu mengumpulkan berbagai informasi pada perangkat tersebut dengan memeriksa entri terkait di <code
+              class="filename">/sys/</code>, terutama mereka yang secara unik mengidentifikasinya (Alamat MAC kartu jaringan, nomor seri untuk beberapa perangkat USB, dll.).
+			</div><div
+            class="para">
+				Dipersenjatai dengan semua informasi ini, <span
+              class="emphasis"><em>udev</em></span> kemudian berkonsultasi menjalani seluruh aturan yang terkandung dalam <code
+              class="filename">/etc/udev/rules.d/</code> dan <code
+              class="filename">/lib/udev/rules.d/</code>. Dalam prosesnya ini memutuskan bagaimana menamai perangkat, taut simbolik apa yang dibuat (untuk memberinya nama alternatif), dan perintah apa yang dieksekusi. Semua berkas ini diperiksa, dan aturan semua dievaluasi secara berurutan (kecuali ketika berkas menggunakan direktif "GOTO"). Dengan demikian, mungkin ada beberapa aturan yang sesuai untuk kejadian tertentu.
+			</div><div
+            class="para">
+				Sintaks berkas aturan ini cukup sederhana: setiap baris berisi kriteria pemilihan dan penetapan variabel. Yang terdahulu digunakan untuk memilih kejadian yang perlu ada reaksi, dan yang belakangan mendefinisikan tindakan yang akan diambil. Mereka semua hanya dipisahkan dengan koma, dan operator secara implisit membedakan antara kriteria seleksi (dengan operator perbandingan, seperti <code
+              class="literal">==</code> atau <code
+              class="literal">!=</code>) atau direktif penugasan (dengan operator seperti <code
+              class="literal">=</code>, <code
+              class="literal">+=</code>, atau <code
+              class="literal">:=</code>).
+			</div><div
+            class="para">
+				Operator perbandingan yang digunakan pada variabel berikut:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KERNEL</code>: nama yang deberikan oleh kernel ke perangkat;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">AKSI</code>: tindakan yang sesuai untuk acara ("add" ketika perangkat telah ditambahkan, "remove" ketika dihapus);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">DEVPATH</code>: path entri <code
+                    class="filename">/sys/</code> perangkat;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SUBSYSTEM</code>: subsistem kernel yang menghasilkan permintaan (ada banyak, tapi beberapa contoh adalah "usb", "ide", "net", "firmware", dll.);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">ATTR {<em
+                      class="replaceable">atribut</em>}</code>: isi berkas dari <em
+                    class="replaceable">atribut</em> dalam direktori <code
+                    class="filename">/sys/ <em
+                      class="replaceable">$devpath</em>/</code> perangkat. Ini adalah tempat Anda menemukan alamat MAC dan pengenal khusus bus lain;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KERNELS</code>, <code
+                    class="literal">SUBSYSTEM</code>, dan <code
+                    class="literal">ATTRS {<em
+                      class="replaceable">atribut</em>}</code> adalah variasi yang akan mencoba untuk mencocokkan pilihan yang berbeda pada salah satu perangkat induk dari perangkat saat ini;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">PROGRAM</code>: mendelegasikan tes ke program ditunjukkan (true jika ia mengembalikan 0, false jika tidak). Isi dari keluaran standar program disimpan sehingga dapat digunakan kembali oleh uji <code
+                    class="literal">RESULT</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RESULT</code>: menjalankan tes pada keluaran standar yang disimpan selama pemanggilan terakhir ke <code
+                    class="literal">PROGRAM</code>.
+					</div></li></ul></div><div
+            class="para">
+				Operand kanan dapat menggunakan ekspresi pola untuk mencocokkan beberapa nilai pada waktu yang sama. Sebagai contoh, <code
+              class="literal">*</code> cocok dengan string apapun (bahkan yang kosong); <code
+              class="literal">?</code> cocok dengan sebarang karakter, dan <code
+              class="literal">[]</code> sesuai set karakter yang tercantum antara kurung (atau lawan dari itu jika karakter pertama adalah tanda seru, dan rentang karakter berturutan dituliskan seperti <code
+              class="literal">a-z</code>).
+			</div><div
+            class="para">
+				Mengenai penetapan operator, <code
+              class="literal">=</code> memberikan nilai (dan menggantikan nilai saat ini); dalam kasus sebuah daftar, itu dikosongkan dan mengandung hanya nilai yang diberikan. <code
+              class="literal">:=</code> melakukan hal yang sama, tetapi mencegah perubahan belakangan atas variabel yang sama. Adapun <code
+              class="literal">+=</code>, menambahkan item ke daftar. Variabel berikut dapat diubah:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">NAME</code>: nama berkas perangkat yang akan dibuat di <code
+                    class="filename">/dev/</code>. Hanya penugasan pertama yang penting; yang lain diabaikan;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SYMLINK</code>: daftar taut simbolik yang akan mengarah ke perangkat yang sama;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">OWNER</code>, <code
+                    class="literal">GROUP</code>, dan <code
+                    class="literal">MODE</code> menentukan pengguna dan kelompok yang memiliki perangkat, serta izin terkait;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RUN</code>: daftar program-program yang akan dijalankan sebagai respon atas kejadian ini.
+					</div></li></ul></div><div
+            class="para">
+				Nilai-nilai yang ditugaskan ke variabel ini dapat menggunakan sejumlah substitusi:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$kernel</code> atau <code
+                    class="literal">%k</code>: setara dengan <code
+                    class="literal">KERNEL</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$number</code> atau <code
+                    class="literal">%n</code>: nomor urut perangkat, misalnya, untuk <code
+                    class="literal">sda3</code>, itu akan "3";
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$devpath</code> atau <code
+                    class="literal">%p</code>: setara dengan <code
+                    class="literal">DEVPATH</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$attr{<em
+                      class="replaceable">atribut</em>}</code> atau <code
+                    class="literal">%s{<em
+                      class="replaceable">atribut</em>}</code>: setara dengan <code
+                    class="literal">ATTRS {<em
+                      class="replaceable">atribut</em>}</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$major</code> atau <code
+                    class="literal">%M</code>: nomor mayor kernel dari perangkat;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$minor</code> atau <code
+                    class="literal">%m</code>: nomor minor kernel dari perangkat;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$result</code> atau <code
+                    class="literal">%c</code>: string keluaran dari program yang terakhir dipanggil oleh <code
+                    class="literal">PROGRAM</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						dan, akhirnya, <code
+                    class="literal">%%</code> dan <code
+                    class="literal">$$</code> masing-masing untuk persen dan tanda dolar.
+					</div></li></ul></div><div
+            class="para">
+				Di atas daftar ini tidak lengkap (mereka hanya menyertakan parameter-parameter terpenting), tetapi halaman manual <span
+              class="citerefentry"><span
+                class="refentrytitle">udev</span>(7)</span> harus lengkap.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.5"></a>9.11.4. Contoh konkret</h3></div></div></div><div
+            class="para">
+				Mari kita mempertimbangkan kasus kunci USB sederhana dan mencoba memberikan sebuah nama tetap. Pertama, Anda harus menemukan unsur-unsur yang akan mengidentifikasi secara unik. Untuk ini, tancapkan itu dan jalankan <code
+              class="command">udevadm info -a -n /dev/sdc</code> (menggantikan <em
+              class="replaceable">/dev/sdc</em> dengan nama sebenarnya yang ditetapkan ke kunci).
+			</div><pre
+            class="screen"><code
+              class="computeroutput"># </code><strong
+              class="userinput"><code>udevadm info -a -n /dev/sdc</code></strong>
+<code
+              class="computeroutput">[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</code></pre><div
+            class="para">
+				Untuk membuat aturan baru, Anda dapat menggunakan tes pada variabel perangkat, maupun dari salah satu perangkat induk. Kasus di atas memungkinkan kita untuk membuat dua aturan seperti ini:
+			</div><pre
+            class="programlisting">KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</pre><div
+            class="para">
+				Setelah aturan-aturan ini ditetapkan dalam berkas, bernama sebagai contoh <code
+              class="filename">/etc/udev/rules.d/010_local.rules</code>, Anda dapat mencabut dan menancapkan kembali kunci USB. Anda dapat melihat bahwa <code
+              class="filename">/dev/usb_key/disk</code> mewakili disk terkait kunci USB, dan <code
+              class="filename">/dev/usb_key/part1</code> adalah partisi pertamanya.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>LEBIH LANJUT</em></span> Men-debug konfigurasi <span
+                        class="emphasis"><em>udev</em></span></strong></p></div></div></div><div
+              class="para">
+				Seperti banyak daemon, <code
+                class="command">udevd</code> menyimpan log dalam <code
+                class="filename">/var/log/daemon.log</code>. Tetapi hal ini tidak sangat rinci secara default, dan biasanya tidak cukup untuk memahami apa yang terjadi. Perintah <code
+                class="command">udevadm control --log-priority=info</code> meningkatkan tingkat rincian dan memecahkan masalah ini. <code
+                class="command">udevadm control --log-priority=err</code> mengembalikan ke level rincian standar.
+			</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>Sebelumnya</strong>9.10. Cadangan</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Induk</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Depan</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>Lanjut</strong>9.12. Manajemen Daya: Advanced Configuration and ...</a></li></ul></body></html>
