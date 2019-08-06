@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">15.3. إنشاء مستودع حزم للأداة APT</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-ar-MA-1.0-1" /><meta
+        name="keywords"
+        content="نقل خلفي, إعادة بناء, حزمة مصدرية, أرشيف, حزمة فوقية, مطور دبيان, مشرف" /><link
+        rel="home"
+        href="index.html"
+        title="دفتر مدير دبيان" /><link
+        rel="up"
+        href="debian-packaging.html"
+        title="فصل 15. إنشاء حزمة دبيان" /><link
+        rel="prev"
+        href="sect.building-first-package.html"
+        title="15.2. بناء حزمتك الأولى" /><link
+        rel="next"
+        href="sect.becoming-package-maintainer.html"
+        title="15.4. كيف تصبح مشرف حزم" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/ar-MA/stable/sect.setup-apt-package-repository.html" /></head><body
+      dir="rtl"><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.building-first-package.html"><strong>السابق</strong></a></li><li
+          class="home">دفتر مدير دبيان</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.becoming-package-maintainer.html"><strong>التالي</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.setup-apt-package-repository"></a>15.3. إنشاء مستودع حزم للأداة APT</h2></div></div></div><a
+          id="id-1.18.6.2"
+          class="indexterm"></a><a
+          id="id-1.18.6.3"
+          class="indexterm"></a><div
+          class="para">
+			بدأت شركة فلكوت تدريجياً بمتابعة صيانة عدد من حزم دبيان، سواء الحزم المعدلة محلياً عن حزم سابقة، أو حزم منشأة من الصفر لتوزيع بيانات وبرامج داخلية.
+		</div><div
+          class="para">
+			يريدون مكاملة هذه الحزم في أرشيف حزم يمكن استخدامه مباشرة عبر APT لتسهيل عملية التنصيب. ولأسباب واضحة متعلقة بالصيانة، يريدون فصل الحزم الداخلية عن الحزم التي أعادوا بناءها محلياً. الهدف هو أن تصبح المدخلات الموافقة لهذه الحزم في ملف <code
+            dir="ltr"
+            class="filename">/etc/apt/sources.list.d/falcot.list</code> كما يلي:
+		</div><pre
+          class="programlisting">
+deb http://packages.falcot.com/ updates/
+deb http://packages.falcot.com/ internal/
+</pre><a
+          id="id-1.18.6.7"
+          class="indexterm"></a><div
+          class="para">
+			أعدّ مديرو النظم إذاً مضيفاً ظاهرياً على مخدم HTTP الداخلي لديهم، مع تحديد <code
+            class="filename">/srv/vhosts/packages/</code> كجذر مساحة الوب المرتبطة به. لقد سلموا عملية إدارة الأرشيفات نفسها إلى الأمر <code
+            class="command">mini-dinstall</code> (من الحزمة ذات الاسم نفسه). تتابع هذه الأداة مجلد الواردات <code
+            dir="ltr"
+            class="filename">incoming/</code> (في حالتنا، <code
+            class="filename">/srv/vhosts/packages/mini-dinstall/incoming/</code>) وتنتظر وصول حزم جديدة إليه؛ وعند رفع حزمة جديدة سوف تثبتها في أرشيف دبيان في <code
+            class="filename">/srv/vhosts/packages/</code>. يقرأ الأمر <code
+            class="command">mini-dinstall</code> ملف <code
+            dir="ltr"
+            class="filename">*.changes</code> الذي ينشأ عند توليد حزم دبيان. تحوي هذه الملفات قائمة بجميع الملفات الأخرى المرتبطة بهذه النسخة من الحزمة (<code
+            dir="ltr"
+            class="filename">*.deb</code> و<code
+            dir="ltr"
+            class="filename">*.dsc</code> و<code
+            dir="ltr"
+            class="filename">*.diff.gz</code>/<code
+            class="filename">*.debian.tar.gz</code> و<code
+            dir="ltr"
+            class="filename">*.orig.tar.gz</code> أو مثيلاتها الناتجة عن استخدام أدوات ضغط مختلفة)، وهي تسمح للأمر <code
+            class="command">mini-dinstall</code> بمعرفة الملفات التي يجب تثبيتها. كما تحوي ملفات <code
+            dir="ltr"
+            class="filename">*.changes</code> اسم التوزيعة المستهدفة (غالباً <code
+            class="literal">unstable</code>) الذي يُذكر في آخر مدخلة من مدخلات <code
+            class="filename">debian/changelog</code>، حيث يستخدم <code
+            class="command">mini-dinstall</code> هذه المعلومة ليقرر المكان الذي سيثبت الحزمة فيه. لذلك يتعيّن على مديري النظم تغيير هذا الحقل دوماً قبل بناء أي حزمة، وإعطائه القيمة <code
+            class="literal">internal</code> أو <code
+            class="literal">updates</code>، حسب الموقع الهدف. بعدها يولّد <code
+            class="command">mini-dinstall</code> الملفات التي تحتاجها APT، مثل <code
+            class="filename">Packages.gz</code>.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>بدائل</em></span> <code
+                      class="command">apt-ftparchive</code></strong></p></div></div></div><a
+            id="id-1.18.6.9.2"
+            class="indexterm"></a><div
+            class="para">
+			إذا كنت ترى أن <code
+              class="command">mini-dinstall</code> معقدٌ جداً بالنسبة لأرشيف دبيان الذي تحتاجه، يمكنك أيضاً استخدام الأمر <code
+              class="command">apt-ftparchive</code>. تفحص هذه الأداة محتويات مجلد ما وتعرض (على خرجها القياسي) ملف <code
+              class="filename">Packages</code> يوافق هذه المحتويات. في حالة شركة فلكوت، يستطيع مديرو النظم رفع الحزم مباشرة إلى <code
+              class="filename">/srv/vhosts/packages/updates/</code> أو <code
+              class="filename">/srv/vhosts/packages/internal/</code>، ثمّ استدعاء الأوامر التالية لإنشاء ملفات <code
+              class="filename">Packages.gz</code>:
+		</div><pre
+            class="screen">
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>cd /srv/vhosts/packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>apt-ftparchive packages updates &gt;updates/Packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>gzip updates/Packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>apt-ftparchive packages internal &gt;internal/Packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>gzip internal/Packages</code></strong></pre><div
+            class="para">
+			يسمح الأمر <code
+              class="command">apt-ftparchive sources</code> بإنشاء ملفات <code
+              class="filename">Sources.gz</code> بأسلوب مشابه.
+		</div></div><div
+          class="para">
+			لإعداد <code
+            class="command">mini-dinstall</code> يجب ضبط الملف <code
+            dir="ltr"
+            class="filename">~/.mini-dinstall.conf</code>؛ كانت المحتويات في حالة شركة فلكوت كالتالي:
+		</div><pre
+          class="programlisting">
+[DEFAULT]
+archive_style = flat
+archivedir = /srv/vhosts/packages
+
+verify_sigs = 0
+mail_to = admin@falcot.com
+
+generate_release = 1
+release_origin = Falcot Corp
+release_codename = stable
+
+[updates]
+release_label = Recompiled Debian Packages
+
+[internal]
+release_label = Internal Packages
+</pre><div
+          class="para">
+			أحد القرارات التي تستحق الذكر هو توليد ملفات <code
+            class="filename">Release</code> لكل أرشيف. وهذه تساعد في إدارة أولويات تثبيت الحزم باستخدام ملف الضبط <code
+            dir="ltr"
+            class="filename">/etc/apt/preferences</code> (انظر <a
+            class="xref"
+            href="sect.apt-get.html#sect.apt.priorities">قسم 6.2.5, “إدارة أولويات الحزم”</a> لمزيد من التفاصيل).
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>أمن</em></span> <code
+                      class="command">mini-dinstall</code> والصلاحيات</strong></p></div></div></div><div
+            class="para">
+			بما أن <code
+              class="command">mini-dinstall</code> مصمم حتى يعمل بصلاحيات المستخدمين العاديين، فلا حاجة لتشغيله بصلاحيات الجذر. أسهل طريقة هي إعداد كل شيء ضمن حساب مستخدم يملكه مدير النظام المسؤول عن إنشاء حزم دبيان. بما أن مدير النظام هذا وحده يملك الصلاحيات اللازمة لوضع الملفات في المجلد <code
+              dir="ltr"
+              class="filename">incoming/</code>، يمكننا أن نستنتج أن مدير النظام سيتحقق من مصدر كل حزمة قبل نشرها ولا داعي أن يتحقق منه <code
+              class="command">mini-dinstall</code> ثانية. هذا يفسر استخدام المتغير <code
+              dir="ltr"
+              class="literal">verify_sigs = 0</code> (الذي يعني عدم الحاجة للتحقق من التواقيع الرقمية). لكن إذا كانت محتويات الحزم حساسة، يمكننا عكس الإعدادات واختيار التحقق من الحزم باستخدام حلقة مفاتيح تحوي المفاتيح العامة للأشخاص الذين يُسمَح لهم بإنشاء الحزم (التي تضبط باستخدام المتغير <code
+              class="literal">extra_keyrings</code>)؛ عندها سيتحقق <code
+              class="command">mini-dinstall</code> من مصدر كل حزمة واردة عبر تحليل التوقيع المدمج في الملف <code
+              dir="ltr"
+              class="filename">*.changes</code>.
+		</div></div><div
+          class="para">
+			استدعاء <code
+            class="command">mini-dinstall</code> في الواقع يبدأ تشغيل خدمة في الخلفية. وطالما أن هذه الخدمة تعمل، سوف تفحص ورود حزم جديدة إلى المجلد <code
+            dir="ltr"
+            class="filename">incoming/</code> كل نصف ساعة؛ عند وصول حزمة جديدة، سوف تُنقَل إلى الأرشيف ويعاد توليد ملفات <code
+            class="filename">Packages.gz</code> و <code
+            class="filename">Sources.gz</code> المناسبة. إذا كان تشغيل الخدمة يسبب مشكلة، يمكن أيضاً استدعاء <code
+            class="command">mini-dinstall</code> يدوياً في الوضع اللاتفاعلي (أو الدفعي batch)، باستخدام الخيار <code
+            dir="ltr"
+            class="literal">-b</code>، في كل مرة تُرفَع فيها حزمة جديدة إلى المجلد <code
+            dir="ltr"
+            class="filename">incoming/</code>. الإمكانيات الأخرى التي يوفرها <code
+            class="command">mini-dinstall</code> موثقة في صفحة الدليل <span
+            class="citerefentry"><span
+              class="refentrytitle">mini-dinstall</span>(1)</span>.‎
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>إضافة</em></span> توليد أرشيف موقّع</strong></p></div></div></div><div
+            class="para">
+			تتحقق مجموعة APT من سلسلة من التواقيع التشفيرية المطبّقة على الحزم التي تعالجها قبل تثبيتها، حتى تتأكد من أصالتها (انظر <a
+              class="xref"
+              href="sect.package-authentication.html">قسم 6.5, “التحقق من سلامة الحزم”</a>). قد تسبب أرشيفات APT الخاصة مشكلة هنا، لأن الأجهزة التي تستخدمها ستستمر في عرض تحذيرات عن الحزم غير الموقّعة. سيعمل مدير النظام المتقن لعمله على مكاملة الأرشيفات الخاصة مع آلية secure APT.
+		</div><div
+            class="para">
+			يتضمن <code
+              class="command">mini-dinstall</code> خيار الضبط <code
+              class="literal">release_signscript</code> للمساعدة في هذه العملية، حيث يسمح بتحديد سكربت يستخدم لتوليد التوقيع. يمكن البداية مع السكربت <code
+              class="filename">sign-release.sh</code> الذي توفره الحزمة <span
+              class="pkg pkg">mini-dinstall</span> في المجلد <code
+              class="filename">/usr/share/doc/mini-dinstall/examples/</code>؛ قد تحتاج لإجراء بعض التغييرات المحلية.
+		</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.building-first-package.html"><strong>السابق</strong>15.2. بناء حزمتك الأولى</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>أعلى</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>البداية</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.becoming-package-maintainer.html"><strong>التالي</strong>15.4. كيف تصبح مشرف حزم</a></li></ul></body></html>

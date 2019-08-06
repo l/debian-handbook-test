@@ -1,0 +1,393 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.11. Hetpluggning: hetpluggning</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-sv-SE-1.0-1" /><meta
+        name="keywords"
+        content="Systemstart, Initskript, SSH, Telnet, Rättigheter, Behörigheter, Övervakning, Inetd, Cron, Säkerhetskopia, Inpluggninsbara, PCMCIA, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Handbok för Debianadministratören" /><link
+        rel="up"
+        href="unix-services.html"
+        title="Kapitel 9. Unixtjänster" /><link
+        rel="prev"
+        href="sect.backup.html"
+        title="9.10. Säkerhetskopia" /><link
+        rel="next"
+        href="sect.power-management.html"
+        title="9.12. Strömhantering: Advanced Configuration and Power Interface (ACPI)" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/sv-SE/stable/sect.hotplug.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>Föregående</strong></a></li><li
+          class="home">Handbok för Debianadministratören</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>Nästa</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.hotplug"></a>9.11. Hetpluggning: <span
+                  class="emphasis"><em>hetpluggning</em></span></h2></div></div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.2"></a>9.11.1. Introduktion</h3></div></div></div><div
+            class="para">
+				Kärnans subsystem för <span
+              class="emphasis"><em>hetpluggning</em></span> lägger hanterar dynamiskt tillägg och borttagning av enheter genom att läsa in passande drivrutiner samt genom att skapa motsvarande enhetsfiler (med hjälp av <code
+              class="command">udevd</code>). Vad gäller modern hårdvara och virtualisering så kan nästan allting hetpluggas; från vanliga USB/PCMCIA/IEEE-enheter till SATA-hårddiskar, men även CPU och minnen.
+			</div><div
+            class="para">
+				Kärnan har en databas som associerar var enhets-ID med krävd drivrutin. Denna databas används vid uppstart för att läsa in alla drivrutiner för externa enheter som identifieras på olika bussar, men också när en hetpluggad enhet ansluts. När väl enheten är redo för användning skickas ett meddelande till <code
+              class="command">udevd</code> so att det kan skapa motsvarande enhet i <code
+              class="filename">/dev/</code>
+			</div><a
+            id="id-1.12.14.2.4"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.5"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.6"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.7"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.8"
+            class="indexterm"></a><a
+            id="id-1.12.14.2.9"
+            class="indexterm"></a></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.3"></a>9.11.2. Namngivningsproblemet</h3></div></div></div><div
+            class="para">
+				Innan uppkomsten av hetplugganslutningar var det enkelt att tilldela ett fast namn till en enhet. Det baserades endast på enhetens position på varje buss. Detta är inte möjligt med enheter som kan läggas till och tas bort från på en bus. Det typiska fallet är användningen av en digitalkamera, en USB-sticka, där båda för datorn kommer att tolkas som diskenheter. Den första som ansluts kan vara <code
+              class="filename">/dev/sdb</code> och den andra <code
+              class="filename">/dev/sdc</code> (med <code
+              class="filename">/dev/sda</code> representerande datorns egna hårddisk). Enhetsnamnet är inte fast; det beror på ordningen enheterna är anslutna i.
+			</div><div
+            class="para">
+				Utöver det använder fler och fler drivrutiner dynamiska värden för enheters major/minornummer, vilket gör det omöjligt att ha statiska poster för de givna enheterna, eftersom dessa essentiella kännetecken kan variera efter omstart.
+			</div><div
+            class="para">
+				<span
+              class="emphasis"><em>udev</em></span> skapades för att lösa detta problem.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.4"></a>9.11.3. Hur <span
+                    class="emphasis"><em>udev</em></span> fungerar</h3></div></div></div><div
+            class="para">
+				Då <span
+              class="emphasis"><em>udev</em></span> av kärnan aviseras om att en ny enhet identifieras samlar den in information om den givna enheten genom att slå upp motsvarande poster i <code
+              class="filename">/sys/</code>, specifikt de som identifierar den unikt (MAC-adressen för ett nätverkskort, serienummer för en del USB-enheter och så vidare.)
+			</div><div
+            class="para">
+				Utrustad med all denna information konsulterar <span
+              class="emphasis"><em>udev</em></span> sedan alla regler i <code
+              class="filename">/etc/udev/rules.d/</code> och <code
+              class="filename">/lib/udev/rules.d/</code>. I denna process bestäms hur enheten ska namnges, vilka symboliska länkar att skapa (för att ge den alternativa namn) och vilka kommandon att köra. Alla dessa filer beaktas och reglerna utvärderas sekvensiellt (förutom när en fil använder "GOTO"-direktiv). Det kan därför finnas flera regler som motsvarar en given händelse
+			</div><div
+            class="para">
+				Syntaxen för regelfiler är ganska enkel: varje rad innehåller valkriteria och variabeltilldelningar. Den förstnämnda används för att välja händelser för vilka det finns ett behov att agera och den senare definierar vilken åtgärd som ska utföras. De är alla separerade med komman, och operatorn skiljer implicit mellan ett valkriteria (med jämförelseoperatorer som <code
+              class="literal">==</code>, <code
+              class="literal">!=</code> eller en tilldelning (med operatorer) som <code
+              class="literal">=</code>, <code
+              class="literal">+=</code> eller <code
+              class="literal">:=</code>).
+			</div><div
+            class="para">
+				Jämförelseoperatorer används för följande variabler:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KERNEL</code>. namnet som kärnan tilldelar enheten;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">ACTION</code>: åtgärd som svarar mot händelsen (”add” när en enhet har blivit tillagd, ”remove” när den har blivit borttagen);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">DEVPATH</code>: sökvägen för enhetens <code
+                    class="filename">/sys/</code>-post;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SUBSYSTEM</code>: subsystemet i kärnan som genererade begäran (det finns många, men några exempel är “usb”, “ide”, “net”, “firmware” och så vidare);
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">ATTR{<em
+                      class="replaceable">attribute</em>}</code>: filinnehåll av <em
+                    class="replaceable">attribute</em> filen i <code
+                    class="filename">/sys/<em
+                      class="replaceable">$devpath</em>/</code>-katalogen för enheten. Det är här du finner MAC-adressen och andra buss-specifika identifierare;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">KERNELS</code>, <code
+                    class="literal">SUBSYSTEMS</code> och <code
+                    class="literal">ATTRS{<em
+                      class="replaceable">attributes</em>}</code> är variationer som kommer att försöka att matcha olika alternativ för en av föräldraenheterna till aktuell enhet;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">PROGRAM</code>: delegerar testet till indikerat program (sant om det returnerar 0, annars falsk). Innehållet från programmets standardutmatning lagras så att det kan återanvändas i testet för <code
+                    class="literal">RESULT</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RESULT</code>: exekvera tester på standarutmatningen lagrad vid senaste körning av <code
+                    class="literal">PROGRAM</code>.
+					</div></li></ul></div><div
+            class="para">
+				Högra operanderna kan använda mönstermatchning för att matcha flera värden samtidigt. Till exempel matchar <code
+              class="literal">*</code> alla strängar (även en tom sträng); <code
+              class="literal">?</code> matchar varje tecken och <code
+              class="literal">[]</code> matchar tecknen listade mellan hakparenteserna (eller tvärtom om första tecknet är ett utropstecken; intervall av tecken indikeras av <code
+              class="literal">a-z</code>.
+			</div><div
+            class="para">
+				Gällande tilldelningsoperatorerna tilldelar <code
+              class="literal">=</code> ett värde (och ersätter det nuvarande värdet); om det gäller en lista töms den och innehåller det tilldelade värdet. <code
+              class="literal">:=</code> gör likadant men förhindrar senare ändringar till samma variabel. <code
+              class="literal">+=</code> lägger till i listan. Följande variabler kan ändras:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">NAME</code>: enhetsfilnamnet att skapas i <code
+                    class="filename">/dev/</code>. Endast den första tilldelningen beaktas; de andra ignoreras;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">SYMLINK</code>: listan över symboliska länkar som kommer att peka på samma enhet;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">OWNER</code>, <code
+                    class="literal">GROUP</code> och <code
+                    class="literal">MODE</code> definierar användare och grupp som äger enheten såväl som tillhörande behörighet;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">RUN</code>: listan över program att exekvera som svar på denna händelse.
+					</div></li></ul></div><div
+            class="para">
+				Värden tilldelade till dessa variabler kan använda ett antal substitioner:
+			</div><div
+            xmlns:d="http://docbook.org/ns/docbook"
+            class="itemizedlist"><ul><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$kernel</code> eller <code
+                    class="literal">%k</code>: motsvarande <code
+                    class="literal">KERNEL</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$number</code> or <code
+                    class="literal">%n</code>: the order number of the device, for example, for <code
+                    class="literal">sda3</code>, it would be “3”;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$devpath</code> eller <code
+                    class="literal">%p</code>: motsvarande <code
+                    class="literal">DEVPATH</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$attr{<em
+                      class="replaceable">attribute</em>}</code> eller <code
+                    class="literal">%s{<em
+                      class="replaceable">attribute</em>}</code>: motsvarande <code
+                    class="literal">ATTRS{<em
+                      class="replaceable">attribut</em>}</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$major</code> eller <code
+                    class="literal">%M</code>: kärnans major-version för enheten;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$minor</code> eller <code
+                    class="literal">%m</code>: kärnans minor-version för enheten;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						<code
+                    class="literal">$result</code> eller <code
+                    class="literal">%c</code>: strängutmatningen för de senaste programmet startat med <code
+                    class="literal">PROGRAM</code>;
+					</div></li><li
+                class="listitem"><div
+                  class="para">
+						och slutligen, <code
+                    class="literal">%%</code> och <code
+                    class="literal">$$</code> för procent-- och dollar-tecken.
+					</div></li></ul></div><div
+            class="para">
+				Listorna ovan är inte kompletta (de omfattar endast de viktigaste parametrarna, men <span
+              class="citerefentry"><span
+                class="refentrytitle">udev</span>(7)</span>s manualsida är utömmande.
+			</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h3
+                  class="title"><a
+                    xmlns=""
+                    id="id-1.12.14.5"></a>9.11.4. Ett konkret exempel</h3></div></div></div><div
+            class="para">
+				Låt oss titta närmare på att försöka tilldela ett fast namn till en enkel USB-nyckel. Först måste du hitta elementen som kommer att identifera den på ett unikt sätt. För att göra detta, plugga in den och kör <code
+              class="command">udevadm info -a -n /dev/sdc</code> (ersätt <em
+              class="replaceable">/dev/sdc</em> med namnet tilldelat till nyckeln).
+			</div><pre
+            class="screen"><code
+              class="computeroutput"># </code><strong
+              class="userinput"><code>udevadm info -a -n /dev/sdc</code></strong>
+<code
+              class="computeroutput">[...]
+  looking at device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0/block/sdc':
+    KERNEL=="sdc"
+    SUBSYSTEM=="block"
+    DRIVER==""
+    ATTR{range}=="16"
+    ATTR{ext_range}=="256"
+    ATTR{removable}=="1"
+    ATTR{ro}=="0"
+    ATTR{size}=="126976"
+    ATTR{alignment_offset}=="0"
+    ATTR{capability}=="53"
+    ATTR{stat}=="      51      100     1208      256        0        0        0        0        0      192      25        6"
+    ATTR{inflight}=="       0        0"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2/1-2.2:1.0/host9/target9:0:0/9:0:0:0':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="scsi"
+    DRIVERS=="sd"
+    ATTRS{device_blocked}=="0"
+    ATTRS{type}=="0"
+    ATTRS{scsi_level}=="3"
+    ATTRS{vendor}=="I0MEGA  "
+    ATTRS{model}=="UMni64MB*IOM2C4 "
+    ATTRS{rev}=="    "
+    ATTRS{state}=="running"
+[...]
+    ATTRS{max_sectors}=="240"
+[...]
+  looking at parent device '/devices/pci0000:00/0000:00:10.3/usb1/1-2/1-2.2':
+    KERNELS=="9:0:0:0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{configuration}=="iCfg"
+    ATTRS{bNumInterfaces}==" 1"
+    ATTRS{bConfigurationValue}=="1"
+    ATTRS{bmAttributes}=="80"
+    ATTRS{bMaxPower}=="100mA"
+    ATTRS{urbnum}=="398"
+    ATTRS{idVendor}=="4146"
+    ATTRS{idProduct}=="4146"
+    ATTRS{bcdDevice}=="0100"
+[...]
+    ATTRS{manufacturer}=="USB Disk"
+    ATTRS{product}=="USB Mass Storage Device"
+    ATTRS{serial}=="M004021000001"
+[...]
+</code></pre><div
+            class="para">
+				För att skapa en ny regel kan du använda tester på enhetens variabler såväl som för föräldraenheterna. Fallet ovan låter oss skapa två regler:
+			</div><pre
+            class="programlisting">KERNEL=="sd?", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/disk"
+KERNEL=="sd?[0-9]", SUBSYSTEM=="block", ATTRS{serial}=="M004021000001", SYMLINK+="usb_key/part%n"</pre><div
+            class="para">
+				När dessa regler är listade i en fil, exempelvis <code
+              class="filename">/etc/udev/rules.d/010_local.rules</code> kan du ta bort och återansluta USB-stickan. Du kan sedan se att <code
+              class="filename">/dev/usb_key/disk</code> representerar disken associerade med USB-stickan och <code
+              class="filename">/dev/usb_key/part1/</code> dess första partition.
+			</div><div
+            class="sidebar"><div
+              class="titlepage"><div><div><p
+                    class="title"><strong><span
+                        class="emphasis"><em>NÄSTA STEG</em></span> Felsöka konfigurationen för <span
+                        class="emphasis"><em>udev</em></span></strong></p></div></div></div><div
+              class="para">
+				Likt många demoner lagrar <code
+                class="command">udevd</code> loggar i<code
+                class="filename">/var/log/daemon.log</code>. Men den är inte vidare informativ som standad, och vanligtvis räcker de inte för att förstå vad som händer. Kommandot <code
+                class="command">udevadm control --log-priority=info</code> ökar den informativa nivå och löser detta problem. <code
+                class="command">udevadm control --log-priority=err</code> återgår till standarnivå av information.
+			</div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.backup.html"><strong>Föregående</strong>9.10. Säkerhetskopia</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Upp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.power-management.html"><strong>Nästa</strong>9.12. Strömhantering: Advanced Configuration and ...</a></li></ul></body></html>
