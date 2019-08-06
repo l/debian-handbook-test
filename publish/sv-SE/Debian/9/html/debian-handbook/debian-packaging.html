@@ -1,0 +1,299 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">Kapitel 15. Skapa ett Debian-paket</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-sv-SE-1.0-1" /><meta
+        name="keywords"
+        content="Bakportering, Ombyggnation, Källpaket, Arkiv, Metapaket, Debian-utvecklare, Underhållsutvecklare" /><link
+        rel="home"
+        href="index.html"
+        title="Handbok för Debianadministratören" /><link
+        rel="up"
+        href="index.html"
+        title="Handbok för Debianadministratören" /><link
+        rel="prev"
+        href="sect.dealing-with-compromised-machine.html"
+        title="14.7. Dealing with a Compromised Machine" /><link
+        rel="next"
+        href="sect.building-first-package.html"
+        title="15.2. Building your First Package" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/sv-SE/stable/debian-packaging.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.dealing-with-compromised-machine.html"><strong>Föregående</strong></a></li><li
+          class="home">Handbok för Debianadministratören</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.building-first-package.html"><strong>Nästa</strong></a></li></ul><div
+        xml:lang="sv-SE"
+        class="chapter"
+        lang="sv-SE"><div
+          class="titlepage"><div><div><h1
+                class="title"><a
+                  xmlns=""
+                  id="debian-packaging"></a>Kapitel 15. Skapa ett Debian-paket</h1></div></div></div><div
+          class="toc"><dl
+            class="toc"><dt><span
+                class="section"><a
+                  href="debian-packaging.html#sect.rebuilding-package">15.1. Bygg om ett paket från dess källkod</a></span></dt><dd><dl><dt><span
+                    class="section"><a
+                      href="debian-packaging.html#id-1.18.4.3">15.1.1. Hämta källkoden</a></span></dt><dt><span
+                    class="section"><a
+                      href="debian-packaging.html#id-1.18.4.4">15.1.2. Att göra ändringar</a></span></dt><dt><span
+                    class="section"><a
+                      href="debian-packaging.html#id-1.18.4.5">15.1.3. Starting the Rebuild</a></span></dt></dl></dd><dt><span
+                class="section"><a
+                  href="sect.building-first-package.html">15.2. Building your First Package</a></span></dt><dd><dl><dt><span
+                    class="section"><a
+                      href="sect.building-first-package.html#id-1.18.5.2">15.2.1. Meta-Packages or Fake Packages</a></span></dt><dt><span
+                    class="section"><a
+                      href="sect.building-first-package.html#id-1.18.5.3">15.2.2. Simple File Archive</a></span></dt></dl></dd><dt><span
+                class="section"><a
+                  href="sect.setup-apt-package-repository.html">15.3. Creating a Package Repository for APT</a></span></dt><dt><span
+                class="section"><a
+                  href="sect.becoming-package-maintainer.html">15.4. Becoming a Package Maintainer</a></span></dt><dd><dl><dt><span
+                    class="section"><a
+                      href="sect.becoming-package-maintainer.html#id-1.18.7.2">15.4.1. Learning to Make Packages</a></span></dt><dt><span
+                    class="section"><a
+                      href="sect.becoming-package-maintainer.html#id-1.18.7.3">15.4.2. Acceptance Process</a></span></dt></dl></dd></dl></div><div
+          class="highlights"><div
+            class="para">
+		Det är ganska vanligt för en administratör som har hanterat Debian-paket på vanligt sätt att till slut känna behovet av att skapa sina egna paket, eller att modifier att existerande paket. Detta kapitel ämnar att besvara de vanligaste frågorna inom detta område, och tillhandahålla de element som krävs för att dra nytta av Debian-infrastrukturen på bästa möjliga sätt. Med lite tur, efter att ha provat på lokala paket, kan du till och med känna att du måste komma vidare och gå med i Debian-projektet i sig!
+	</div></div><div
+          class="section"><div
+            class="titlepage"><div><div><h2
+                  class="title"><a
+                    xmlns=""
+                    id="sect.rebuilding-package"></a>15.1. Bygg om ett paket från dess källkod</h2></div></div></div><div
+            class="para">
+			Att bygga om ett binärpaket krävs under flera olika omständigheter. I visa fall behöver administratören en programvarufunktion somkräver att programvaran kompileras från källkod, med en viss kompileringsflagga; i andra fall är programvara som paketerats och installerats av Debian inte uppdaterad. I det senare fallet kommer administratören vanligtvis bygga paketet från en senare version av Debian — så som <span
+              class="distribution distribution">Testing</span> eller till och med <span
+              class="distribution distribution">Unstable</span> — så att detta nya paket fungerar i deras distribution <span
+              class="distribution distribution">Stable</span>; denna åtgärd kallas ”bakportering”. Som vanligt ska man innan åtar sig en sådan uppgift kontrollera om det redan har gjorts — en snabb kontroll av i Debian Package Tracker för det paketet kan avslöja den informationen. <div
+              xmlns=""
+              class="url">→ <a
+                xmlns="http://www.w3.org/1999/xhtml"
+                href="https://tracker.debian.org/">https://tracker.debian.org/</a></div><a
+              id="id-1.18.4.2.5"
+              class="indexterm"></a>
+		</div><div
+            class="section"><div
+              class="titlepage"><div><div><h3
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.18.4.3"></a>15.1.1. Hämta källkoden</h3></div></div></div><div
+              class="para">
+				Att bygga om ett Debian-paket börjar med att hämta dess källkod. Det enklaste sättet är att använda kommandot <code
+                class="command">apt-get source <em
+                  class="replaceable">källkodspaketnamn</em></code>. Detta kommando kräver en <code
+                class="literal">deb-src</code>-rad i filen <code
+                class="filename">/etc/apt/sources.list</code>, och uppdaterade indexfiler (t.ex. <code
+                class="command">apt-get update</code>). Dessa villkor borde redan vara uppfyllda om du följt instruktionerna från kapitlet som diskuterar APT-konfiguration (se <a
+                class="xref"
+                href="apt.html#sect.apt-sources.list">Avsnitt 6.1, ”Att fylla i filen <code
+                  class="filename">sources.list</code>”</a>). Notera dock att du kämmer att hämta källkodspaketet från Debian-versionen som nämns på <code
+                class="literal">deb-src</code>-raden. Om du behöver en annan version kan du komma att behöva hämta den manuellt från en Debian-spegel eller från webbplatsen. Detta inbegripet att hämta två eller tre filer (med filändelser <code
+                class="filename">*.dsc</code> — för <span
+                class="emphasis"><em>Debian Source Control</em></span> (Debian källkodskontroll) — <code
+                class="filename">*.tar.<em
+                  class="replaceable">comp</em></code>, och ibland <code
+                class="filename">*.diff.gz</code> eller <code
+                class="filename">*.debian.tar.<em
+                  class="replaceable">comp</em></code> — <em
+                class="replaceable">comp</em> har endera av värdena <code
+                class="literal">gz</code>, <code
+                class="literal">bz2</code> eller <code
+                class="literal">xz</code> beroende på kompressionsverktyget som använts), kör sedan kommandot <code
+                class="command">dpkg-source -x <em
+                  class="replaceable">file.dsc</em></code>. Om filen <code
+                class="filename">*.dsc</code> går att komma åt direkt på en angiven URL finns det ett ännu enklare sätt att hämta allt på med kommandot <code
+                class="command">dget <em
+                  class="replaceable">URL</em></code>. Detta kommando (vilket kan hittas i paketet <span
+                class="pkg pkg">devscripts</span>) hämtar filen <code
+                class="filename">*.dsc</code> på den angivna adressen, därefter analyseras dess innehåll och filen/filerna som refereras hämtas automatiskt. När allt ha hämtats extraheras källkodspaketet (om in flaggan <code
+                class="literal">-d</code> eller <code
+                class="literal">--download-only</code> används).
+			</div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h3
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.18.4.4"></a>15.1.2. Att göra ändringar</h3></div></div></div><div
+              class="para">
+				Källkoden för paketet är nu tillgängligt i en katalog med namnet efter källkodspaketet och dess version (till exempel <span
+                class="emphasis"><em>sambe-4.1.17+dfsg</em></span>); det är denna plats på vilken vi kommer att arbeta på våra lokala ändringar.
+			</div><div
+              class="para">
+				Det första du ska göra är att ändra paketets versionsnummer så att ombyggda paket kan särskiljas från originalpaketen som tillhandahålls av Debian. Förutsatt att det aktuella versionsnumret är <code
+                class="literal">2:4.1.17+dfsg-2</code> så kan vi skapa version <code
+                class="literal">2:4.1.17+dfsg-2falcot1</code> vilket tydligt indikerar var paketet kommer ifrån. Detta får paketets versionsnummer att vara högre än det som tillhandahålls av Debian, så paketet kan med lätthet att installeras som en uppdatering för originalpaketet. En sådan ändring görs bästa med kommandot <code
+                class="command">dch</code> (<span
+                class="emphasis"><em>Debian CHangelog</em></span> (Debian ändringslogg)) från paketet <span
+                class="pkg pkg">devscripts</span>, med ett kommando så som <code
+                class="command">dch --local falcot</code>. Detta startar en textredigerare (<code
+                class="command">sensible-editor</code> — detta bör vara din favoritredigerare om den nämns i miljövariablerna <code
+                class="varname">VISUAL</code> eller <code
+                class="varname">EDITOR</code>, eller i annat fall standardredigeraren) för att tillåta dokumentation av de skillnader som denna ombyggnad inför. Denna redigerare visar oss att <code
+                class="command">dch</code> faktiskt ändrade filen <code
+                class="filename">debian/changelog</code> file.
+			</div><div
+              class="para">
+				När en ändring av byggflaggorna behövs, måste ändringarna göras i <code
+                class="filename">debian/rules</code>, vilket driver stegen i paketets byggprocess. I de enklaste fallen är raderna som rör inledande konfiguration (<code
+                class="literal">./configure …</code>) eller det faktiska bygget (<code
+                class="literal">$(MAKE) …</code> eller <code
+                class="literal">make …</code>) lätta att hitta. Om dessa kommandon inte är anropas uttryckligen så de troligtvis sidoeffekter av ett annat kommando som anropas uttryckligen, i vilket fall du bör läsa deras dokumentation för att få reda på hur du ändrar standardbeteendet. Med paket som använder <code
+                class="command">dh</code>, kan du behöva lägga till en åsidosättning för kommandona <code
+                class="command">dh_auto_configure</code> eller <code
+                class="command">dh_auto_build</code> (se deras respektive manualsidor för förklaringar om hur du åstadkommer detta).
+			</div><div
+              class="para">
+				Beroende på de lokala ändringarna till paketen kan en uppdatering också krävas i filen <code
+                class="filename">debian/control</code>, vilken innehåller en beskrivning av de genererade paketen. I synnerhet innehåller denna filen <code
+                class="literal">Build-Depends</code>-rade som styr listan av beroenden som måste vara uppfyllda då paketet byggs. Dessa refererar ofta till versioner av paket som finns i distributionen som källkodspaketet kommer från men som kanske inte finns tillgängliga i distributionen som används för ombygget. Det finns inget automatiserat sätt att avgöra om ett beroenden är korrekt eller endast angivet för att garantera att man endast ska försöka sig på bygget med den senaste versionen av ett bibliotek — detta är det enda tillgängliga sättett att tvinga en <span
+                class="emphasis"><em>autobyggare</em></span> att använda en given paketversion under bygget, vilket är anledningen till att Debian-utvecklarna ofta använda strikt versionerade byggberoenden.
+			</div><div
+              class="para">
+				Om du är säker på att dessa byggberoenden är allt för strikta kan du känna dig fri att lösa upp dem lokalt. Att läsa filerna som dokumenterar standardsättet att bygga programvara — dessa filer kallas ofta <code
+                class="filename">INSTALL</code> — kommer att hjälpa dig att lista ut lämpliga beroenden. I idealfallet borde alla beroenden kunna gå att tillfredställa från distributionen som används för ombygget; om inte inleds en rekursiv process där paket som nämns i fältet <code
+                class="literal">Build-Depends</code> måste bakporteras innan målpaketet kan bakporteras. Vissa paket kanske inte kräver bakportering och kan installeras som de är under byggprocessen (ett exempel är <span
+                class="pkg pkg">debhelper</span>). Notera att bakporteringsprocessen snabbt kan bli komplex om du inte är försiktig. Därför bör man försöka sig på bakportering endat då det är nödvändigt.
+			</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>TIPS</em></span> Installera <code
+                          class="literal">Build-Depends</code></strong></p></div></div></div><a
+                id="id-1.18.4.4.7.2"
+                class="indexterm"></a><div
+                class="para">
+				<code
+                  class="command">apt-get</code> tillåter installation av alla paket som nämns i fältet <code
+                  class="literal">Build-Depends</code> för ett källkodspaket tillgängliga i en distribution som nämns på en <code
+                  class="literal">deb-src</code>-rad i filen <code
+                  class="filename">/etc/apt/sources.list</code>. Detta görs enkelt genom att köra kommandot <code
+                  class="command">apt-get build-dep <em
+                    class="replaceable">källkodspaket</em></code>.
+			</div></div></div><div
+            class="section"><div
+              class="titlepage"><div><div><h3
+                    class="title"><a
+                      xmlns=""
+                      id="id-1.18.4.5"></a>15.1.3. Starting the Rebuild</h3></div></div></div><div
+              class="para">
+				When all the needed changes have been applied to the sources, we can start generating the actual binary package (<code
+                class="filename">.deb</code> file). The whole process is managed by the <code
+                class="command">dpkg-buildpackage</code> command.
+			</div><div
+              class="example"><a
+                xmlns=""
+                id="id-1.18.4.5.3"></a><p
+                class="title"><strong>Exempel 15.1. Rebuilding a package</strong></p><div
+                class="example-contents"><pre
+                  class="screen"><code
+                    class="computeroutput">$ </code><strong
+                    class="userinput"><code>dpkg-buildpackage -us -uc
+</code></strong><code
+                    class="computeroutput">[...]
+</code></pre></div></div><div
+              class="sidebar"><a
+                xmlns=""
+                id="sidebar.fakeroot"></a><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>TOOL</em></span> <code
+                          class="command">fakeroot</code></strong></p></div></div></div><div
+                class="para">
+				In essence, the package creation process is a simple matter of gathering in an archive a set of existing (or built) files; most of the files will end up being owned by <span
+                  class="emphasis"><em>root</em></span> in the archive. However, building the whole package under this user would imply increased risks; fortunately, this can be avoided with the <code
+                  class="command">fakeroot</code> command. This tool can be used to run a program and give it the impression that it runs as <span
+                  class="emphasis"><em>root</em></span> and creates files with arbitrary ownership and permissions. When the program creates the archive that will become the Debian package, it is tricked into creating an archive containing files marked as belonging to arbitrary owners, including <span
+                  class="emphasis"><em>root</em></span>. This setup is so convenient that <code
+                  class="command">dpkg-buildpackage</code> uses <code
+                  class="command">fakeroot</code> by default when building packages.
+			</div><div
+                class="para">
+				Note that the program is only tricked into “believing” that it operates as a privileged account, and the process actually runs as the user running <code
+                  class="command">fakeroot <em
+                    class="replaceable">program</em></code> (and the files are actually created with that user's permissions). At no time does it actually get root privileges that it could abuse.
+			</div></div><div
+              class="para">
+				The previous command can fail if the <code
+                class="literal">Build-Depends</code> fields have not been updated, or if the related packages are not installed. In such a case, it is possible to overrule this check by passing the <code
+                class="literal">-d</code> option to <code
+                class="command">dpkg-buildpackage</code>. However, explicitly ignoring these dependencies runs the risk of the build process failing at a later stage. Worse, the package may seem to build correctly but fail to run properly: some programs automatically disable some of their features when a required library is not available at build time.
+			</div><div
+              class="para">
+				More often than not, Debian developers use a higher-level program such as <code
+                class="command">debuild</code>; this runs <code
+                class="command">dpkg-buildpackage</code> as usual, but it also adds an invocation of a program that runs many checks to validate the generated package against the Debian policy. This script also cleans up the environment so that local environment variables do not “pollute” the package build. The <code
+                class="command">debuild</code> command is one of the tools in the <span
+                class="emphasis"><em>devscripts</em></span> suite, which share some consistency and configuration to make the maintainers' task easier.
+			</div><div
+              class="sidebar"><div
+                class="titlepage"><div><div><p
+                      class="title"><strong><span
+                          class="emphasis"><em>QUICK LOOK</em></span> <code
+                          class="command">pbuilder</code></strong></p></div></div></div><a
+                id="id-1.18.4.5.7.2"
+                class="indexterm"></a><div
+                class="para">
+				The <code
+                  class="command">pbuilder</code> program (in the similarly named package) allows building a Debian package in a <span
+                  class="emphasis"><em>chrooted</em></span> environment. It first creates a temporary directory containing the minimal system required for building the package (including the packages mentioned in the <span
+                  class="emphasis"><em>Build-Depends</em></span> field). This directory is then used as the root directory (<code
+                  class="filename">/</code>), using the <code
+                  class="command">chroot</code> command, during the build process.
+			</div><div
+                class="para">
+				This tool allows the build process to happen in an environment that is not altered by users' manipulations. This also allows for quick detection of the missing build-dependencies (since the build will fail unless the appropriate dependencies are documented). Finally, it allows building a package for a Debian version that is not the one used by the system as a whole: the machine can be using <span
+                  class="distribution distribution">Stable</span> for its normal workload, and a <code
+                  class="command">pbuilder</code> running on the same machine can be using <span
+                  class="distribution distribution">Unstable</span> for package builds.
+			</div></div></div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.dealing-with-compromised-machine.html"><strong>Föregående</strong>14.7. Dealing with a Compromised Machine</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Upp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.building-first-package.html"><strong>Nästa</strong>15.2. Building your First Package</a></li></ul></body></html>

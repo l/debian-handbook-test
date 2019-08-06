@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">15.3. Å lage en pakkebrønn for APT</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-nb-NO-1.0-1" /><meta
+        name="keywords"
+        content="Bakdør, Gjenoppbygge, Kildepakke, Arkiv, Meta-pakke, Debian-utvikler, Vedlikeholder" /><link
+        rel="home"
+        href="index.html"
+        title="Håndbok for Debian-administratoren" /><link
+        rel="up"
+        href="debian-packaging.html"
+        title="Kapittel 15. Å lage en Debian-pakke" /><link
+        rel="prev"
+        href="sect.building-first-package.html"
+        title="15.2. Å bygge din første pakke" /><link
+        rel="next"
+        href="sect.becoming-package-maintainer.html"
+        title="15.4. Å bli en pakkevedlikeholder" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/nb-NO/stable/sect.setup-apt-package-repository.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.building-first-package.html"><strong>Forrige</strong></a></li><li
+          class="home">Håndbok for Debian-administratoren</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.becoming-package-maintainer.html"><strong>Neste</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.setup-apt-package-repository"></a>15.3. Å lage en pakkebrønn for APT</h2></div></div></div><a
+          id="id-1.18.6.2"
+          class="indexterm"></a><a
+          id="id-1.18.6.3"
+          class="indexterm"></a><div
+          class="para">
+			Falcot Corp begynte gradvis å vedlikeholde en rekke Debian-pakker, enten lokalt endret fra eksisterende pakker, eller laget fra bunnen av, for å distribuere interne data og programmer.
+		</div><div
+          class="para">
+			For å gjøre utplassering lettere ønsker de å integrere disse pakkene i et pakkearkiv som kan brukes direkte av APT. Av åpenbare vedlikeholdsgrunner ønsker de å skille interne pakker fra lokalt ombygde pakker. Målet for de samsvarende oppføringene i en <code
+            class="filename">/etc/apt/sources.list.d/falcot.list</code>-fil er som følger:
+		</div><pre
+          class="programlisting">
+deb http://packages.falcot.com/ updates/
+deb http://packages.falcot.com/ internal/</pre><a
+          id="id-1.18.6.7"
+          class="indexterm"></a><div
+          class="para">
+			Administratorene setter derfor opp en virtuell maskin på deres interne HTTP-tjener, med <code
+            class="filename">/srv/vhosts/packages/</code> som roten til det tilhørende nettområdet. Håndteringen av selve arkivet er delegert til <code
+            class="command">mini-dinstall</code>-kommandoen (i den tilsvarende navngitte pakken). Dette verktøyet holder et øye med en <code
+            class="filename">incoming/</code>-mappe (i vårt tilfelle, <code
+            class="filename">/srv/vhosts/packages/mini-dinstall/incoming/</code>), og venter på nye pakker der; når en pakke er lastet opp, blir den installert i et Debian-arkiv på <code
+            class="filename">/srv/vhosts/packages/</code>. Kommandoen <code
+            class="command">mini-dinstall</code> leser <code
+            class="filename">*.changes</code>-filen som opprettes når Debian-pakken blir generert. Disse filene inneholder en liste med alle andre filer knyttet til den versjonen av pakken (<code
+            class="filename">*.deb</code>, <code
+            class="filename">*.dsc</code>, <code
+            class="filename">*.diff.gz</code>/<code
+            class="filename">*.debian.tar.gz</code>, <code
+            class="filename">*.orig.tar.gz</code>, eller tilsvarende med andre komprimeringsverktøy), og disse åpner for at <code
+            class="command">mini-dinstall</code> får vite hvilke filer som skal installeres. <code
+            class="filename">*.changes</code>-filer inneholder også navnet på måldistribusjonen (ofte <code
+            class="literal">unstable</code>) nevnt i den siste <code
+            class="filename">debian/changelog</code>-inngangen, og <code
+            class="command">mini-dinstall</code> bruker denne informasjonen til å avgjøre hvor pakken skal installeres. Dette er grunnen til at administratorer alltid må endre dette feltet før de bygger en pakke, og setter det til <code
+            class="literal">internal</code>, eller <code
+            class="literal">updates</code>, avhengig av måldistribusjonen. <code
+            class="command">mini-dinstall</code> genererer deretter filene som kreves av APT, for eksempel <code
+            class="filename">Packages.gz</code>.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>ALTERNATIV</em></span> <code
+                      class="command">apt-ftparchive</code></strong></p></div></div></div><a
+            id="id-1.18.6.9.2"
+            class="indexterm"></a><div
+            class="para">
+			Hvis <code
+              class="command">mini-dinstall</code> ser for omfattende ut for dine Debian-arkivbehov, kan du også bruke <code
+              class="command">apt-ftparchive</code>-kommandoen. Dette verktøyet skanner innholdet i en katalog, og viser (i sine standard utdata) en samsvarende <code
+              class="filename">Packages</code>-fil. I tilfellet Falcot Corp kunne administratorer laste pakkene direkte inn i <code
+              class="filename">/srv/vhosts/packages/updates/</code>, eller <code
+              class="filename">/srv/vhosts/packages/internal/</code>, og så kjøre de følgende kommandoer for å lage <code
+              class="filename">Packages.gz</code>-filene:
+		</div><pre
+            class="screen">
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>cd /srv/vhosts/packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>apt-ftparchive packages updates &gt;updates/Packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>gzip updates/Packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>apt-ftparchive packages internal &gt;internal/Packages</code></strong>
+<code
+              class="computeroutput">$ </code><strong
+              class="userinput"><code>gzip internal/Packages</code></strong></pre><div
+            class="para">
+			Kommandoen <code
+              class="command">apt-ftparchive sources</code> åpner for å lage <code
+              class="filename">Sources.gz</code>-filer på en lignende måte.
+		</div></div><div
+          class="para">
+			Å sette opp <code
+            class="command">mini-dinstall</code> krever oppsett av en <code
+            class="filename">~/.mini-dinstall.conf</code>-fil; i Falcot Corp-tilfellet er innholdet som følger:
+		</div><pre
+          class="programlisting">
+[DEFAULT]
+archive_style = flat
+archivedir = /srv/vhosts/packages
+
+verify_sigs = 0
+mail_to = admin@falcot.com
+
+generate_release = 1
+release_origin = Falcot Corp
+release_codename = stable
+
+[updates]
+release_label = Recompiled Debian Packages
+
+[internal]
+release_label = Internal Packages</pre><div
+          class="para">
+			En avgjørelse verdt å merke seg er generasjonen <code
+            class="filename">Release</code>-filer for hvert arkiv. Dette kan hjelpe til med å administrere pakkeinstallasjonsprioriteringer med hjelp av <code
+            class="filename">/etc/apt/preferences</code>-oppsettsfilen (se <a
+            class="xref"
+            href="sect.apt-get.html#sect.apt.priorities">Seksjon 6.2.5, «Styring av pakkeprioriteter»</a> for detaljer).
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>SIKKERHET</em></span> <code
+                      class="command">mini-dinstall</code> og tillatelser</strong></p></div></div></div><div
+            class="para">
+			Etter at <code
+              class="command">mini-dinstall</code> er designet for å kjøres som en vanlig bruker, er det ikke nødvendig å kjøre den som rot. Den enkleste måten er å sette opp alt innen brukerkontoen som tilhører administratoren med ansvar for å lage Debian-pakker. Ettersom bare denne administratoren har de nødvendige tillatelsene til å sette filer inn i <code
+              class="filename">incoming/</code>-katalogen, kan vi utlede at administratoren har autentisert opprinnelsen til hver pakke før utplasseringen, og <code
+              class="command">mini-dinstall</code> trenger ikke å gjøre det igjen. Dette forklarer <code
+              class="literal">verify_sigs = 0</code>-parameteret (noe som betyr at signaturene ikke behøver å være bekreftet). Men hvis innholdet i pakkene er sensitivt, kan vi snu innstillingen, og velge å godkjenne en ring med nøkler som inneholder offentlige nøkler til personer med lov til å lage pakker (satt opp med <code
+              class="literal">extra_keyrings</code>-parameter); <code
+              class="command">mini-dinstall</code> vil så sjekke opprinnelsen til hver innkommende pakke ved å analysere signaturen integrert i <code
+              class="filename">*.changes</code>-filen.
+		</div></div><div
+          class="para">
+			Å påkalle <code
+            class="command">mini-dinstall</code> starter faktisk en bakgrunnsprosess i bakgrunnen. Så lenge denne bakgrunnsprosessen kjører, vil den se etter nye pakker i <code
+            class="filename">incoming/</code>-mappen hver halvtime. Når en ny pakke kommer, vil den bli flyttet til arkivet, og riktige <code
+            class="filename">Packages.gz</code> og <code
+            class="filename">Sources.gz</code>-filer blir fornyet. Hvis det å kjøre en bakgrunnsprosess er et problem, kan og <code
+            class="command">mini-dinstall</code> påkalles manuelt i rekkefølge (med <code
+            class="literal">-b</code>-valget) hver gang en pakke blir lastet inn i <code
+            class="filename">incoming/</code>-mappen. Andre muligheter som ligger i <code
+            class="command">mini-dinstall</code> er dokumentert på sin <span
+            class="citerefentry"><span
+              class="refentrytitle">mini-dinstall</span>(1)</span>-manualside.
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>EKSTRA</em></span> Å generere et signert arkiv</strong></p></div></div></div><div
+            class="para">
+			For å sikre autentisiteten kontrollerer APT-pakken en kjede med kryptografiske signaturer for pakkene den håndterer før de installeres (se <a
+              class="xref"
+              href="sect.package-authentication.html">Seksjon 6.5, «Sjekking av pakkeautensitet»</a>). Private APT-arkiver kan så bli et problem, ettersom maskinene som bruker dem vil holde på med å vise advarsler om usignerte pakker. En flittig administrator vil derfor integrere privatarkiver med den sikre APT-mekanismen.
+		</div><div
+            class="para">
+			For å hjelpe til med denne prosessen inkluderer <code
+              class="command">mini-dinstall</code> et <code
+              class="literal">release_signscript</code>-oppsettsalternativ som tillater å spesifisere et skript som skal brukes til å generere signaturen. Et godt utgangspunkt er <code
+              class="filename">sign-release.sh</code>-skriptet fra <span
+              class="pkg pkg">mini-dinstall</span>-pakken i <code
+              class="filename">/usr/share/doc/mini-dinstall/examples/</code>; lokale endringer kan være relevante.
+		</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.building-first-package.html"><strong>Forrige</strong>15.2. Å bygge din første pakke</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>Opp</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>Hjem</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.becoming-package-maintainer.html"><strong>Neste</strong>15.4. Å bli en pakkevedlikeholder</a></li></ul></body></html>

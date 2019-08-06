@@ -1,0 +1,354 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="existing-setup" lang="pt-BR">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>Configuração Existente</keyword>
+			 <keyword>Reutilização</keyword>
+			 <keyword>Migração</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Analisando a Configuração Existente e Migrando</title>
+	 <highlights> <para>
+		Qualquer revisão de sistema computacional deve levar em consideração o sistema existente. Isto permite a reutilização de recursos disponíveis o máximo possível e garante a interoperabilidade de vários elementos que compreendem o sistema. Este estudo irá introduzir uma estrutura genérica a ser seguida em qualquer migração de uma infraestrutura computacional para Linux.
+	</para>
+	 </highlights> <section id="sect.heterogeneous-environments">
+		<title>Coexistência em Ambientes Heterogêneos</title>
+		 <indexterm>
+			<primary>ambiente</primary>
+			<secondary>ambiente heterogêneo</secondary>
+		</indexterm>
+		 <para>
+			Debian integra muito bem em todos os tipos de ambientes existentes e lida muito bem com qualquer outro sistema operacional. Esta quase-perfeita harmonia vem de uma pressão de mercado que demanda que os editores de software desenvolvam programas que sigam padrões. Conformidades com padrões permitem que administradores troquem programas: clientes ou servidores, sendo livres ou não.
+		</para>
+		 <section>
+			<title>Integração com Máquinas Windows</title>
+			 <para>
+				O suporte a SMB/CIFS do Samba garante excelente comunicação em um contexto Windows. Ele compartilha arquivos e filas de impressão com clientes Windows e inclui software que permite a uma máquina Linux utilizar recursos disponíveis em um servidor Windows.
+			</para>
+			 <sidebar> <title><emphasis>FERRAMENTA</emphasis> Samba</title>
+			 <indexterm>
+				<primary>Samba</primary>
+			</indexterm>
+			 <para>
+				A última versão do Samba pode substituir a maioria dos recursos do Windows: desde daquelas simples do servidor Windows NT (autenticação, arquivos, filas de impressão, download de drivers de impressoras, DFS, etc.) até as mais avançadas (controlador de domínio compatível com Active Directory).
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Integração com máquinas OS X</title>
+			 <indexterm>
+				<primary>Zeroconf (zero configuração)</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Bonjour</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Avahi</primary>
+			</indexterm>
+			 <para>
+				máquinas OS X fornecem, e podem usar, serviços de rede tais como servidores de arquivos e compartilhamento de impressão. Estes serviços são publicados na rede local, o que possibilita que outras máquinas descubram e usem tais serviços sem qualquer configuração manual, usando a implementação Bonjour da suite de protocolos zeroconf. O Debian inclui outra implementação, chamada Avahi, que fornece a mesma funcionalidade.
+			</para>
+			 <indexterm>
+				<primary>AFP</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>AppleShare</primary>
+			</indexterm>
+			 <para>
+				No outro sentido, o daemon Netatalk pode ser usado para fornecer servidores de arquivos para máquinas OS X na rede. Ele implementa o protocolo AFP (AppleShare) assim como as notificações necessárias para que os servidores possam ser autodescobertos pelos clientes OS X.
+			</para>
+			 <indexterm>
+				<primary>AppleTalk</primary>
+			</indexterm>
+			 <para>
+				Antigas redes Mac OS (antes do OS X) usavam um protocolo diferente chamado Appletalk. Para ambientes envolvendo máquinas usando este protocolo, o Netatalk também fornece o protocolo AppleTalk (na verdade, ele começou como uma reimplementação deste protocolo). Ele garante a operação do servidor de arquivos e filas de impressão, bem como um servidor de hora (sincronização de relógio). Suas funções de roteador permitem interconexão com redes Appletalk.
+			</para>
+
+		</section>
+		 <section>
+			<title>Integração com Outras Máquinas Linux/Unix</title>
+			 <para>
+				Finalmente, NFS e NIS, ambos incluídos, garantem interação com sistemas Unix. NFS garante funcionalidade como servidor de arquivos, enquanto NIS cria diretórios de usuários. A camada de impressão BSD, usada por muitos sistemas Unix, também permite o compartilhamento de filas de impressão.
+			</para>
+			 <figure>
+				<title>Coexistência do Debian com OS X, Windows e sistemas Unix</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/existing-setup-1.png" format="PNG" width="25%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+
+		</section>
+
+	</section>
+	 <section id="sect.how-to-migrate">
+		<title>Como Migrar</title>
+		 <indexterm>
+			<primary>migração</primary>
+		</indexterm>
+		 <para>
+			Para garantir a continuidade dos serviços, cada migração de computador deve ser planejada e executada de acordo com o plano. Este princípio se aplica independente do sistema operacional utilizado.
+		</para>
+		 <section>
+			<title>Pesquisar e Identificar Serviços</title>
+			 <para>
+				Tão simples quanto parece, este passo é essencial. Um administrador sério sabe realmente quais são os principais papéis de cada servidor, mas estes papéis podem mudar, e as vezes usuários experientes podem ter instalado serviços "selvagens". Sabendo que eles existem irá pelo menos permitir que você decida o que fazer com eles, em vez de excluí-los ao acaso.
+			</para>
+			 <para>
+				Para este propósito, é sábio informar aos seus usuários do projeto antes de migar os servidores. Para envolvê-los no projeto, pode ser útil instalar os programas de software livre mais comuns em suas máquinas antes da migração, com os quais eles irão se deparar novamente após a migração para o Debian; LibreOffice e a suíte de aplicativos Mozilla são os melhores exemplos aqui.
+			</para>
+			 <section>
+				<title>Rede e Processos</title>
+				 <indexterm>
+					<primary><command>nmap</command></primary>
+				</indexterm>
+				 <para>
+					A ferramenta <command>nmap</command> (contida no pacote de mesmo nome) irá rapidamente identificar Serviços de Internet hospedados por uma máquina conectada na rede sem a necessidade de se logar. Simplesmente chame o seguinte comando em outra máquina conectada na mesma rede:
+				</para>
+				 
+<screen>
+<computeroutput>$ </computeroutput><userinput>nmap mirwiz</userinput>
+<computeroutput>Starting Nmap 7.40 ( https://nmap.org ) at 2017-06-06 14:41 CEST
+Nmap scan report for mirwiz (192.168.1.104)
+Host is up (0.00062s latency).
+Not shown: 992 closed ports
+PORT     STATE SERVICE
+22/tcp   open  ssh
+25/tcp   open  smtp
+80/tcp   open  http
+111/tcp  open  rpcbind
+139/tcp  open  netbios-ssn
+445/tcp  open  microsoft-ds
+5666/tcp open  nrpe
+9999/tcp open  abyss
+
+Nmap done: 1 IP address (1 host up) scanned in 0.06 seconds</computeroutput></screen>
+				 <sidebar> <title><emphasis>ALTERNATIVA</emphasis> Use o <command>netstat</command> para encontrar a lista de serviços disponíveis</title>
+				 <para>
+					Em uma máquina Linux, o comando <command>netstat -tupan</command> irá exibir a lista de sessões TCP ativas ou pendentes, bem como portas UDP em que processos em execução estão ouvindo. Isto facilita a identificação de serviços oferecidos na rede.
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>INDO ALÉM</emphasis> IPv6</title>
+				 <para>
+					Alguns comandos de rede podem funcionar com IPv4 (o padrão geralmente) ou com IPv6. Entre eles estão o <command>nmap</command> e o <command>netstat</command>, mas também outros, como o <command>route</command> ou o <command>ip</command>. A convenção é que este comportamento seja habilitado pela opção de comandos de linha <parameter>-6</parameter>.
+				</para>
+				 </sidebar> <para>
+					Se o servidor é uma máquina Unix oferecendo contas shell a usuários, é interessante determinar se processos são executados em segundo plano na ausência de seus donos. O comando <command>ps auxw</command> exibe uma lista de todos os processos com suas identidades de usuários. Checando esta informação contra a saída do comando <command>who</command>, que mostra uma lista de usuários logados, é possível identificar servidores ladões ou não-declarados ou programas rodando em segundo plano. Olhando para <filename>crontabs</filename> (tabelas listando ações automáticas agendadas por usuários) irá, muitas vezes, fornecer informações interessantes sobre funções cumpridas pelo servidor (uma explicação completa do <command>cron</command> está disponível em <xref linkend="sect.task-scheduling-cron-atd" />).
+				</para>
+				 <para>
+					Em qualquer caso, é essencial fazer backup de seus servidores: isto permite a recuperação de informações após o fato, quando usuários irão reportar problemas específicos devido a migração.
+				</para>
+
+			</section>
+
+		</section>
+		 <section>
+			<title>Fazendo Backup da Configuração</title>
+			 <para>
+				É sábio manter a configuração de cada serviço identificado para poder instalar o equivalente no servidor atualizado. O mínimo é fazer uma cópia de segurança dos arquivos de configuração.
+			</para>
+			 <para>
+				Para máquinas Unix, os arquivos de configuração são normalmente encontrados em <filename>/etc/</filename>, mas eles podem estar localizados em um sub-diretório de <filename>/usr/local/</filename>. Este é o caso se um programa foi instalado a partir dos fontes, ao invés de um pacote. Em alguns casos, também podem ser encontrados em <filename>/opt/</filename>.
+			</para>
+			 <para>
+				Para serviços de gestão de dados (como em bancos de dados), é fortemente recomendado exportar os dados para um formato padrão que seja facilmente importado pelo novo software. Tal formato é usualmente em modo texto e documentado; ele pode ser, por exemplo, um dump SQL para um banco de dados, ou um arquivo LDIF para um servidor LDAP.
+			</para>
+			 <figure>
+				<title>Backups de bases de dados</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/existing-setup-2.png" format="PNG" width="50%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Cada software de servidor é diferente, e é impossível descrever todos os casos existentes em detalhes. Compare a documentação do software existente com a do novo para identificar as porções exportáveis (portanto, re-importáveis) e as que requerem manipulação manual. A leitura deste livro vai clarear a configuração dos principais programas de servidor Linux.
+			</para>
+
+		</section>
+		 <section>
+			<title>Assumindo um servidor Debian existente</title>
+			 <indexterm>
+				<primary>recuperando uma máquina Debian</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>explorando uma máquina Debian</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>assumindo um servidor Debian</primary>
+			</indexterm>
+			 <para>
+				Para assumir efetivamente sua manutenção, deve se analisar uma máquina que já esteja rodando o Debian.
+			</para>
+			 <para>
+				O primeiro arquivo a verificar é o <filename>/etc/debian_version</filename>, que usualmente contém o número de versão para o sistema Debian instalado (ele é parte do pacote <emphasis>base-files</emphasis>). Se ele indica <literal><replaceable>codenome</replaceable>/sid</literal>, significa que o sistema foi atualizado com pacotes vindos de uma das distribuições de desenvolvimento (tanto testing quanto unstable).
+			</para>
+			 <para>
+				O programa <command>apt-show-versions</command> (do pacote Debian de mesmo nome) verifica a lista de pacotes instalados e identifica as versões disponíveis. O <command>aptitude</command> pode também ser usado para estas tarefas, embora de uma maneira menos sistemática.
+			</para>
+			 <para>
+				Uma olhada no arquivo <filename>/etc/apt/sources.list</filename> (e no diretório <filename>/etc/apt/sources.list.d/</filename>) mostrará de onde os pacotes debian instalados costumam vir. Se muitas fontes desconhecidas aparecem, o administrador pode escolher reinstalar o sistema do computador para garantir compatibilidade ótima com o software fornecido com o Debian.
+			</para>
+			 <para>
+				O arquivo <filename>sources.list</filename> geralmente é um bom indicador: a maioria dos administradores mantem, pelo menos comentada, a lista de fontes APT anteriormente usadas. Mas você não deve esquecer que fontes usadas no passado podem ter sido apagadas, e que alguns pacotes podem ter sido baixados da internet e instalados manualmente (com o comando <command>dpkg</command>). Neste caso, a máquina não é tão "Debian padrão" quanto parece. É por isso que você deve prestar atenção em indicações de presença de pacotes externos (surgimento de arquivos <filename>deb</filename> em diretórios estranhos, números de versão com um sufixo especial in:dicando que é originado de fora do projeto Debian, como um <literal>ubuntu</literal> ou <literal>Imde</literal>, etc.)
+			</para>
+			 <para>
+				Da mesma forma, é interessante analizar o conteúdo da diretório <filename>/usr/local/</filename>, que deve conter os programas compilados e instalados manualmente. Listar os programas instalados desta maneira é instrutivo, já que se questiona o porque de não se ter usado o pacote Debian correspondente, se este existir.
+			</para>
+			 <sidebar> <title><emphasis>OLHADA RÁPIDA</emphasis> <emphasis role="pkg">cruft</emphasis></title>
+			 <para>
+				O pacote <emphasis role="pkg">cruft</emphasis> se propõe a lista os arquivos disponíveis que não são de propriedade de nenhum pacote. Ele tem alguns filtros (mais ou menos efetivos, e mais ou menos atualizados) para evitar botar no relatório alguns arquivos legítimos (arquivos gerados por pacotes Debian, ou arquivos de configuração gerados não-controlados pelo <command>dpkg</command>, etc.).
+			</para>
+			 <para>
+				Cuidado para não apagar arbitrariamente tudo que o <command>cruft</command> venha a listar!
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Instalando o Debian</title>
+			 <para>
+				Com toda a informação no servidor atual agora conhecida, podemos desligá-lo e começar a instalar o Debian nele.
+			</para>
+			 <indexterm>
+				<primary>arquitetura</primary>
+			</indexterm>
+			 <para>
+				Para escolher a versão apropriada, devemos conhecer a arquitetura do computador. Se for um PC relativamente novo, é provável que seja um amd64 (PCs mais antigos normalmente são i386). Caso contrário, podemos restringir as possibilidades de acordo com o sistema usado anteriormente.
+			</para>
+			 <para>
+				<xref linkend="tab-corresp" xrefstyle="select: label nopage" /> não pretende ser exaustiva, mas útil. de qualquer forma, a documentação original do computador é a fonte mais confiável para encontrar esta informação.
+			</para>
+			 <table colsep="1" id="tab-corresp">
+				<title>Arquitetura e respectivo sistema operacional</title>
+				 <tgroup cols="2">
+					<thead>
+						<row>
+							<entry>Sistema Operacional</entry>
+							 <entry>Arquitetura(s)</entry>
+
+						</row>
+
+					</thead>
+					 <tbody>
+						<row>
+							<entry>DEC Unix (OSF/1)</entry>
+							 <entry>alpha, mipsel</entry>
+
+						</row>
+						 <row>
+							<entry>HP Unix</entry>
+							 <entry>ia64, hppa</entry>
+
+						</row>
+						 <row>
+							<entry>IBM AIX</entry>
+							 <entry>powerpc</entry>
+
+						</row>
+						 <row>
+							<entry>Irix</entry>
+							 <entry>mips</entry>
+
+						</row>
+						 <row>
+							<entry>OS X</entry>
+							 <entry>amd64, powerpc, i386</entry>
+
+						</row>
+						 <row>
+							<entry>z/OS, MVS</entry>
+							 <entry>s390x, s390</entry>
+
+						</row>
+						 <row>
+							<entry>Solaris, SunOS</entry>
+							 <entry>sparc, i386, m68k</entry>
+
+						</row>
+						 <row>
+							<entry>Ultrix</entry>
+							 <entry>mips</entry>
+
+						</row>
+						 <row>
+							<entry>VMS</entry>
+							 <entry>alpha</entry>
+
+						</row>
+						 <row>
+							<entry>Windows 95/98/ME</entry>
+							 <entry>i386</entry>
+
+						</row>
+						 <row>
+							<entry>Windows NT/2000</entry>
+							 <entry>i386, alpha, ia64, mipsel</entry>
+
+						</row>
+						 <row>
+							<entry>Windows XP / Windows Server 2008</entry>
+							 <entry>i386, amd64, ia64</entry>
+
+						</row>
+						 <row>
+							<entry>Windows RT</entry>
+							 <entry>armel, armhf, arm64</entry>
+
+						</row>
+						 <row>
+							<entry>Windows Vista / Windows 7-8-10</entry>
+							 <entry>i386, amd64</entry>
+
+						</row>
+
+					</tbody>
+
+				</tgroup>
+
+			</table>
+			 <sidebar> <title>o <emphasis>HARDWARE</emphasis> dos PCs de 64 bit vs 32 bit</title>
+			 <indexterm>
+				<primary>amd64</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>i386</primary>
+			</indexterm>
+			 <para>
+				Computadores mais novos tem processadores Intel ou AMD de 64 bits, compatíveis com os antigos processadores de 32 bits; o software compilado para arquitetura “i386” então funciona. Por outro lado, este modo de compatibilidade não explora completamente as capacidades destes novos processadores. É por isto que o Debian fornece a arquitetura amd64, que funciona com chips AMD recentes. Assim como processadores “em64t” da Intel (incluindo a maioria da série Core), que são muito similares aos processadores AMD64.
+			</para>
+			 </sidebar>
+		</section>
+		 <section>
+			<title>Instalando e Configurando os Serviços Selecionados</title>
+			 <para>
+				Depois do Debian instalado, devemos instalar e configurar um a um os serviços que o computador vai hospedar. A nova configuração deve levar em consideração a anterior para garantir uma transição suave. Toda a informação coletada nos primeiros dois passos será útil para completar com sucesso esta parte.
+			</para>
+			 <figure>
+				<title>Instalar os serviços selecionados</title>
+				 <mediaobject>
+					<imageobject>
+						<imagedata fileref="images/existing-setup-4.png" format="PNG" width="66%" />
+					</imageobject>
+
+				</mediaobject>
+
+			</figure>
+			 <para>
+				Antes de pular de cabeça neste exercício, é fortemente recomendado que você leia o restante deste livro. Depois disto, você terá um conhecimento mais preciso de como configurar os serviços esperados.
+			</para>
+			 <para>
+			</para>
+
+		</section>
+
+	</section>
+</chapter>
+

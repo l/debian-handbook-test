@@ -1,0 +1,2448 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" [
+]>
+<chapter id="advanced-administration" lang="id-ID">
+	<chapterinfo>
+		 <keywordset>
+			<keyword>RAID</keyword>
+			 <keyword>LVM</keyword>
+			 <keyword>FAI</keyword>
+			 <keyword>Preseeding</keyword>
+			 <keyword>Pemantauan</keyword>
+			 <keyword>Virtualisasi</keyword>
+			 <keyword>Xen</keyword>
+			 <keyword>LXC</keyword>
+
+		</keywordset>
+
+	</chapterinfo>
+	 <title>Administrasi Tingkat Lanjut</title>
+	 <highlights> <para>
+		Bab ini meninjau kembali beberapa aspek yang telah kami uraikan, dengan perspektif yang berbeda: alih-alih memasang pada sebuah komputer, kita akan mempelajari sistem deployment masal; alih-alih membuat volume RAID atau LVM pada saat instalasi, kita akan belajar melakukannya secara manual sehingga nanti kita dapat merevisi pilihan awal kita. Akhirnya, kita akan mendiskusikan perkakas pemantauan dan teknik virtualisasi. Sebagai konsekuensinya, bab ini secara lebih khusus menarget para administrator profesional, and sedikit kurang brfokus pada para individu yang bertanggungjawab atas jaringan rumahan mereka.
+	</para>
+	 </highlights> <section id="sect.raid-and-lvm">
+		<title>RAID dan LVM</title>
+		 <para>
+			<xref linkend="installation" /> mempresentasikan teknologi ini dari sudut pandang pemasang, dan bagaimana itu mengintegrasikan mereka untuk membuat deployment mereka mudah dari awal. Setelah instalasi awal, seorang administrator mesti bisa menangani keperluan ruang penyimpanan yang berkembang tanpa mesti mengandalkan instalasi ulang yang mahal. Maka mereka mesti paham peralatan yang diperlukan untuk memanipulasi volume RAID dan LVM.
+		</para>
+		 <para>
+			RAID dan LVM adalah teknik untuk mengabstrakkan volume yang dikait dari pasangan fisik mereka (yaitu hard disk atau partisi); yang pertama mengamankan data dari kegagalan perangkat keras dengan memperkenalkan redundansi, yang belakangan membuat manajemen volume lebih luwes dan tak bergantung kepada ukuran sebenarnya dari disk yang mendasarinya. Dalam kedua kasus, sistem pada akhirnya mendapat perangkat blok baru, yang dapat dipakai untuk membuat sistem berkas atau ruang swap, tanpa perlu mereka dipetakan ke satu disk fisik. RAID dan LVM datang dari latar belakang yang cukup berbeda, tapi fungsionalitas mereka sebagian dapat bertumpang tindih, sehingga mereka sering disinggung bersama-sama.
+		</para>
+		 <sidebar> <title><emphasis>PERSPEKTIF</emphasis> Btrfs menggabung LVM dan RAID</title>
+		 <para>
+			Walaupun LVM dan RAID adalah dua subsistem kernel yang berbeda, yang hadir di antara perangkat blok disk dan sistem berkas mereka, <emphasis>btrfs</emphasis> adalah suatu sistem berkas baru, yang pada awalnya dikembangkan di Oracle, yang bertujuan menggabung set fitur dari LVM dan RAID serta lebih banyak lagi. Sebagian besar sudah berfungsi, dan walaupun masih di-tag "eksperimental" karena pengembangannya belum lengkap (beberapa fitur belum diimplementasi), itu telah terpakai dalam lingkungan produksi. <ulink type="block" url="http://btrfs.wiki.kernel.org/" />
+		</para>
+		 <para>
+			Diantara fitur yang menarik adalah kemampuan membuat snapshot dari suatu pohon sistem berkas pada sebarang waktu. Snapshot ini pada awalnya tak memakai sebarang ruang disk, data hanya diduplikasi ketika satu dari salinan-salinan dimodifikasi. Sistem berkas juga menangani kompresi transparan dari berkas, dan checksum memastikan integritas dari semua data yang disimpan.
+		</para>
+		 </sidebar> <para>
+			Pada kedua kasus RAID dan LVM, kernel menyediakan suatu berkas perangkat blok, mirip dengan yang berkaitan dengan suatu hard disk atau suatu partisi. Ketika suatu aplikasi, atau bagian lain dari kernel, meminta akses ke suatu blok dari perangkat seperti itu, subsistem yang sesuai mengarahkan blok ke lapisan fisik yang relevan. Bergantung kepada konfigurasi, blok ini dapat disimpan pada satu atau beberapa disk fisik, dan lokasi fisiknya mungkin tak berkorelasi langsung ke lokasi blok dalam perangkat lojik.
+		</para>
+		 <section id="sect.raid-soft">
+			<title>RAID Perangkat Lunak</title>
+			 <indexterm>
+				<primary>RAID</primary>
+			</indexterm>
+			 <para>
+				RAID adalah <emphasis>Redundant Array of Independent Disks</emphasis> (larik redundan dari disk-disk independen). Tujuan dari sistem ini adalah untuk mencegah kehilangan data dalam kasus kegagalan hard disk. Prinsip umumnya cukup sederhana: data disimpan pada beberapa disk fisik alih-alih hanya satu, dengan tingkat redundansi yang dapat dikonfigurasi. Bergantung kepada banyaknya redundansi ini, dan bahkan dalam kejadian kegagalan disk yang tak terduga, data dapat direkonstruksi tanpa adanya kehilangan dari disk sisanya.
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> <foreignphrase>Independen</foreignphrase> atau <foreignphrase>tidak mahal</foreignphrase>?</title>
+			 <para>
+				I dalam RAID pada awalnya merupakan singkatan dari <emphasis>inexpensive (tidak mahal)</emphasis>, karena RAID memungkinkan kenaikan drastis keselamatan data tanpa memerlukan investasi disk canggih yang mahal. Namun mungkin karena masalah citra, kini lebih umum dianggap singkatan dari <emphasis>independen</emphasis>, yang tak membawa kesan murahan yang tak menarik.
+			</para>
+			 </sidebar> <para>
+				RAID dapat diwujudkan baik oleh perangkat keras khusus (modul RAID yang terintegrasi ke dalam kartu pengendali SCSI atau SATA) atau oleh abstraksi perangkat lunak (kernel). Apakah perangkat keras atau perangkat lunak, sistem RAID dengan redundansi yang cukup bisa secara transparan tetap operasional ketika sebuah disk gagal; lapisan atas tumpukan (aplikasi) bahkan dapat tetap mengakses data terlepas dari kegagalan. Tentu saja, "mode terdegradasi" ini dapat memiliki dampak pada kinerja, dan redundansi berkurang, sehingga kegagalan disk lebih lanjut dapat mengakibatkan kehilangan data. Dalam prakteknya, oleh karena itu, kita akan berusaha untuk hanya berada dalam mode terdegradasi ini selama diperlukannya untuk menggantikan disk yang gagal. Sekali disk baru terpasang sistem RAID dapat merekonstruksi data yang dibutuhkan untuk kembali ke mode aman. Aplikasi tidak akan melihat apa-apa, selain kecepatan akses berpotensi berkurang, sementara larik ada dalam mode terdegradasi atau selama fase rekonstruksi.
+			</para>
+			 <para>
+				Ketika RAID diimplementasikan oleh perangkat keras, konfigurasinya umumnya terjadi dalam alat konfigurasi BIOS, dan kernel akan menganggap sebuah array RAID sebagai satu disk, yang akan bekerja sebagai disk fisik standar, meskipun nama perangkat mungkin berbeda (tergantung pada driver).
+			</para>
+			 <para>
+				Kami hanya berfokus pada RAID perangkat lunak dalam buku ini.
+			</para>
+			 <section id="sect.raid-levels">
+				<title>Tingkat-tingkat RAID</title>
+				 <para>
+					RAID sebenarnya buka satu sistem, tapi berbagai sistem yang diidentifikasi oleh tingkat mereka; tingkat-tingkat itu dibedakan oleh tata letak dan banyaknya redundansi yang mereka sediakan. Semakin banyak redundan, semakin kebal kegagalan, karena sistem akan dapat terus bekerja dengan lebih banyak disk yang gagal. Kekurangannya adalah bahwa ruang yang dapat digunakan menyusut untuk satu set disk tertentu; dilihat dengan cara lain, akan diperlukan lebih banyak disk untuk menyimpan sejumlah data yang diberikan.
+				</para>
+				 <variablelist>
+					<varlistentry>
+						<term>RAID Linier</term>
+						 <listitem>
+							<para>
+								Meskipun subsistem RAID kernel memungkinkan menciptakan "linear RAID", ini bukan RAID yang benar, karena konfigurasi ini tidak melibatkan redundansi apapun. Kernel hanya mengumpulkan beberapa disk end-to-end dan menyediakan volume agregat yang dihasilkan sebagai satu disk virtual (satu perangkat blok). Itu adalah satu-satunya fungsinya. Konfigurasi ini jarang digunakan sendirian (lihat nanti untuk pengecualian), terutama karena kurangnya redundansi berarti bahwa salah satu disk gagal membuat seluruh agregat, dan karena itu semua data, tidak tersedia.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-0</term>
+						 <listitem>
+							<para>
+								Tingkat ini tidak menyediakan redundansi apapun, tapi disk-disk tidak hanya sekadar dilekatkan satu di akhir yang lain: mereka dibagi dalam <emphasis>stripe</emphasis>, dan blok-blok di perangkat virtual disimpan dalam stripe di disk-disk fisik yang berbeda-beda. Dalam setup RAID-0 dua-disk, misalnya, blok bernomor genap dari perangkat virtual akan disimpan pada disk fisik pertama, sementara blok bernomor ganjil akan berakhir pada disk fisik kedua.
+							</para>
+							 <para>
+								Sistem ini tidak bertujuan meningkatkan keandalan, karena (seperti dalam kasus linier) ketersediaan semua data hancur begitu satu disk gagal, tetapi meningkatkan kinerja: selama akses berurutan ke sejumlah besar data yang berdekatan, kernel akan mampu membaca dari kedua disk (atau menulis ke mereka) secara paralel, yang akan meningkatkan laju transfer data. Namun, penggunaan RAID-0 menyusut, ceruk ini diisi oleh LVM (lihat nanti).
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-1</term>
+						 <listitem>
+							<para>
+								Tingkat ini, juga dikenal sebagai "RAID mirroring", adalah yang paling sederhana dan setup yang paling banyak digunakan. Dalam bentuk standar, menggunakan dua disk fisik berukuran sama, dan memberikan volume logis berukuran yang sama lagi. Data disimpan identik pada disk kedua, maka dijuluki "mirror (cermin)". Ketika satu disk gagal, data ini masih tersedia di yang lain. Untuk data yang benar-benar penting, RAID-1 dapat tentu saja diatur pada disk yang lebih dari dua, dengan dampak langsung pada rasio biaya perangkat keras versus ruang muatan yang tersedia.
+							</para>
+							 <sidebar> <title><emphasis>CATATAN</emphasis> Ukuran klaster dan disk</title>
+							 <para>
+								Jika dua disk dengan ukuran yang berbeda diatur dalam cermin, yang lebih besar tidak akan sepenuhnya digunakan, karena itu akan berisi data yang sama seperti yang terkecil dan tidak lebih. Ruang tersedia yang berguna yang disediakan oleh volume RAID-1 karena itu cocok dengan ukuran disk terkecil dalam array. Ini masih berlaku untuk volume RAID dengan tingkat yang lebih tinggi, meskipun redundansi disimpan dengan cara berbeda.
+							</para>
+							 <para>
+								Karena itu penting, ketika menyiapkan array RAID (kecuali RAID-0 dan "linear RAID"), untuk menyusun hanya disk-disk berukuran identik atau sangat dekat, untuk menghindari membuang-buang sumber daya.
+							</para>
+							 </sidebar> <sidebar> <title><emphasis>CATATAN</emphasis> Disk cadangan</title>
+							 <para>
+								Tingkat RAID yang mencakup redundansi memungkinkan menugaskan disk lebih banyak dari yang dibutuhkan untuk array. Tambahan disk digunakan sebagai suku cadang ketika salah satu disk utama gagal. Sebagai contoh, cermin dua disk ditambah cadangan satu, jika salah satu disk dari dua pertama gagal, kernel akan otomatis (dan segera) merekonstruksi cermin menggunakan disk cadangan, sehingga redundansi tetap terjamin setelah masa rekonstruksi. Ini dapat digunakan sebagai jenis lain dari perlindungan bagi data penting.
+							</para>
+							 <para>
+								Kita akan dimaafkan untuk bertanya-tanya bagaimana hal ini lebih baik daripada sekadar mencerminkan pada tiga disk di awal. Keuntungan dari konfigurasi "disk cadangan" adalah bahwa disk cadangan dapat dipakai bersama pada beberapa volume RAID. Sebagai contoh, kita dapat memiliki tiga volume tercermin, dengan redundansi yang dijamin bahkan jika salah satu kegagalan disk, hanya dengan tujuh disk (tiga pasang, ditambah satu cadangan bersama), bukan sembilan disk yang akan dibutuhkan oleh tiga buah kembar tiga.
+							</para>
+							 </sidebar> <para>
+								Tingkat RAID ini, walaupun mahal (karena hanya separuh dari ruang penyimpanan fisik, dalam keadaan terbaik, berguna), secara luas digunakan dalam praktek. Hal ini mudah untuk dipahami, dan memungkinkan cadangan yang sangat sederhana: karena disk kedua memiliki isi yang identik, salah satu dari mereka dapat sementara diekstraksi dengan tidak berdampak pada sistem yang bekerja. Kinerja baca sering meningkat karena kernel bisa membaca setengah dari data pada setiap disk secara paralel, sementara kinerja tulis tidak terlalu turun parah. Dalam sebuah array RAID-1 N disk, data tetap tersedia bahkan dengan N-1 disk gagal.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-4</term>
+						 <listitem>
+							<para>
+								Tingkat RAID ini, tidak banyak dipakai, menggunakan N disk untuk menyimpan data yang berguna, dan disk tambahan untuk menyimpan informasi redundansi. Jika disk itu gagal, sistem dapat merekonstruksi isinya dari N yang lain. Jika salah satu dari N disk data gagal, N-1 sisa yang dikombinasikan dengan disk "paritas" berisi cukup informasi untuk merekonstruksi data yang dibutuhkan.
+							</para>
+							 <para>
+								RAID-4 tidak terlalu mahal karena itu hanya melibatkan peningkatan biaya satu-dari-N dan tidak memiliki dampak yang terlihat pada kinerja baca, tapi penulisan melambat. Selanjutnya, karena menulis ke salah satu dari N disk juga melibatkan menulis ke disk paritas, yang terakhir melihat menulis lebih banyak daripada yang pertama, dan usia pakainya dapat memendek secara dramatis sebagai akibatnya. Data pada array RAID-4 aman hanya sampai dengan satu disk gagal (dari N+1).
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-5</term>
+						 <listitem>
+							<para>
+								RAID-5 menjawab masalah asimetri dari RAID-4: blok paritas disebar ke seluruh N+1 disk, tanpa ada satu disk yang memiliki peran tertentu.
+							</para>
+							 <para>
+								Kinerja baca dan tulis identik dengan RAID-4. Di sini, sistem tetap berfungsi bila satu disk (dari N+1) gagal, tapi tak boleh lebih.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-6</term>
+						 <listitem>
+							<para>
+								RAID-6 dapat dianggap perluasan dari RAID-5, dimana setiap seri N blok melibatkan dua blok redundansi, dan setiap seri N+2 blok disebar ke N+2 disk.
+							</para>
+							 <para>
+								Tingkat RAID ini sedikit lebih mahal daripada dua sebelumnya, tapi itu membawa beberapa keamanan tambahan karena sampai dengan dua drive (dari N+2) bisa gagal tanpa mengorbankan ketersediaan data. Kekurangannya adalah bahwa sekarang operasi tulis melibatkan menulis satu blok data dan dua blok redundansi, yang membuat mereka lebih lambat lagi.
+							</para>
+
+						</listitem>
+
+					</varlistentry>
+					 <varlistentry>
+						<term>RAID-1+0</term>
+						 <listitem>
+							<para>
+								This isn't strictly speaking, a RAID level, but a stacking of two RAID groupings. Starting from 2×N disks, one first sets them up by pairs into N RAID-1 volumes; these N volumes are then aggregated into one, either by “linear RAID” or (increasingly) by LVM. This last case goes farther than pure RAID, but there's no problem with that.
+							</para>
+							 <para>
+								RAID-1+0 dapat bertahan dari beberapa disk gagal: sampai N dalam array 2×N yang dijelaskan di atas, asal bahwa setidaknya satu disk tetap bekerja di setiap pasangan RAID-1.
+							</para>
+							 <sidebar id="sidebar.raid-10"> <title><emphasis>LEBIH JAUH</emphasis> RAID-10</title>
+							 <para>
+								RAID-10 umumnya dianggap sebagai sinonim dari RAID-1+0, namun kekhususan Linux membuat itu sebenarnya generalisasi. Konfigurasi ini memungkinkan sistem dimana setiap blok disimpan pada dua disk berbeda, bahkan dengan cacah disk ganjil, salinan disebar ke model yang dapat dikonfigurasi.
+							</para>
+							 <para>
+								Kinerja akan bervariasi tergantung pada model repartisi dan tingkat redundansi yang dipilih, dan beban kerja dari volume logis.
+							</para>
+							 </sidebar>
+						</listitem>
+
+					</varlistentry>
+
+				</variablelist>
+				 <para>
+					Jelas, tingkat RAID akan dipilih sesuai dengan kendala dan persyaratan setiap aplikasi. Perhatikan bahwa satu komputer dapat memiliki beberapa array RAID yang berbeda dengan konfigurasi yang berbeda.
+				</para>
+
+			</section>
+			 <section id="sect.raid-setup">
+				<title>Menyiapkan RAID</title>
+				 <indexterm>
+					<primary><emphasis role="pkg">mdadm</emphasis></primary>
+				</indexterm>
+				 <para>
+					Menyiapkan volume RAID memerlukan paket <emphasis role="pkg">mdadm</emphasis>; ini menyediakan perintah <command>mdadm</command>, yang memungkinkan membuat dan memanipulasi array RAID, maupun skrip dan alat-alat yang mengintegrasikan ke seluruh sistem, termasuk sistem pemantauan.
+				</para>
+				 <para>
+					Contoh kita akan menjadi server dengan sejumlah disk, beberapa di antaranya sudah digunakan, sisanya tersedia untuk menyiapkan RAID. Kita awalnya memiliki disk dan partisi sebagai berikut:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							disk <filename>sdb</filename>, 4 GB, sepenuhnya tersedia;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							disk <filename>sdc</filename>, 4 GB, ini juga sepenuhnya tersedia;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							pada disk <filename>sdd</filename>, hanya partisi <filename>sdd2</filename> (sekitar 4 GB) tersedia;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							akhirnya, disk <filename>sde</filename>, masih 4 GB, sepenuhnya tersedia.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <sidebar> <title><emphasis>CATATAN</emphasis> Mengidentifikasi volume RAID yang ada</title>
+				 <para>
+					Berkas <filename>/proc/mdstat</filename> memuat daftar volume yang ada dan keadaan mereka. Ketika membuat volume RAID baru, mesti hati-hati untuk tidak memberi nama yang sama dengan volume yang sudah ada.
+				</para>
+				 </sidebar> <para>
+					Kita akan menggunakan unsur-unsur fisik ini untuk membangun dua volume, satu RAID-0 dan satu cermin (RAID-1). Mari kita mulai dengan volume RAID-0:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md0 --level=0 --raid-devices=2 /dev/sdb /dev/sdc</userinput>
+<computeroutput>mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md0 started.
+# </computeroutput><userinput>mdadm --query /dev/md0</userinput>
+<computeroutput>/dev/md0: 8.00GiB raid0 2 devices, 0 spares. Use mdadm --detail for more detail.
+# </computeroutput><userinput>mdadm --detail /dev/md0</userinput>
+<computeroutput>/dev/md0:
+        Version : 1.2
+  Creation Time : Wed May  6 09:24:34 2015
+     Raid Level : raid0
+     Array Size : 8387584 (8.00 GiB 8.59 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:24:34 2015
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+     Chunk Size : 512K
+
+           Name : mirwiz:0  (local to host mirwiz)
+           UUID : bb085b35:28e821bd:20d697c9:650152bb
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0       8       16        0      active sync   /dev/sdb
+       1       8       32        1      active sync   /dev/sdc
+# </computeroutput><userinput>mkfs.ext4 /dev/md0</userinput>
+<computeroutput>mke2fs 1.42.12 (29-Aug-2014)
+Creating filesystem with 2095104 4k blocks and 524288 inodes
+Filesystem UUID: fff08295-bede-41a9-9c6a-8c7580e520a6
+Superblock backups stored on blocks: 
+        32768, 98304, 163840, 229376, 294912, 819200, 884736, 1605632
+
+Allocating group tables: done                            
+Writing inode tables: done                            
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done 
+# </computeroutput><userinput>mkdir /srv/raid-0</userinput>
+<computeroutput># </computeroutput><userinput>mount /dev/md0 /srv/raid-0</userinput>
+<computeroutput># </computeroutput><userinput>df -h /srv/raid-0</userinput>
+<computeroutput>Filesystem      Size  Used Avail Use% Mounted on
+/dev/md0        7.9G   18M  7.4G   1% /srv/raid-0
+</computeroutput></screen>
+				 <para>
+					Perintah <command>mdadm --create</command> memerlukan beberapa parameter: nama volume yang akan dibuat (<filename>/dev/md*</filename>, dengan MD singkatan dari <foreignphrase>Multiple Devices</foreignphrase>), tingkat RAID, cacah disk (yang wajib meskipun sebagian besar bermakna hanya dengan RAID-1 dan di atasnya), dan drive fisik yang akan digunakan. Setelah perangkat dibuat, kita dapat menggunakannya seperti kita akan menggunakan sebuah partisi normal, membuat sebuah sistem berkas di atasnya, mengait sistem berkas itu, dan sebagainya. Perhatikan bahwa penciptaan kita atas suatu volume RAID-0 pada <filename>md0</filename> hanya kebetulan, dan penomoran array tidak perlu berkorelasi dengan pilihan banyaknya redundansi. Hal ini juga memungkinkan untuk membuat array RAID bernama, dengan memberikan parameter <command>mdadm</command> seperti misalnya <filename>/dev/md/linear</filename> bukan <filename>/dev/md0</filename>.
+				</para>
+				 <para>
+					Penciptaan RAID-1 mengikuti cara yang sama, perbedaannya hanya menjadi terlihat setelah penciptaan:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm --create /dev/md1 --level=1 --raid-devices=2 /dev/sdd2 /dev/sde</userinput>
+<computeroutput>mdadm: Note: this array has metadata at the start and
+    may not be suitable as a boot device.  If you plan to
+    store '/boot' on this device please ensure that
+    your boot-loader understands md/v1.x metadata, or use
+    --metadata=0.90
+mdadm: largest drive (/dev/sdd2) exceeds size (4192192K) by more than 1%
+Continue creating array? </computeroutput><userinput>y</userinput>
+<computeroutput>mdadm: Defaulting to version 1.2 metadata
+mdadm: array /dev/md1 started.
+# </computeroutput><userinput>mdadm --query /dev/md1</userinput>
+<computeroutput>/dev/md1: 4.00GiB raid1 2 devices, 0 spares. Use mdadm --detail for more detail.
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+        Version : 1.2
+  Creation Time : Wed May  6 09:30:19 2015
+     Raid Level : raid1
+     Array Size : 4192192 (4.00 GiB 4.29 GB)
+  Used Dev Size : 4192192 (4.00 GiB 4.29 GB)
+   Raid Devices : 2
+  Total Devices : 2
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:30:40 2015
+          State : clean, resyncing (PENDING) 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 0
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 0
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       1       8       64        1      active sync   /dev/sde
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+          State : clean
+[...]
+</computeroutput></screen>
+				 <sidebar> <title><emphasis>TIPS</emphasis> RAID, disk, dan partisi</title>
+				 <para>
+					Seperti digambarkan oleh contoh kita, peranti RAID dapat dibangun dari partisi disk, dan tidak memerlukan disk penuh.
+				</para>
+				 </sidebar> <para>
+					Beberapa komentar perlu disinggung. Pertama, <command>mdadm</command> tahu bahwa elemen-elemen fisik memiliki ukuran yang berbeda; karena hal ini menyiratkan bahwa sebagian ruang akan hilang pada elemen yang lebih besar, konfirmasi diperlukan.
+				</para>
+				 <para>
+					Lebih penting lagi, perhatikan keadaan cermin. Keadaan normal dari suatu cermin RAID adalah bahwa kedua disk memiliki isi yang tepat sama. Namun, tidak ada yang menjamin ini ketika volume pertama kali dibuat. Subsistem RAID karena itu akan memberikan jaminan itu sendiri, dan akan ada tahap sinkronisasi segera setelah perangkat RAID dibuat. Setelah beberapa waktu (lama persisnya akan tergantung pada ukuran sebenarnya dari disk...), array RAID berpindah ke keadaan "aktif" atau "bersih". Perhatikan bahwa selama fase rekonstruksi ini, cermin ada dalam mode terdegradasi, dan redundansi tidak dijamin. Sebuah disk yang gagal selama jendela risiko itu bisa mengakibatkan kehilangan semua data. Namun, sejumlah besar data penting, jarang disimpan pada sebuah array RAID yang baru dibuat sebelum sinkronisasi awalnya. Catat bahwa bahkan dalam mode terdegradasi, <filename>/dev/md1</filename> dapat digunakan, dan sebuah sistem berkas dapat dibuat di atasnya, maupun data dapat disalin ke sana.
+				</para>
+				 <sidebar> <title><emphasis>TIPS</emphasis> Memulai mirror dalam mode terdegradasi</title>
+				 <para>
+					Kadang-kadang dua disk tidak tersedia seketika saat seseorang ingin memulai suatu cermin RAID-1, misalnya karena salah satu disk yang rencananya akan disertakan sudah digunakan untuk menyimpan data yang ingin dipindah ke array. Dalam keadaan seperti itu, dimungkinkan untuk sengaja menciptakan array RAID-1 yang terdegradasi dengan memberikan <filename>missing</filename>, bukan berkas perangkat sebagai salah satu argumen untuk <command>mdadm</command>. Setelah data telah disalin ke "cermin", disk lama dapat ditambahkan ke array. Sinkronisasi kemudian akan terjadi, memberikan kita redundansi yang diinginkan di awal.
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>TIPS</emphasis> Menyiapkan cermin tanpa sinkronisasi</title>
+				 <para>
+					Volume RAID-1 sering dibuat untuk digunakan sebagai disk baru, sering dianggap kosong. Isi awal sebenarnya dari disk ini karena itu tidak sangat relevan, karena hanya perlu diketahui bahwa data setelah penciptaan volume, khususnya sistem berkas, dapat diakses setelahnya.
+				</para>
+				 <para>
+					Karena itu orang mungkin bertanya-tanya tentang titik sinkronisasi kedua disk pada waktu penciptaan. Mengapa peduli apakah isi identik pada zona volume yang kita ketahui hanya dapat dibaca setelah kita telah menulis?
+				</para>
+				 <para>
+					Untungnya, tahap sinkronisasi ini dapat dihindari dengan memberikan opsi <literal>--assume-clean</literal> untuk <command>mdadm</command>. Namun, pilihan ini dapat menyebabkan kejutan dalam kasus-kasus di mana data awal akan dibaca (misalnya jika sistem berkas tersebut sudah hadir pada disk fisik), itulah sebabnya itu tidak diaktifkan secara default.
+				</para>
+				 </sidebar> <para>
+					Sekarang mari kita lihat apa yang terjadi ketika salah satu elemen array RAID-1 gagal. <command>mdadm</command>, khususnya opsi <literal>--fail</literal>, memungkinkan simulasi suatu kegagalan disk:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --fail /dev/sde</userinput>
+<computeroutput>mdadm: set /dev/sde faulty in /dev/md1
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Update Time : Wed May  6 09:39:39 2015
+          State : clean, degraded 
+ Active Devices : 1
+Working Devices : 1
+ Failed Devices : 1
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 19
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       0        0        2      removed
+
+       1       8       64        -      faulty   /dev/sde</computeroutput></screen>
+				 <para>
+					Isi dari volume masih dapat diakses (dan, jika dipasang, aplikasi tidak menyadari apapun), tapi keselamatan data tidak dijamin lagi: seandainya <filename>sdd</filename> disk gagal bergantian, data akan hilang. Kami ingin menghindari risiko, jadi kami akan mengganti disk yang gagal dengan yang baru, <filename>sdf</filename>:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --add /dev/sdf</userinput>
+<computeroutput>mdadm: added /dev/sdf
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+   Raid Devices : 2
+  Total Devices : 3
+    Persistence : Superblock is persistent
+
+    Update Time : Wed May  6 09:48:49 2015
+          State : clean, degraded, recovering 
+ Active Devices : 1
+Working Devices : 2
+ Failed Devices : 1
+  Spare Devices : 1
+
+ Rebuild Status : 28% complete
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 26
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      spare rebuilding   /dev/sdf
+
+       1       8       64        -      faulty   /dev/sde
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Update Time : Wed May  6 09:49:08 2015
+          State : clean 
+ Active Devices : 2
+Working Devices : 2
+ Failed Devices : 1
+  Spare Devices : 0
+
+           Name : mirwiz:1  (local to host mirwiz)
+           UUID : 6ec558ca:0c2c04a0:19bca283:95f67464
+         Events : 41
+
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      active sync   /dev/sdf
+
+       1       8       64        -      faulty   /dev/sde</computeroutput></screen>
+				 <para>
+					Di sini lagi, kernel secara otomatis memicu tahap rekonstruksi yang ketika berlangsung, meskipun volume masih dapat diakses, berada dalam mode terdegradasi. Setelah rekonstruksi berakhir, array RAID kembali ke keadaan normal. Kita kemudian dapat memberitahu ke sistem bahwa disk <filename>sde</filename> akan dihapus dari array, sehingga berakhir dengan RAID mirror klasik pada dua disk:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm /dev/md1 --remove /dev/sde</userinput>
+<computeroutput>mdadm: hot removed /dev/sde from /dev/md1
+# </computeroutput><userinput>mdadm --detail /dev/md1</userinput>
+<computeroutput>/dev/md1:
+[...]
+    Number   Major   Minor   RaidDevice State
+       0       8       50        0      active sync   /dev/sdd2
+       2       8       80        1      active sync   /dev/sdf</computeroutput></screen>
+				 <para>
+					Selanjutnya drive dapat secara fisik dicabut saat server berikutnya dimatikan, atau bahkan dicabut saat menyala ketika konfigurasi hardware mengizinkan hot-swap. Konfigurasi tersebut termasuk beberapa pengendali SCSI, kebanyakan disk SATA, dan drive eksternal yang beroperasi pada USB atau Firewire.
+				</para>
+
+			</section>
+			 <section id="sect.backup-raid-config">
+				<title>Mem-back up Konfigurasi</title>
+				 <para>
+					Kebanyakan meta-data tentang volume RAID disimpan secara langsung pada disk yang menusun array ini, sehingga kernel dapat mendeteksi array dan komponen mereka dan merakit mereka secara otomatis saat sistem mulai berjalan. Namun, membuat cadangan konfigurasi ini disarankan, karena deteksi ini tidak kebal kesalahan, dan hanya diharapkan bahwa itu akan gagal tepat dalam keadaan yang sensitif. Dalam contoh kita, jika kegagalan disk <filename>sde</filename> telah nyata (bukan simulasi) dan sistem sudah direstart tanpa menghapus disk <filename>sde</filename> ini, disk ini bisa mulai bekerja lagi karena telah dijajaki selama reboot. Kernel kemudian akan memiliki tiga elemen fisik, masing-masing mengklaim mengandung setengah dari volume RAID yang sama. Sumber kebingungan lain dapat datang ketika volume RAID dari dua server dikonsolidasi hanya ke satu server. Jika array ini sedang berjalan biasanya sebelum disk dipindahkan, kernel akan mampu mendeteksi dan merakit kembali pasangan dengan benar; tetapi jika disk yang dipindah telah diagregasi ke dalam <filename>md1</filename> pada server lama, dan server baru telah memiliki <filename>md1</filename>, salah satu cermin akan diubah nama.
+				</para>
+				 <para>
+					Karena itu cadangan konfigurasi penting, walaupun hanya untuk referensi. Cara standar untuk melakukannya adalah dengan menyunting berkas <filename>/etc/mdadm/mdadm.conf</filename>, contohnya tercantum di sini:
+				</para>
+				 <example id="example.mdadm-conf">
+					<title>berkas konfigurasi <command>mdadm</command></title>
+					 
+<programlisting># mdadm.conf
+#
+# Please refer to mdadm.conf(5) for information about this file.
+#
+
+# by default (built-in), scan all partitions (/proc/partitions) and all
+# containers for MD superblocks. alternatively, specify devices to scan, using
+# wildcards if desired.
+DEVICE /dev/sd*
+
+# auto-create devices with Debian standard permissions
+CREATE owner=root group=disk mode=0660 auto=yes
+
+# automatically tag new arrays as belonging to the local system
+HOMEHOST &lt;system&gt;
+
+# instruct the monitoring daemon where to send mail alerts
+MAILADDR root
+
+# definitions of existing MD arrays
+ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
+ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f67464
+
+# This configuration was auto-generated on Thu, 17 Jan 2013 16:21:01 +0100
+# by mkconf 3.2.5-3</programlisting>
+
+				</example>
+				 <para>
+					Salah satu rincian paling berguna adalah opsi <literal>DEVICE</literal>, yang berisi daftar perangkat tempat sistem akan secara otomatis mencari komponen volume RAID saat start-up. Dalam contoh kita, kita menggantikan nilai default, <literal>partitions containers</literal>, dengan daftar eksplisit berkas perangkat, karena kita memilih untuk menggunakan seluruh disk dan tidak hanya partisi, untuk beberapa volume.
+				</para>
+				 <para>
+					Dua baris terakhir dalam contoh kita adalah yang memungkinkan kernel untuk secara aman memilih nomor volume yang ditetapkan ke array mana. Metadata yang tersimpan pada disk itu sendiri cukup untuk membangun kembali volume, tetapi tidak untuk menentukan nomor volume (dan nama perangkat <filename>/dev/md*</filename> yang cocok).
+				</para>
+				 <para>
+					Untungnya, baris-baris ini dapat dihasilkan secara otomatis:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mdadm --misc --detail --brief /dev/md?</userinput>
+<computeroutput>ARRAY /dev/md0 metadata=1.2 name=mirwiz:0 UUID=bb085b35:28e821bd:20d697c9:650152bb
+ARRAY /dev/md1 metadata=1.2 name=mirwiz:1 UUID=6ec558ca:0c2c04a0:19bca283:95f67464</computeroutput></screen>
+				 <para>
+					Isi dari dua baris terakhir ini tidak tergantung pada daftar disk yang disertakan dalam volume. Maka tidak diperlukan untuk meregenerasi baris-baris ini ketika menggantikan disk gagal dengan yang baru. Di sisi lain, perawatan harus diambil untuk memperbarui berkas ketika membuat atau menghapus sebuah array RAID.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.lvm">
+			<title>LVM</title>
+			 <indexterm>
+				<primary>LVM</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>Logical Volume Manager</primary>
+			</indexterm>
+			 <para>
+				LVM, <emphasis>Logical Volume Manager</emphasis>, adalah pendekatan lain untuk mengabstrakkan volume logis dari dukungan fisik mereka, yang berfokus pada peningkatan fleksibilitas daripada meningkatkan kehandalan. LVM dapat mengubah volume logis secara transparan bagi aplikasi; sebagai contoh, sangat mungkin untuk menambahkan disk baru, memigrasi data ke mereka, dan menghapus disk lama, tanpa melepas kait volume.
+			</para>
+			 <section id="sect.lvm-concepts">
+				<title>Konsep LVM</title>
+				 <para>
+					Fleksibilitas ini dicapai dengan tingkat abstraksi yang melibatkan tiga konsep.
+				</para>
+				 <para>
+					Pertama, PV (<emphasis>Physical Volume</emphasis>) adalah entitas terdekat dengan perangkat keras: itu bisa berupa partisi pada disk atau seluruh disk, atau bahkan perangkat blok lain (termasuk, sebagai contoh, sebuah array RAID). Perhatikan bahwa ketika sebuah elemen fisik diatur hingga menjadi PV untuk LVM, itu mesti hanya diakses melalui LVM, jika tidak sistem akan bingung.
+				</para>
+				 <para>
+					Sejumlah PV dapat dikumpulkan dalam VG (<emphasis>Volume Group</emphasis>), yang dapat dibandingkan dengan disk virtual dan extensible. VG abstrak, dan tidak muncul dalam perangkat berkas di hirarki <filename>/dev</filename>, sehingga tidak ada risiko menggunakan mereka secara langsung.
+				</para>
+				 <para>
+					Jenis ke tiga objek adalah LV (<emphasis>Logical Volume</emphasis>), yang berupa potongan dari suatu VG; jika kita memakai analogi VG-sebagai-disk, LV setara dengan partisi. LV muncul sebagai perangkat blok dengan entri di <filename>/dev</filename>, dan dapat digunakan seperti setiap partisi fisik lainnya dapat (paling sering, mewadahi sebuah sistem berkas atau ruang swap).
+				</para>
+				 <para>
+					Yang penting adalah bahwa pemisahan VG ke LV sepenuhnya independen dari komponen fisiknya (PV). VG dengan hanya satu komponen fisik (disk misalnya) dapat dipisah menjadi selusin volume logis; demikian pula, sebuah VG dapat menggunakan beberapa disk fisik dan muncul sebagai satu volume logis yang besar. Satu-satunya kendala, jelas, adalah bahwa ukuran total yang dialokasikan untuk LV tidak bisa lebih dari total kapasitas dari PV dalam kelompok volume.
+				</para>
+				 <para>
+					Namun sering masuk akal untuk memiliki semacam keseragaman antara komponen fisik VG, dan untuk membagi VG menjadi volume logis yang akan memiliki pola penggunaan serupa. Misalnya, jika perangkat keras yang tersedia termasuk disk cepat dan disk lambat, yang cepat dapat dikelompokkan ke satu VG dan yang lambat ke lain; potongan pertama dapat kemudian ditugaskan untuk aplikasi yang membutuhkan akses data yang cepat, sementara yang kedua akan disimpan untuk tugas-tugas yang kurang menuntut.
+				</para>
+				 <para>
+					Dalam kasus apapun, perlu diingat bahwa LV tidak perlu melekat ke PV manapun. Dimungkinkan untuk mempengaruhi mana data dari LV secara fisik disimpan, tapi kemungkinan ini tidak diperlukan untuk penggunaan sehari-hari. Sebaliknya: ketika set komponen fisik VG berkembang, lokasi penyimpanan fisik yang sesuai dengan LV tertentu dapat bermigrasi di seluruh disk (dan tentu saja tetap di dalam PVs yang ditugaskan untuk VG).
+				</para>
+
+			</section>
+			 <section id="sect.lvm-setup">
+				<title>Menyiapkan LVM</title>
+				 <para>
+					Mari kita sekarang ikuti, langkah demi langkah, proses pengaturan LVM untuk kasus penggunaan yang khas: kami ingin menyederhanakan situasi kompleks penyimpanan. Situasi seperti ini biasanya terjadi setelah beberapa sejarah yang panjang dan berbelit dari akumulasi langkah-langkah sementara. Untuk tujuan ilustrasi, kami akan mempertimbangkan server yang kebutuhan penyimpanannya telah berubah dari waktu ke waktu, berakhir dalam labirin dari partisi-partisi yang terpecah ke beberapa disk yang terpakai sebagian. Secara lebih konkret, partisi berikut tersedia:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							pada disk <filename>sdb</filename>, sebuah partisi <filename>sdb2</filename>, 4 GB;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							pada disk <filename>sdc</filename>, sebuah partisi <filename>sdc3</filename>, 3 GB;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							disk <filename>sdd</filename>, 4 GB, sepenuhnya tersedia;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							pada disk <filename>sdf</filename>, partisi <filename>sdf1</filename>, 4 GB; dan partisi <filename>sdf2</filename>, 5 GB.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Selain itu, mari kita asumsikan bahwa disk <filename>sdb</filename> dan <filename>sdf</filename> adalah lebih cepat daripada dua lainnya.
+				</para>
+				 <para>
+					Tujuan kami adalah untuk mengatur tiga volume logis untuk tiga aplikasi yang berbeda: server berkas memerlukan ruang penyimpanan 5 GB, sebuah basis data (1 GB) dan ruang untuk back-up (12 GB). Dua yang pertama perlu kinerja yang baik, tapi back-up kurang kritis dalam hal kecepatan akses. Semua kendala ini mencegah penggunaan partisi sendirian; menggunakan LVM dapat mengabstraksi ukuran fisik dari perangkat, sehingga satu-satunya batas adalah jumlah ruang yang tersedia.
+				</para>
+				 <para>
+					Alat-alat yang diperlukan ada dalam paket <emphasis role="pkg">lvm2</emphasis> dan dependensinya. Ketika mereka sedang diinstal, pengaturan LVM mengambil tiga langkah, cocok dengan konsep tiga tingkat.
+				</para>
+				 <para>
+					Pertama, kami siapkan volume fisik menggunakan <command>pvcreate</command>:
+				</para>
+				 
+<screen id="screen.pvcreate"><computeroutput># </computeroutput><userinput>pvdisplay</userinput>
+<computeroutput># </computeroutput><userinput>pvcreate /dev/sdb2</userinput>
+<computeroutput>  Physical volume "/dev/sdb2" successfully created
+# </computeroutput><userinput>pvdisplay</userinput>
+<computeroutput>  "/dev/sdb2" is a new physical volume of "4.00 GiB"
+  --- NEW Physical volume ---
+  PV Name               /dev/sdb2
+  VG Name               
+  PV Size               4.00 GiB
+  Allocatable           NO
+  PE Size               0   
+  Total PE              0
+  Free PE               0
+  Allocated PE          0
+  PV UUID               0zuiQQ-j1Oe-P593-4tsN-9FGy-TY0d-Quz31I
+
+# </computeroutput><userinput>for i in sdc3 sdd sdf1 sdf2 ; do pvcreate /dev/$i ; done</userinput>
+<computeroutput>  Physical volume "/dev/sdc3" successfully created
+  Physical volume "/dev/sdd" successfully created
+  Physical volume "/dev/sdf1" successfully created
+  Physical volume "/dev/sdf2" successfully created
+# </computeroutput><userinput>pvdisplay -C</userinput>
+<computeroutput>  PV         VG   Fmt  Attr PSize PFree
+  /dev/sdb2       lvm2 ---  4.00g 4.00g
+  /dev/sdc3       lvm2 ---  3.09g 3.09g
+  /dev/sdd        lvm2 ---  4.00g 4.00g
+  /dev/sdf1       lvm2 ---  4.10g 4.10g
+  /dev/sdf2       lvm2 ---  5.22g 5.22g
+</computeroutput></screen>
+				 <para>
+					Sejauh ini, masih baik; perhatikan bahwa PV dapat disiapkan pada seluruh disk maupun pada partisi individunya. Seperti yang ditunjukkan di atas, perintah <command>pvdisplay</command> menampilkan daftar PVs yang ada, dengan dua format keluaran mungkin.
+				</para>
+				 <para>
+					Sekarang mari kita merakit elemen-elemen fisik ini menjadi VG menggunakan <command>vgcreate</command>. Kita akan mengumpulkan hanya PV-PV dari disk cepat ke VG <filename>vg_critical</filename>; VG lain, <filename>vg_normal</filename>, juga akan memuat elemen-elemen yang lebih lambat.
+				</para>
+				 
+<screen id="screen.vgcreate"><computeroutput># </computeroutput><userinput>vgdisplay</userinput>
+<computeroutput>  No volume groups found
+# </computeroutput><userinput>vgcreate vg_critical /dev/sdb2 /dev/sdf1</userinput>
+<computeroutput>  Volume group "vg_critical" successfully created
+# </computeroutput><userinput>vgdisplay</userinput>
+<computeroutput>  --- Volume group ---
+  VG Name               vg_critical
+  System ID             
+  Format                lvm2
+  Metadata Areas        2
+  Metadata Sequence No  1
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                0
+  Open LV               0
+  Max PV                0
+  Cur PV                2
+  Act PV                2
+  VG Size               8.09 GiB
+  PE Size               4.00 MiB
+  Total PE              2071
+  Alloc PE / Size       0 / 0   
+  Free  PE / Size       2071 / 8.09 GiB
+  VG UUID               bpq7zO-PzPD-R7HW-V8eN-c10c-S32h-f6rKqp
+
+# </computeroutput><userinput>vgcreate vg_normal /dev/sdc3 /dev/sdd /dev/sdf2</userinput>
+<computeroutput>  Volume group "vg_normal" successfully created
+# </computeroutput><userinput>vgdisplay -C</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize  VFree 
+  vg_critical   2   0   0 wz--n-  8.09g  8.09g
+  vg_normal     3   0   0 wz--n- 12.30g 12.30g
+</computeroutput></screen>
+				 <para>
+					Di sini lagi, perintahnya agak sederhana (dan <command>vgdisplay</command> mengusulkan dua format output). Perhatikan bahwa sangat mungkin untuk menggunakan dua partisi dari disk fisik yang sama ke dua VG yang berbeda. Perhatikan juga bahwa kita menggunakan awalan <filename>vg_</filename> untuk nama VG kita, tapi itu tidak lebih dari sebuah konvensi.
+				</para>
+				 <para>
+					Kita sekarang memiliki dua "disk virtual", masing-masing berukuran sekitar 8 GB dan 12 GB. Mari kita sekarang mengukir mereka ke dalam "partisi virtual" (LV). Ini melibatkan perintah <command>lvcreate</command>, dan sintaks yang agak lebih kompleks:
+				</para>
+				 
+<screen id="screen.lvcreate"><computeroutput># </computeroutput><userinput>lvdisplay</userinput>
+<computeroutput># </computeroutput><userinput>lvcreate -n lv_files -L 5G vg_critical</userinput>
+<computeroutput>  Logical volume "lv_files" created
+# </computeroutput><userinput>lvdisplay</userinput>
+<computeroutput>  --- Logical volume ---
+  LV Path                /dev/vg_critical/lv_files
+  LV Name                lv_files
+  VG Name                vg_critical
+  LV UUID                J3V0oE-cBYO-KyDe-5e0m-3f70-nv0S-kCWbpT
+  LV Write Access        read/write
+  LV Creation host, time mirwiz, 2015-06-10 06:10:50 -0400
+  LV Status              available
+  # open                 0
+  LV Size                5.00 GiB
+  Current LE             1280
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+
+# </computeroutput><userinput>lvcreate -n lv_base -L 1G vg_critical</userinput>
+<computeroutput>  Logical volume "lv_base" created
+# </computeroutput><userinput>lvcreate -n lv_backups -L 12G vg_normal</userinput>
+<computeroutput>  Logical volume "lv_backups" created
+# </computeroutput><userinput>lvdisplay -C</userinput>
+<computeroutput>  LV         VG          Attr     LSize  Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_base    vg_critical -wi-a---  1.00g                                           
+  lv_files   vg_critical -wi-a---  5.00g                                           
+  lv_backups vg_normal   -wi-a--- 12.00g</computeroutput></screen>
+				 <para>
+					Dua parameter diperlukan ketika membuat volume logis; mereka harus diberikan ke <command>lvcreate</command> sebagai opsi. Nama LV yang akan dibuat ditetapkan dengan opsi <literal>-n</literal>, dan ukurannya biasanya diberikan menggunakan opsi <literal>-L</literal>. Tentu saja kita juga perlu memberitahu ke perintah, VG mana yang dikenai operasi, maka diberikanlah parameter terakhir pada baris perintah.
+				</para>
+				 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> opsi-opsi <command>lvcreate</command></title>
+				 <para>
+					The <command>lvcreate</command> command has several options to allow tweaking how the LV is created.
+				</para>
+				 <para>
+					Mari kita pertama menjelaskan opsi <literal>-l</literal>, dengannya ukuran LV dapat diberikan sebagai cacah blok (sebagai lawan dari unit "manusia" yang kita digunakan di atas). Blok-blok ini (disebut PE, <emphasis>physical extents</emphasis> dalam istilah LVM) adalah unit-unit ruang penyimpanan yang bersebelahan di PV, dan mereka tidak dapat dipecah di LV. Ketika seseorang ingin menentukan ruang penyimpanan untuk LV secara cukup presisi, misalnya menggunakan seluruh ruang yang tersedia, opsi <literal>-l</literal> mungkin akan lebih disukai daripada <literal>-L</literal>.
+				</para>
+				 <para>
+					Memungkinkan juga untuk menunjuk pada lokasi fisik LV, sehingga extent disimpan pada PV tertentu (tentu saja masih tetap ada di dalam yang ditugaskan untuk VG). Karena kita tahu bahwa <filename>sdb</filename> lebih cepat daripada <filename>sdf</filename>, kita mungkin ingin menyimpan <filename>lv_base</filename> di sana jika kita ingin memberikan keuntungan kepada server basis data dibandingkan dengan server berkas. Baris perintah menjadi: <command>lvcreate -n lv_base -L 1G vg_critical /dev/sdb2</command>. Perhatikan bahwa perintah ini bisa gagal jika PV tidak memiliki cukup extent bebas. Dalam contoh kita, kita mungkin harus membuat <filename>lv_base</filename> sebelum <filename>lv_files</filename> untuk menghindari situasi ini - atau membebaskan sebagian ruang di <filename>sdb2</filename> dengan perintah <command>pvmove</command>.
+				</para>
+				 </sidebar> <para>
+					Volume logis, sekali dibuat, akan menjadi berkas perangkat blok dalam <filename>/dev/mapper/</filename>:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>ls -l /dev/mapper</userinput>
+<computeroutput>total 0
+crw------- 1 root root 10, 236 Jun 10 16:52 control
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_critical-lv_base -&gt; ../dm-1
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_critical-lv_files -&gt; ../dm-0
+lrwxrwxrwx 1 root root       7 Jun 10 17:05 vg_normal-lv_backups -&gt; ../dm-2
+# </computeroutput><userinput>ls -l /dev/dm-*</userinput>
+<computeroutput>brw-rw---T 1 root disk 253, 0 Jun 10 17:05 /dev/dm-0
+brw-rw---- 1 root disk 253, 1 Jun 10 17:05 /dev/dm-1
+brw-rw---- 1 root disk 253, 2 Jun 10 17:05 /dev/dm-2
+</computeroutput></screen>
+				 <sidebar> <title><emphasis>CATATAN</emphasis> Mendeteksi otomatis volume LVM</title>
+				 <para>
+					Ketika komputer boot, unit layanan systemd <filename>lvm2-activation</filename> mengeksekusi <command>vgchange -aay</command> untuk "mengaktifkan" kelompok volume: memindai perangkat yang tersedia; yang telah diinisialisasi sebagai fisik untuk LVM didaftarkan ke subsistem LVM, yang berasal dari kelompok-kelompok volume dirakit, dan volume logis yang relevan dimulai dan dibuat tersedia. Karena itu tidak perlu menyunting berkas konfigurasi ketika membuat atau memodifikasi volume-volume LVM.
+				</para>
+				 <para>
+					Namun, perlu diketahui bahwa tata letak elemen LVM (volume fisik dan logis, dan kelompok-kelompok volume) direkam cadang dalam <filename>/etc/lvm/backup</filename>, yang dapat berguna dalam hal ada masalah (atau hanya untuk sekedar mengintip di balik layar).
+				</para>
+				 </sidebar> <para>
+					Untuk membuat semua lebih mudah, taut simbolik juga dibuat dalam direktori-direktori yang cocok dengan VG:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>ls -l /dev/vg_critical</userinput>
+<computeroutput>total 0
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_base -&gt; ../dm-1
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_files -&gt; ../dm-0
+# </computeroutput><userinput>ls -l /dev/vg_normal</userinput>
+<computeroutput>total 0
+lrwxrwxrwx 1 root root 7 Jun 10 17:05 lv_backups -&gt; ../dm-2</computeroutput></screen>
+				 <para>
+					LV kemudian dapat digunakan persis seperti partisi standar:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>mkfs.ext4 /dev/vg_normal/lv_backups</userinput>
+<computeroutput>mke2fs 1.42.12 (29-Aug-2014)
+Creating filesystem with 3145728 4k blocks and 786432 inodes
+Filesystem UUID: b5236976-e0e2-462e-81f5-0ae835ddab1d
+[...]
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done 
+# </computeroutput><userinput>mkdir /srv/backups</userinput>
+<computeroutput># </computeroutput><userinput>mount /dev/vg_normal/lv_backups /srv/backups</userinput>
+<computeroutput># </computeroutput><userinput>df -h /srv/backups</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_normal-lv_backups   12G   30M   12G   1% /srv/backups
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>cat /etc/fstab</userinput>
+<computeroutput>[...]
+/dev/vg_critical/lv_base    /srv/base       ext4 defaults 0 2
+/dev/vg_critical/lv_files   /srv/files      ext4 defaults 0 2
+/dev/vg_normal/lv_backups   /srv/backups    ext4 defaults 0 2</computeroutput></screen>
+				 <para>
+					Dari sudut pandang aplikasi, berbagai partisi kecil sekarang telah diabstrakkan ke dalam satu volume 12 GB besar, dengan nama yang lebih mudah.
+				</para>
+
+			</section>
+			 <section id="sect.lvm-over-time">
+				<title>LVM Dari Waktu Ke Waktu</title>
+				 <para>
+					Meskipun kemampuan untuk mengagregasi partisi atau disk fisik itu nyaman, ini bukanlah keuntungan utama yang dibawa oleh LVM. Fleksibilitas yang dibawanya terutama teramati seiring berjalannya waktu, ketika kebutuhan berevolusi. Dalam contoh kita, mari kita asumsikan bahwa berkas besar baru harus disimpan, dan bahwa LV yang didedikasikan untuk server berkas terlalu kecil untuk menampung mereka. Karena kita belum menggunakan seluruh ruang yang tersedia di <filename>vg_critical</filename>, kita bisa perbesar <filename>lv_files</filename>. Untuk tujuan tersebut, kita akan menggunakan perintah <command>lvresize</command>, lalu <command>resize2fs</command> untuk mengadaptasi sistem berkas:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>df -h /srv/files/</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_files  5.0G  4.6G  146M  97% /srv/files
+# </computeroutput><userinput>lvdisplay -C vg_critical/lv_files</userinput>
+<computeroutput>  LV       VG          Attr     LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_files vg_critical -wi-ao-- 5.00g
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree
+  vg_critical   2   2   0 wz--n- 8.09g 2.09g
+# </computeroutput><userinput>lvresize -L 7G vg_critical/lv_files</userinput>
+<computeroutput>  Size of logical volume vg_critical/lv_files changed from 5.00 GiB (1280 extents) to 7.00 GiB (1792 extents).
+  Logical volume lv_files successfully resized
+# </computeroutput><userinput>lvdisplay -C vg_critical/lv_files</userinput>
+<computeroutput>  LV       VG          Attr     LSize Pool Origin Data%  Meta%  Move Log Cpy%Sync  Convert
+  lv_files vg_critical -wi-ao-- 7.00g
+# </computeroutput><userinput>resize2fs /dev/vg_critical/lv_files</userinput>
+<computeroutput>resize2fs 1.42.12 (29-Aug-2014)
+Filesystem at /dev/vg_critical/lv_files is mounted on /srv/files; on-line resizing required
+old_desc_blocks = 1, new_desc_blocks = 1
+The filesystem on /dev/vg_critical/lv_files is now 1835008 (4k) blocks long.
+
+# </computeroutput><userinput>df -h /srv/files/</userinput>
+<computeroutput>Filesystem                        Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_files  6.9G  4.6G  2.1G  70% /srv/files</computeroutput></screen>
+				 <sidebar> <title><emphasis>HATI-HATI</emphasis> Mengubah ukuran sistem berkas</title>
+				 <para>
+					Tidak semua sistem berkas dapat diubah ukurannya secara daring; mengubah ukuran volume oleh karena itu mungkin pertama memerlukan melepas kait sistem berkas dan mengait ulang setelah itu. Tentu saja, jika seseorang ingin mengecilkan ruang yang dialokasikan untuk LV, sistem berkas harus diperkecil dulu; urutan dibalik ketika perubahan ukuran untuk arah lain: volume logis harus diperbesar sebelum sistem berkas di atasnya. Hal ini cukup sederhana, karena kapanpun ukuran sistem tidak boleh lebih besar dari perangkat blok tempat dia berada (apakah perangkat berupa partisi fisik atau volume logis).
+				</para>
+				 <para>
+					Sistem berkas ext3, ext4, dan xfs dapat diperbesar secara daring, tanpa melepas kain; menyusutkan memerlukan melepas kait. Sistem berkas reiserfs memungkinkan perubahan ukuran secara daring di kedua arah. ext2 tidak memungkinkan keduanya, dan selalu membutuhkan melepas kait.
+				</para>
+				 </sidebar> <para>
+					Kita bisa melanjutkan dengan cara yang sama untuk memperbesar volume yang mewadai basis data, tapi kita telah mencapai batas ruang VG yang tersedia:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>df -h /srv/base/</userinput>
+<computeroutput>Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_base 1008M  854M  104M  90% /srv/base
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree 
+  vg_critical   2   2   0 wz--n- 8.09g 92.00m</computeroutput></screen>
+				 <para>
+					Tidak masalah, karena LVM memungkinkan menambahkan volume fisik ke grup volume yang ada. Misalnya, mungkin kita telah memperhatikan bahwa partisi <filename>sdb1</filename>, yang sejauh ini digunakan di luar LVM, hanya berisi arsip yang dapat dipindahkan ke <filename>lv_backups</filename>. Kita sekarang dapat mendaur ulang itu dan mengintegrasikannya ke grup volume, dan dengan demikian memperoleh kembali ruang bebas. Ini adalah tujuan dari perintah <command>vgextend</command>. Tentu saja, partisi harus disiapkan sebagai sebuah volume fisik terlebih dahulu. Setelah VG telah diperbesar, kita dapat menggunakan perintah sejenis seperti yang sebelumnya untuk menumbuhkan volume logis kemudian sistem berkasnya:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>pvcreate /dev/sdb1</userinput>
+<computeroutput>  Physical volume "/dev/sdb1" successfully created
+# </computeroutput><userinput>vgextend vg_critical /dev/sdb1</userinput>
+<computeroutput>  Volume group "vg_critical" successfully extended
+# </computeroutput><userinput>vgdisplay -C vg_critical</userinput>
+<computeroutput>  VG          #PV #LV #SN Attr   VSize VFree
+  vg_critical   3   2   0 wz--n- 9.09g 1.09g
+# </computeroutput><userinput>[...]</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>df -h /srv/base/</userinput>
+<computeroutput>Filesystem                       Size  Used Avail Use% Mounted on
+/dev/mapper/vg_critical-lv_base  2.0G  854M  1.1G  45% /srv/base</computeroutput></screen>
+				 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> LVM tingkat lanjut</title>
+				 <para>
+					LVM also caters for more advanced uses, where many details can be specified by hand. For instance, an administrator can tweak the size of the blocks that make up physical and logical volumes, as well as their physical layout. It is also possible to move blocks across PVs, for instance to fine-tune performance or, in a more mundane way, to free a PV when one needs to extract the corresponding physical disk from the VG (whether to affect it to another VG or to remove it from LVM altogether). The manual pages describing the commands are generally clear and detailed. A good entry point is the <citerefentry><refentrytitle>lvm</refentrytitle>
+					 <manvolnum>8</manvolnum></citerefentry> manual page.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section id="sect.raid-or-lvm">
+			<title>RAID atau LVM?</title>
+			 <para>
+				RAID dan LVM keduanya membawa keuntungan tak terbantahkan bila kita abaikan kasus sederhana komputer desktop dengan satu hard disk dengan pola penggunaan tidak berubah dari waktu ke waktu. Namun, RAID dan LVM mengambil arah yang berbeda, dengan tujuan divergen, dan sah-sah saja bertanya-tanya mana yang harus diambil. Jawaban paling tepat akan tentu saja tergantung pada kebutuhan saat ini dan masa mendatang.
+			</para>
+			 <para>
+				Ada beberapa kasus sederhana dimana pertanyaan tidak benar-benar muncul. Jika kebutuhan adalah untuk mengamankan data terhadap kegagalan perangkat keras, maka jelas RAID akan disiapkan pada array disk, karena LVM tidak benar-benar menjawab masalah ini. Si sisi lain, jika kebutuhan adalah untuk skema penyimpanan yang fleksibel dimana volume dibuat independen terhadap tata letak fisik dari disk, RAID tidak banyak membantu dan LVM akan menjadi pilihan yang tepat.
+			</para>
+			 <sidebar> <title><emphasis>CATATAN</emphasis> Jika kinerja penting…</title>
+			 <para>
+				Jika kecepatan masukan/keluar adalah esensinya, terutama dalam hal waktu akses, menggunakan LVM dan/atau RAID di salah satu dari banyak kombinasi mungkin memiliki dampak pada kinerja, dan ini mungkin mempengaruhi keputusan untuk memilih yang mana. Namun, perbedaan-perbedaan dalam kinerja benar-benar kecil, dan hanya terukur dalam beberapa kasus penggunaan. Jika kinerja penting, keuntungan terbaik yang diperoleh adalah menggunakan media penyimpanan bukan rotasi (<indexterm><primary>SSD</primary></indexterm> <emphasis>solid-state drive</emphasis>); biaya per megabyte mereka lebih tinggi daripada hard disk drive standar, dan kapasitas mereka biasanya lebih kecil, tapi mereka memberikan kinerja yang sangat baik untuk akses acak. Jika pola penggunaan mencakup banyak operasi keluaran/masukan yang terpencar di seluruh sistem berkas, misalnya untuk basis data tempat query-query yang kompleks rutin dijalankan, maka keuntungan dari menjalankan mereka pada SSD jauh lebih besar daripada apa pun yang bisa diperoleh dengan memilih LVM atas RAID atau sebaliknya. Dalam situasi ini, pilihan harus ditentukan oleh pertimbangan selain murni kecepatan, karena aspek kinerja paling mudah ditangani dengan menggunakan SSD.
+			</para>
+			 </sidebar> <para>
+				Use case ketiga yang menarik adalah ketika seseorang hanya ingin mengagregat dua disk ke dalam satu volume, baik untuk alasan kinerja atau memiliki sistem berkas tunggal yang lebih besar daripada salah satu disk yang tersedia. Hal ini dapat dijawab oleh RAID 0 (atau bahkan linear-RAID) maupun dengan volume LVM. Dalam situasi ini, dan tanpa batasan tambahan kendala (misalnya, menjaga sejalan dengan sisa komputer jika mereka hanya menggunakan RAID), konfigurasi pilihan akan seringkali adalah LVM. Penyiapan awal hampir tidak lebih kompleks, dan bahwa sedikit peningkatan kompleksitas terbayar oleh fleksibilitas tambahan yang dibawah oleh LVM jika persyaratan berubah atau jika disk baru perlu ditambahkan.
+			</para>
+			 <para>
+				Kemudian tentu saja, ada kasus penggunaan yang benar-benar menarik, dimana sistem penyimpanan perlu dibuat tahan terhadap kegagalan perangkat keras dan fleksibel tentang alokasi volume. RAID maupun LVM masing-masing dapat menjawab kedua persyaratan; ini adalah di mana kita menggunakan keduanya pada saat yang sama -- atau lebih tepatnya, satu di atas yang lain. Skema yang memiliki semua tapi belum menjadi standar karena RAID dan LVM telah mencapai kedewasaan untuk memastikan redundansi data pertama dengan pengelompokan disk dalam sejumlah kecil larik RAID besar, dan menggunakan larik RAID ini sebagai volume fisik LVM; partisi logis kemudian dapat ditoreh dari LV-LV ini untuk sistem berkas. Nilai jual konfigurasi ini adalah bahwa ketika sebuah disk gagal, hanya sejumlah kecil larik RAID yang perlu dibangun kembali, sehingga membatasi waktu yang dihabiskan oleh administrator untuk pemulihan.
+			</para>
+			 <para>
+				Mari kita ambil contoh konkret: departemen hubungan masyarakat di Falcot Corp memerlukan sebuah workstation untuk penyuntingan video, tapi anggaran departemen tidak mengizinkan berinvestasi di perangkat keras kelas tinggi secara lengkap. Keputusan dibuat untuk mendukung perangkat keras yang khusus untuk sifat grafis pekerjaan (monitor dan kartu video), dan tetap dengan perangkat keras generik untuk penyimpanan. Namun, seperti sudah dikenal luas, video digital memiliki beberapa persyaratan khusus untuk penyimpanan: banyaknya data yang akan disimpan besar, dan kecepatan pembacaan dan penulisan data ini penting untuk keseluruhan kinerja sistem (lebih daripada waktu akses rata-rata, misalnya). Batasan-batasn ini perlu dipenuhi dengan perangkat keras generik, dalam kasus ini dua hard disk drive SATA 300 GB; data sistem juga harus dibuat tahan terhadap kegagalan perangkat keras, termasuk sebagian data pengguna. Klip video yang diedit memang harus aman, tetapi tidak perlu bergegas menyunting video yang tertunda, karena mereka masih berada pada kaset.
+			</para>
+			 <para>
+				RAID-1 dan LVM digabungkan untuk memenuhi batasan-batasan ini. Disk dilekatkan pada dua pengendali SATA yang berbeda untuk mengoptimalkan akses paralel dan mengurangi risiko kegagalan simultan, dan karena itu mereka muncul sebagai <filename>sda</filename> dan <filename>sdc</filename>. Mereka dipartisi secara identik mengikut skema sebagai berikut:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>fdisk -l /dev/sda</userinput>
+<computeroutput>
+Disk /dev/sda: 300 GB, 300090728448 bytes, 586114704 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x00039a9f
+
+Device    Boot     Start       End   Sectors Size Id Type
+/dev/sda1 *         2048   1992060   1990012 1.0G fd Linux raid autodetect
+/dev/sda2        1992061   3984120   1992059 1.0G 82 Linux swap / Solaris
+/dev/sda3        4000185 586099395 582099210 298G 5  Extended
+/dev/sda5        4000185 203977305 199977120 102G fd Linux raid autodetect
+/dev/sda6      203977306 403970490 199993184 102G fd Linux raid autodetect
+/dev/sda7      403970491 586099395 182128904  93G 8e Linux LVM</computeroutput></screen>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						Partisi pertama dari kedua disk (sekitar 1 GB) dirakit menjadi volume RAID-1, <filename>md0</filename>. Cermin ini langsung digunakan untuk menyimpan sistem berkas root.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Partisi <filename>sda2</filename> dan <filename>sdc2</filename> digunakan sebagai partisi swap, menyediakan total 2 GB ruang swap. Dengan RAM 1 GB, workstation memiliki sejumlah memori tersedia yang nyaman.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<filename>sda5</filename> dan partisi <filename>sdc5</filename>, serta <filename>sda6</filename> dan <filename>sdc6</filename>, dirakit menjadi dua volume RAID-1 baru masing-masing sekitar 100 GB, <filename>md1</filename> dan <filename>md2 </filename>. Kedua cermin diinisialisasi sebagai volume fisik untuk LVM, dan ditugaskan ke grup volume <filename>vg_raid</filename>. Maka VG ini berisi ruang sekitar 200 GB yang aman.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Sisa partisi, <filename>sda7</filename> dan <filename>sdc7</filename>, langsung digunakan sebagai volume fisik, dan ditugaskan untuk VG lain yang disebut <filename>vg_bulk</filename>, yang karena itu menjadi ruang sekitar 200 GB.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Setelah VGs dibuat, mereka dapat dipartisi dengan cara yang sangat fleksibel. Harus tetap diingat bahwa LV yang dibuat dalam <filename>vg_raid</filename> akan dipertahankan bahkan jika salah satu disk gagal, yang tidak akan terjadi untuk LV dibuat di <filename>vg_bulk</filename>; di sisi lain, yang kedua akan dialokasikan secara paralel pada kedua disk, yang memungkinkan kecepatan baca atau tulis yang lebih tinggi untuk berkas-berkas besar.
+			</para>
+			 <para>
+				Karena itu kita akan membuat LV <filename>lv_usr</filename>, <filename>lv_var</filename>, dan <filename>lv_home</filename> pada <filename>vg_raid</filename>, untuk mewadahi sistem berkas yang cocok; LV besar lain, <filename>lv_movies</filename>, akan digunakan untuk mewadahi film-film versi definitif setelah penyuntingan. VG lain akan dibagi menjadi <filename>lv_rushes</filename>yang besar, untuk data langsung dari kamera video digital, dan <filename>lv_tmp</filename> untuk berkas-berkas sementara. Lokasi area kerja adalah pilihan yang kurang mudah untuk dibuat: sementara kinerja yang baik diperlukan untuk volume itu, apakah layak risiko kehilangan pekerjaan jika disk gagal selama sesi menyunting? Tergantung pada jawaban untuk pertanyaan itu, LV yang relevan akan dibuat pada satu VG atau yang lain.
+			</para>
+			 <para>
+				Kita sekarang memiliki sebagian redundansi untuk data penting dan banyak fleksibilitas dalam bagaimana ruang yang tersedia dibagi atas berbagai aplikasi. Bila perangkat lunak baru diinstal kemudian (untuk mengedit klip audio, misalnya), LV yang mewadahi <filename>/usr/</filename> dapat diperbesar dengan mudah.
+			</para>
+			 <sidebar> <title><emphasis>CATATAN</emphasis> Mengapa tiga volume RAID-1?</title>
+			 <para>
+				Kita bisa saja menyiapkan hanya satu volume RAID-1, untuk melayani sebagai volume fisik bagi <filename>vg_raid</filename>. Lalu mengapa membuat tiga?
+			</para>
+			 <para>
+				Alasan untuk pemecahan pertama (<filename>md0</filename> vs yang lain) adalah tentang keamanan data: data yang ditulis ke kedua elemen dari cermin RAID 1 persis sama, dan karena itu mungkin untuk melewati lapisan RAID dan mengait salah satu disk secara langsung. Dalam kasus bug kernel, misalnya, atau jika metadata LVM menjadi rusak, itu masih mungkin untuk mem-boot sistem minimal untuk mengakses data penting seperti tata letak disk dalam RAID dan volume LVM; metadata dapat kemudian direkonstruksi dan berkas dapat diakses lagi, sehingga sistem dapat dibawa kembali ke keadaan nominal.
+			</para>
+			 <para>
+				Alasan untuk pemecahan kedua (<filename>md1</filename> vs <filename>md2</filename>) kurang jelas, dan lebih berkaitan dengan mengakui bahwa masa depan itu tidak pasti. Ketika workstation pertama dirakit, persyaratan penyimpanan yang eksak tidak selalu diketahui dengan ketepatan yang sempurna; mereka juga dapat berkembang dari waktu ke waktu. Dalam kasus kita, kita tidak dapat mengetahui terlebih dahulu persyaratan ruang penyimpanan sebenarnya untuk video yang buru-buru dan klip video yang lengkap. Jika satu klip tertentu membutuhkan sejumlah yang sangat besar pekerjaan buru-buru, dan VG yang didedikasikan untuk data redundan masih terisi kurang dari setengah, kita dapat memakai kembali ruang yang tidak dibutuhkan. Kita dapat menghapus salah satu volume fisik, misalnya <filename>md2</filename>, dari <filename>vg_raid</filename> dan menambahkannya ke <filename>vg_bulk</filename> secara langsung (jika durasi operasi yang diharapkan cukup singkat sehingga kita dapat hidup dengan penurunan kinerja sementara), atau membatalkan setup RAID pada <filename>md2</filename> dan mengintegrasikan komponen <filename>sda6</filename> dan <filename>sdc6</filename> ke VG curah (yang tumbuh 200 GB, bukan 100 GB); volume logis <filename>lv_rushes</filename> dapat kemudian ditumbuhkan sesuai kebutuhan.
+			</para>
+			 </sidebar>
+		</section>
+
+	</section>
+	 <section id="sect.virtualization">
+		<title>Virtualisasi</title>
+		 <indexterm>
+			<primary>virtualisasi</primary>
+		</indexterm>
+		 <para>
+			Virtualisasi adalah salah satu kemajuan yang paling besar dalam beberapa tahun terakhir komputasi. Istilah ini mencakup berbagai abstraksi dan teknik simulasi komputer virtual dengan tingkat kebebasan yang variabel pada perangkat keras sebenarnya. Satu server fisik kemudian dapat mewadahi beberapa sistem yang bekerja pada waktu yang sama dan dalam isolasi. Ada banyak aplikasi, dan sering diturunkan dari isolasi ini: lingkungan uji dengan berbagai konfigurasi misalnya, atau pemisahan layanan kebeberapa mesin virtual untuk keamanan.
+		</para>
+		 <para>
+			Ada beberapa solusi virtualisasi, masing-masing dengan pro dan kontra. Buku ini akan fokus pada Xen, LXC, dan KVM, tetapi implementasi penting lain adalah sebagai berikut:
+		</para>
+		 <indexterm>
+			<primary><emphasis>VMWare</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>Bochs</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>QEMU</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>VirtualBox</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>KVM</emphasis></primary>
+		</indexterm>
+		 <indexterm>
+			<primary><emphasis>LXC</emphasis></primary>
+		</indexterm>
+		 <itemizedlist>
+			<listitem>
+				<para>
+					QEMU adalah emulator perangkat lunak untuk sebuah komputer lengkap; kinerja jauh dari kecepatan yang bisa dicapai ketika berjalan secara native, tetapi ini memungkinkan menjalankan sistem operasi tanpa perubahan atau eksperimental pada perangkat keras yang diemulasi. Hal ini juga memungkinkan mengemulasi arsitektur perangkat keras yang berbeda: sebagai contoh, sistem <emphasis>amd64</emphasis> bisa mengemulasi komputer <emphasis>arm</emphasis>. QEMU adalah perangkat lunak bebas. <ulink type="block" url="http://www.qemu.org/" />
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					Bochs adalah mesin virtual lain yang bebas, tapi itu hanya mengemulasi arsitektur x86 (i386 dan amd64).
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					VMWare adalah sebuah mesin virtual yang proprietari; salah satu yang tertua di luar sana, itu juga satu dari yang paling dikenal. Itu bekerja dengan prinsip yang serupa dengan QEMU. VMWare menyediakan fitur-fitur tingkat lanjut seperti membuat snapshot dari sebuah mesin virtual yang sedang berjalan. <ulink type="block" url="http://www.vmware.com/" />
+				</para>
+
+			</listitem>
+			 <listitem>
+				<para>
+					VirtualBox is a virtual machine that is mostly free software (some extra components are available under a proprietary license). Unfortunately it is in Debian's “contrib” section because it includes some precompiled files that cannot be rebuilt without a proprietary compiler and it currently only resides in Debian Unstable as Oracle's policies make it impossible to keep it secure in a Debian stable release (see <ulink url="https://bugs.debian.org/794466">#794466</ulink>). While younger than VMWare and restricted to the i386 and amd64 architectures, it still includes some snapshotting and other interesting features. <ulink type="block" url="http://www.virtualbox.org/" />
+				</para>
+
+			</listitem>
+
+		</itemizedlist>
+		 <section id="sect.xen">
+			<title>Xen</title>
+			 <para>
+				Xen <indexterm><primary>Xen</primary></indexterm> adalah sebuah solusi "paravirtualization". Ini memperkenalkan lapisan abstraksi tipis, dinamai "hypervisor", antara perangkat keras dan sistem di atas; ini bekerja sebagai wasit yang mengendalikan akses ke perangkat keras dari mesin-mesin virtual. Namun, itu hanya menangani beberapa instruksi, sisanya dieksekusi secara langsung oleh perangkat keras atas nama sistem. Keuntungan utama adalah kinerja tidak menurun, dan sistem berjalan mendekati kecepatan native; kekurangannya adalah kernal dari sistem operasi yang ingin dipakai pada suatu hypervisor Xen perlu diadaptasi untuk berjalan pada Xen.
+			</para>
+			 <para>
+				Let's spend some time on terms. The hypervisor is the lowest layer, that runs directly on the hardware, even below the kernel. This hypervisor can split the rest of the software across several <emphasis>domains</emphasis>, which can be seen as so many virtual machines. One of these domains (the first one that gets started) is known as <emphasis>dom0</emphasis>, and has a special role, since only this domain can control the hypervisor and the execution of other domains. These other domains are known as <emphasis>domU</emphasis>. In other words, and from a user point of view, the <emphasis>dom0</emphasis> matches the “host” of other virtualization systems, while a <emphasis>domU</emphasis> can be seen as a “guest”.
+			</para>
+			 <sidebar> <title><emphasis>KULTUR</emphasis> Xen dan berbagai versi Linux</title>
+			 <para>
+				Xen was initially developed as a set of patches that lived out of the official tree, and not integrated to the Linux kernel. At the same time, several upcoming virtualization systems (including KVM) required some generic virtualization-related functions to facilitate their integration, and the Linux kernel gained this set of functions (known as the <emphasis>paravirt_ops</emphasis> or <emphasis>pv_ops</emphasis> interface). Since the Xen patches were duplicating some of the functionality of this interface, they couldn't be accepted officially.
+			</para>
+			 <para>
+				XenSource, perusahaan di belakang Xen, karena itu harus mem-port Xen ke kerangka baru ini, sehingga patch Xen bisa digabungkan ke kernel Linux resmi. Itu berarti banyak penulisan ulang kode, dan meskipun Xensource segera memiliki versi yang bekerja berdasarkan antarmuka paravirt_ops, patch hanya digabungkan ke dalam kernel resmi secara progresif. Penggabungan selesai pada Linux 3.0. <ulink type="block" url="http://wiki.xenproject.org/wiki/XenParavirtOps" />
+			</para>
+			 <para>
+				Karena <emphasis role="distribution">Jessie</emphasis> didasarkan pada kernel Linux versi 3.16, paket-paket standar <emphasis role="pkg">linux-image-686-pae</emphasis> dan <emphasis role="pkg">linux-image-amd64</emphasis> menyertakan kode yang diperlukan, dan patch spesifik distribusi yang diperlukan untuk <emphasis role="distribution">Squeeze</emphasis> dan versi sebelumnya dari Debian tidak diperlukan lagi. <ulink type="block" url="http://wiki.xenproject.org/wiki/Xen_Kernel_Feature_Matrix" />
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>CATATAN</emphasis> Arsitektur yang kompatibel dengan Xen</title>
+			 <para>
+				Xen saat ini hanya tersedia untuk arsitektur i386, amd64, arm64, dan armhf.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>BUDAYA</emphasis> Xen dan kernel bukan Linux</title>
+			 <para>
+				Xen memerlukan modifikasi ke semua sistem operasi yang ingin berjalan di atasnya; tidak semua kernel memiliki tingkat kedewasaan yang sama dalam hal ini. Banyak yang fungsional-penuh, baik sebagai dom0 maupun domU: Linux 3.0 dan setelahnya, NetBSD 4.0 dan setelahnya, dan OpenSolaris. Yang lain hanya bekerja sebagai domU. Anda dapat memeriksa status dari setiap sistem operasi di wiki Xen: <ulink type="block" url="http://wiki.xenproject.org/wiki/Dom0_Kernels_for_Xen" /> <ulink type="block" url="http://wiki.xenproject.org/wiki/DomU_Support_for_Xen" />
+			</para>
+			 <para>
+				Namun, jika Xen dapat bergantung pada fungsi perangkat keras yang didedikasikan untuk virtualisasi (yang hanya hadir dalam prosesor yang lebih baru), bahkan sistem operasi tanpa modifikasi dapat berjalan sebagai domU (termasuk Windows).
+			</para>
+			 </sidebar> <para>
+				Menggunakan Xen di bawah Debian memerlukan tiga komponen:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						Hypervisor itu sendiri. Tergantung dari perangkat keras yang tersedia, paket yang tepat adalah <emphasis role="pkg">xen-hypervisor-4.4-amd64</emphasis>, <emphasis role="pkg">xen-hypervisor-4.4-armhf</emphasis>, atau <emphasis role="pkg">xen-hypervisor-4.4-arm64</emphasis>.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Sebuah kernel yang berjalan pada hypervisor itu. Setiap kernel yang lebih baru daripada 3.0 bisa, termasuk versi 3.16 yang ada dalam <emphasis role="distribution">Jessie</emphasis>.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Arsitektur i386 juga memerlukan pustaka standar dengan patch yang sesuai yang mengambil keuntungan dari Xen; ini ada dalam paket <emphasis role="pkg">libc6-xen</emphasis>.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				In order to avoid the hassle of selecting these components by hand, a few convenience packages (such as <emphasis role="pkg">xen-linux-system-amd64</emphasis>) have been made available; they all pull in a known-good combination of the appropriate hypervisor and kernel packages. The hypervisor also brings <emphasis role="pkg">xen-utils-4.4</emphasis>, which contains tools to control the hypervisor from the dom0. This in turn brings the appropriate standard library. During the installation of all that, configuration scripts also create a new entry in the Grub bootloader menu, so as to start the chosen kernel in a Xen dom0. Note however that this entry is not usually set to be the first one in the list, and will therefore not be selected by default. If that is not the desired behavior, the following commands will change it:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>mv /etc/grub.d/20_linux_xen /etc/grub.d/09_linux_xen
+</userinput><computeroutput># </computeroutput><userinput>update-grub
+</userinput></screen>
+			 <para>
+				Setelah prapersyaratan ini diinstal, langkah berikutnya adalah untuk menguji perilaku dom0 sendiri; ini melibatkan reboot hypervisor dan kernel Xen. Sistem harus boot dalam cara standar, dengan beberapa tambahan pesan pada konsol selama langkah inisialisasi awal.
+			</para>
+			 <para>
+				Now is the time to actually install useful systems on the domU systems, using the tools from <emphasis role="pkg">xen-tools</emphasis>. This package provides the <command>xen-create-image</command> command, which largely automates the task. The only mandatory parameter is <literal>--hostname</literal>, giving a name to the domU; other options are important, but they can be stored in the <filename>/etc/xen-tools/xen-tools.conf</filename> configuration file, and their absence from the command line doesn't trigger an error. It is therefore important to either check the contents of this file before creating images, or to use extra parameters in the <command>xen-create-image</command> invocation. Important parameters of note include the following:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						<literal>--memory</literal>, untuk menentukan banyaknya RAM yang didedikasikan bagi sistem yang baru dibuat;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>--size</literal> dan <literal>--swap</literal>, untuk menentukan ukuran "disk virtual" yang tersedia bagi domU;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>--debootstrap</literal>, to cause the new system to be installed with <command>debootstrap</command>; in that case, the <literal>--dist</literal> option will also most often be used (with a distribution name such as <emphasis role="distribution">jessie</emphasis>).
+					</para>
+					 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> Memasang sistem bukan-Debian di domU</title>
+					 <para>
+						In case of a non-Linux system, care should be taken to define the kernel the domU must use, using the <literal>--kernel</literal> option.
+					</para>
+					 </sidebar>
+				</listitem>
+				 <listitem>
+					<para>
+						<literal>--dhcp</literal> states that the domU's network configuration should be obtained by DHCP while <literal>--ip</literal> allows defining a static IP address.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Lastly, a storage method must be chosen for the images to be created (those that will be seen as hard disk drives from the domU). The simplest method, corresponding to the <literal>--dir</literal> option, is to create one file on the dom0 for each device the domU should be provided. For systems using LVM, the alternative is to use the <literal>--lvm</literal> option, followed by the name of a volume group; <command>xen-create-image</command> will then create a new logical volume inside that group, and this logical volume will be made available to the domU as a hard disk drive.
+					</para>
+					 <sidebar> <title><emphasis>CATATAN</emphasis> Penyimpanan di domU</title>
+					 <para>
+						Seluruh hard disk dapat juga diekspor ke domU, maupun partisi, larik RAID, atau volume logis LVM yang sudah ada sebelumnya. Namun operasi ini tidak diotomatiskan oleh <command>xen-create-image</command>, jadi perlu menyunting berkas konfigurasi image Xen setelah penciptaan awal dengan <command>xen-create-image</command>.
+					</para>
+					 </sidebar>
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				Setelah pilihan ini dibuat, kita dapat membuat image untuk domU Xen kita nanti:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>xen-create-image --hostname testxen --dhcp --dir /srv/testxen --size=2G --dist=jessie --role=udev</userinput>
+<computeroutput>
+[...]
+General Information
+--------------------
+Hostname       :  testxen
+Distribution   :  jessie
+Mirror         :  http://ftp.debian.org/debian/
+Partitions     :  swap            128Mb (swap)
+                  /               2G    (ext3)
+Image type     :  sparse
+Memory size    :  128Mb
+Kernel path    :  /boot/vmlinuz-3.16.0-4-amd64
+Initrd path    :  /boot/initrd.img-3.16.0-4-amd64
+[...]
+Logfile produced at:
+         /var/log/xen-tools/testxen.log
+
+Installation Summary
+---------------------
+Hostname        :  testxen
+Distribution    :  jessie
+MAC Address     :  00:16:3E:8E:67:5C
+IP-Address(es)  :  dynamic
+RSA Fingerprint :  0a:6e:71:98:95:46:64:ec:80:37:63:18:73:04:dd:2b
+Root Password   :  adaX2jyRHNuWm8BDJS7PcEJ
+</computeroutput></screen>
+			 <para>
+				Kita sekarang memiliki mesin virtual, tetapi saat ini tidak berjalan (dan karena itu hanya menggunakan ruang hard disk dom0). Tentu saja, kita dapat membuat lebih banyak image, mungkin dengan parameter yang berbeda.
+			</para>
+			 <para>
+				Before turning these virtual machines on, we need to define how they'll be accessed. They can of course be considered as isolated machines, only accessed through their system console, but this rarely matches the usage pattern. Most of the time, a domU will be considered as a remote server, and accessed only through a network. However, it would be quite inconvenient to add a network card for each domU; which is why Xen allows creating virtual interfaces, that each domain can see and use in a standard way. Note that these cards, even though they're virtual, will only be useful once connected to a network, even a virtual one. Xen has several network models for that:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						Model yang paling sederhana adalah model <emphasis>bridge</emphasis>; semua kartu jaringan eth0 (baik dalam dom0 dan sistem domU) bersikap seolah-olah mereka secara langsung terhubung ke switch Ethernet.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Kemudian ada model <emphasis>routing</emphasis>, dimana dom0 berperilaku sebagai router yang berdiri di antara sistem domU dan jaringan eksternal (fisik).
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						Akhirnya, dalam model <emphasis>NAT</emphasis>, dom0 lagi-lagi berada di antara sistem domU dan sisa jaringan, tetapi sistem domU tidak langsung dapat diakses dari luar, dan lalu lintas berjalan melalui perjemahan alamat jaringan pada dom0.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 <para>
+				These three networking nodes involve a number of interfaces with unusual names, such as <filename>vif*</filename>, <filename>veth*</filename>, <filename>peth*</filename> and <filename>xenbr0</filename>. The Xen hypervisor arranges them in whichever layout has been defined, under the control of the user-space tools. Since the NAT and routing models are only adapted to particular cases, we will only address the bridging model.
+			</para>
+			 <para>
+				The standard configuration of the Xen packages does not change the system-wide network configuration. However, the <command>xend</command> daemon is configured to integrate virtual network interfaces into any pre-existing network bridge (with <filename>xenbr0</filename> taking precedence if several such bridges exist). We must therefore set up a bridge in <filename>/etc/network/interfaces</filename> (which requires installing the <emphasis role="pkg">bridge-utils</emphasis> package, which is why the <emphasis role="pkg">xen-utils-4.4</emphasis> package recommends it) to replace the existing eth0 entry:
+			</para>
+			 
+<programlisting>auto xenbr0
+iface xenbr0 inet dhcp
+    bridge_ports eth0
+    bridge_maxwait 0
+</programlisting>
+			 <para>
+				Setelah reboot untuk memastikan bridge secara otomatis dibuat, kita sekarang dapat memulai domU dengan perkakas kendali Xen, khususnya perintah <command>xl</command>. Perintah ini memungkinkan manipulasi yang berbeda pada domain, termasuk menampilkan daftar mereka dan, memulai/menghentikan mereka.
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>xl list</userinput>
+<computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
+Domain-0                                     0   463     1     r-----      9.8
+# </computeroutput><userinput>xl create /etc/xen/testxen.cfg</userinput>
+<computeroutput>Parsing config from /etc/xen/testxen.cfg
+# </computeroutput><userinput>xl list</userinput>
+<computeroutput>Name                                        ID   Mem VCPUs      State   Time(s)
+Domain-0                                     0   366     1     r-----     11.4
+testxen                                      1   128     1     -b----      1.1</computeroutput></screen>
+			 <sidebar> <title><emphasis>PERKAKAS</emphasis> Pilihan kumpulan perkakas untuk mengelola VM Xen</title>
+			 <indexterm>
+				<primary><command>xm</command></primary>
+			</indexterm>
+			 <indexterm>
+				<primary><command>xe</command></primary>
+			</indexterm>
+			 <para>
+				In Debian 7 and older releases, <command>xm</command> was the reference command line tool to use to manage Xen virtual machines. It has now been replaced by <command>xl</command> which is mostly backwards compatible. But those are not the only available tools: <command>virsh</command> of libvirt and <command>xe</command> of XenServer's XAPI (commercial offering of Xen) are alternative tools.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>HATI-HATI</emphasis> Hanya satu domU per image!</title>
+			 <para>
+				While it is of course possible to have several domU systems running in parallel, they will all need to use their own image, since each domU is made to believe it runs on its own hardware (apart from the small slice of the kernel that talks to the hypervisor). In particular, it isn't possible for two domU systems running simultaneously to share storage space. If the domU systems are not run at the same time, it is however quite possible to reuse a single swap partition, or the partition hosting the <filename>/home</filename> filesystem.
+			</para>
+			 </sidebar> <para>
+				Note that the <filename>testxen</filename> domU uses real memory taken from the RAM that would otherwise be available to the dom0, not simulated memory. Care should therefore be taken, when building a server meant to host Xen instances, to provision the physical RAM accordingly.
+			</para>
+			 <para>
+				Voilà! Our virtual machine is starting up. We can access it in one of two modes. The usual way is to connect to it “remotely” through the network, as we would connect to a real machine; this will usually require setting up either a DHCP server or some DNS configuration. The other way, which may be the only way if the network configuration was incorrect, is to use the <filename>hvc0</filename> console, with the <command>xl console</command> command:
+			</para>
+			 
+<screen><computeroutput># </computeroutput><userinput>xl console testxen</userinput>
+<computeroutput>[...]
+
+Debian GNU/Linux 8 testxen hvc0
+
+testxen login: </computeroutput></screen>
+			 <para>
+				One can then open a session, just like one would do if sitting at the virtual machine's keyboard. Detaching from this console is achieved through the <keycombo action="simul"><keycap>Control</keycap> <keycap>]</keycap></keycombo> key combination.
+			</para>
+			 <sidebar> <title><emphasis>TIPS</emphasis> Mendapatkan konsol langsung</title>
+			 <para>
+				Sometimes one wishes to start a domU system and get to its console straight away; this is why the <command>xl create</command> command takes a <literal>-c</literal> switch. Starting a domU with this switch will display all the messages as the system boots.
+			</para>
+			 </sidebar> <sidebar> <title><emphasis>ALAT</emphasis> OpenXenManager</title>
+			 <para>
+				OpenXenManager (dalam paket <emphasis role="pkg"> openxenmanager</emphasis>) adalah antarmuka grafis yang memungkinkan manajemen domain Xen jarak jauh melalui API Xen. Itu dapat mengontrol domain Xen dari jauh. Itu menyediakan sebagian besar fitur dari perintah <command>xl</command>.
+			</para>
+			 </sidebar> <para>
+				Once the domU is up, it can be used just like any other server (since it is a GNU/Linux system after all). However, its virtual machine status allows some extra features. For instance, a domU can be temporarily paused then resumed, with the <command>xl pause</command> and <command>xl unpause</command> commands. Note that even though a paused domU does not use any processor power, its allocated memory is still in use. It may be interesting to consider the <command>xl save</command> and <command>xl restore</command> commands: saving a domU frees the resources that were previously used by this domU, including RAM. When restored (or unpaused, for that matter), a domU doesn't even notice anything beyond the passage of time. If a domU was running when the dom0 is shut down, the packaged scripts automatically save the domU, and restore it on the next boot. This will of course involve the standard inconvenience incurred when hibernating a laptop computer, for instance; in particular, if the domU is suspended for too long, network connections may expire. Note also that Xen is so far incompatible with a large part of ACPI power management, which precludes suspending the host (dom0) system.
+			</para>
+			 <sidebar> <title><emphasis>DOKUMENTASI</emphasis> Opsi-opsi <command>xl</command></title>
+			 <para>
+				Most of the <command>xl</command> subcommands expect one or more arguments, often a domU name. These arguments are well described in the <citerefentry><refentrytitle>xl</refentrytitle>
+				 <manvolnum>1</manvolnum></citerefentry> manual page.
+			</para>
+			 </sidebar> <para>
+				Halting or rebooting a domU can be done either from within the domU (with the <command>shutdown</command> command) or from the dom0, with <command>xl shutdown</command> or <command>xl reboot</command>.
+			</para>
+			 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> Xen tingkat lanjut</title>
+			 <para>
+				Xen has many more features than we can describe in these few paragraphs. In particular, the system is very dynamic, and many parameters for one domain (such as the amount of allocated memory, the visible hard drives, the behavior of the task scheduler, and so on) can be adjusted even when that domain is running. A domU can even be migrated across servers without being shut down, and without losing its network connections! For all these advanced aspects, the primary source of information is the official Xen documentation. <ulink type="block" url="http://www.xen.org/support/documentation.html" />
+			</para>
+			 </sidebar>
+		</section>
+		 <section id="sect.lxc">
+			<title>LXC</title>
+			 <indexterm>
+				<primary>LXC</primary>
+			</indexterm>
+			 <para>
+				Even though it is used to build “virtual machines”, LXC is not, strictly speaking, a virtualization system, but a system to isolate groups of processes from each other even though they all run on the same host. It takes advantage of a set of recent evolutions in the Linux kernel, collectively known as <emphasis>control groups</emphasis>, by which different sets of processes called “groups” have different views of certain aspects of the overall system. Most notable among these aspects are the process identifiers, the network configuration, and the mount points. Such a group of isolated processes will not have any access to the other processes in the system, and its accesses to the filesystem can be restricted to a specific subset. It can also have its own network interface and routing table, and it may be configured to only see a subset of the available devices present on the system.
+			</para>
+			 <para>
+				These features can be combined to isolate a whole process family starting from the <command>init</command> process, and the resulting set looks very much like a virtual machine. The official name for such a setup is a “container” (hence the LXC moniker: <emphasis>LinuX Containers</emphasis>), but a rather important difference with “real” virtual machines such as provided by Xen or KVM is that there's no second kernel; the container uses the very same kernel as the host system. This has both pros and cons: advantages include excellent performance due to the total lack of overhead, and the fact that the kernel has a global vision of all the processes running on the system, so the scheduling can be more efficient than it would be if two independent kernels were to schedule different task sets. Chief among the inconveniences is the impossibility to run a different kernel in a container (whether a different Linux version or a different operating system altogether).
+			</para>
+			 <sidebar> <title><emphasis>CATATAN</emphasis> Batas isolasi LXC</title>
+			 <para>
+				Container LXC tidak memberikan tingkat isolasi yang dicapai oleh emulator atau virtualizers yang lebih berat. Khususnya:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						karena kernel dipakai bersama antara sistem host dan container, proses yang dibatasi ke container masih dapat mengakses pesan kernel, yang dapat menyebabkan kebocoran informasi jika pesan dipancarkan oleh kontainer;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						untuk alasan yang sama, jika sebuah container terganggu dan kerentanan kernel dieksploitasi, container lain mungkin akan terpengaruh juga;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						on the filesystem, the kernel checks permissions according to the numerical identifiers for users and groups; these identifiers may designate different users and groups depending on the container, which should be kept in mind if writable parts of the filesystem are shared among containers.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+			 </sidebar> <para>
+				Since we are dealing with isolation and not plain virtualization, setting up LXC containers is more complex than just running debian-installer on a virtual machine. We will describe a few prerequisites, then go on to the network configuration; we will then be able to actually create the system to be run in the container.
+			</para>
+			 <section>
+				<title>Langkah Pendahuluan</title>
+				 <para>
+					Paket <emphasis role="pkg">lxc</emphasis> berisi alat-alat yang diperlukan untuk menjalankan LXC, dan karenanya harus dipasang.
+				</para>
+				 <para>
+					LXC also requires the <emphasis>control groups</emphasis> configuration system, which is a virtual filesystem to be mounted on <filename>/sys/fs/cgroup</filename>. Since Debian 8 switched to systemd, which also relies on control groups, this is now done automatically at boot time without further configuration.
+				</para>
+
+			</section>
+			 <section id="sect.lxc.network">
+				<title>Konfigurasi Jaringan</title>
+				 <para>
+					The goal of installing LXC is to set up virtual machines; while we could of course keep them isolated from the network, and only communicate with them via the filesystem, most use cases involve giving at least minimal network access to the containers. In the typical case, each container will get a virtual network interface, connected to the real network through a bridge. This virtual interface can be plugged either directly onto the host's physical network interface (in which case the container is directly on the network), or onto another virtual interface defined on the host (and the host can then filter or route traffic). In both cases, the <emphasis role="pkg">bridge-utils</emphasis> package will be required.
+				</para>
+				 <para>
+					The simple case is just a matter of editing <filename>/etc/network/interfaces</filename>, moving the configuration for the physical interface (for instance <literal>eth0</literal>) to a bridge interface (usually <literal>br0</literal>), and configuring the link between them. For instance, if the network interface configuration file initially contains entries such as the following:
+				</para>
+				 
+<programlisting>auto eth0
+iface eth0 inet dhcp</programlisting>
+				 <para>
+					Mereka harus dinonaktifkan dan diganti dengan yang berikut:
+				</para>
+				 
+<programlisting>#auto eth0
+#iface eth0 inet dhcp
+
+auto br0
+iface br0 inet dhcp
+  bridge-ports eth0</programlisting>
+				 <para>
+					The effect of this configuration will be similar to what would be obtained if the containers were machines plugged into the same physical network as the host. The “bridge” configuration manages the transit of Ethernet frames between all the bridged interfaces, which includes the physical <literal>eth0</literal> as well as the interfaces defined for the containers.
+				</para>
+				 <para>
+					In cases where this configuration cannot be used (for instance if no public IP addresses can be assigned to the containers), a virtual <emphasis>tap</emphasis> interface will be created and connected to the bridge. The equivalent network topology then becomes that of a host with a second network card plugged into a separate switch, with the containers also plugged into that switch. The host must then act as a gateway for the containers if they are meant to communicate with the outside world.
+				</para>
+				 <para>
+					Selain <emphasis role="pkg">bridge-utils</emphasis>, konfigurasi "kaya" ini memerlukan paket <emphasis role="pkg">vde2</emphasis>; berkas <filename>/etc/network/interfaces</filename> kemudian menjadi:
+				</para>
+				 
+<programlisting># Interface eth0 is unchanged
+auto eth0
+iface eth0 inet dhcp
+
+# Virtual interface 
+auto tap0
+iface tap0 inet manual
+  vde2-switch -t tap0
+
+# Bridge for containers
+auto br0
+iface br0 inet static
+  bridge-ports tap0
+  address 10.0.0.1
+  netmask 255.255.255.0</programlisting>
+				 <para>
+					Jaringan kemudian dapat diatur baik secara statis dalam container, atau secara dinamis dengan server DHCP yang berjalan pada host. Server DHCP tersebut perlu dikonfigurasi untuk menjawab pertanyaan pada antarmuka <literal>br0</literal>.
+				</para>
+
+			</section>
+			 <section>
+				<title>Menyiapkan Sistem</title>
+				 <para>
+					Let us now set up the filesystem to be used by the container. Since this “virtual machine” will not run directly on the hardware, some tweaks are required when compared to a standard filesystem, especially as far as the kernel, devices and consoles are concerned. Fortunately, the <emphasis role="pkg">lxc</emphasis> includes scripts that mostly automate this configuration. For instance, the following commands (which require the <emphasis role="pkg">debootstrap</emphasis> and <emphasis role="pkg">rsync</emphasis> packages) will install a Debian container:
+				</para>
+				 
+<screen><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-create -n testlxc -t debian
+</userinput><computeroutput>debootstrap is /usr/sbin/debootstrap
+Checking cache download in /var/cache/lxc/debian/rootfs-jessie-amd64 ... 
+Downloading debian minimal ...
+I: Retrieving Release 
+I: Retrieving Release.gpg 
+[...]
+Download complete.
+Copying rootfs to /var/lib/lxc/testlxc/rootfs...
+[...]
+Root password is 'sSiKhMzI', please change !
+root@mirwiz:~# </computeroutput>
+</screen>
+				 <para>
+					Note that the filesystem is initially created in <filename>/var/cache/lxc</filename>, then moved to its destination directory. This allows creating identical containers much more quickly, since only copying is then required.
+				</para>
+				 <para>
+					Note that the debian template creation script accepts an <option>--arch</option> option to specify the architecture of the system to be installed and a <option>--release</option> option if you want to install something else than the current stable release of Debian. You can also set the <literal>MIRROR</literal> environment variable to point to a local Debian mirror.
+				</para>
+				 <para>
+					The newly-created filesystem now contains a minimal Debian system, and by default the container has no network interface (besides the loopback one). Since this is not really wanted, we will edit the container's configuration file (<filename>/var/lib/lxc/testlxc/config</filename>) and add a few <literal>lxc.network.*</literal> entries:
+				</para>
+				 
+<programlisting>lxc.network.type = veth
+lxc.network.flags = up
+lxc.network.link = br0
+lxc.network.hwaddr = 4a:49:43:49:79:20</programlisting>
+				 <para>
+					These entries mean, respectively, that a virtual interface will be created in the container; that it will automatically be brought up when said container is started; that it will automatically be connected to the <literal>br0</literal> bridge on the host; and that its MAC address will be as specified. Should this last entry be missing or disabled, a random MAC address will be generated.
+				</para>
+				 <para>
+					Another useful entry in that file is the setting of the hostname:
+				</para>
+				 
+<programlisting>lxc.utsname = testlxc</programlisting>
+
+			</section>
+			 <section>
+				<title>Memulai Container</title>
+				 <para>
+					Now that our virtual machine image is ready, let's start the container:
+				</para>
+				 
+<screen role="scale" width="94"><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-start --daemon --name=testlxc
+</userinput><computeroutput>root@mirwiz:~# </computeroutput><userinput>lxc-console -n testlxc
+</userinput><computeroutput>Debian GNU/Linux 8 testlxc tty1
+
+testlxc login: </computeroutput><userinput>root</userinput><computeroutput>
+Password: 
+Linux testlxc 3.16.0-4-amd64 #1 SMP Debian 3.16.7-ckt11-1 (2015-05-24) x86_64
+
+The programs included with the Debian GNU/Linux system are free software;
+the exact distribution terms for each program are described in the
+individual files in /usr/share/doc/*/copyright.
+
+Debian GNU/Linux comes with ABSOLUTELY NO WARRANTY, to the extent
+permitted by applicable law.
+root@testlxc:~# </computeroutput><userinput>ps auxwf</userinput>
+<computeroutput>USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+root         1  0.0  0.2  28164  4432 ?        Ss   17:33   0:00 /sbin/init
+root        20  0.0  0.1  32960  3160 ?        Ss   17:33   0:00 /lib/systemd/systemd-journald
+root        82  0.0  0.3  55164  5456 ?        Ss   17:34   0:00 /usr/sbin/sshd -D
+root        87  0.0  0.1  12656  1924 tty2     Ss+  17:34   0:00 /sbin/agetty --noclear tty2 linux
+root        88  0.0  0.1  12656  1764 tty3     Ss+  17:34   0:00 /sbin/agetty --noclear tty3 linux
+root        89  0.0  0.1  12656  1908 tty4     Ss+  17:34   0:00 /sbin/agetty --noclear tty4 linux
+root        90  0.0  0.1  63300  2944 tty1     Ss   17:34   0:00 /bin/login --     
+root       117  0.0  0.2  21828  3668 tty1     S    17:35   0:00  \_ -bash
+root       268  0.0  0.1  19088  2572 tty1     R+   17:39   0:00      \_ ps auxfw
+root        91  0.0  0.1  14228  2356 console  Ss+  17:34   0:00 /sbin/agetty --noclear --keep-baud console 115200 38400 9600 vt102
+root       197  0.0  0.4  25384  7640 ?        Ss   17:38   0:00 dhclient -v -pf /run/dhclient.eth0.pid -lf /var/lib/dhcp/dhclient.e
+root       266  0.0  0.1  12656  1840 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty5 linux
+root       267  0.0  0.1  12656  1928 ?        Ss   17:39   0:00 /sbin/agetty --noclear tty6 linux
+root@testlxc:~# </computeroutput></screen>
+				 <para>
+					We are now in the container; our access to the processes is restricted to only those started from the container itself, and our access to the filesystem is similarly restricted to the dedicated subset of the full filesystem (<filename>/var/lib/lxc/testlxc/rootfs</filename>). We can exit the console with <keycombo action="simul"><keycap>Control</keycap> <keycap>a</keycap></keycombo> <keycombo><keycap>q</keycap></keycombo>.
+				</para>
+				 <para>
+					Note that we ran the container as a background process, thanks to the <option>--daemon</option> option of <command>lxc-start</command>. We can interrupt the container with a command such as <command>lxc-stop --name=testlxc</command>.
+				</para>
+				 <para>
+					The <emphasis role="pkg">lxc</emphasis> package contains an initialization script that can automatically start one or several containers when the host boots (it relies on <command>lxc-autostart</command> which starts containers whose <literal>lxc.start.auto</literal> option is set to 1). Finer-grained control of the startup order is possible with <literal>lxc.start.order</literal> and <literal>lxc.group</literal>: by default, the initialization script first starts containers which are part of the <literal>onboot</literal> group and then the containers which are not part of any group. In both cases, the order within a group is defined by the <literal>lxc.start.order</literal> option.
+				</para>
+				 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> Virtualisasi masal</title>
+				 <para>
+					Since LXC is a very lightweight isolation system, it can be particularly adapted to massive hosting of virtual servers. The network configuration will probably be a bit more advanced than what we described above, but the “rich” configuration using <literal>tap</literal> and <literal>veth</literal> interfaces should be enough in many cases.
+				</para>
+				 <para>
+					It may also make sense to share part of the filesystem, such as the <filename>/usr</filename> and <filename>/lib</filename> subtrees, so as to avoid duplicating the software that may need to be common to several containers. This will usually be achieved with <literal>lxc.mount.entry</literal> entries in the containers configuration file. An interesting side-effect is that the processes will then use less physical memory, since the kernel is able to detect that the programs are shared. The marginal cost of one extra container can then be reduced to the disk space dedicated to its specific data, and a few extra processes that the kernel must schedule and manage.
+				</para>
+				 <para>
+					We haven't described all the available options, of course; more comprehensive information can be obtained from the <citerefentry> <refentrytitle>lxc</refentrytitle>
+					 <manvolnum>7</manvolnum> </citerefentry> and <citerefentry> <refentrytitle>lxc.container.conf</refentrytitle>
+					 <manvolnum>5</manvolnum></citerefentry> manual pages and the ones they reference.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+		 <section>
+			<title>Virtualisasi dengan KVM</title>
+			 <indexterm>
+				<primary>KVM</primary>
+			</indexterm>
+			 <para>
+				KVM, kependekan dari <emphasis>Kernel-based Virtual Machine</emphasis>, adalah pertama dan terutama sebuah modul kernel yang menyediakan sebagian besar infrastruktur yang dapat digunakan oleh virtualizer, tetapi bukan virtualizer itu sendiri. Kontrol aktual untuk virtualisasi ditangani oleh sebuah aplikasi berbasis QEMU. Jangan khawatir jika bagian ini menyebutkan perintah <command>qemu-*</command>: itu masih tentang KVM.
+			</para>
+			 <para>
+				Tidak seperti sistem virtualisasi lain, KVM digabungkan ke kernel Linux sejak dari awal. Para pengembangnya memilih untuk mengambil keuntungan dari set instruksi prosesor yang didedikasikan untuk virtualisasi (Intel-VT dan AMD-V), yang menjaga KVM ringan, elegan, dan tidak boros sumber daya. Kekurangannya, tentu saja, adalah bahwa KVM tidak bekerja pada sebarang komputer tetapi hanya pada yang memiliki prosesor yang sesuai. Untuk komputer berbasis x86, Anda dapat memastikan bahwa Anda memiliki prosesor seperti itu dengan mencari "vmx" atau "svm" di bendera CPU yang tercantum dalam <filename>/proc/cpuinfo</filename>.
+			</para>
+			 <para>
+				Dengan Red Hat secara aktif mendukung perkembangannya, KVM kurang lebih telah menjadi acuan untuk virtualisasi Linux.
+			</para>
+			 <section>
+				<title>Langkah Pendahuluan</title>
+				 <indexterm>
+					<primary><command>virt-install</command></primary>
+				</indexterm>
+				 <para>
+					Tidak seperti alat-alat semacam VirtualBox, KVM itu sendiri tidak menyertakan antarmuka pengguna untuk membuat dan mengelola mesin virtual. Paket <emphasis role="pkg">qemu-kvm</emphasis> hanya menyediakan program yang bisa memulai sebuah mesin virtual, serta skrip inisialisasi yang memuat modul-modul kernel yang sesuai.
+				</para>
+				 <indexterm>
+					<primary>libvirt</primary>
+				</indexterm>
+				 <indexterm>
+					<primary><emphasis role="pkg">virt-manager</emphasis></primary>
+				</indexterm>
+				 <para>
+					Untungnya, Red Hat juga menyediakan satu set alat lain untuk mengatasi masalah itu, dengan mengembangkan perpustakaan <emphasis>libvirt</emphasis> dan alat-alat <emphasis>manajer mesin virtual</emphasis> terkait. Libvirt memungkinkan mengelola mesin virtual dalam cara yang seragam, secara independen dari sistem virtualisasi yang terlibat di balik layar (saat ini mendukung QEMU, KVM, Xen, LXC, OpenVZ, VirtualBox, VMWare, dan UML). <command>virtual-manager</command> adalah sebuah antarmuka grafis yang menggunakan libvirt untuk membuat dan mengelola mesin virtual.
+				</para>
+				 <indexterm>
+					<primary><emphasis role="pkg">virtinst</emphasis></primary>
+				</indexterm>
+				 <para>
+					Kita pertama kali menginstal paket-paket yang diperlukan, dengan <command>apt-get install qemu-kvm libvirt-bin virtinst virt-manager virt-viewer</command>. <emphasis role="pkg">libvirt-bin</emphasis> menyediakan daemon <command>libvirtd</command>, yang memungkinkan manajemen mesin virtual (berpotensi remote) yang berjalan pada host, dan memulai VM yang diperlukan ketika host boot. Selain itu, paket ini menyediakan alat bantu baris perintah <command>virsh</command>, yang memungkinkan mengendalikan mesin-mesin yang dikelola oleh <command>libvirtd</command>.
+				</para>
+				 <para>
+					Paket <emphasis role="pkg">virtinst</emphasis> menyediakan <command>virt-install</command>, yang memungkinkan membuat mesin virtual dari baris perintah. Terakhir, <emphasis role="pkg">virt-viewer</emphasis> memungkinkan mengakses sebuah konsol grafis VM.
+				</para>
+
+			</section>
+			 <section>
+				<title>Konfigurasi Jaringan</title>
+				 <para>
+					Sama seperti Xen dan LXC, konfigurasi jaringan yang paling sering melibatkan bridge yang mengelompokkan antarmuka jaringan mesin virtual (lihat <xref linkend="sect.lxc.network" />).
+				</para>
+				 <para>
+					Sebagai alternatif, dan dalam konfigurasi default yang disediakan oleh KVM, mesin virtual diberikan alamat pribadi (di kisaran 192.168.122.0/24), dan NAT diatur sehingga VM dapat mengakses jaringan luar.
+				</para>
+				 <para>
+					Sisa bagian ini mengasumsikan bahwa host memiliki antarmuka fisik <literal>eth0</literal> dan bridge <literal>br0</literal>, dan bahwa yang terdahulu terhubung ke yang terakhir.
+				</para>
+
+			</section>
+			 <section>
+				<title>Instalasi dengan <command>virt-install</command></title>
+				 <indexterm>
+					<primary><command>virt-install</command></primary>
+				</indexterm>
+				 <para>
+					Membuat mesin virtual sangat mirip dengan menginstal sistem normal, kecuali bahwa karakteristik mesin virtual dijelaskan dalam baris perintah yang tampaknya tak berujung.
+				</para>
+				 <para>
+					Secara praktis, ini berarti kita akan menggunakan installer Debian, dengan mem-boot mesin virtual pada drive DVD-ROM virtual yang memetakan ke image DVD Debian yang tersimpan di sistem host. VM akan mengekspor konsol grafisnya lewat protokol VNC (lihat <xref linkend="sect.remote-desktops" /> untuk rincian), yang akan memungkinkan kita untuk mengontrol proses instalasi.
+				</para>
+				 <para>
+					Pertama kita perlu memberitahu libvirtd di mana tempat menyimpan image disk, kecuali bila lokasi default (<filename>/var/lib/libvirt/images/</filename>) baik-baik saja.
+				</para>
+				 
+<screen><computeroutput>root@mirwiz:~# </computeroutput><userinput>mkdir /srv/kvm</userinput>
+<computeroutput>root@mirwiz:~# </computeroutput><userinput>virsh pool-create-as srv-kvm dir --target /srv/kvm</userinput>
+<computeroutput>Pool srv-kvm created
+
+root@mirwiz:~# </computeroutput></screen>
+				 <sidebar> <title><emphasis>TIPS</emphasis> Menambahkan pengguna Anda ke grup libvirt</title>
+				 <para>
+					Semua contoh dalam bagian ini mengasumsikan bahwa Anda menjalankan perintah sebagai root. Secara efektif, jika Anda ingin mengontrol daemon libvirt lokal, Anda perlu untuk menjadi root atau menjadi anggota dari kelompok <literal>libvirt</literal> (yang tidak terjadi secara default). Jadi jika Anda ingin menghindari menggunakan hak root terlalu sering, Anda dapat menambahkan diri Anda sendiri ke grup <literal>libvirt</literal> dan menjalankan berbagai perintah di bawah identitas pengguna Anda.
+				</para>
+				 </sidebar> <para>
+					Mari kita sekarang mulai proses instalasi untuk mesin virtual, dan melihat lebih dekat pada pilihan-pilihan <command>virt-install</command> yang paling penting. Perintah ini mendaftarkan mesin virtual dan parameternya di libvirtd, kemudian memulainya sehingga instalasi dapat dilanjutkan.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virt-install --connect qemu:///system  <co id="virtinst.connect"></co>
+               --virt-type kvm           <co id="virtinst.type"></co>
+               --name testkvm            <co id="virtinst.name"></co>
+               --ram 1024                <co id="virtinst.ram"></co>
+               --disk /srv/kvm/testkvm.qcow,format=qcow2,size=10 <co id="virtinst.disk"></co>
+               --cdrom /srv/isos/debian-8.1.0-amd64-netinst.iso  <co id="virtinst.cdrom"></co>
+               --network bridge=br0      <co id="virtinst.network"></co>
+               --vnc                     <co id="virtinst.vnc"></co>
+               --os-type linux           <co id="virtinst.os"></co>
+               --os-variant debianwheezy
+</userinput><computeroutput>
+Starting install...
+Allocating 'testkvm.qcow'             |  10 GB     00:00
+Creating domain...                    |    0 B     00:00
+Guest installation complete... restarting guest.
+</computeroutput></screen>
+				 <calloutlist>
+					<callout arearefs="virtinst.connect">
+						<para>
+							Opsi <literal>--connect</literal> menyatakan"hypervisor" yang akan dipakai. Bentuknya adalah URL yang memuat sistem virtualisasi (<literal>xen://</literal>, <literal>qemu://</literal>, <literal>lxc://</literal>, <literal>openvz://</literal>, <literal>vbox://</literal>, dan seterusnya) dan mesin yang harus menjadi host VM (ini dapat dibiarkan kosong dalam kasus hosting lokal). Selain itu, dan dalam kasus QEMU/KVM, setiap pengguna dapat mengelola mesin virtual yang bekerja dengan izin terbatas, dan path URL memungkinkan membedakan mesin "sistem" (<literal>/system</literal>) dari (<literal>/session</literal>) yang lain.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.type">
+						<para>
+							Karena KVM dikelola dengan cara yang sama seperti QEMU, <literal>--virt-type kvm</literal> mengizinkan menyatakan penggunaan KVM meskipun URL terlihat seperti QEMU.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.name">
+						<para>
+							Opsi <literal>--name</literal> mendefinisikan nama (unik) untuk mesin virtual.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.ram">
+						<para>
+							Opsi <literal>--ram</literal> memungkinkan menentukan banyaknya RAM (dalam MB) yang dialokasikan untuk mesin virtual.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.disk">
+						<para>
+							<literal>--disk</literal> menyatakan lokasi berkas image yang mewakili hard disk mesin virtual; berkas itu dibuat, kecuali sudah ada, dengan ukuran (dalam GB) yang ditentukan oleh parameter <literal>size</literal>. Parameter <literal>format</literal> memungkinkan memilih antara beberapa cara untuk menyimpan berkas image. Format default (<literal>raw</literal>) adalah satu berkas persis cocok dengan ukuran dan isi disk. Kita memilih format yang lebih maju di sini, yang khusus untuk QEMU dan memungkinkan mulai dengan berkas kecil yang hanya tumbuh ketika mesin virtual mulai benar-benar menggunakan ruang.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.cdrom">
+						<para>
+							Opsi <literal>--cdrom</literal> digunakan untuk menunjukkan di mana menemukan disk optik yang digunakan untuk instalasi. Path bisa berupa path lokal untuk berkas ISO, URL tempat berkas dapat diperoleh, atau perangkat berkas dari drive CD-ROM fisik (yaitu <literal>/dev/cdrom</literal>).
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.network">
+						<para>
+							<literal>--network</literal> menyatakan bagaimana kartu jaringan virtual mengintegrasi dalam konfigurasi jaringan host. Perilaku default (yang secara eksplisit kita paksa dalam contoh kita) adalah mengintegrasikannya ke dalam jaringan bridge apapun yang sudah ada. Jika bridge seperti itu tidak ada, mesin virtual hanya akan mencapai jaringan fisik melalui NAT, sehingga mendapat alamat di subnet pribadi (192.168.122.0/24).
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.vnc">
+						<para>
+							<literal>--vnc</literal> menyatakan bahwa konsol grafis harus dibuat tersedia menggunakan VNC. Perilaku default untuk server VNC terkait adalah hanya mendengarkan pada antarmuka lokal; jika klien VNC akan dijalankan pada host yang berbeda, membuat koneksi akan memerlukan pengaturan tunnel SSH (lihat <xref linkend="sect.ssh-port-forwarding" />). Sebagai alternatif, <literal>--vnclisten=0.0.0.0</literal> dapat digunakan sehingga server VNC dapat diakses dari semua antarmuka; perhatikan bahwa jika Anda melakukannya, Anda benar-benar harus merancang firewall Anda sesuai dengan itu.
+						</para>
+
+					</callout>
+					 <callout arearefs="virtinst.os">
+						<para>
+							Pilihan <literal>--os-type</literal> dan <literal>--os-variant</literal> memungkinkan mengoptimalkan beberapa parameter mesin virtual, berdasarkan fitur yang dikenal dari sistem operasi yang disebutkan di sana.
+						</para>
+
+					</callout>
+
+				</calloutlist>
+				 <para>
+					Pada titik ini, mesin virtual sedang berjalan, dan kita perlu terhubung ke konsol grafis untuk melanjutkan dengan proses instalasi. Jika operasi sebelumnya berjalan dari lingkungan desktop grafis, hubungan ini harus secara otomatis dimulai. Jika tidak, atau jika kita beroperasi jarak jauh, <command>virt-viewer</command> dapat dijalankan dari setiap lingkungan grafis untuk membuka konsol grafis (perhatikan bahwa kata sandi root dari host remote diminta dua kali karena operasi memerlukan 2 koneksi SSH):
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>virt-viewer --connect qemu+ssh://root@<replaceable>server</replaceable>/system testkvm
+</userinput><computeroutput>root@server's password: 
+root@server's password: </computeroutput></screen>
+				 <para>
+					Ketika proses instalasi berakhir, mesin virtual dijalankan ulang, sekarang siap untuk digunakan.
+				</para>
+
+			</section>
+			 <section>
+				<title>Mengelola Mesin dengan <command>virsh</command></title>
+				 <indexterm>
+					<primary><command>virsh</command></primary>
+				</indexterm>
+				 <para>
+					Sekarang setelah instalasi selesai, mari kita lihat bagaimana menangani mesin virtual yang tersedia. Hal pertama yang dicoba adalah untuk bertanya ke <command>libvirtd</command> daftar mesin virtual yang dikelolanya:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system list --all
+ Id Name                 State
+----------------------------------
+  - testkvm              shut off
+</userinput></screen>
+				 <para>
+					Mari kita mulai jalankan mesin virtual uji kita:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system start testkvm
+</userinput><computeroutput>Domain testkvm started</computeroutput></screen>
+				 <para>
+					Kita sekarang bisa mendapatkan petunjuk koneksi untuk konsol grafis (tampilan VNC yang dikembalikan dapat diberikan sebagai parameter ke <command>vncviewer</command>):
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>virsh -c qemu:///system vncdisplay testkvm
+</userinput><computeroutput>:0</computeroutput></screen>
+				 <para>
+					Sub perintah <command>virsh</command> lain yang tersedia meliputi:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							<literal>reboot</literal> untuk memulai jalankan lagi sebuah mesin virtual;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>shutdown</literal> untuk memicu suatu shutdown yang bersih;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>destroy</literal>, untuk menghentikannya secara brutal;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>suspend</literal> untuk mengistirahatkannya;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>resume</literal> untuk melanjutkan dari istirahat;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>autostart</literal> untuk mengaktifkan (atau menonaktifkan, dengan pilihan <literal>--disable</literal>) memulai mesin virtual secara otomatis ketika host mulai;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							<literal>undefine</literal> untuk menghapus semua jejak mesin virtual dari <command>libvirtd</command>.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Semua sub perintah ini mengambil sebuah identifier mesin virtual sebagai parameter.
+				</para>
+
+			</section>
+			 <section>
+				<title>Instalasi sistem berbasis RPM dalam Debian dengan yum</title>
+				 <para>
+					Jika mesin virtual dimaksudkan untuk menjalankan Debian (atau salah satu turunannya), sistem dapat diinisialisasi dengan <command>debootstrap</command>, seperti dijelaskan di atas. Tetapi jika mesin virtual diinstal dengan sistem berbasis RPM (seperti Fedora, CentOS, atau Scientific Linux), penyiapan akan perlu dilakukan menggunakan utilitas <command>yum</command> (tersedia dalam paket dengan nama yang sama).
+				</para>
+				 <para>
+					Prosedur tersebut perlu memakai <command>rpm</command> untuk mengekstrak set awal berkas, termasuk terutama berkas konfigurasi <command>yum</command>, dan kemudian memanggil <command>yum</command> untuk mengekstrak kumpulan paket sisanya. Tapi karena kita memanggil <command>yum</command> dari luar chroot, kita perlu membuat beberapa perubahan sementara. Dalam contoh di bawah ini, chroot target adalah <filename>/srv/centos</filename>.
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>rootdir="/srv/centos"
+</userinput><computeroutput># </computeroutput><userinput>mkdir -p "$rootdir" /etc/rpm
+</userinput><computeroutput># </computeroutput><userinput>echo "%_dbpath /var/lib/rpm" &gt; /etc/rpm/macros.dbpath
+</userinput><computeroutput># </computeroutput><userinput>wget http://mirror.centos.org/centos/7/os/x86_64/Packages/centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm
+</userinput><computeroutput># </computeroutput><userinput>rpm --nodeps --root "$rootdir" -i centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm
+</userinput><computeroutput>rpm: RPM should not be used directly install RPM packages, use Alien instead!
+rpm: However assuming you know what you are doing...
+warning: centos-release-7-1.1503.el7.centos.2.8.x86_64.rpm: Header V3 RSA/SHA256 Signature, key ID f4a80eb5: NOKEY
+# </computeroutput><userinput>sed -i -e "s,gpgkey=file:///etc/,gpgkey=file://${rootdir}/etc/,g" $rootdir/etc/yum.repos.d/*.repo
+</userinput><computeroutput># </computeroutput><userinput>yum --assumeyes --installroot $rootdir groupinstall core
+</userinput><computeroutput>[...]
+# </computeroutput><userinput>sed -i -e "s,gpgkey=file://${rootdir}/etc/,gpgkey=file:///etc/,g" $rootdir/etc/yum.repos.d/*.repo
+</userinput></screen>
+
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.automated-installation">
+		<title>Pemasangan Otomatis</title>
+		 <indexterm>
+			<primary>penggelaran</primary>
+		</indexterm>
+		 <indexterm>
+			<primary>instalasi</primary>
+			<secondary>instalasi terotomasi</secondary>
+		</indexterm>
+		 <para>
+			Administrator Falcot Corp, seperti banyak administrator dari layanan TI yang besar, membutuhkan alat untuk menginstal (atau menginstal ulang) dengan cepat, dan secara otomatis jika mungkin, mesin-mesin baru mereka.
+		</para>
+		 <para>
+			Persyaratan ini dapat dipenuhi oleh berbagai macam solusi. Di satu sisi, alat-alat generik seperti SystemImager menangani hal ini dengan menciptakan sebuah image yang didasarkan pada mesin templat, kemudian menyebarkan image ke sistem target; di ujung lain spektrum, penginstal Debian standar dapat diprabibit dengan berkas konfigurasi yang memberikan jawaban-jawaban untuk pertanyaan-pertanyaan yang ditanyakan selama proses instalasi. Sebagai semacam jalan tengah, alat hibrida seperti FAI (<emphasis>Fully Automatic Installer</emphasis>) menginstal mesin menggunakan sistem pemaketan, tetapi juga menggunakan infrastrukturnya sendiri untuk tugas-tugas yang lebih spesifik bagi penyebaran masif (seperti memulai, mempartisi, mengkonfigurasi, dan seterusnya).
+		</para>
+		 <para>
+			Masing-masing solusi ini memiliki pro dan kontra: SystemImager bekerja secara independen dari sebarang sistem pemaketan tertentu, yang memungkinkan untuk mengatur set besar mesin menggunakan beberapa distro Linux yang berbeda. Ini juga mencakup sebuah sistem pemutakhiran yang tidak memerlukan instalasi ulang, tapi sistem pemutakhiran ini hanya dapat diandalkan jika mesin tidak diubah secara independen; dengan kata lain, pengguna harus tidak memperbarui perangkat lunak mereka sendiri, atau menginstal perangkat lunak lainnya. Demikian pula, pembaruan keamanan harus tidak otomatis, karena mereka harus pergi melalui image referensi terpusat yang dikelola oleh SystemImager. Solusi ini juga memerlukan mesin target yang homogen, bila tidak banyak image yang berbeda mesti disimpan dan dikelola (image i386 tidak akan cocok pada mesin powerpc, dan sebagainya).
+		</para>
+		 <para>
+			Di sisi lain, instalasi otomatis menggunakan debian-installer dapat beradaptasi dengan spesifik dari setiap mesin: installer akan mengambil paket kernel dan perangkat lunak yang sesuai dari repositori yang relevan, mendeteksi perangkat keras yang tersedia, mempartisi seluruh hard disk untuk mengambil keuntungan dari semua ruang yang tersedia, menginstal sistem Debian yang sesuai, dan mengatur sebuah bootloader yang sesuai. Namun, pemasang standar hanya akan menginstal versi Debian standar, dengan sistem dasar dan satu set "tugas" yang terprapilih; ini menghalang menginstal sistem tertentu dengan aplikasi yang tidak dipaketkan. Memenuhi kebutuhan khusus ini memerlukan penyesuaian installer... Untungnya, installer sangat modular, dan ada alat untuk mengotomasi kebanyakan pekerjaan yang diperlukan untuk kustomisasi ini, yang paling penting simple-CDD (CDD adalah singkatan <emphasis>Custom Debian Derivative</emphasis>). Bahkan solusi simple-CDD, bagaimanapun, hanya menangani instalasi awal; hal ini biasanya tidak masalah karena perangkat APT memungkinkan penggelaran pemutakhiran yang efisien nanti.
+		</para>
+		 <para>
+			Kita hanya akan memberikan gambaran kasar FAI, dan melewati SystemImager sama sekali (yang tidak ada lagi di Debian), agar fokus lebih bersungguh-sungguh pada debian-installer dan simple-CDD, yang lebih menarik dalam konteks hanya Debian.
+		</para>
+		 <section id="sect.fai">
+			<title>Fully Automatic Installer (FAI, Pemasang Otomatis Sepenuhnya)</title>
+			 <indexterm>
+				<primary>Fully Automatic Installer (FAI)</primary>
+			</indexterm>
+			 <para>
+				<foreignphrase>Fully Automatic Installer</foreignphrase> mungkin adalah sistem penggelaran otomatis tertua untuk Debian, yang menjelaskan statusnya sebagai referensi; tetapi sifatnya yang sangat fleksibel hanya mengkompensasi kompleksitas yang melibatkannya.
+			</para>
+			 <para>
+				FAI memerlukan sebuah sistem server untuk menyimpan informasi penggelaran dan memungkinkan mesin target untuk boot dari jaringan. Server ini memerlukan paket <emphasis role="pkg">fai-server</emphasis> (atau <emphasis role="pkg">fai-quickstart</emphasis>, yang juga membawa elemen-elemen yang diperlukan untuk sebuah konfigurasi standar).
+			</para>
+			 <para>
+				FAI menggunakan pendekatan khusus untuk menentukan berbagai profil yang dapat diinstal. Bukan hanya menduplikasi sebuah referensi instalasi, FAI adalah sebuah installer penuh, sepenuhnya dikonfigurasi melalui serangkaian berkas dan skrip yang disimpan di server; lokasi default <filename>/srv/fai/config/</filename> tidak secara otomatis diciptakan, sehingga administrator perlu menciptakannya beserta berkas-berkas yang relevan. Hampir setiap kali, berkas-berkas ini akan disesuaikan dari berkas contoh yang tersedia dalam dokumentasi untuk paket <emphasis role="pkg">fai-doc</emphasis>, khususnya direktori <filename>/usr/share/doc/fai-doc/examples/simple/</filename>.
+			</para>
+			 <para>
+				Sekali profil didefinisikan, perintah <command>fai-setup</command> menghasilkan unsur-unsur yang diperlukan untuk memulai instalasi FAI; ini sebagian besar berarti mempersiapkan atau memperbarui sistem minimal (NFS-root) yang digunakan selama instalasi. Satu alternatif adalah untuk menghasilkan CD boot tededikasi dengan <command>fai-cd</command>.
+			</para>
+			 <para>
+				Menciptakan semua berkas konfigurasi ini memerlukan pemahaman tentang cara FAI bekerja. Suatu proses instalasi biasanya tersusun dari langkah-langkah berikut:
+			</para>
+			 <itemizedlist>
+				<listitem>
+					<para>
+						mengambil sebuah kernel dari jaringan, dan mem-boot itu;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						mengait sistem berkas root dari NFS;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						mengeksekusi <command>/usr/sbin/fai</command>, yang mengontrol seluruh proses (langkah berikutnya karena itu diprakarsai oleh skrip ini);
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						menyalin ruang konfigurasi dari server ke <filename>/fai/</filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						menjalankan <command>fai-class</command>. Skrip <filename>/fai/class/[0-9][0-9]*</filename> dijalankan sesuai gilirannya, dan mengembalikan nama "kelas" yang berlaku untuk mesin yang diinstal; informasi ini akan berfungsi sebagai dasar untuk langkah-langkah berikut. Hal ini memungkinkan untuk beberapa fleksibilitas dalam mendefinisikan layanan yang akan diinstal dan dikonfigurasi.
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						mengambil sejumlah variabel konfigurasi, tergantung pada kelas yang relevan;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						mempartisi disk dan memformat partisi, berdasarkan informasi yang diberikan dalam <filename>/fai/disk_config/<replaceable>kelas</replaceable></filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						mengaitkan partisi yang disebut;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						memasang sistem dasar;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						memprabibit basis data Debconf dengan <command>fai-debconf</command>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						mengambil daftar paket yang tersedia untuk APT;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						menginstal paket-paket yang tercantum dalam <filename>/fai/package_config/<replaceable>kelas</replaceable></filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						menjalankan skrip pasca konfigurasi, <filename>/fai/scripts/<replaceable>kelas</replaceable>/[0-9][0-9]*</filename>;
+					</para>
+
+				</listitem>
+				 <listitem>
+					<para>
+						merekam log instalasi, melepas kait partisi, dan reboot.
+					</para>
+
+				</listitem>
+
+			</itemizedlist>
+
+		</section>
+		 <section id="sect.d-i-preseeding">
+			<title>Memprabibit Debian-Installer</title>
+			 <indexterm>
+				<primary>preseed</primary>
+			</indexterm>
+			 <indexterm>
+				<primary>prakonfigurasi</primary>
+			</indexterm>
+			 <para>
+				Pada akhir hari, alat yang terbaik untuk menginstal sistem Debian secara logis mestinya adalah Debian installer yang resmi. Inilah mengapa, sejak dari awal, debian-installer telah dirancang untuk penggunaan otomatis, mengambil keuntungan dari infrastruktur yang disediakan oleh <emphasis role="pkg">debconf</emphasis>. Yang kedua memungkinkan, di satu sisi, untuk mengurangi jumlah pertanyaan yang diajukan (pertanyaan-pertanyaan tersembunyi akan menggunakan jawaban default yang disediakan), dan di sisi lain, untuk menyediakan jawaban default secara terpisah, sehingga instalasi bisa non-interaktif. Fitur terakhir ini dikenal sebagai <emphasis>preseeding</emphasis>.
+			</para>
+			 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> Debconf dengan suatu basis data terpusat</title>
+			 <indexterm>
+				<primary><command>debconf</command></primary>
+			</indexterm>
+			 <para>
+				Preseeding allows to provide a set of answers to Debconf questions at installation time, but these answers are static and do not evolve as time passes. Since already-installed machines may need upgrading, and new answers may become required, the <filename>/etc/debconf.conf</filename> configuration file can be set up so that Debconf uses external data sources (such as an LDAP directory server, or a remote file accessed via NFS or Samba). Several external data sources can be defined at the same time, and they complement one another. The local database is still used (for read-write access), but the remote databases are usually restricted to reading. The <citerefentry><refentrytitle>debconf.conf</refentrytitle>
+				 <manvolnum>5</manvolnum></citerefentry> manual page describes all the possibilities in detail (you need the <emphasis role="pkg">debconf-doc</emphasis> package).
+			</para>
+			 </sidebar> <section>
+				<title>Menggunakan Berkas Preseed</title>
+				 <para>
+					Ada beberapa tempat dimana installer bisa memperoleh berkas preseed:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							in the initrd used to start the machine; in this case, preseeding happens at the very beginning of the installation, and all questions can be avoided. The file just needs to be called <filename>preseed.cfg</filename> and stored in the initrd root.
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							on the boot media (CD or USB key); preseeding then happens as soon as the media is mounted, which means right after the questions about language and keyboard layout. The <literal>preseed/file</literal> boot parameter can be used to indicate the location of the preseeding file (for instance, <filename>/cdrom/preseed.cfg</filename> when the installation is done off a CD-ROM, or <filename>/hd-media/preseed.cfg</filename> in the USB-key case).
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							from the network; preseeding then only happens after the network is (automatically) configured; the relevant boot parameter is then <literal>preseed/url=http://<replaceable>server</replaceable>/preseed.cfg</literal>.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					At a glance, including the preseeding file in the initrd looks like the most interesting solution; however, it is rarely used in practice, because generating an installer initrd is rather complex. The other two solutions are much more common, especially since boot parameters provide another way to preseed the answers to the first questions of the installation process. The usual way to save the bother of typing these boot parameters by hand at each installation is to save them into the configuration for <command>isolinux</command> (in the CD-ROM case) or <command>syslinux</command> (USB key).
+				</para>
+
+			</section>
+			 <section>
+				<title>Membuat Berkas Preseed</title>
+				 <para>
+					A preseed file is a plain text file, where each line contains the answer to one Debconf question. A line is split across four fields separated by whitespace (spaces or tabs), as in, for instance, <literal>d-i mirror/suite string stable</literal>:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							the first field is the “owner” of the question; “d-i” is used for questions relevant to the installer, but it can also be a package name for questions coming from Debian packages;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							ruas kedua adalah pengidentifikasi untuk pertanyaan;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							ketiga, jenis pertanyaan;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							ke empat dan ruas terakhir memuat nilai untuk jawaban. Perhatikan bahwa ini harus dipisahkan dari ruas ke tiga dengan satu spasi; jika ada lebih dari satu, karakter spasi yang mengikuti dianggap bagian dari nilai.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					The simplest way to write a preseed file is to install a system by hand. Then <command>debconf-get-selections --installer</command> will provide the answers concerning the installer. Answers about other packages can be obtained with <command>debconf-get-selections</command>. However, a cleaner solution is to write the preseed file by hand, starting from an example and the reference documentation: with such an approach, only questions where the default answer needs to be overridden can be preseeded; using the <literal>priority=critical</literal> boot parameter will instruct Debconf to only ask critical questions, and use the default answer for others.
+				</para>
+				 <sidebar> <title><emphasis>DOKUMENTASI</emphasis> Lampiran panduan instalasi</title>
+				 <para>
+					The installation guide, available online, includes detailed documentation on the use of a preseed file in an appendix. It also includes a detailed and commented sample file, which can serve as a base for local customizations. <ulink type="block" url="https://www.debian.org/releases/jessie/amd64/apb.html" /> <ulink type="block" url="https://www.debian.org/releases/jessie/example-preseed.txt" />
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Membuat sebuah Media Boot Ubahan</title>
+				 <para>
+					Knowing where to store the preseed file is all very well, but the location isn't everything: one must, one way or another, alter the installation boot media to change the boot parameters and add the preseed file.
+				</para>
+				 <section>
+					<title>Boot dari Jaringan</title>
+					 <para>
+						When a computer is booted from the network, the server sending the initialization elements also defines the boot parameters. Thus, the change needs to be made in the PXE configuration for the boot server; more specifically, in its <filename>/tftpboot/pxelinux.cfg/default</filename> configuration file. Setting up network boot is a prerequisite; see the Installation Guide for details. <ulink type="block" url="https://www.debian.org/releases/jessie/amd64/ch04s05.html" />
+					</para>
+
+				</section>
+				 <section>
+					<title>Mempersiapkan sebuah Flash Disk USB yang Dapat Di-boot</title>
+					 <para>
+						Once a bootable key has been prepared (see <xref linkend="sect.install-usb" />), a few extra operations are needed. Assuming the key contents are available under <filename>/media/usbdisk/</filename>:
+					</para>
+					 <itemizedlist>
+						<listitem>
+							<para>
+								salin berkas preseed ke <filename>/media/usbdisk/preseed.cfg</filename>
+							</para>
+
+						</listitem>
+						 <listitem>
+							<para>
+								edit <filename>/media/usbdisk/syslinux.cfg</filename> dan tambahkan parameter boot yang diperlukan (lihat contoh di bawah).
+							</para>
+
+						</listitem>
+
+					</itemizedlist>
+					 <example>
+						<title>berkas syslinux.cfg dan parameter preseed</title>
+						 
+<programlisting>default vmlinuz
+append preseed/file=/hd-media/preseed.cfg locale=en_US.UTF-8 keymap=us language=us country=US vga=788 initrd=initrd.gz  --</programlisting>
+
+					</example>
+
+				</section>
+				 <section>
+					<title>Membuat suatu Image CD-ROM</title>
+					 <indexterm>
+						<primary>debian-cd</primary>
+					</indexterm>
+					 <para>
+						A USB key is a read-write media, so it was easy for us to add a file there and change a few parameters. In the CD-ROM case, the operation is more complex, since we need to regenerate a full ISO image. This task is handled by <emphasis role="pkg">debian-cd</emphasis>, but this tool is rather awkward to use: it needs a local mirror, and it requires an understanding of all the options provided by <filename>/usr/share/debian-cd/CONF.sh</filename>; even then, <command>make</command> must be invoked several times. <filename>/usr/share/debian-cd/README</filename> is therefore a very recommended read.
+					</para>
+					 <para>
+						Having said that, debian-cd always operates in a similar way: an “image” directory with the exact contents of the CD-ROM is generated, then converted to an ISO file with a tool such as <command>genisoimage</command>, <command>mkisofs</command> or <command>xorriso</command>. The image directory is finalized after debian-cd's <command>make image-trees</command> step. At that point, we insert the preseed file into the appropriate directory (usually <filename>$TDIR/$CODENAME/CD1/</filename>, $TDIR and $CODENAME being parameters defined by the <filename>CONF.sh</filename> configuration file). The CD-ROM uses <command>isolinux</command> as its bootloader, and its configuration file must be adapted from what debian-cd generated, in order to insert the required boot parameters (the specific file is <filename>$TDIR/$CODENAME/boot1/isolinux/isolinux.cfg</filename>). Then the “normal” process can be resumed, and we can go on to generating the ISO image with <command>make image CD=1</command> (or <command>make images</command> if several CD-ROMs are generated).
+					</para>
+
+				</section>
+
+			</section>
+
+		</section>
+		 <section id="sect.simple-cdd">
+			<title>Simple-CDD: Solusi Semua-Jadi-Satu</title>
+			 <indexterm>
+				<primary>simple-cdd</primary>
+			</indexterm>
+			 <para>
+				Simply using a preseed file is not enough to fulfill all the requirements that may appear for large deployments. Even though it is possible to execute a few scripts at the end of the normal installation process, the selection of the set of packages to install is still not quite flexible (basically, only “tasks” can be selected); more important, this only allows installing official Debian packages, and precludes locally-generated ones.
+			</para>
+			 <para>
+				On the other hand, debian-cd is able to integrate external packages, and debian-installer can be extended by inserting new steps in the installation process. By combining these capabilities, it should be possible to create a customized installer that fulfills our needs; it should even be able to configure some services after unpacking the required packages. Fortunately, this is not a mere hypothesis, since this is exactly what Simple-CDD (in the <emphasis role="pkg">simple-cdd</emphasis> package) does.
+			</para>
+			 <para>
+				The purpose of Simple-CDD is to allow anyone to easily create a distribution derived from Debian, by selecting a subset of the available packages, preconfiguring them with Debconf, adding specific software, and executing custom scripts at the end of the installation process. This matches the “universal operating system” philosophy, since anyone can adapt it to their own needs.
+			</para>
+			 <section>
+				<title>Menciptakan Profil</title>
+				 <para>
+					Simple-CDD defines “profiles” that match the FAI “classes” concept, and a machine can have several profiles (determined at installation time). A profile is defined by a set of <filename>profiles/<replaceable>profile</replaceable>.*</filename> files:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							berkas <filename>.description</filename> berisi satu baris deskripsi untuk profil;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							berkas <filename>.packages</filename> berisi daftar paket yang akan secara otomatis diinstal jika profil dipilih;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							berkas <filename>.downloads</filename> berisi daftar paket yang akan disimpan ke media instalasi, tetapi tidak harus diinstal;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							berkas <filename>.preseed</filename> berisi informasi preseed untuk pertanyaan Debconf (untuk installer dan atau paket);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							berkas <filename>.postinst</filename> berisi skrip yang akan dijalankan pada akhir proses instalasi;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							terakhir, berkas <filename>.conf</filename> memungkinkan mengubah beberapa parameter Simple-CDD berdasarkan profil yang akan dimasukkan ke dalam image.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					The <literal>default</literal> profile has a particular role, since it is always selected; it contains the bare minimum required for Simple-CDD to work. The only thing that is usually customized in this profile is the <literal>simple-cdd/profiles</literal> preseed parameter: this allows avoiding the question, introduced by Simple-CDD, about what profiles to install.
+				</para>
+				 <para>
+					Perhatikan juga bahwa perintah akan perlu dijalankan dari direktori induk direktori <filename>profil</filename>.
+				</para>
+
+			</section>
+			 <section>
+				<title>Mengkonfigurasi dan Menggunakan <command>build-simple-cdd</command></title>
+				 <indexterm>
+					<primary><command>build-simple-cdd</command></primary>
+				</indexterm>
+				 <sidebar> <title><emphasis>LIHAT SEKILAS</emphasis> Berkas konfigurasi rinci</title>
+				 <para>
+					Contoh berkas konfigurasi Simple-CDD, dengan semua parameter yang mungkin, disertakan dalam paket (<filename>/usr/share/doc/simple-cdd/examples/simple-cdd.conf.detailed.gz</filename>). Ini dapat digunakan sebagai titik awal ketika membuat berkas konfigurasi ubahan.
+				</para>
+				 </sidebar> <para>
+					Simple-CDD requires many parameters to operate fully. They will most often be gathered in a configuration file, which <command>build-simple-cdd</command> can be pointed at with the <literal>--conf</literal> option, but they can also be specified via dedicated parameters given to <command>build-simple-cdd</command>. Here is an overview of how this command behaves, and how its parameters are used:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							parameter <literal>profil</literal> memuat daftar profil yang akan disertakan pada CD-ROM image yang dihasilkan;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							berdasarkan daftar paket yang diperlukan, Simple-CDD mengunduh berkas-berkas yang sesuai dari server yang disebutkan di <literal>server</literal>, dan mengumpulkan mereka menjadi cermin parsial (yang akan kemudian diberikan kepada debian-cd);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							paket ubahan yang dicantumkan dalam <literal>local_packages</literal> juga diintegrasikan ke dalam cermin lokal ini;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							debian-cd kemudian dijalankan (dalam lokasi baku yang dapat dikonfigurasi dengan variabel <literal>debian_cd_dir</literal>), dengan daftar paket untuk diintegrasikan;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							setelah debian-cd menyiapkan direktorinya, Simple-CDD menerapkan beberapa perubahan ke direktori ini:
+						</para>
+						 <itemizedlist>
+							<listitem>
+								<para>
+									files containing the profiles are added in a <filename>simple-cdd</filename> subdirectory (that will end up on the CD-ROM);
+								</para>
+
+							</listitem>
+							 <listitem>
+								<para>
+									other files listed in the <literal>all_extras</literal> parameter are also added;
+								</para>
+
+							</listitem>
+							 <listitem>
+								<para>
+									the boot parameters are adjusted so as to enable the preseeding. Questions concerning language and country can be avoided if the required information is stored in the <literal>language</literal> and <literal>country</literal> variables.
+								</para>
+
+							</listitem>
+
+						</itemizedlist>
+
+					</listitem>
+					 <listitem>
+						<para>
+							debian-cd kemudian menghasilkan image ISO akhir.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+
+			</section>
+			 <section>
+				<title>Generating an ISO Image</title>
+				 <para>
+					Once we have written a configuration file and defined our profiles, the remaining step is to invoke <command>build-simple-cdd --conf simple-cdd.conf</command>. After a few minutes, we get the required image in <filename>images/debian-8.0-amd64-CD-1.iso</filename>.
+				</para>
+
+			</section>
+
+		</section>
+
+	</section>
+	 <section id="sect.monitoring">
+		<title>Pemantauan</title>
+		 <para>
+			Monitoring is a generic term, and the various involved activities have several goals: on the one hand, following usage of the resources provided by a machine allows anticipating saturation and the subsequent required upgrades; on the other hand, alerting the administrator as soon as a service is unavailable or not working properly means that the problems that do happen can be fixed sooner.
+		</para>
+		 <para>
+			<emphasis>Munin</emphasis> covers the first area, by displaying graphical charts for historical values of a number of parameters (used RAM, occupied disk space, processor load, network traffic, Apache/MySQL load, and so on). <emphasis>Nagios</emphasis> covers the second area, by regularly checking that the services are working and available, and sending alerts through the appropriate channels (e-mails, text messages, and so on). Both have a modular design, which makes it easy to create new plug-ins to monitor specific parameters or services.
+		</para>
+		 <sidebar> <title><emphasis>ALTERNATIF</emphasis> Zabbix, alat pemantauan terintegrasi</title>
+		 <indexterm>
+			<primary>Zabbix</primary>
+		</indexterm>
+		 <para>
+			Meskipun Munin dan Nagios sangat umum digunakan, bukan hanya mereka pemain di bidang pemantauan, dan masing-masing hanya menangani setengah dari tugas (menggambar grafik di satu sisi, memperingatkan di yang lain). Zabbix, di sisi lain, mengintegrasikan kedua bagian dari pengawasan; ini juga memiliki antarmuka web untuk mengkonfigurasi aspek yang paling umum. Itu telah berkembang pesat selama beberapa tahun terakhir, dan sekarang dapat dianggap sebagai pesaing yang layak. Di server pemantauan, Anda akan memasang <emphasis role="pkg">zabbix-server-pgsql</emphasis> (atau <emphasis role="pkg">zabbix-server-mysql</emphasis>), mungkin bersama dengan <emphasis role="pkg">zabbix-frontend-php</emphasis> agar memiliki antarmuka web. Pada host yang dipantau Anda akan memasang <emphasis role="pkg">zabbix-agent</emphasis> yang mengumpan data kembali ke server. <ulink type="block" url="http://www.zabbix.com/" />
+		</para>
+		 </sidebar> <sidebar> <title><emphasis>ALTERNATIF</emphasis> Icinga, suatu fork Nagios</title>
+		 <indexterm>
+			<primary>Icinga</primary>
+		</indexterm>
+		 <para>
+			Spurred by divergences in opinions concerning the development model for Nagios (which is controlled by a company), a number of developers forked Nagios and use Icinga as their new name. Icinga is still compatible — so far — with Nagios configurations and plugins, but it also adds extra features. <ulink type="block" url="http://www.icinga.org/" />
+		</para>
+		 </sidebar> <section id="sect.munin">
+			<title>Menyiapkan Munin</title>
+			 <indexterm>
+				<primary>Munin</primary>
+			</indexterm>
+			 <para>
+				The purpose of Munin is to monitor many machines; therefore, it quite naturally uses a client/server architecture. The central host — the grapher — collects data from all the monitored hosts, and generates historical graphs.
+			</para>
+			 <section>
+				<title>Mengkonfigurasi Host yang Akan Dimonitor</title>
+				 <para>
+					The first step is to install the <emphasis role="pkg">munin-node</emphasis> package. The daemon installed by this package listens on port 4949 and sends back the data collected by all the active plugins. Each plugin is a simple program returning a description of the collected data as well as the latest measured value. Plugins are stored in <filename>/usr/share/munin/plugins/</filename>, but only those with a symbolic link in <filename>/etc/munin/plugins/</filename> are really used.
+				</para>
+				 <para>
+					When the package is installed, a set of active plugins is determined based on the available software and the current configuration of the host. However, this autoconfiguration depends on a feature that each plugin must provide, and it is usually a good idea to review and tweak the results by hand. Browsing the <ulink url="http://gallery.munin-monitoring.org">Plugin Gallery</ulink> can be interesting even though not all plugins have comprehensive documentation. However, all plugins are scripts and most are rather simple and well-commented. Browsing <filename>/etc/munin/plugins/</filename> is therefore a good way of getting an idea of what each plugin is about and determining which should be removed. Similarly, enabling an interesting plugin found in <filename>/usr/share/munin/plugins/</filename> is a simple matter of setting up a symbolic link with <command>ln -sf /usr/share/munin/plugins/<replaceable>plugin</replaceable> /etc/munin/plugins/</command>. Note that when a plugin name ends with an underscore “_”, the plugin requires a parameter. This parameter must be stored in the name of the symbolic link; for instance, the “if_” plugin must be enabled with a <filename>if_eth0</filename> symbolic link, and it will monitor network traffic on the eth0 interface.
+				</para>
+				 <para>
+					Setelah semua plugin yang benar diatur, konfigurasi daemon harus diperbarui untuk menggambarkan kontrol akses untuk data yang dikumpulkan. Ini melibatkan direktif <literal>allow</literal> dalam berkas <filename>/etc/munin/munin-node.conf</filename>. Konfigurasi default adalah <literal>allow ^127\.0\.0\.1$</literal>, dan hanya mengizinkan akses ke host lokal. Administrator biasanya akan menambahkan baris serupa yang berisi alamat IP host grapher, kemudian menjalankan ulang daemon dengan <command>service munin-node restart</command>.
+				</para>
+				 <sidebar> <title><emphasis>LEBIH JAUH</emphasis> Membuat plugin lokal</title>
+				 <para>
+					Munin termasuk dokumentasi yang rinci tentang bagaimana plugin seharusnya bersikap, dan bagaimana untuk mengembangkan plugin baru. <ulink type="block" url="http://munin-monitoring.org/wiki/plugins" />
+				</para>
+				 <para>
+					Sebuah plugin terbaik diuji ketika dijalankan dalam kondisi yang sama dengan ketika dipicu oleh munin-node; ini bisa disimulasikan dengan menjalankan <command>munin-run<replaceable>plugin</replaceable></command> sebagai root. Parameter potensial kedua yang diberikan kepada perintah ini (seperti misalnya <literal>config</literal>) dilewatkan ke plugin sebagai parameter.
+				</para>
+				 <para>
+					Ketika sebuah plugin dipanggil dengan parameter <literal>config</literal>, itu harus menguraikan dirinya sendiri dengan mengembalikan sekumpulan ruas:
+				</para>
+				 
+<screen><computeroutput>$ </computeroutput><userinput>sudo munin-run load config
+</userinput><computeroutput>graph_title Load average
+graph_args --base 1000 -l 0
+graph_vlabel load
+graph_scale no
+graph_category system
+load.label load
+graph_info The load average of the machine describes how many processes are in the run-queue (scheduled to run "immediately").
+load.info 5 minute load average
+</computeroutput></screen>
+				 <para>
+					Berbagai ruas yang tersedia dijelaskan oleh "Referensi plugin" yang tersedia sebagai bagian dari "Panduan Munin". <ulink type="block" url="http://munin.readthedocs.org/en/latest/reference/plugin.html" />
+				</para>
+				 <para>
+					Ketika dipanggil tanpa parameter, plugin hanya mengembalikan nilai yang terakhir diukur; misalnya, menjalankan <command>sudo munin-run load</command> bisa mengembalikan <literal>load.value 0.12</literal>.
+				</para>
+				 <para>
+					Akhirnya, ketika sebuah plugin dipanggil dengan parameter <literal>autoconf</literal>, itu harus mengembalikan "yes" (dan status keluar 0) atau "no" (dengan status keluar 1) sesuai dengan apakah plugin harus diaktifkan pada host ini.
+				</para>
+				 </sidebar>
+			</section>
+			 <section>
+				<title>Mengkonfigurasi Pembuat Grafik</title>
+				 <para>
+					The “grapher” is simply the computer that aggregates the data and generates the corresponding graphs. The required software is in the <emphasis role="pkg">munin</emphasis> package. The standard configuration runs <command>munin-cron</command> (once every 5 minutes), which gathers data from all the hosts listed in <filename>/etc/munin/munin.conf</filename> (only the local host is listed by default), saves the historical data in RRD files (<emphasis>Round Robin Database</emphasis>, a file format designed to store data varying in time) stored under <filename>/var/lib/munin/</filename> and generates an HTML page with the graphs in <filename>/var/cache/munin/www/</filename>.
+				</para>
+				 <para>
+					Semua mesin yang dipantau oleh karena itu harus tercantum dalam berkas konfigurasi <filename>/etc/munin/munin.conf</filename>. Setiap mesin didaftar sebagai bagian penuh dengan suatu nama yang cocok dengan mesin dan setidaknya entri <literal>address</literal> yang memberikan alamat IP yang sesuai.
+				</para>
+				 
+<programlisting>[ftp.falcot.com]
+    address 192.168.0.12
+    use_node_name yes</programlisting>
+				 <para>
+					Seksi dapat menjadi lebih kompleks, dan menggambarkan grafik tambahan yang dapat dibuat dengan menggabungkan data yang berasal dari beberapa mesin. Sampel yang disediakan di berkas konfigurasi adalah titik awal yang baik untuk kustomisasi.
+				</para>
+				 <para>
+					Langkah terakhir adalah untuk mempublikasikan halaman yang dihasilkan; ini melibatkan mengkonfigurasi server web sehingga isi <filename>/var/cache/munin/www/</filename> menjadi tersedia di situs web. Akses ke situs web ini akan sangat dibatasi, menggunakan mekanisme otentikasi atau kontrol akses berbasis IP. Lihat <xref linkend="sect.http-web-server" /> untuk rincian yang relevan.
+				</para>
+
+			</section>
+
+		</section>
+		 <section id="sect.nagios">
+			<title>Menyiapkan Nagios</title>
+			 <indexterm>
+				<primary>Nagios</primary>
+			</indexterm>
+			 <para>
+				Tidak seperti Munin, Nagios tidak selalu membutuhkan memasang apapun pada host yang dipantau; sebagian besar waktu, Nagios digunakan untuk memeriksa ketersediaan layanan jaringan. Sebagai contoh, Nagios dapat menyambung ke server web dan memeriksa bahwa suatu halaman web dapat diperoleh dalam selang waktu tertentu.
+			</para>
+			 <section>
+				<title>Memasang</title>
+				 <para>
+					Langkah pertama dalam menyiapkan Nagios adalah untuk memasang paket <emphasis role="pkg">nagios3</emphasis>, <emphasis role="pkg">nagios-plugins</emphasis>, dan <emphasis role="pkg">nagios3-doc</emphasis>. Memasang paket akan mengkonfigurasi antarmuka web dan menciptakan pengguna pertama <literal>nagiosadmin</literal> (yang diminta passwordnya). Menambahkan pengguna lain cukup dengan memasukkan mereka ke dalam berkas <filename>/etc/nagios3/htpasswd.users</filename> dengan perintah <command>htpasswd</command> Apache. Jika tidak ada pertanyaan Debconf yang ditampilkan selama instalasi, <command>dpkg-reconfigure nagios3-cgi</command> dapat digunakan untuk menentukan password <literal>nagiosadmin</literal>.
+				</para>
+				 <para>
+					Mengarahkan peramban ke <literal>http://<replaceable>server</replaceable>/nagios3/</literal> menampilkan antarmuka web; secara khusus, perhatikan bahwa Nagios sudah memantau beberapa parameter mesin tempat dia berjalan. Namun, beberapa fitur interaktif seperti menambahkan komentar ke host tidak bekerja. Fitur ini dinonaktifkan dalam konfigurasi default untuk Nagios, yang sangat ketat untuk alasan keamanan.
+				</para>
+				 <para>
+					Sebagaimana didokumentasikan di <filename>/usr/share/doc/nagios3/README.Debian</filename>, memfungksikan beberapa fitur melibatkan mengedit <filename>/etc/nagios3/nagios.cfg</filename> dan menetapkan parameter <literal>check_external_commands</literal> ke "1". Kita juga perlu untuk mengatur izin menulis direktori yang digunakan oleh Nagios, dengan perintah seperti berikut:
+				</para>
+				 
+<screen><computeroutput># </computeroutput><userinput>service nagios3 stop</userinput>
+<computeroutput>[...]
+# </computeroutput><userinput>dpkg-statoverride --update --add nagios www-data 2710 /var/lib/nagios3/rw
+</userinput><computeroutput># </computeroutput><userinput>dpkg-statoverride --update --add nagios nagios 751 /var/lib/nagios3
+</userinput><computeroutput># </computeroutput><userinput>service nagios3 start</userinput>
+<computeroutput>[...]</computeroutput></screen>
+
+			</section>
+			 <section>
+				<title>Mengkonfigurasi</title>
+				 <para>
+					Antarmuka web Nagios agak bagus, tetapi tidak memungkinkan konfigurasi, dan tidak bisa digunakan untuk menambah host dan layanan yang dipantau. Seluruh konfigurasi diatur melalui berkas-berkas yang dirujuk dalam berkas konfigurasi pusat, <filename>/etc/nagios3/nagios.cfg</filename>.
+				</para>
+				 <para>
+					Berkas-berkas ini tidak boleh diselami tanpa pemahaman konsep-konsep Nagios. Konfigurasi memuat daftar objek jenis berikut:
+				</para>
+				 <itemizedlist>
+					<listitem>
+						<para>
+							suatu <emphasis>host</emphasis> adalah mesin yang akan dimonitor;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>hostgroup</emphasis> adalah seperangkat host yang harus dikelompokkan menjadi satu untuk ditampilkan, atau untuk memfaktorkan beberapa elemen konfigurasi umum;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>layanan</emphasis> adalah elemen yang dapat diuji terkait dengan host atau grup host. Paling sering akan berupa pengujian layanan jaringan, tetapi dapat juga melibatkan pemeriksaan bahwa beberapa parameter ada dalam rentang yang dapat diterima (misalnya, sisa ruang disk atau beban prosesor);
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>servicegroup</emphasis> adalah satu set layanan yang harus dikumpulkan bersama-sama untuk ditampilkan;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>contact</emphasis> adalah orang yang dapat menerima pemberitahuan;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>contactgroup</emphasis> adalah sekumpulan kontak tersebut;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>timeperiod</emphasis> adalah rentang waktu saat beberapa layanan harus diperiksa;
+						</para>
+
+					</listitem>
+					 <listitem>
+						<para>
+							suatu <emphasis>command</emphasis> adalah baris perintah yang dipanggil untuk memeriksa layanan yang diberikan.
+						</para>
+
+					</listitem>
+
+				</itemizedlist>
+				 <para>
+					Sesuai dengan jenisnya, setiap objek memiliki sejumlah properti yang dapat disesuaikan. Daftar lengkap akan terlalu panjang untuk disertakan, tapi properti yang paling penting adalah hubungan antar objek tersebut.
+				</para>
+				 <para>
+					Suatu <emphasis>service</emphasis> menggunakan <emphasis>command</emphasis> untuk memeriksa keadaan dari suatu fitur pada <emphasis>host</emphasis> (atau <emphasis>hostgroup</emphasis>) dalam <emphasis>timeperiod</emphasis>. Bila ada masalah, Nagios mengirimkan peringatan kepada semua anggota <emphasis>contactgroup</emphasis> yang terhubung ke layanan. Setiap anggota dikirim pesan peringatan menurut saluran yang dijelaskan dalam objek <emphasis>contact</emphasis> yang cocok.
+				</para>
+				 <para>
+					Suatu sistem warisan memungkinkan berbagi dengan mudah satu set properti ke banyak objek tanpa menggandakan informasi. Selain itu, konfigurasi awal mencakup sejumlah objek standar; dalam banyak kasus, mendefinisikan host baru, layanan, dan kontak cukup dengan menurunkan dari objek generik yang disediakan. Berkas-berkas dalam <filename>/etc/nagios3/conf.d/</filename> adalah sumber yang baik informasi tentang bagaimana mereka bekerja.
+				</para>
+				 <para>
+					Para administrator Falcot Corp menggunakan konfigurasi berikut:
+				</para>
+				 <example>
+					<title>berkas <filename>/etc/nagios3/conf.d/falcot.cfg</filename></title>
+					 
+<programlisting>define contact{
+    name                            generic-contact
+    service_notification_period     24x7
+    host_notification_period        24x7
+    service_notification_options    w,u,c,r
+    host_notification_options       d,u,r
+    service_notification_commands   notify-service-by-email
+    host_notification_commands      notify-host-by-email
+    register                        0 ; Template only
+}
+define contact{
+    use             generic-contact
+    contact_name    rhertzog
+    alias           Raphael Hertzog
+    email           hertzog@debian.org
+}
+define contact{
+    use             generic-contact
+    contact_name    rmas
+    alias           Roland Mas
+    email           lolando@debian.org
+}
+
+define contactgroup{
+    contactgroup_name     falcot-admins
+    alias                 Falcot Administrators
+    members               rhertzog,rmas
+}
+
+define host{
+    use                   generic-host ; Name of host template to use
+    host_name             www-host
+    alias                 www.falcot.com
+    address               192.168.0.5
+    contact_groups        falcot-admins
+    hostgroups            debian-servers,ssh-servers
+}
+define host{
+    use                   generic-host ; Name of host template to use
+    host_name             ftp-host
+    alias                 ftp.falcot.com
+    address               192.168.0.6
+    contact_groups        falcot-admins
+    hostgroups            debian-servers,ssh-servers
+}
+
+# 'check_ftp' command with custom parameters
+define command{
+    command_name          check_ftp2
+    command_line          /usr/lib/nagios/plugins/check_ftp -H $HOSTADDRESS$ -w 20 -c 30 -t 35
+}
+
+# Generic Falcot service
+define service{
+    name                  falcot-service
+    use                   generic-service
+    contact_groups        falcot-admins
+    register              0
+}
+
+# Services to check on www-host
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   HTTP
+    check_command         check_http
+}
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   HTTPS
+    check_command         check_https
+}
+define service{
+    use                   falcot-service
+    host_name             www-host
+    service_description   SMTP
+    check_command         check_smtp
+}
+
+# Services to check on ftp-host
+define service{
+    use                   falcot-service
+    host_name             ftp-host
+    service_description   FTP
+    check_command         check_ftp2
+}</programlisting>
+
+				</example>
+				 <para>
+					Berkas konfigurasi ini menjelaskan dua host yang dipantau. Yang pertama adalah server web, dan pemeriksaan dibuat pada port HTTP (80) dan HTTP aman (443). Nagios juga memeriksa bahwa server SMTP berjalan pada port 25. Host kedua adalah server FTP, dan pemeriksaan termasuk memastikan bahwa jawaban datang dalam 20 detik. Penundaan lebih dari ini, <emphasis>peringatan</emphasis> disebarkan; lebih dari 30 detik, pesan waspada dianggap kritis. Antarmuka web Nagios juga menunjukkan bahwa layanan SSH dipantau: ini datang dari host milik hostgroup <literal>ssh-servers</literal>. Layanan standar yang cocok didefinisikan dalam <filename>/etc/nagios3/conf.d/services_nagios2.cfg</filename>.
+				</para>
+				 <para>
+					Perhatikan penggunaan warisan: suatu objek dibuat untuk mewarisi dari objek lain dengan "menggunakan <replaceable>nama orang tua"</replaceable>. Objek induk harus dapat diidentifikasi, yang memerlukan memberikan sebuah properti "nama <replaceable>pengenal</replaceable>". Jika objek induk tidak dimaksudkan untuk menjadi sebuah objek yang nyata, tetapi hanya untuk melayani sebagai orang tua, memberinya sebuah properti "register 0" memberitahu Nagios untuk tidak untuk mempertimbangkan itu, dan karena itu untuk mengabaikan kekurangan beberapa parameter yang bila tidak demikian akan diperlukan.
+				</para>
+				 <sidebar> <title><emphasis>DOKUMENTASI</emphasis> Daftar properti obyek</title>
+				 <para>
+					Pemahaman yang lebih mendalam dari berbagai cara di mana Nagios dapat dikonfigurasi dapat diperoleh dari dokumentasi yang disediakan oleh paket <emphasis role="pkg">nagios3-doc</emphasis>. Dokumentasi ini secara langsung dapat diakses dari antarmuka web, dengan taut "Dokumentasi" di sudut kiri atas. Ini mencakup daftar semua jenis objek, dengan semua properti yang dapat mereka miliki. Ini juga menjelaskan bagaimana membuat plugin baru.
+				</para>
+				 </sidebar> <sidebar> <title><emphasis>LEBIH JAUH</emphasis> Uji jarak jauh dengan NRPE</title>
+				 <para>
+					Banyak plugin Nagios yang memungkinkan memeriksa beberapa parameter lokal ke host; jika banyak mesin memerlukan pemeriksaan sementara suatu instalasi pusat mengumpulkan mereka, plugin NRPE (<emphasis>Nagios Remote Plugin Executor</emphasis>) perlu digelar. Paket <emphasis role="pkg">nagios-nrpe-plugin</emphasis> perlu dipasang pada server Nagios, dan <emphasis role="pkg">nagios-nrpe-server</emphasis> pada host tempat tes lokal perlu dijalankan. Yang terakhir mendapat konfigurasinya dari <filename>/etc/nagios/nrpe.cfg</filename>. Berkas ini harus memuat daftar tes yang dapat dimulai dari jarak jauh, dan alamat IP dari mesin-mesin yang diperbolehkan untuk memicu mereka. Di sisi Nagios, memfungsikan tes jarak jauh ini cukup dengan menambahkan layanan yang cocok menggunakan perintah baru <emphasis>check_nrpe</emphasis>.
+				</para>
+				 </sidebar>
+			</section>
+
+		</section>
+
+	</section>
+</chapter>
+
