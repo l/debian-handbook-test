@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html
+    xmlns="http://www.w3.org/1999/xhtml"><head><meta
+        http-equiv="Content-Type"
+        content="text/html; charset=UTF-8" /><title
+        xmlns:d="http://docbook.org/ns/docbook">9.6. The inetd 超级服务器</title><link
+        rel="stylesheet"
+        type="text/css"
+        href="Common_Content/css/default.css" /><link
+        rel="stylesheet"
+        media="print"
+        href="Common_Content/css/print.css"
+        type="text/css" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="generator"
+        content="publican v4.3.2" /><meta
+        xmlns:d="http://docbook.org/ns/docbook"
+        name="package"
+        content="Debian-debian-handbook-9-zh-CN-1.0-1" /><meta
+        name="keywords"
+        content="系统启动, 启动脚本, SSH, Telnet, 权限, 许可, 管理, Inetd, Cron, 备份, 热插拔, PCMCIA接口, APM, ACPI" /><link
+        rel="home"
+        href="index.html"
+        title="Debian 管理员手册" /><link
+        rel="up"
+        href="unix-services.html"
+        title="第 9 章 Unix 服务" /><link
+        rel="prev"
+        href="sect.syslog.html"
+        title="9.5. syslog 系统事件" /><link
+        rel="next"
+        href="sect.task-scheduling-cron-atd.html"
+        title="9.7. 使用 cron 和 atd运行计划任务" /><meta
+        xmlns=""
+        name="flattr:id"
+        content="4pz9jq" /><link
+        xmlns=""
+        rel="canonical"
+        href="https://debian-handbook.info/browse/zh-CN/stable/sect.inetd.html" /></head><body><div
+        id="banner"><a
+          href="http://debian-handbook.info/get/"><span
+            class="text">Download the ebook</span></a></div><p
+        id="title"><a
+          class="left"
+          href="http://www.debian.org"><img
+            alt="Product Site"
+            src="Common_Content/images//image_left.png" /></a><a
+          class="right"
+          href="index.html"><img
+            alt="Documentation Site"
+            src="Common_Content/images//image_right.png" /></a></p><ul
+        class="docnav top"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.syslog.html"><strong>上一页</strong></a></li><li
+          class="home">Debian 管理员手册</li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.task-scheduling-cron-atd.html"><strong>下一页</strong></a></li></ul><div
+        class="section"><div
+          class="titlepage"><div><div><h2
+                class="title"><a
+                  xmlns=""
+                  id="sect.inetd"></a>9.6. The <code
+                  class="command">inetd</code> 超级服务器</h2></div></div></div><div
+          class="para">
+			Inetd（常被称为“网络超级服务”）是一个服务器服务。它按需求运行一些不常用的服务，而且不需要连续运行。
+		</div><a
+          id="id-1.12.9.3"
+          class="indexterm"></a><a
+          id="id-1.12.9.4"
+          class="indexterm"></a><div
+          class="para">
+			<code
+            class="filename">/etc/inetd.conf</code> 文件列出服务器及其通用的端口号。<code
+            class="command">inetd</code> 命令侦测它们；若发现任何端口号已被链接，则运行对应的程序。
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>DEBIAN 政策</em></span> 在<code
+                      class="filename">inetd.conf</code>中注册服务</strong></p></div></div></div><div
+            class="para">
+			软件包经常需要在 <code
+              class="filename">/etc/inetd.conf</code> 文件登录新的服务器，但 Debian 政策禁止任何软件包不属于自身的配置档。所以有 <code
+              class="command">update-inetd</code> 脚本 (在同名软件包内)：管理配置文件以及其他软件包，使其在超级服务器的配置中登录新的服务器。
+		</div></div><div
+          class="para">
+			<code
+            class="filename">/etc/inetd.conf</code> 文件中的每列条目以 7 个字段 (以空格区分) 描述服务器：
+		</div><div
+          xmlns:d="http://docbook.org/ns/docbook"
+          class="itemizedlist"><ul><li
+              class="listitem"><div
+                class="para">
+					TCP 或者UDP 端口号，或者服务名称（用<code
+                  class="filename">/etc/services</code> 文件中包含的信息映射到标准端口号）。
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					套接字类型： <code
+                  class="literal">stream</code> 用于TCP 连接， <code
+                  class="literal">dgram</code> 用于UDP 数据包。
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					协议： <code
+                  class="literal">tcp</code> 或 <code
+                  class="literal">udp</code>。
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					选项：两个可能值：<code
+                  class="literal">wait</code> 或 <code
+                  class="literal">nowait</code>，告诉 <code
+                  class="command">inetd</code> 在接受另个链接时，是否该等待或终止已启用的进程。对 TCP 链接而言，可使用 <code
+                  class="literal">nowait</code>，进入多任务。对回应 UDP 的程序而言，只在服务器可平行管理多个链接时，才使用 <code
+                  class="literal">nowait</code>。可在这个字段前加上圆点，以及每分钟可以开启的最大链接量 (缺省为 256)。
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					用户名，服务将以哪个用户的身份运行。
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					要执行程序的完整路径。
+				</div></li><li
+              class="listitem"><div
+                class="para">
+					参数：此处是程序的完整参数列表，包括程序名（C中的<code
+                  class="literal">argv[0]</code> ）。
+				</div></li></ul></div><div
+          class="para">
+			下面的例子阐释最常见的情况：
+		</div><div
+          class="example"><a
+            xmlns=""
+            id="example.inetd-conf"></a><p
+            class="title"><strong>例 9.1. 摘自 <code
+                class="filename">/etc/inetd.conf</code></strong></p><div
+            class="example-contents"><pre
+              class="programlisting">talk   dgram  udp wait    nobody.tty /usr/sbin/in.talkd in.talkd
+finger stream tcp nowait  nobody     /usr/sbin/tcpd     in.fingerd
+ident  stream tcp nowait  nobody     /usr/sbin/identd   identd -i</pre></div></div><a
+          id="id-1.12.9.11"
+          class="indexterm"></a><div
+          class="para">
+			<code
+            class="command">tcpd</code> 程序常用于 <code
+            class="filename">/etc/inetd.conf</code> 文件中。以近用控制规则的方式限制送来的链接数，相关文档在 <span
+            class="citerefentry"><span
+              class="refentrytitle">hosts_access</span>(5)</span> 手册页面，并在 <code
+            class="filename">/etc/hosts.allow</code> 与 <code
+            class="filename">/etc/hosts.deny</code> 文件中配置。授权链接后，<code
+            class="command">tcpd</code> 运行真实的服务器 (在此例中是 <code
+            class="command">in.fingerd</code>)。值得注意的是 <code
+            class="command">tcpd</code> 依靠启用的名称 (即第一个参数，<code
+            class="literal">argv[0]</code>) 辨识真实运行的程序。所以不该启用 <code
+            class="literal">tcpd</code> 内的参数清单，应先与程序包装在一起。
+		</div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>社区</em></span> Wietse Venema</strong></p></div></div></div><a
+            id="id-1.12.9.13.2"
+            class="indexterm"></a><a
+            id="id-1.12.9.13.3"
+            class="indexterm"></a><div
+            class="para">
+			Wietse Venema由于在安全方面的专业使他成了一位很有名望的程序员，他是 <code
+              class="command">tcpd</code> 程序的作者。他也是Postfix，模块电子邮件服务器（SMTP）的主要创建者，该服务要设计的比 <code
+              class="command">sendmail</code>更安全和可靠。
+		</div></div><div
+          class="sidebar"><div
+            class="titlepage"><div><div><p
+                  class="title"><strong><span
+                      class="emphasis"><em>另外的选择</em></span> 其他 <code
+                      class="command">inetd</code> 命令</strong></p></div></div></div><div
+            class="para">
+			当 Debian 缺省安装 <span
+              class="pkg pkg">openbsd-inetd</span> 后，就有很多选项：可用 <span
+              class="pkg pkg">inetutils-inetd</span>、<span
+              class="pkg pkg">micro-inetd</span>、<span
+              class="pkg pkg">rlinetd</span> 和 <span
+              class="pkg pkg">xinetd</span>。
+		</div><div
+            class="para">
+			最后的这个超级服务载体提供了很有趣的特性。最引人注目的是，它的配置文件可以分割成几个不同文件（存储在 <code
+              class="filename">/etc/xinetd.d/</code> 目录），让管理员更容易管理。
+		</div><div
+            class="para">
+			最后但不是最不重要，甚至可以仿真 <code
+              class="command">inetd</code> 的行为，以 <code
+              class="command">systemd</code> 的插座启用模式运作 (见 <a
+              class="xref"
+              href="unix-services.html#sect.systemd">第 9.1.1 节 “Systemd 启动系统”</a>)。
+		</div></div></div><ul
+        class="docnav"><li
+          class="previous"><a
+            accesskey="p"
+            href="sect.syslog.html"><strong>上一页</strong>9.5. syslog 系统事件</a></li><li
+          class="up"><a
+            accesskey="u"
+            href="#"><strong>上一级</strong></a></li><li
+          class="home"><a
+            accesskey="h"
+            href="index.html"><strong>起始页</strong></a></li><li
+          class="next"><a
+            accesskey="n"
+            href="sect.task-scheduling-cron-atd.html"><strong>下一页</strong>9.7. 使用 cron 和 atd运行计划任务</a></li></ul></body></html>
